@@ -1,0 +1,145 @@
+<div class="p-6 space-y-6 bg-gradient-to-br from-emerald-50 to-teal-100 min-h-screen">
+  <!-- Widgets Grid -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+    <!-- Widget Usuarios -->
+    <div
+      class="bg-white shadow-lg p-6 flex items-center gap-4 border border-emerald-100 rounded-2xl transform hover:shadow-xl hover:scale-105 transition duration-300">
+      <div class="bg-emerald-100 text-emerald-600 w-12 h-12 flex items-center justify-center rounded-full">
+        <fa-icon [icon]="faUsers" class="text-xl"></fa-icon>
+      </div>
+      <div>
+        <p class="text-sm text-gray-500">Usuarios Totales</p>
+        <p class="text-xl font-semibold text-gray-800">{{ usuariosTotales }}</p>
+      </div>
+    </div>
+
+    <!-- Widget Clientes -->
+    <div
+      class="bg-white shadow-lg p-6 flex items-center gap-4 border border-emerald-100 rounded-2xl transform hover:shadow-xl hover:scale-105 transition duration-300">
+      <div class="bg-teal-100 text-teal-600 w-12 h-12 flex items-center justify-center rounded-full">
+        <fa-icon [icon]="faHomeUser" class="text-xl"></fa-icon>
+      </div>
+      <div>
+        <p class="text-sm text-gray-500">Clientes</p>
+        <p class="text-xl font-semibold text-gray-800">{{ totalClientes }}</p>
+      </div>
+    </div>
+
+    <!-- Widget Ventas -->
+    <div
+      class="bg-white shadow-lg p-6 flex items-center gap-4 border border-emerald-100 rounded-2xl transform hover:shadow-xl hover:scale-105 transition duration-300">
+      <div class="bg-amber-100 text-amber-600 w-12 h-12 flex items-center justify-center rounded-full">
+        <fa-icon [icon]="faReceipt" class="text-xl"></fa-icon>
+      </div>
+      <div>
+        <p class="text-sm text-gray-500">Ventas</p>
+        <p class="text-xl font-semibold text-gray-800">{{ totalVentas }}</p>
+      </div>
+    </div>
+
+    <!-- Widget Pagos -->
+    <div
+      class="bg-white shadow-lg p-6 flex items-center gap-4 border border-emerald-100 rounded-2xl transform hover:shadow-xl hover:scale-105 transition duration-300">
+      <div class="bg-rose-100 text-rose-600 w-12 h-12 flex items-center justify-center rounded-full">
+        <fa-icon [icon]="faDollarSign" class="text-xl"></fa-icon>
+      </div>
+      <div>
+        <p class="text-sm text-gray-500">Pagos</p>
+        <p class="text-xl font-semibold text-gray-800">{{ totalPagos }}</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Información Básica -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Resumen del Sistema -->
+    <div class="bg-white shadow-lg p-6 border border-emerald-100 rounded-2xl">
+      <h3 class="text-lg font-semibold text-gray-800 mb-4">Resumen del Sistema</h3>
+      <div class="space-y-3">
+        <div class="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
+          <span class="text-sm text-gray-600">Usuarios registrados</span>
+          <span class="font-semibold text-emerald-600">{{ usuariosTotales }}</span>
+        </div>
+        <div class="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
+          <span class="text-sm text-gray-600">Clientes activos</span>
+          <span class="font-semibold text-emerald-600">{{ totalClientes }}</span>
+        </div>
+        <div class="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
+          <span class="text-sm text-gray-600">Ventas realizadas</span>
+          <span class="font-semibold text-emerald-600">{{ totalVentas }}</span>
+        </div>
+        <div class="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
+          <span class="text-sm text-gray-600">Pagos procesados</span>
+          <span class="font-semibold text-emerald-600">{{ totalPagos }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Acciones Rápidas -->
+    <div class="bg-white shadow-lg p-6 border border-emerald-100 rounded-2xl">
+      <h3 class="text-lg font-semibold text-gray-800 mb-4">Acciones Rápidas</h3>
+      <div class="space-y-3">
+        <button
+          class="w-full flex items-center gap-3 p-3 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition duration-200 border border-emerald-200">
+          <fa-icon [icon]="faUsers" class="text-emerald-600"></fa-icon>
+          <span class="text-sm font-medium text-emerald-700">Gestionar Usuarios</span>
+        </button>
+        <button
+          class="w-full flex items-center gap-3 p-3 bg-teal-50 hover:bg-teal-100 rounded-xl transition duration-200 border border-teal-200">
+          <fa-icon [icon]="faHomeUser" class="text-teal-600"></fa-icon>
+          <span class="text-sm font-medium text-teal-700">Ver Clientes</span>
+        </button>
+        <button
+          class="w-full flex items-center gap-3 p-3 bg-amber-50 hover:bg-amber-100 rounded-xl transition duration-200 border border-amber-200">
+          <fa-icon [icon]="faReceipt" class="text-amber-600"></fa-icon>
+          <span class="text-sm font-medium text-amber-700">Registrar Venta</span>
+        </button>
+        <button
+          class="w-full flex items-center gap-3 p-3 bg-rose-50 hover:bg-rose-100 rounded-xl transition duration-200 border border-rose-200">
+          <fa-icon [icon]="faDollarSign" class="text-rose-600"></fa-icon>
+          <span class="text-sm font-medium text-rose-700">Procesar Pago</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mensaje de Bienvenida -->
+  <div class="bg-white shadow-lg p-6 border border-emerald-100 rounded-2xl">
+    <div class="text-center">
+      <h2 class="text-2xl font-bold text-gray-800 mb-2">Bienvenido al Sistema Inmobiliario</h2>
+      <p class="text-gray-600 mb-6">
+        Gestiona tus urbanizaciones, lotes, clientes y ventas de manera eficiente
+      </p>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div class="text-center">
+          <div
+            class="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-2 border border-emerald-200">
+            <fa-icon [icon]="faCity" class="text-emerald-600 text-2xl"></fa-icon>
+          </div>
+          <span class="text-sm text-gray-600">Urbanizaciones</span>
+        </div>
+        <div class="text-center">
+          <div
+            class="w-16 h-16 bg-teal-100 rounded-full flex items-center justify-center mx-auto mb-2 border border-teal-200">
+            <fa-icon [icon]="faMapMarkedAlt" class="text-teal-600 text-2xl"></fa-icon>
+          </div>
+          <span class="text-sm text-gray-600">Lotes</span>
+        </div>
+        <div class="text-center">
+          <div
+            class="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-2 border border-amber-200">
+            <fa-icon [icon]="faFileInvoiceDollar" class="text-amber-600 text-2xl"></fa-icon>
+          </div>
+          <span class="text-sm text-gray-600">Cotizaciones</span>
+        </div>
+        <div class="text-center">
+          <div
+            class="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-2 border border-rose-200">
+            <fa-icon [icon]="faCalendarCheck" class="text-rose-600 text-2xl"></fa-icon>
+          </div>
+          <span class="text-sm text-gray-600">Reservas</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

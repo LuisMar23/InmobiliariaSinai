@@ -1,0 +1,421 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMINISTRADOR
+  ASESOR
+  SECRETARIA
+  CLIENTE
+}
+
+enum EstadoInmueble {
+  DISPONIBLE
+  RESERVADO
+  VENDIDO
+  CON_OFERTA
+}
+
+enum EstadoCotizacion {
+  PENDIENTE
+  ACEPTADA
+  RECHAZADA
+}
+
+enum EstadoVenta {
+  PENDIENTE_PAGO
+  PAGADO
+  CANCELADO
+}
+
+enum EstadoReserva {
+  ACTIVA
+  VENCIDA
+  CANCELADA
+  CONVERTIDA_EN_VENTA
+}
+
+enum EstadoTicket {
+  ABIERTO
+  EN_PROCESO
+  CERRADO
+}
+
+enum EstadoVisita {
+  PENDIENTE
+  REALIZADA
+  CANCELADA
+}
+
+enum EstadoPlanFinanciamiento {
+  ACTIVO
+  FINALIZADO
+  CANCELADO
+}
+
+enum EstadoCuota {
+  PENDIENTE
+  PAGADA
+  VENCIDA
+}
+
+enum MetodoPago {
+  EFECTIVO
+  TRANSFERENCIA
+  TARJETA
+}
+
+enum TipoInmueble {
+  LOTE
+  URBANIZACION
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  uuid         String   @unique @default(uuid())
+  fullName     String   @map("full_name")
+  username     String   @unique
+  ci           String   @unique
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  avatarUrl    String?  @map("avatar_url")
+  telefono     String   @unique
+  role         UserRole @default(CLIENTE)
+  isActive     Boolean  @default(true) @map("is_active")
+  lastLogin    DateTime? @map("last_login")
+  createdAt  DateTime @default(now()) @map("created_at")
+  estado       Boolean  @default(true)
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Campos de seguridad
+  failedAttempts       Int       @default(0) @map("failed_attempts")
+  lockUntil            DateTime? @map("lock_until")
+  resetPasswordToken   String?   @map("reset_password_token")
+  resetPasswordExpires DateTime? @map("reset_password_expires")
+
+  // Relaciones
+  cotizacionesComoCliente Cotizacion[] @relation("CotizacionesCliente")
+  cotizacionesComoAsesor  Cotizacion[] @relation("CotizacionesAsesor")
+  ventasComoCliente       Venta[]      @relation("VentasCliente")
+  ventasComoAsesor        Venta[]      @relation("VentasAsesor")
+  reservasComoCliente     Reserva[]    @relation("ReservasCliente")
+  reservasComoAsesor      Reserva[]    @relation("ReservasAsesor")
+  visitasComoCliente      Visita[]     @relation("VisitasCliente")
+  visitasComoAsesor       Visita[]     @relation("VisitasAsesor")
+  ticketsCreados          Ticket[]     @relation("TicketsCliente")
+  ticketsAtendidos        Ticket[]     @relation("TicketsAtendidos")
+  imagenesSubidas         Imagen[]
+  documentosSubidos       Documento[]
+  pagosRegistrados        Pago[]
+  auditorias              Auditoria[]
+  ingresosRegistrados     Ingreso[]
+  egresosRegistrados      Egreso[]
+}
+
+model Urbanizacion {
+  id          Int      @id @default(autoincrement())
+  uuid        String   @unique @default(uuid())
+  nombre      String
+  ubicacion   String
+  descripcion String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  lotes    Lote[]
+  imagenes Imagen[] @relation("ImagenesUrbanizacion")
+}
+
+model Lote {
+  id             Int            @id @default(autoincrement())
+  uuid           String         @unique @default(uuid())
+  urbanizacionId Int
+  numeroLote     String         @map("numero_lote")
+  superficieM2   Decimal        @map("superficie_m2") @db.Decimal(10, 2)
+  precioBase     Decimal        @map("precio_base") @db.Decimal(12, 2)
+  estado         EstadoInmueble @default(DISPONIBLE)
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  urbanizacion Urbanizacion @relation(fields: [urbanizacionId], references: [id])
+  imagenes     Imagen[]     @relation("ImagenesLote")
+  cotizaciones Cotizacion[] @relation("CotizacionesLote")
+  ventas       Venta[]      @relation("VentasLote")
+  reservas     Reserva[]    @relation("ReservasLote")
+  visitas      Visita[]     @relation("VisitasLote")
+}
+
+model Imagen {
+  id           Int          @id @default(autoincrement())
+  uuid         String       @unique @default(uuid())
+  inmuebleTipo TipoInmueble
+  inmuebleId   Int
+  urlImagen    String       @map("url_imagen")
+  descripcion  String?
+  orden        Int          @default(0)
+  subidoPor    Int
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  usuario      User          @relation(fields: [subidoPor], references: [id])
+  urbanizacion Urbanizacion? @relation("ImagenesUrbanizacion", fields: [inmuebleId], references: [id], map: "fk_imagen_urbanizacion")
+  lote         Lote?         @relation("ImagenesLote", fields: [inmuebleId], references: [id], map: "fk_imagen_lote")
+}
+
+model Cotizacion {
+  id             Int              @id @default(autoincrement())
+  uuid           String           @unique @default(uuid())
+  clienteId      Int
+  asesorId       Int
+  inmuebleTipo   TipoInmueble     @default(LOTE)
+  inmuebleId     Int
+  precioOfertado Decimal          @map("precio_ofertado") @db.Decimal(12, 2)
+  estado         EstadoCotizacion @default(PENDIENTE)
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  cliente User  @relation("CotizacionesCliente", fields: [clienteId], references: [id])
+  asesor  User  @relation("CotizacionesAsesor", fields: [asesorId], references: [id])
+  lote    Lote? @relation("CotizacionesLote", fields: [inmuebleId], references: [id], map: "fk_cotizacion_lote")
+}
+
+model Venta {
+  id           Int          @id @default(autoincrement())
+  uuid         String       @unique @default(uuid())
+  clienteId    Int
+  asesorId     Int
+  inmuebleTipo TipoInmueble @default(LOTE)
+  inmuebleId   Int
+  precioFinal  Decimal      @map("precio_final") @db.Decimal(12, 2)
+  estado       EstadoVenta  @default(PENDIENTE_PAGO)
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  cliente            User                @relation("VentasCliente", fields: [clienteId], references: [id])
+  asesor             User                @relation("VentasAsesor", fields: [asesorId], references: [id])
+  lote               Lote?               @relation("VentasLote", fields: [inmuebleId], references: [id], map: "fk_venta_lote")
+  pagos              Pago[]
+  planFinanciamiento PlanFinanciamiento?
+  documentos         Documento[]
+  ingresos           Ingreso[]
+}
+
+model Pago {
+  id          Int        @id @default(autoincrement())
+  uuid        String     @unique @default(uuid())
+  ventaId     Int
+  monto       Decimal    @db.Decimal(12, 2)
+  metodo      MetodoPago @default(EFECTIVO)
+  recibidoPor Int        @map("recibido_por")
+  comprobante String?
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  venta   Venta   @relation(fields: [ventaId], references: [id])
+  usuario User    @relation(fields: [recibidoPor], references: [id])
+  cuotas  Cuota[]
+}
+
+model PlanFinanciamiento {
+  id            Int                      @id @default(autoincrement())
+  uuid          String                   @unique @default(uuid())
+  ventaId       Int                      @unique
+  montoTotal    Decimal                  @map("monto_total") @db.Decimal(12, 2)
+  cuotasTotales Int                      @map("cuotas_totales")
+  interes       Decimal                  @db.Decimal(5, 2)
+  estado        EstadoPlanFinanciamiento @default(ACTIVO)
+  createdAt     DateTime                 @default(now()) @map("created_at")
+  updatedAt     DateTime                 @updatedAt @map("updated_at")
+
+  venta  Venta   @relation(fields: [ventaId], references: [id])
+  cuotas Cuota[]
+}
+
+model Cuota {
+  id               Int         @id @default(autoincrement())
+  uuid             String      @unique @default(uuid())
+  planId           Int
+  numeroCuota      Int         @map("numero_cuota")
+  montoCuota       Decimal     @map("monto_cuota") @db.Decimal(12, 2)
+  fechaVencimiento DateTime    @map("fecha_vencimiento")
+  estado           EstadoCuota @default(PENDIENTE)
+  pagoId           Int?
+  createdAt        DateTime    @default(now()) @map("created_at")
+  updatedAt        DateTime    @updatedAt @map("updated_at")
+
+  plan PlanFinanciamiento @relation(fields: [planId], references: [id])
+  pago Pago?              @relation(fields: [pagoId], references: [id])
+}
+
+model Reserva {
+  id               Int           @id @default(autoincrement())
+  uuid             String        @unique @default(uuid())
+  clienteId        Int
+  asesorId         Int
+  inmuebleTipo     TipoInmueble  @default(LOTE)
+  inmuebleId       Int
+  montoReserva     Decimal       @map("monto_reserva") @db.Decimal(12, 2)
+  fechaInicio      DateTime      @map("fecha_inicio")
+  fechaVencimiento DateTime      @map("fecha_vencimiento")
+  estado           EstadoReserva @default(ACTIVA)
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+
+  cliente    User        @relation("ReservasCliente", fields: [clienteId], references: [id])
+  asesor     User        @relation("ReservasAsesor", fields: [asesorId], references: [id])
+  lote       Lote?       @relation("ReservasLote", fields: [inmuebleId], references: [id], map: "fk_reserva_lote")
+  documentos Documento[]
+}
+
+model Documento {
+  id         Int      @id @default(autoincrement())
+  uuid       String   @unique @default(uuid())
+  ventaId    Int?
+  reservaId  Int?
+  tipo       String
+  urlArchivo String   @map("url_archivo")
+  subidoPor  Int
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  venta   Venta?   @relation(fields: [ventaId], references: [id])
+  reserva Reserva? @relation(fields: [reservaId], references: [id])
+  usuario User     @relation(fields: [subidoPor], references: [id])
+}
+
+model Visita {
+  id           Int          @id @default(autoincrement())
+  uuid         String       @unique @default(uuid())
+  clienteId    Int
+  asesorId     Int
+  inmuebleTipo TipoInmueble @default(LOTE)
+  inmuebleId   Int
+  fechaVisita  DateTime     @map("fecha_visita")
+  estado       EstadoVisita @default(PENDIENTE)
+  comentarios  String?
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  cliente User  @relation("VisitasCliente", fields: [clienteId], references: [id])
+  asesor  User  @relation("VisitasAsesor", fields: [asesorId], references: [id])
+  lote    Lote? @relation("VisitasLote", fields: [inmuebleId], references: [id], map: "fk_visita_lote")
+}
+
+model Ticket {
+  id          Int          @id @default(autoincrement())
+  uuid        String       @unique @default(uuid())
+  clienteId   Int
+  asunto      String
+  mensaje     String
+  estado      EstadoTicket @default(ABIERTO)
+  atendidoPor Int?
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  cliente  User  @relation("TicketsCliente", fields: [clienteId], references: [id])
+  atendido User? @relation("TicketsAtendidos", fields: [atendidoPor], references: [id])
+}
+
+model Promocion {
+  id          Int      @id @default(autoincrement())
+  uuid        String   @unique @default(uuid())
+  titulo      String
+  descripcion String?
+  descuento   Decimal  @db.Decimal(5, 2)
+  fechaInicio DateTime @map("fecha_inicio")
+  fechaFin    DateTime @map("fecha_fin")
+  aplicaA     String
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+}
+
+model Empresa {
+  id        Int      @id @default(autoincrement())
+  uuid      String   @unique @default(uuid())
+  nombre    String
+  nit       String
+  direccion String
+  telefonos String
+  email     String
+  logoUrl   String?  @map("logo_url")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+}
+
+model Auditoria {
+  id              Int      @id @default(autoincrement())
+  uuid            String   @unique @default(uuid())
+  usuarioId       Int?
+  accion          String
+  tablaAfectada   String   @map("tabla_afectada")
+  columnaAfectada String?  @map("columna_afectada")
+  registroId      Int?     @map("registro_id")
+  datosAntes      String?  @map("datos_antes")
+  datosDespues    String?  @map("datos_despues")
+  ip              String?
+  dispositivo     String?
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  usuario User? @relation(fields: [usuarioId], references: [id])
+}
+
+model CategoriaContable {
+  id        Int      @id @default(autoincrement())
+  uuid      String   @unique @default(uuid())
+  nombre    String
+  tipo      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  ingresos Ingreso[]
+  egresos  Egreso[]
+}
+
+model Ingreso {
+  id            Int      @id @default(autoincrement())
+  uuid          String   @unique @default(uuid())
+  fecha         DateTime @default(now())
+  monto         Decimal  @db.Decimal(12, 2)
+  descripcion   String
+  categoriaId   Int
+  ventaId       Int?
+  registradoPor Int      @map("registrado_por")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  categoria CategoriaContable @relation(fields: [categoriaId], references: [id])
+  venta     Venta?            @relation(fields: [ventaId], references: [id])
+  usuario   User              @relation(fields: [registradoPor], references: [id])
+}
+
+model Egreso {
+  id            Int      @id @default(autoincrement())
+  uuid          String   @unique @default(uuid())
+  fecha         DateTime @default(now())
+  monto         Decimal  @db.Decimal(12, 2)
+  descripcion   String
+  categoriaId   Int
+  registradoPor Int      @map("registrado_por")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  categoria CategoriaContable @relation(fields: [categoriaId], references: [id])
+  usuario   User              @relation(fields: [registradoPor], references: [id])
+}
+
+model BalanceMensual {
+  id            Int      @id @default(autoincrement())
+  uuid          String   @unique @default(uuid())
+  mes           Int
+  anio          Int
+  totalIngresos Decimal  @map("total_ingresos") @db.Decimal(12, 2)
+  totalEgresos  Decimal  @map("total_egresos") @db.Decimal(12, 2)
+  utilidad      Decimal  @db.Decimal(12, 2)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+}

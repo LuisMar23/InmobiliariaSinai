@@ -1,0 +1,133 @@
+<!-- Desktop Sidebar -->
+<aside
+  class="hidden md:flex flex-col h-screen transition-all duration-300 ease-in-out bg-white border-r border-emerald-100 fixed left-0 top-0 z-40"
+  [class.w-72]="!isCollapsed" [class.w-16]="isCollapsed">
+  <!-- Header -->
+  <div class="flex items-center justify-between border-b border-emerald-50" [class.p-6]="!isCollapsed"
+    [class.p-4]="isCollapsed">
+    <div class="flex items-center gap-2 overflow-hidden py-2" [class.justify-center]="isCollapsed"
+      [class.w-full]="isCollapsed">
+      @if(isCollapsed){
+      <!-- Solo logo pequeño centrado con toggle tipo hamburguesa -->
+      <div class="flex items-center gap-2 justify-center w-full">
+        <button (click)="toggleSidebar()"
+          class="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-emerald-50 transition-colors duration-200 group">
+          <fa-icon [icon]="faBars"
+            class="text-emerald-500 group-hover:text-emerald-600 text-sm transition-colors"></fa-icon>
+        </button>
+      </div>
+      } @else {
+      <!-- Logo grande cuando está expandido -->
+      <div class="flex justify-center items-center w-full">
+        <div class="w-32 h-32 rounded-full overflow-hidden shadow-md border-4 border-white bg-white">
+          <img [src]="imagen" alt="Logo" class="w-full h-full object-cover" onerror="this.style.display='none'" />
+          <!-- Fallback si la imagen no carga -->
+           @if (!imagen) {
+          <div 
+            class="w-full h-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+            <fa-icon [icon]="faBuilding" class="text-white text-2xl"></fa-icon>
+          </div>
+           }
+
+        </div>
+      </div>
+      }
+    </div>
+
+    <!-- Toggle Button solo visible en estado expandido -->
+    @if(!isCollapsed){
+    <button (click)="toggleSidebar()"
+      class="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-emerald-50 transition-colors duration-200 group">
+      <fa-icon [icon]="faChevronLeft"
+        class="text-emerald-500 group-hover:text-emerald-600 text-sm transition-colors"></fa-icon>
+    </button>
+    }
+  </div>
+
+  <!-- Navigation -->
+  <nav class="flex-1 py-2" [class.px-4]="!isCollapsed" [class.px-2]="isCollapsed">
+    <ul class="space-y-1">
+      @for(item of menu; track item){
+      <li>
+        <a [routerLink]="item.route" routerLinkActive="bg-emerald-50 text-emerald-700 border-r-2 border-emerald-500"
+          [class]="
+            isCollapsed
+              ? 'flex items-center justify-center p-2.5 rounded-lg text-gray-600 hover:bg-emerald-50 hover:text-emerald-700 transition-all duration-200 group relative'
+              : 'flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-emerald-50 hover:text-emerald-700 transition-all duration-200 group relative border-r-2 border-transparent'
+          ">
+          <fa-icon [icon]="item.icon" class="text-lg transition-colors flex-shrink-0"
+            [class.text-base]="isCollapsed"></fa-icon>
+          @if(!isCollapsed){
+          <span class="text-sm font-medium truncate">{{ item.label }}</span>
+          } @else {
+          <!-- Tooltip para modo colapsado -->
+          <div
+            class="absolute left-full ml-3 px-3 py-2 bg-emerald-600 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50 shadow-lg">
+            {{ item.label }}
+            <!-- Flecha del tooltip -->
+            <div
+              class="absolute top-1/2 left-0 transform -translate-y-1/2 -translate-x-1 w-2 h-2 bg-emerald-600 rotate-45">
+            </div>
+          </div>
+          }
+        </a>
+      </li>
+      }
+    </ul>
+  </nav>
+
+  <!-- Footer -->
+  @if(!isCollapsed){
+  <div class="px-6 py-4 border-t border-emerald-50">
+    <div class="text-xs text-gray-400 text-center">
+      <span class="font-medium">v1.0.0</span> • 2025
+    </div>
+  </div>
+  }
+</aside>
+
+<!-- Mobile Sidebar Overlay -->
+@if(isMobileOpen){
+<div class="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden" (click)="isMobileOpen = false"></div>
+}
+
+<!-- Mobile Sidebar -->
+<div
+  class="fixed inset-y-0 left-0 w-64 bg-white shadow-xl z-50 transform transition-transform duration-300 ease-in-out md:hidden"
+  [class.translate-x-0]="isMobileOpen" [class.-translate-x-full]="!isMobileOpen">
+  <!-- Mobile Header -->
+  <div class="flex items-center justify-between p-4 border-b border-emerald-100 bg-white">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center">
+        <fa-icon [icon]="faBuilding" class="text-white"></fa-icon>
+      </div>
+      <span class="font-semibold text-gray-800">Mi Sistema</span>
+    </div>
+    <button (click)="isMobileOpen = false" class="p-2 rounded-lg hover:bg-gray-100 transition-colors">
+      <fa-icon [icon]="faTimes" class="text-gray-600"></fa-icon>
+    </button>
+  </div>
+
+  <!-- Mobile Navigation -->
+  <nav class="flex-1 overflow-y-auto py-4">
+    <ul class="space-y-2 px-3">
+      @for(item of menu; track item){
+      <li>
+        <a [routerLink]="item.route" (click)="isMobileOpen = false" routerLinkActive="bg-emerald-100 text-emerald-700"
+          class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 transition-colors duration-200">
+          <fa-icon [icon]="item.icon" class="w-5 h-5"></fa-icon>
+          <span class="font-medium">{{ item.label }}</span>
+        </a>
+      </li>
+      }
+    </ul>
+  </nav>
+</div>
+
+
+@if(!isMobileOpen){
+<button (click)="toggleMobile()"
+  class="fixed top-4 left-4 z-50 md:hidden flex items-center justify-center w-12 h-12 bg-white rounded-xl shadow-lg border border-emerald-200 hover:shadow-xl transition-all duration-200">
+  <fa-icon [icon]="faBars" class="text-emerald-600 text-lg"></fa-icon>
+</button>
+}
