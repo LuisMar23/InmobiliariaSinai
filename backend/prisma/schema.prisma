@@ -334,19 +334,6 @@ model Promocion {
   updatedAt   DateTime @updatedAt @map("updated_at")
 }
 
-model Empresa {
-  id        Int      @id @default(autoincrement())
-  uuid      String   @unique @default(uuid())
-  nombre    String
-  nit       String
-  direccion String
-  telefonos String
-  email     String
-  logoUrl   String?  @map("logo_url")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-}
-
 model Auditoria {
   id              Int      @id @default(autoincrement())
   uuid            String   @unique @default(uuid())

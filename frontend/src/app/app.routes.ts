@@ -28,6 +28,31 @@ export const routes: Routes = [
         loadChildren: () =>
           import('./features/urbanizacion/urbanizacion.routes').then((r) => r.UrbanizacionRoutingModule),
       },
+      {
+        path: 'promociones',
+        loadChildren: () =>
+          import('./features/promocion/promocion.routes').then((r) => r.PromocionesRoutingModule),
+      },
+      {
+        path: 'lotes',
+        loadChildren: () =>
+          import('./features/lote/lote.routes').then((r) => r.LotesRoutingModule),
+      },
+      {
+        path: 'cotizaciones',
+        loadChildren: () =>
+          import('./features/cotizacion/cotizacion.routes').then((r) => r.CotizacionesRoutingModule),
+      },
+      {
+        path: 'reservas',
+        loadChildren: () =>
+          import('./features/reserva/reserva.routes').then((r) => r.ReservaRoutingModule),
+      },
+      {
+        path: 'ventas',
+        loadChildren: () =>
+          import('./features/venta/venta.routes').then((r) => r.VentasRoutingModule),
+      },
     ],
   },
   { path: '**', redirectTo: '/login' },

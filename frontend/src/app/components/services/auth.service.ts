@@ -7,6 +7,18 @@ import { RegisterDto } from '../../core/interfaces/register.interface';
 import { Router } from '@angular/router';
 
 export interface LoginResponse {
+  success: boolean;
+  message: string;
+  data: {
+    user: any;
+    accessToken: string;
+    refreshToken: string;
+  };
+}
+
+export interface RegisterResponse {
+  success: boolean;
+  message: string;
   data: {
     user: any;
     accessToken: string;
@@ -33,40 +45,68 @@ export class AuthService {
   login(data: LoginDto): Observable<LoginResponse> {
     return this.http.post<LoginResponse>(`${this.apiUrl}/auth/login`, data).pipe(
       tap((res) => {
-        if (data.rememberMe) {
-          localStorage.setItem(this.tokenKey, res.data.accessToken);
-          localStorage.setItem('refresh_token', res.data.refreshToken);
-          localStorage.setItem(this.userKey, JSON.stringify(res.data.user));
-        } else {
-          sessionStorage.setItem(this.tokenKey, res.data.accessToken);
-          sessionStorage.setItem('refresh_token', res.data.refreshToken);
-          sessionStorage.setItem(this.userKey, JSON.stringify(res.data.user));
+        console.log('Respuesta login:', res);
+        if (res.data) {
+          if (data.rememberMe) {
+            localStorage.setItem(this.tokenKey, res.data.accessToken);
+            localStorage.setItem('refresh_token', res.data.refreshToken);
+            localStorage.setItem(this.userKey, JSON.stringify(res.data.user));
+          } else {
+            sessionStorage.setItem(this.tokenKey, res.data.accessToken);
+            sessionStorage.setItem('refresh_token', res.data.refreshToken);
+            sessionStorage.setItem(this.userKey, JSON.stringify(res.data.user));
+          }
         }
       }),
       catchError((error) => {
+        console.error('Error en login service:', error);
         let errorMessage = 'Error en el login';
         if (error.error?.message) {
           errorMessage = error.error.message;
         } else if (error.status === 401) {
           errorMessage = 'Credenciales incorrectas';
+        } else if (error.status === 423) {
+          errorMessage = 'Cuenta bloqueada temporalmente';
         }
         return throwError(() => new Error(errorMessage));
       })
     );
   }
 
-  register(data: RegisterDto): Observable<any> {
-    return this.http.post(`${this.apiUrl}/auth/register`, data).pipe(
+  register(data: RegisterDto): Observable<RegisterResponse> {
+    return this.http.post<RegisterResponse>(`${this.apiUrl}/auth/register`, data).pipe(
+      tap((res) => {
+        console.log('Respuesta registro completa:', res);
+      }),
       catchError((error) => {
+        console.error('Error en registro service:', error);
         let errorMessage = 'Error al registrar usuario';
-        
+
         if (error.error?.message) {
           errorMessage = error.error.message;
         } else if (error.status === 409) {
-          errorMessage = 'El usuario o email ya existe';
+          if (error.error.message?.includes('email')) {
+            errorMessage = 'El email ya está registrado';
+          } else if (error.error.message?.includes('usuario')) {
+            errorMessage = 'El nombre de usuario ya existe';
+          } else if (error.error.message?.includes('CI')) {
+            errorMessage = 'El CI ya está registrado';
+          } else if (error.error.message?.includes('teléfono')) {
+            errorMessage = 'El teléfono ya está registrado';
+          } else {
+            errorMessage = 'El usuario o email ya existe';
+          }
+        } else if (error.status === 400) {
+          errorMessage = 'Datos inválidos en el formulario';
+        } else if (error.status === 0) {
+          errorMessage = 'Error de conexión con el servidor';
         }
-        
-        return throwError(() => new Error(errorMessage));
+
+        return throwError(() => ({
+          message: errorMessage,
+          status: error.status,
+          error: error.error,
+        }));
       })
     );
   }
@@ -79,9 +119,12 @@ export class AuthService {
     }
 
     return this.http
-      .post<{ data: { accessToken: string; refreshToken: string } }>(`${this.apiUrl}/auth/refresh`, {
-        refreshToken: token,
-      })
+      .post<{ data: { accessToken: string; refreshToken: string } }>(
+        `${this.apiUrl}/auth/refresh`,
+        {
+          refreshToken: token,
+        }
+      )
       .pipe(
         tap((res) => {
           const storage = localStorage.getItem('refresh_token') ? localStorage : sessionStorage;

@@ -33,6 +33,7 @@ import {
   faClipboardList,
   faBuilding,
   faHomeUser,
+  faTag,
 } from '@fortawesome/free-solid-svg-icons';
 
 @Component({
@@ -42,7 +43,7 @@ import {
   styleUrl: './sidebar.css',
 })
 export class Sidebar {
-   faTimes = faTimes;
+  faTimes = faTimes;
   faBars = faBars;
   faChevronLeft = faChevronLeft;
   faUsers = faUsers;
@@ -58,6 +59,7 @@ export class Sidebar {
   faBuilding = faBuilding;
   faHomeUser = faHomeUser;
   faCog = faCog;
+  faTag = faTag;
 
   @Output() sidebarToggled = new EventEmitter<boolean>();
 
@@ -79,6 +81,7 @@ export class Sidebar {
     { label: 'Visitas', icon: faEye, route: '/visitas' },
     { label: 'Planes Financiamiento', icon: faHandHoldingUsd, route: '/planes-financiamiento' },
     { label: 'Pagos', icon: faDollarSign, route: '/pagos' },
+    { label: 'Promociones', icon: faTag, route: '/promociones' },
     { label: 'Ajustes', icon: faCog, route: '/ajustes' },
   ];
 

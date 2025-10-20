@@ -2,11 +2,11 @@ import { IsBoolean, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class LoginDto {
   @IsString()
-  @IsNotEmpty()
-  identifier: string; // email or username
+  @IsNotEmpty({ message: 'El identificador es requerido' })
+  identifier: string;
 
   @IsString()
-  @IsNotEmpty()
+  @IsNotEmpty({ message: 'La contraseña es requerida' })
   password: string;
 
   @IsOptional()

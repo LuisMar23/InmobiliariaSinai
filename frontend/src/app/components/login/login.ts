@@ -1,33 +1,30 @@
 import { Component, inject } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-
 import { Router, RouterModule } from '@angular/router';
 import {
   faEye,
   faEyeSlash,
   faLock,
   faUser,
-  faBuilding,
   faCheck,
   faSignInAlt,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { AuthService } from '../services/auth.service';
+import { NotificationService } from '../../core/services/notification.service';
 
 @Component({
   selector: 'app-login',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, FontAwesomeModule, RouterModule],
   templateUrl: './login.html',
-  styleUrls: ['./login.css'],
 })
 export class LoginComponent {
   faUser = faUser;
   faLock = faLock;
   faEye = faEye;
   faEyeSlash = faEyeSlash;
-  faBuilding = faBuilding;
   faCheck = faCheck;
   faSignInAlt = faSignInAlt;
 
@@ -35,6 +32,7 @@ export class LoginComponent {
   showPassword: boolean = false;
   isLoading: boolean = false;
   _authService = inject(AuthService);
+  _notificationService = inject(NotificationService);
 
   constructor(private fb: FormBuilder, private router: Router) {
     this.loginForm = this.fb.group({
@@ -54,20 +52,26 @@ export class LoginComponent {
       const data = this.loginForm.getRawValue();
 
       this._authService.login(data).subscribe({
-        next: () => {
+        next: (response) => {
           this.isLoading = false;
-          this.router.navigate(['/dashboard']);
+          this._notificationService.showSuccess('¡Bienvenido!');
+          setTimeout(() => {
+            this.router.navigate(['/dashboard']);
+          }, 500);
         },
         error: (error) => {
           this.isLoading = false;
-          console.error('Error en login:', error);
-          alert(error.message || 'Credenciales incorrectas. Por favor, verifica tus datos.');
+          console.error('Error completo en login:', error);
+          this._notificationService.showError(
+            error.message || 'Credenciales incorrectas. Por favor, verifica tus datos.'
+          );
         },
       });
     } else {
       Object.keys(this.loginForm.controls).forEach((key) => {
         this.loginForm.get(key)?.markAsTouched();
       });
+      this._notificationService.showError('Por favor completa todos los campos requeridos');
     }
   }
 

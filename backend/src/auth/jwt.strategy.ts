@@ -9,15 +9,23 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: process.env.JWT_SECRET || 'your-secret-key',
+      secretOrKey: process.env.JWT_SECRET || 'default-secret-key',
     });
   }
 
   async validate(payload: any) {
-    const user = await this.authService.validateUser(payload.sub);
-    if (!user) {
-      throw new UnauthorizedException();
+    try {
+      // Verificar que el usuario existe y está activo
+      const user = await this.authService.validateUser(payload.sub);
+
+      return {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        role: user.role,
+      };
+    } catch (error) {
+      throw new UnauthorizedException('Token inválido o usuario no encontrado');
     }
-    return user;
   }
 }
