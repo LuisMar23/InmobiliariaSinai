@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Output } from '@angular/core';
+import { Component, EventEmitter, Output, OnInit } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
@@ -34,15 +34,19 @@ import {
   faBuilding,
   faHomeUser,
   faTag,
+  faCashRegister,
+
 } from '@fortawesome/free-solid-svg-icons';
+import { AuthService } from '../../../components/services/auth.service';
 
 @Component({
   selector: 'app-sidebar',
+  standalone: true,
   imports: [CommonModule, RouterModule, FontAwesomeModule],
   templateUrl: './sidebar.html',
   styleUrl: './sidebar.css',
 })
-export class Sidebar {
+export class Sidebar implements OnInit {
   faTimes = faTimes;
   faBars = faBars;
   faChevronLeft = faChevronLeft;
@@ -60,33 +64,52 @@ export class Sidebar {
   faHomeUser = faHomeUser;
   faCog = faCog;
   faTag = faTag;
+  
 
   @Output() sidebarToggled = new EventEmitter<boolean>();
 
   imagen: string = 'assets/logoSinai.jpg';
+  currentUser: any;
 
   isCollapsed = false;
   isMobileOpen = false;
 
-  // Menú
+  // Menú - SOLO modificar la opción de Usuarios
   menu: { label: string; icon: IconDefinition; route: string }[] = [
     { label: 'Dashboard', icon: faTachometerAlt, route: '/dashboard' },
     { label: 'Urbanizaciones', icon: faCity, route: '/urbanizaciones' },
     { label: 'Lotes', icon: faMapMarkedAlt, route: '/lotes' },
-    { label: 'Usuarios', icon: faUsers, route: '/usuarios' },
+    // Usuarios se agrega dinámicamente según el rol
     { label: 'Clientes', icon: faHomeUser, route: '/clientes' },
     { label: 'Cotizaciones', icon: faFileInvoiceDollar, route: '/cotizaciones' },
     { label: 'Ventas', icon: faReceipt, route: '/ventas' },
     { label: 'Reservas', icon: faCalendarCheck, route: '/reservas' },
     { label: 'Visitas', icon: faEye, route: '/visitas' },
-    { label: 'Planes Financiamiento', icon: faHandHoldingUsd, route: '/planes-financiamiento' },
+    { label: 'Caja', icon: faCashRegister, route: '/caja' },
     { label: 'Pagos', icon: faDollarSign, route: '/pagos' },
     { label: 'Promociones', icon: faTag, route: '/promociones' },
     { label: 'Ajustes', icon: faCog, route: '/ajustes' },
   ];
 
-  constructor() {
+  constructor(private authService: AuthService) {
     this.imagen = 'assets/logoSinai.jpg';
+  }
+
+  ngOnInit() {
+    this.currentUser = this.authService.getCurrentUser();
+    this.filterMenuByRole();
+  }
+
+  private filterMenuByRole() {
+    // SOLO agregar "Usuarios" si el rol es ADMINISTRADOR o SECRETARIA
+    if (this.currentUser && ['ADMINISTRADOR', 'SECRETARIA'].includes(this.currentUser.role)) {
+      // Insertar "Usuarios" después de "Lotes"
+      this.menu.splice(3, 0, {
+        label: 'Usuarios',
+        icon: faUsers,
+        route: '/usuarios'
+      });
+    }
   }
 
   toggleSidebar() {

@@ -75,28 +75,40 @@ export class RegisterComponent {
     this.isLoading = true;
     this.errorMessage = '';
 
-    this._authService.register(this.registerForm.value).subscribe({
+    // El rol USUARIO se asignará automáticamente en el backend
+    const registerData = this.registerForm.value;
+
+    this._authService.register(registerData).subscribe({
       next: (resp: any) => {
         console.log('Respuesta completa del registro:', resp);
         this.isLoading = false;
 
-        if (resp.data && resp.data.accessToken) {
-          // Guardar tokens y datos del usuario
-          localStorage.setItem('access_token', resp.data.accessToken);
-          localStorage.setItem('refresh_token', resp.data.refreshToken);
-          localStorage.setItem('user_data', JSON.stringify(resp.data.user));
+        if (resp.success && resp.data) {
+          // Guardar tokens y datos del usuario si vienen en la respuesta
+          if (resp.data.accessToken && resp.data.user) {
+            localStorage.setItem('access_token', resp.data.accessToken);
+            localStorage.setItem('refresh_token', resp.data.refreshToken);
+            localStorage.setItem('user_data', JSON.stringify(resp.data.user));
 
-          this._notificationService.showSuccess('¡Usuario registrado y autenticado exitosamente!');
+            this._notificationService.showSuccess(
+              '¡Usuario registrado y autenticado exitosamente!'
+            );
 
-          // Redirigir al dashboard
-          setTimeout(() => {
-            this.router.navigate(['/dashboard']);
-          }, 1000);
+            // Redirigir al dashboard
+            setTimeout(() => {
+              this.router.navigate(['/dashboard']);
+            }, 1000);
+          } else {
+            // Si no vienen tokens, solo mostrar mensaje de éxito
+            this._notificationService.showSuccess(
+              resp.message || 'Usuario registrado correctamente. Por favor inicia sesión.'
+            );
+            setTimeout(() => {
+              this.router.navigate(['/login']);
+            }, 1500);
+          }
         } else {
-          // Si no vienen tokens, solo mostrar mensaje de éxito
-          this._notificationService.showSuccess(
-            'Usuario registrado correctamente. Por favor inicia sesión.'
-          );
+          this._notificationService.showSuccess('Usuario registrado correctamente');
           setTimeout(() => {
             this.router.navigate(['/login']);
           }, 1500);
@@ -109,6 +121,8 @@ export class RegisterComponent {
         // Manejo de errores más específico
         if (err.error?.message) {
           this.errorMessage = err.error.message;
+        } else if (err.message) {
+          this.errorMessage = err.message;
         } else if (err.status === 400) {
           this.errorMessage = 'Datos inválidos. Verifica la información ingresada.';
         } else if (err.status === 409) {

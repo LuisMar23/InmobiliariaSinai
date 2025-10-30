@@ -38,6 +38,8 @@ export class LoteCreate implements OnInit {
       numeroLote: ['', [Validators.required, Validators.minLength(2)]],
       superficieM2: [0, [Validators.required, Validators.min(0.01)]],
       precioBase: [0, [Validators.required, Validators.min(0.01)]],
+      descripcion: [''],
+      ubicacion: [''],
       estado: ['DISPONIBLE'],
     });
   }
@@ -54,7 +56,6 @@ export class LoteCreate implements OnInit {
     });
   }
 
-  // Método para manejar el envío del formulario
   onSubmit(): void {
     if (this.loteForm.invalid) {
       this.loteForm.markAllAsTouched();
@@ -64,7 +65,6 @@ export class LoteCreate implements OnInit {
 
     this.enviando.set(true);
 
-    // Convertir urbanizacionId a número
     const loteData = {
       ...this.loteForm.value,
       urbanizacionId: Number(this.loteForm.value.urbanizacionId),
@@ -75,23 +75,29 @@ export class LoteCreate implements OnInit {
     console.log('Datos a enviar:', loteData);
 
     this.loteSvc.create(loteData).subscribe({
-      next: (response) => {
+      next: (response: any) => {
         this.enviando.set(false);
-        this.notificationService.showSuccess('Lote creado exitosamente!');
-        setTimeout(() => {
-          this.router.navigate(['/lotes/lista']);
-        }, 1000);
+        console.log('Respuesta del servidor:', response);
+
+        if (response.success) {
+          this.notificationService.showSuccess('Lote creado exitosamente!');
+          setTimeout(() => {
+            this.router.navigate(['/lotes/lista']);
+          }, 1000);
+        } else {
+          this.notificationService.showError(response.message || 'Error al crear el lote');
+        }
       },
-      error: (err) => {
+      error: (err: any) => {
         this.enviando.set(false);
         console.error('Error completo:', err);
 
         let errorMessage = 'Error al crear el lote';
         if (err.status === 400) {
-          errorMessage = 'Datos inválidos. Verifique la información ingresada.';
-          if (err.error?.message) {
-            errorMessage += ` Detalles: ${err.error.message}`;
-          }
+          errorMessage =
+            err.error?.message || 'Datos inválidos. Verifique la información ingresada.';
+        } else if (err.status === 404) {
+          errorMessage = 'Recurso no encontrado. Verifique los datos ingresados.';
         }
 
         this.notificationService.showError(errorMessage);
@@ -99,9 +105,16 @@ export class LoteCreate implements OnInit {
     });
   }
 
-  // Método para manejar el evento submit del formulario
   handleFormSubmit(event: Event): void {
-    event.preventDefault(); // Prevenir el comportamiento por defecto
+    event.preventDefault();
     this.onSubmit();
+  }
+
+  getUrbanizacionNombre(): string {
+    const urbanizacionId = this.loteForm.get('urbanizacionId')?.value;
+    if (!urbanizacionId) return 'Sin urbanización';
+
+    const urbanizacion = this.urbanizaciones().find((u) => u.id === Number(urbanizacionId));
+    return urbanizacion ? urbanizacion.nombre : 'No encontrada';
   }
 }

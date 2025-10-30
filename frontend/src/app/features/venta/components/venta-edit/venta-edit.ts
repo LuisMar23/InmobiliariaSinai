@@ -5,9 +5,9 @@ import { RouterModule, Router, ActivatedRoute } from '@angular/router';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { UserDto } from '../../../../core/interfaces/user.interface';
 import { LoteDto } from '../../../../core/interfaces/lote.interface';
-import { VentaService } from '../../service/venta.service';
-import { UserService } from '../../../../core/services/users.service';
 import { LoteService } from '../../../lote/service/lote.service';
+import { AuthService } from '../../../../components/services/auth.service';
+import { VentaService } from '../../service/venta.service';
 
 @Component({
   selector: 'app-venta-edit',
@@ -24,17 +24,16 @@ export class VentaEdit implements OnInit {
   enviando = signal<boolean>(false);
   ventaData: any = null;
   clientes = signal<UserDto[]>([]);
-  asesores = signal<UserDto[]>([]);
   lotes = signal<LoteDto[]>([]);
 
   router = inject(Router);
   private fb = inject(FormBuilder);
   private ventaSvc = inject(VentaService);
-  private userSvc = inject(UserService);
   private loteSvc = inject(LoteService);
   private route = inject(ActivatedRoute);
   private notificationService = inject(NotificationService);
   private datePipe = inject(DatePipe);
+  private authService = inject(AuthService);
 
   constructor() {
     this.ventaForm = this.crearFormularioVenta();
@@ -42,7 +41,6 @@ export class VentaEdit implements OnInit {
 
   ngOnInit(): void {
     this.cargarClientes();
-    this.cargarAsesores();
     this.cargarLotes();
     this.obtenerVenta();
   }
@@ -50,7 +48,6 @@ export class VentaEdit implements OnInit {
   crearFormularioVenta(): FormGroup {
     return this.fb.group({
       clienteId: ['', Validators.required],
-      asesorId: ['', Validators.required],
       inmuebleTipo: ['LOTE', Validators.required],
       inmuebleId: ['', Validators.required],
       precioFinal: [0, [Validators.required, Validators.min(0.01)]],
@@ -59,23 +56,20 @@ export class VentaEdit implements OnInit {
   }
 
   cargarClientes(): void {
-    this.userSvc.getAll().subscribe({
+    this.authService.getClientes().subscribe({
       next: (response: any) => {
-        let usuarios: any[] = [];
+        let clientes: any[] = [];
 
-        if (Array.isArray(response)) {
-          usuarios = response;
+        if (response.data && Array.isArray(response.data.clientes)) {
+          clientes = response.data.clientes;
         } else if (response.data && Array.isArray(response.data)) {
-          usuarios = response.data;
+          clientes = response.data;
+        } else if (Array.isArray(response)) {
+          clientes = response;
         } else {
-          console.error('Estructura de respuesta no reconocida:', response);
+          this.notificationService.showWarning('No se pudieron cargar los clientes');
           return;
         }
-
-        const clientes = usuarios.filter((user: any) => {
-          const rol = user.role?.toUpperCase();
-          return rol === 'CLIENTE';
-        });
 
         this.clientes.set(clientes);
 
@@ -84,40 +78,7 @@ export class VentaEdit implements OnInit {
         }
       },
       error: (err: any) => {
-        console.error('Error al cargar clientes:', err);
         this.notificationService.showError('No se pudieron cargar los clientes');
-      },
-    });
-  }
-
-  cargarAsesores(): void {
-    this.userSvc.getAll().subscribe({
-      next: (response: any) => {
-        let usuarios: any[] = [];
-
-        if (Array.isArray(response)) {
-          usuarios = response;
-        } else if (response.data && Array.isArray(response.data)) {
-          usuarios = response.data;
-        } else {
-          console.error('Estructura de respuesta no reconocida:', response);
-          return;
-        }
-
-        const asesores = usuarios.filter((user: any) => {
-          const rol = user.role?.toUpperCase();
-          return rol === 'ASESOR';
-        });
-
-        this.asesores.set(asesores);
-
-        if (asesores.length === 0) {
-          this.notificationService.showWarning('No se encontraron asesores registrados');
-        }
-      },
-      error: (err: any) => {
-        console.error('Error al cargar asesores:', err);
-        this.notificationService.showError('No se pudieron cargar los asesores');
       },
     });
   }
@@ -128,7 +89,6 @@ export class VentaEdit implements OnInit {
         this.lotes.set(lotes);
       },
       error: (err: any) => {
-        console.error('Error al cargar lotes:', err);
         this.notificationService.showError('No se pudieron cargar los lotes');
       },
     });
@@ -154,7 +114,6 @@ export class VentaEdit implements OnInit {
         this.cargando.set(false);
       },
       error: (err: any) => {
-        console.error('Error al cargar venta:', err);
         this.error.set('No se pudo cargar la venta');
         this.cargando.set(false);
       },
@@ -164,7 +123,6 @@ export class VentaEdit implements OnInit {
   cargarDatosFormulario(venta: any): void {
     this.ventaForm.patchValue({
       clienteId: venta.clienteId?.toString() || '',
-      asesorId: venta.asesorId?.toString() || '',
       inmuebleTipo: venta.inmuebleTipo || 'LOTE',
       inmuebleId: venta.inmuebleId?.toString() || '',
       precioFinal: venta.precioFinal || 0,
@@ -196,20 +154,16 @@ export class VentaEdit implements OnInit {
     this.enviando.set(true);
 
     const dataActualizada = {
-      ...this.ventaForm.value,
       clienteId: Number(this.ventaForm.value.clienteId),
-      asesorId: Number(this.ventaForm.value.asesorId),
+      inmuebleTipo: this.ventaForm.value.inmuebleTipo,
       inmuebleId: Number(this.ventaForm.value.inmuebleId),
       precioFinal: Number(this.ventaForm.value.precioFinal),
+      estado: this.ventaForm.value.estado,
     };
-
-    console.log('Datos a actualizar:', dataActualizada);
 
     this.ventaSvc.update(this.ventaId, dataActualizada).subscribe({
       next: (response: any) => {
         this.enviando.set(false);
-        console.log('Respuesta del servidor:', response);
-
         if (response.success) {
           this.notificationService.showSuccess('Venta actualizada exitosamente!');
           setTimeout(() => {
@@ -221,8 +175,6 @@ export class VentaEdit implements OnInit {
       },
       error: (err: any) => {
         this.enviando.set(false);
-        console.error('Error al actualizar:', err);
-
         let errorMessage = 'Error al actualizar la venta';
         if (err.status === 400) {
           errorMessage =
@@ -230,7 +182,6 @@ export class VentaEdit implements OnInit {
         } else if (err.status === 404) {
           errorMessage = 'Venta no encontrada.';
         }
-
         this.notificationService.showError(errorMessage);
       },
     });
@@ -243,5 +194,19 @@ export class VentaEdit implements OnInit {
   handleFormSubmit(event: Event): void {
     event.preventDefault();
     this.onSubmit();
+  }
+
+  getClienteNombre(): string {
+    const clienteId = this.ventaForm.get('clienteId')?.value;
+    if (!clienteId) return 'Sin cambios';
+    const cliente = this.clientes().find((c) => c.id === Number(clienteId));
+    return cliente ? cliente.fullName : 'Nuevo cliente';
+  }
+
+  getLoteNombre(): string {
+    const loteId = this.ventaForm.get('inmuebleId')?.value;
+    if (!loteId) return 'Sin cambios';
+    const lote = this.lotes().find((l) => l.id === Number(loteId));
+    return lote ? lote.numeroLote : 'Nuevo lote';
   }
 }

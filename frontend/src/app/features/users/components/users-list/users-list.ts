@@ -1,103 +1,148 @@
-import { Component, inject, OnInit } from '@angular/core';
-import {
-  faCogs,
-  faEdit,
-  faEnvelope,
-  faSearch,
-  faTrash,
-  faUser,
-  faUserCircle,
-  faUsers,
-  faUserShield,
-  faUserTimes,
-} from '@fortawesome/free-solid-svg-icons';
-import { AuthService } from '../../../../components/services/auth.service';
-import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
+import { Component, inject, OnInit, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { UserDto } from '../../../../core/interfaces/user.interface';
-import { UserService } from '../../../../core/services/users.service';
+import { RouterModule, ActivatedRoute } from '@angular/router';
+import { FormsModule } from '@angular/forms';
+import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
+import {
+  faEdit,
+  faTrash,
+  faSearch,
+  faUser,
+  faEnvelope,
+  faUserCircle,
+  faUserTimes,
+  faUsers,
+  faUserEdit,
+  faPhone,
+  faMapMarkerAlt,
+  faUserShield,
+  faIdCard,
+} from '@fortawesome/free-solid-svg-icons';
+import { UserService } from '../../services/users.service';
+import { NotificationService } from '../../../../core/services/notification.service';
 
 @Component({
   selector: 'app-users',
   standalone: true,
-  imports: [FontAwesomeModule, FormsModule, CommonModule],
+  imports: [CommonModule, RouterModule, FontAwesomeModule, FormsModule],
   templateUrl: './users-list.html',
-  styleUrl: './users-list.css',
 })
 export class UsersComponent implements OnInit {
   faEdit = faEdit;
   faTrash = faTrash;
-  faUserTimes = faUserTimes;
-  faUsers = faUsers;
   faSearch = faSearch;
   faUser = faUser;
   faEnvelope = faEnvelope;
-  faUserShield = faUserShield;
-  faCogs = faCogs;
   faUserCircle = faUserCircle;
+  faUserTimes = faUserTimes;
+  faUsers = faUsers;
+  faUserEdit = faUserEdit;
+  faPhone = faPhone;
+  faMapMarkerAlt = faMapMarkerAlt;
+  faUserShield = faUserShield;
+  faIdCard = faIdCard;
 
-  users: UserDto[] = [];
-  allUsers: any[] = [];
-  currentUser: any;
-  searchTerm = '';
+  // USANDO SIGNALS COMO URBANIZACIÓN
+  users = signal<any[]>([]);
+  allUsers = signal<any[]>([]);
+  searchTerm = signal('');
+  isLoading = signal(false);
 
-  _authService = inject(AuthService);
-  _usersService = inject(UserService);
+  // Computed para búsqueda - IGUAL QUE URBANIZACIÓN
+  filteredUsers = computed(() => {
+    const term = this.searchTerm().toLowerCase();
+    const users = this.allUsers();
 
-  ngOnInit() {
+    if (!term) return users;
+
+    return users.filter(
+      (user: any) =>
+        user.username?.toLowerCase().includes(term) ||
+        user.email?.toLowerCase().includes(term) ||
+        user.role?.toLowerCase().includes(term) ||
+        user.fullName?.toLowerCase().includes(term)
+    );
+  });
+
+  private userService = inject(UserService);
+  private notificationService = inject(NotificationService);
+  private route = inject(ActivatedRoute);
+
+  // CONSTRUCTOR CON CARGA INMEDIATA - IGUAL QUE URBANIZACIÓN
+  constructor() {
     this.loadUsers();
   }
 
+  ngOnInit() {
+    // Recargar cuando cambie la ruta
+    this.route.url.subscribe(() => {
+      this.loadUsers();
+    });
+  }
+
+  // CARGA DIRECTA EN CONSTRUCTOR - IGUAL QUE URBANIZACIÓN
   loadUsers() {
-    this._usersService.getAll().subscribe({
-      next: (data) => {
-        this.allUsers = data;
-        this.applyFilter();
+    this.isLoading.set(true);
+    this.userService.getAll().subscribe({
+      next: (response: any) => {
+        this.isLoading.set(false);
+
+        if (response.success && response.data && Array.isArray(response.data.users)) {
+          this.allUsers.set(response.data.users);
+        } else {
+          this.allUsers.set([]);
+        }
+
+        this.users.set([...this.allUsers()]);
       },
       error: (err: any) => {
-        console.error('Error loading users:', err);
-        alert('Error al cargar usuarios');
+        this.isLoading.set(false);
+        this.notificationService.showError('Error al cargar los usuarios');
+        this.allUsers.set([]);
+        this.users.set([]);
       },
     });
   }
 
   applyFilter() {
-    if (!this.searchTerm) {
-      this.users = this.allUsers;
-    } else {
-      const term = this.searchTerm.toLowerCase();
-      this.users = this.allUsers.filter(
-        (user: any) =>
-          user.username.toLowerCase().includes(term) ||
-          user.email.toLowerCase().includes(term) ||
-          user.role.toLowerCase().includes(term)
-      );
-    }
-  }
-
-  editRole(user: any) {
-    const newRole = prompt(`Asignar nuevo rol a ${user.username}:`, user.role);
-    if (newRole && newRole !== user.role) {
-      this._usersService.updateRole(user.id, newRole).subscribe({
-        next: () => this.loadUsers(),
-        error: (err) => {
-          console.error('Error updating role:', err);
-          alert('Error al actualizar el rol');
-        },
-      });
-    }
+    // No necesita hacer nada porque filteredUsers es computed
+    // Se actualiza automáticamente cuando searchTerm cambia
   }
 
   deleteUser(user: any) {
-    if (confirm(`¿Deseas eliminar al usuario ${user.username}?`)) {
-      this._usersService.delete(user.id).subscribe({
-        next: () => this.loadUsers(),
+    if (confirm(`¿Estás seguro de eliminar al usuario ${user.username}?`)) {
+      this.userService.delete(user.id).subscribe({
+        next: (response: any) => {
+          this.notificationService.showSuccess(
+            response.message || 'Usuario eliminado correctamente'
+          );
+          this.loadUsers();
+        },
         error: (err: any) => {
-          console.error('Error deleting user:', err);
-          alert('Error al eliminar usuario');
+          this.notificationService.showError('Error al eliminar usuario');
         },
       });
     }
+  }
+
+  getRoleClass(role: string): string {
+    switch (role) {
+      case 'ADMINISTRADOR':
+        return 'bg-purple-100 text-purple-800 border border-purple-200';
+      case 'ASESOR':
+        return 'bg-blue-100 text-blue-800 border border-blue-200';
+      case 'SECRETARIA':
+        return 'bg-pink-100 text-pink-800 border border-pink-200';
+      case 'USUARIO':
+        return 'bg-emerald-100 text-emerald-800 border border-emerald-200';
+      default:
+        return 'bg-gray-100 text-gray-600 border border-gray-200';
+    }
+  }
+
+  getStatusClass(isActive: boolean): string {
+    return isActive
+      ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+      : 'bg-red-100 text-red-800 border border-red-200';
   }
 }

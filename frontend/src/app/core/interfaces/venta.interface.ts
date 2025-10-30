@@ -35,14 +35,61 @@ export interface VentaDto {
       ubicacion: string;
     };
   };
-  pagos?: Array<{
-    id: number;
-    monto: number;
-    metodo: string;
-    createdAt: string;
-  }>;
+  planPago?: PlanPagoDto;
   _count?: {
     pagos: number;
     documentos: number;
   };
+}
+
+export interface PlanPagoDto {
+  id_plan_pago?: number;
+  uuid?: string;
+  ventaId?: number;
+  total: number;
+  monto_inicial: number;
+  plazo: number;
+  periodicidad: string;
+  fecha_inicio: string;
+  fecha_vencimiento: string;
+  estado: string; // CAMBIADO: quitado el optional
+  pagos?: PagoPlanDto[];
+  // Campos calculados
+  saldo_pendiente?: number;
+  total_pagado?: number;
+  porcentaje_pagado?: number;
+}
+
+export interface PagoPlanDto {
+  id_pago_plan?: number;
+  uuid?: string;
+  plan_pago_id: number; // CAMBIADO: quitado el optional
+  monto: number;
+  fecha_pago?: string;
+  observacion?: string;
+}
+
+export interface CreateVentaDto {
+  clienteId: number;
+  asesorId: number;
+  inmuebleTipo: string;
+  inmuebleId: number;
+  precioFinal: number;
+  estado?: string;
+  plan_pago?: PlanPagoDto;
+}
+
+export interface UpdateVentaDto {
+  clienteId?: number;
+  inmuebleTipo?: string;
+  inmuebleId?: number;
+  precioFinal?: number;
+  estado?: string;
+}
+
+export interface RegistrarPagoDto {
+  plan_pago_id: number;
+  monto: number;
+  fecha_pago?: string;
+  observacion?: string;
 }

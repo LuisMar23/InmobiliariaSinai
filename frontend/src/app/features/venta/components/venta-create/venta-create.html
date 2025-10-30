@@ -1,12 +1,11 @@
 <div class="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-emerald-50 py-4 px-2 sm:px-4 lg:px-8">
-    <div class="max-w-8xl mx-auto">
+    <div class="max-w-full mx-auto">
         <div class="bg-emerald-500 rounded-t-2xl shadow-lg p-4 sm:p-6">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div class="flex items-center gap-3">
                     <svg class="w-8 h-8 sm:w-10 sm:h-10 text-white" fill="none" stroke="currentColor"
                         viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                     </svg>
                     <div>
                         <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold text-white">Nueva Venta</h1>
@@ -15,84 +14,64 @@
                     </div>
                 </div>
                 <button [routerLink]="['/ventas/lista']"
-                    class="bg-white text-emerald-500 font-semibold px-4 py-2 rounded-lg shadow-md hover:bg-emerald-50 transition-all text-sm sm:text-base w-full sm:w-auto">
+                    class="flex items-center gap-2 bg-white text-emerald-500 font-semibold px-4 py-2 rounded-lg shadow-md hover:bg-emerald-50 transition-all text-sm sm:text-base w-full sm:w-auto justify-center">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
                     Volver al Listado
                 </button>
             </div>
         </div>
+
         <div class="bg-white rounded-b-2xl shadow-xl p-4 sm:p-6 lg:p-8">
             <form [formGroup]="ventaForm" (submit)="handleFormSubmit($event)">
                 <div class="mb-8">
-                    <h2
-                        class="text-lg sm:text-xl font-semibold text-black mb-4 flex items-center gap-2 border-b-2 border-emerald-200 pb-2">
-                        <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd"
-                                d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 110 2h-3a1 1 0 01-1-1v-2a1 1 0 00-1-1H9a1 1 0 00-1 1v2a1 1 0 01-1 1H4a1 1 0 110-2V4zm3 1h2v2H7V5zm2 4H7v2h2V9zm2-4h2v2h-2V5zm2 4h-2v2h2V9z"
-                                clip-rule="evenodd" />
+                    <h2 class="text-lg sm:text-xl font-semibold text-gray-900 mb-6 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
                         Información de la Venta
                     </h2>
-                    <div class="to-white border-2 border-emerald-200 rounded-xl p-4 sm:p-6">
-                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                            <!-- Cliente -->
+                    <div class="bg-white border-2 border-gray-200 rounded-xl p-4 sm:p-6">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     Cliente <span class="text-red-500">*</span>
                                 </label>
                                 <select formControlName="clienteId"
-                                    class="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm sm:text-base">
+                                    class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm sm:text-base"
+                                    [class.border-red-500]="ventaForm.get('clienteId')?.invalid && ventaForm.get('clienteId')?.touched">
                                     <option value="">Seleccione cliente...</option>
                                     @for (cliente of clientes(); track cliente.id) {
-                                    <option [value]="cliente.id">{{ cliente.fullName }} - {{ cliente.ci }} ({{
-                                        cliente.email }})</option>
+                                    <option [value]="cliente.id">{{ cliente.fullName }} - {{ cliente.ci }}</option>
                                     }
                                 </select>
-                                @if (ventaForm.get('clienteId')?.invalid &&
-                                ventaForm.get('clienteId')?.touched) {
+                                @if (ventaForm.get('clienteId')?.invalid && ventaForm.get('clienteId')?.touched) {
                                 <p class="mt-1 text-xs text-red-600">El cliente es requerido</p>
                                 }
                             </div>
 
-                            <!-- Asesor -->
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    Asesor <span class="text-red-500">*</span>
-                                </label>
-                                <select formControlName="asesorId"
-                                    class="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm sm:text-base">
-                                    <option value="">Seleccione asesor...</option>
-                                    @for (asesor of asesores(); track asesor.id) {
-                                    <option [value]="asesor.id">{{ asesor.fullName }} ({{ asesor.email }})</option>
-                                    }
-                                </select>
-                                @if (ventaForm.get('asesorId')?.invalid && ventaForm.get('asesorId')?.touched)
-                                {
-                                <p class="mt-1 text-xs text-red-600">El asesor es requerido</p>
-                                }
-                            </div>
-
-                            <!-- Lote -->
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     Lote <span class="text-red-500">*</span>
                                 </label>
                                 <select formControlName="inmuebleId"
-                                    class="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm sm:text-base">
+                                    class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm sm:text-base"
+                                    [class.border-red-500]="ventaForm.get('inmuebleId')?.invalid && ventaForm.get('inmuebleId')?.touched">
                                     <option value="">Seleccione lote...</option>
                                     @for (lote of lotes(); track lote.id) {
                                     <option [value]="lote.id">
-                                        {{ lote.numeroLote }} - {{ lote.urbanizacion?.nombre }}
-                                        ({{ lote.estado }})
+                                        {{ lote.numeroLote }} - {{ lote.urbanizacion?.nombre }} ({{ lote.estado }})
                                     </option>
                                     }
                                 </select>
-                                @if (ventaForm.get('inmuebleId')?.invalid &&
-                                ventaForm.get('inmuebleId')?.touched) {
+                                @if (ventaForm.get('inmuebleId')?.invalid && ventaForm.get('inmuebleId')?.touched) {
                                 <p class="mt-1 text-xs text-red-600">El lote es requerido</p>
                                 }
                             </div>
 
-                            <!-- Precio Final -->
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     Precio Final ($) <span class="text-red-500">*</span>
@@ -101,35 +80,33 @@
                                     <span
                                         class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">$</span>
                                     <input type="number" step="0.01" formControlName="precioFinal"
-                                        class="w-full pl-10 pr-4 py-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm sm:text-base"
+                                        (input)="onPrecioFinalChange()"
+                                        class="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm sm:text-base"
                                         placeholder="0.00" min="0.01" />
                                 </div>
-                                @if (ventaForm.get('precioFinal')?.invalid &&
-                                ventaForm.get('precioFinal')?.touched) {
+                                @if (ventaForm.get('precioFinal')?.invalid && ventaForm.get('precioFinal')?.touched) {
                                 <p class="mt-1 text-xs text-red-600">El precio final debe ser mayor a 0</p>
                                 }
                             </div>
 
-                            <!-- Estado -->
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     Estado
                                 </label>
                                 <select formControlName="estado"
-                                    class="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm sm:text-base">
+                                    class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm sm:text-base">
                                     <option value="PENDIENTE_PAGO">Pendiente de Pago</option>
                                     <option value="PAGADO">Pagado</option>
                                     <option value="CANCELADO">Cancelado</option>
                                 </select>
                             </div>
 
-                            <!-- Tipo de Inmueble -->
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     Tipo de Inmueble
                                 </label>
                                 <select formControlName="inmuebleTipo"
-                                    class="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm sm:text-base">
+                                    class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm sm:text-base">
                                     <option value="LOTE">Lote</option>
                                     <option value="URBANIZACION">Urbanización</option>
                                 </select>
@@ -138,54 +115,182 @@
                     </div>
                 </div>
 
-                <!-- Resumen -->
+                <div class="mb-8">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-lg sm:text-xl font-semibold text-gray-900 flex items-center gap-2">
+                            <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                            </svg>
+                            Plan de Pagos
+                        </h2>
+                        <button type="button" (click)="togglePlanPago()"
+                            [class]="mostrarPlanPago() ? 
+                                'flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-colors' :
+                                'flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg transition-colors'">
+                            {{ mostrarPlanPago() ? 'Quitar Plan de Pago' : 'Agregar Plan de Pago' }}
+                        </button>
+                    </div>
+
+                    @if (mostrarPlanPago()) {
+                    <div class="bg-white border-2 border-gray-200 rounded-xl p-4 sm:p-6">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Monto Inicial ($) <span class="text-red-500">*</span>
+                                </label>
+                                <div class="relative">
+                                    <span
+                                        class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">$</span>
+                                    <input type="number" step="0.01" formControlName="monto_inicial"
+                                        class="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm sm:text-base"
+                                        placeholder="0.00" min="0" [max]="getMontoMaximoInicial()"
+                                        formControlName="monto_inicial" />
+                                </div>
+                                @if (planPagoForm.get('monto_inicial')?.invalid &&
+                                planPagoForm.get('monto_inicial')?.touched) {
+                                <p class="mt-1 text-xs text-red-600">El monto inicial es requerido</p>
+                                }
+                                <p class="mt-1 text-xs text-gray-500">Máximo: $ {{ getMontoMaximoInicial() |
+                                    number:'1.2-2' }}</p>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Plazo <span class="text-red-500">*</span>
+                                </label>
+                                <input type="number" formControlName="plazo"
+                                    class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm sm:text-base"
+                                    placeholder="1" min="1" formControlName="plazo" />
+                                @if (planPagoForm.get('plazo')?.invalid && planPagoForm.get('plazo')?.touched) {
+                                <p class="mt-1 text-xs text-red-600">El plazo es requerido</p>
+                                }
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Periodicidad <span class="text-red-500">*</span>
+                                </label>
+                                <select formControlName="periodicidad"
+                                    class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm sm:text-base"
+                                    formControlName="periodicidad">
+                                    <option value="DIAS">Días</option>
+                                    <option value="SEMANAS">Semanas</option>
+                                    <option value="MESES">Meses</option>
+                                </select>
+                                @if (planPagoForm.get('periodicidad')?.invalid &&
+                                planPagoForm.get('periodicidad')?.touched) {
+                                <p class="mt-1 text-xs text-red-600">La periodicidad es requerida</p>
+                                }
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Fecha de Inicio <span class="text-red-500">*</span>
+                                </label>
+                                <input type="date" formControlName="fecha_inicio"
+                                    class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm sm:text-base"
+                                    formControlName="fecha_inicio" />
+                                @if (planPagoForm.get('fecha_inicio')?.invalid &&
+                                planPagoForm.get('fecha_inicio')?.touched) {
+                                <p class="mt-1 text-xs text-red-600">La fecha de inicio es requerida</p>
+                                }
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Fecha de Vencimiento Calculada
+                                </label>
+                                <input type="text" [value]="fechaVencimientoCalculada()" readonly
+                                    class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed text-sm sm:text-base" />
+                                <p class="mt-1 text-xs text-gray-500">Calculada automáticamente</p>
+                            </div>
+                        </div>
+
+                        <!-- Resumen del Plan de Pago -->
+                        <div class="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                            <h4 class="text-md font-semibold text-blue-800 mb-3">Resumen del Plan de Pago</h4>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+                                <div class="text-center">
+                                    <p class="text-blue-600 font-medium">Precio Final</p>
+                                    <p class="text-lg font-bold text-blue-800">$ {{ (ventaForm.get('precioFinal')?.value
+                                        || 0) | number:'1.2-2' }}</p>
+                                </div>
+                                <div class="text-center">
+                                    <p class="text-green-600 font-medium">Monto Inicial</p>
+                                    <p class="text-lg font-bold text-green-800">$ {{
+                                        (planPagoForm.get('monto_inicial')?.value || 0) | number:'1.2-2' }}</p>
+                                </div>
+                                <div class="text-center">
+                                    <p class="text-orange-600 font-medium">Saldo a Financiar</p>
+                                    <p class="text-lg font-bold text-orange-800">$ {{ getSaldoFinanciar() |
+                                        number:'1.2-2' }}</p>
+                                </div>
+                            </div>
+                            @if (planPagoForm.get('plazo')?.value && planPagoForm.get('periodicidad')?.value) {
+                            <div class="mt-3 text-center">
+                                <p class="text-sm text-gray-600">
+                                    Plazo: {{ planPagoForm.get('plazo')?.value }} {{ getPeriodicidadTexto() }}
+                                </p>
+                            </div>
+                            }
+                        </div>
+                    </div>
+                    }
+                </div>
+
                 <div class="border-2 border-gray-300 rounded-xl p-4 sm:p-6 mb-6 bg-blue-50">
                     <h3 class="text-base sm:text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd"
-                                d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z"
-                                clip-rule="evenodd" />
+                        <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                         </svg>
                         Resumen de la Venta
                     </h3>
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div class="bg-white rounded-lg p-4 shadow">
                             <p class="text-xs sm:text-sm text-gray-600 mb-1">Cliente</p>
-                            <p class="text-lg sm:text-xl font-bold text-blue-700">
-                                {{ getClienteNombre() }}
-                            </p>
-                        </div>
-                        <div class="bg-white rounded-lg p-4 shadow">
-                            <p class="text-xs sm:text-sm text-gray-600 mb-1">Asesor</p>
-                            <p class="text-lg sm:text-xl font-bold text-indigo-700">
-                                {{ getAsesorNombre() }}
-                            </p>
+                            <p class="text-lg sm:text-xl font-bold text-blue-700">{{ getClienteNombre() }}</p>
                         </div>
                         <div class="bg-white rounded-lg p-4 shadow">
                             <p class="text-xs sm:text-sm text-gray-600 mb-1">Precio Final</p>
-                            <p class="text-lg sm:text-xl font-bold text-gray-700">
-                                $ {{ (ventaForm.get('precioFinal')?.value || 0).toFixed(2) }}
-                            </p>
+                            <p class="text-lg sm:text-xl font-bold text-gray-700">$ {{
+                                (ventaForm.get('precioFinal')?.value || 0) | number:'1.2-2' }}</p>
                         </div>
                         <div class="bg-white rounded-lg p-4 shadow">
                             <p class="text-xs sm:text-sm text-gray-600 mb-1">Estado</p>
-                            <p class="text-lg sm:text-xl font-bold text-gray-700">{{ ventaForm.get('estado')?.value
-                                || 'PENDIENTE_PAGO' }}</p>
+                            <p class="text-lg sm:text-xl font-bold text-gray-700">{{ ventaForm.get('estado')?.value ||
+                                'PENDIENTE_PAGO' }}</p>
                         </div>
+                        @if (mostrarPlanPago()) {
+                        <div class="bg-white rounded-lg p-4 shadow">
+                            <p class="text-xs sm:text-sm text-gray-600 mb-1">Plan de Pago</p>
+                            <p class="text-lg sm:text-xl font-bold text-green-700">Activo</p>
+                        </div>
+                        } @else {
+                        <div class="bg-white rounded-lg p-4 shadow">
+                            <p class="text-xs sm:text-sm text-gray-600 mb-1">Plan de Pago</p>
+                            <p class="text-lg sm:text-xl font-bold text-gray-500">No incluido</p>
+                        </div>
+                        }
                     </div>
                 </div>
 
-                <div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                <div class="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 pt-6 border-t border-gray-200">
+                    <button type="button" (click)="router.navigate(['/ventas/lista'])"
+                        class="flex items-center justify-center gap-2 bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg shadow-md transition-all duration-200 font-semibold w-full sm:w-auto">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                        </svg>
+                        Cancelar
+                    </button>
                     <button type="submit" [disabled]="ventaForm.invalid || enviando()"
-                        class="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded-lg font-semibold hover:from-emerald-700 hover:to-emerald-800 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl text-sm sm:text-base flex items-center justify-center gap-2">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        class="flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white px-8 py-3 rounded-lg shadow-md transition-all duration-200 font-semibold w-full sm:w-auto disabled:bg-gray-400 disabled:cursor-not-allowed">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                         </svg>
-                        {{ enviando() ? 'Creando Venta...' : 'Crear Venta' }}
-                    </button>
-                    <button type="button" (click)="router.navigate(['/ventas/lista'])"
-                        class="w-full sm:w-auto px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 transition-all duration-200 text-sm sm:text-base">
-                        Cancelar
+                        {{ enviando() ? 'Creando...' : 'Crear Venta' }}
                     </button>
                 </div>
             </form>

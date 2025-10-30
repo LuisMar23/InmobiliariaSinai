@@ -6,15 +6,17 @@ import { LayoutComponent } from './shared/components/layout/layout';
 import { RegisterComponent } from './components/auth/register/register';
 import { AuthGuard } from './core/guards/auth.guard';
 import { LoginComponent } from './components/login/login';
+import { ChangePasswordComponent } from './components/auth/change-password/change-password';
 
 export const routes: Routes = [
   { path: 'login', component: LoginComponent },
   { path: 'login/registrar', component: RegisterComponent },
+  { path: 'login/cambiar-contraseña', component: ChangePasswordComponent },
+
   {
     path: '',
     component: LayoutComponent,
     canActivate: [AuthGuard],
-    canActivateChild: [AuthGuard],
     children: [
       { path: '', redirectTo: '/dashboard', pathMatch: 'full' },
       { path: 'dashboard', component: DashboardComponent },
@@ -24,9 +26,16 @@ export const routes: Routes = [
           import('./features/users/users.routes').then((r) => r.UserRoutingModule),
       },
       {
+        path: 'clientes',
+        loadChildren: () =>
+          import('./features/clientes/cliente.routes').then((r) => r.ClientesRoutingModule),
+      },
+      {
         path: 'urbanizaciones',
         loadChildren: () =>
-          import('./features/urbanizacion/urbanizacion.routes').then((r) => r.UrbanizacionRoutingModule),
+          import('./features/urbanizacion/urbanizacion.routes').then(
+            (r) => r.UrbanizacionRoutingModule
+          ),
       },
       {
         path: 'promociones',
@@ -35,13 +44,14 @@ export const routes: Routes = [
       },
       {
         path: 'lotes',
-        loadChildren: () =>
-          import('./features/lote/lote.routes').then((r) => r.LotesRoutingModule),
+        loadChildren: () => import('./features/lote/lote.routes').then((r) => r.LotesRoutingModule),
       },
       {
         path: 'cotizaciones',
         loadChildren: () =>
-          import('./features/cotizacion/cotizacion.routes').then((r) => r.CotizacionesRoutingModule),
+          import('./features/cotizacion/cotizacion.routes').then(
+            (r) => r.CotizacionesRoutingModule
+          ),
       },
       {
         path: 'reservas',
@@ -53,13 +63,25 @@ export const routes: Routes = [
         loadChildren: () =>
           import('./features/venta/venta.routes').then((r) => r.VentasRoutingModule),
       },
+      {
+        path: 'caja',
+        loadChildren: () =>
+          import('./features/caja/caja.routes').then((r) => r.CajaRoutingModule),
+      },
     ],
   },
   { path: '**', redirectTo: '/login' },
 ];
 
 @NgModule({
-  imports: [RouterModule.forRoot(routes)],
+  imports: [
+    RouterModule.forRoot(routes, {
+      // Configuración optimizada para lazy loading
+      preloadingStrategy: false, // Desactivar preloading para evitar conflictos
+      enableTracing: false,
+      scrollPositionRestoration: 'enabled',
+    }),
+  ],
   exports: [RouterModule],
 })
 export class AppRoutingModule {}

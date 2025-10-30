@@ -5,9 +5,10 @@ import { RouterModule, Router } from '@angular/router';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { UserDto } from '../../../../core/interfaces/user.interface';
 import { LoteDto } from '../../../../core/interfaces/lote.interface';
-import { UserService } from '../../../../core/services/users.service';
 import { LoteService } from '../../../lote/service/lote.service';
 import { ReservaService } from '../../service/reserva.service';
+import { UserService } from '../../../users/services/users.service';
+import { AuthService } from '../../../../components/services/auth.service';
 
 @Component({
   selector: 'app-reserva-create',
@@ -19,7 +20,6 @@ export class ReservaCreate implements OnInit {
   reservaForm: FormGroup;
   enviando = signal<boolean>(false);
   clientes = signal<UserDto[]>([]);
-  asesores = signal<UserDto[]>([]);
   lotes = signal<LoteDto[]>([]);
 
   router = inject(Router);
@@ -28,6 +28,7 @@ export class ReservaCreate implements OnInit {
   private userSvc = inject(UserService);
   private loteSvc = inject(LoteService);
   private notificationService = inject(NotificationService);
+  private authService = inject(AuthService);
 
   constructor() {
     this.reservaForm = this.crearFormularioReserva();
@@ -35,14 +36,12 @@ export class ReservaCreate implements OnInit {
 
   ngOnInit(): void {
     this.cargarClientes();
-    this.cargarAsesores();
     this.cargarLotes();
   }
 
   crearFormularioReserva(): FormGroup {
     return this.fb.group({
       clienteId: ['', Validators.required],
-      asesorId: ['', Validators.required],
       inmuebleTipo: ['LOTE', Validators.required],
       inmuebleId: ['', Validators.required],
       montoReserva: [0, [Validators.required, Validators.min(0.01)]],
@@ -53,30 +52,25 @@ export class ReservaCreate implements OnInit {
   }
 
   cargarClientes(): void {
-    this.userSvc.getAll().subscribe({
+    this.authService.getClientes().subscribe({
       next: (response: any) => {
-        console.log('Respuesta completa de usuarios:', response);
+        console.log('Respuesta completa de clientes:', response);
 
-        let usuarios: any[] = [];
+        let clientes: any[] = [];
 
-        if (Array.isArray(response)) {
-          usuarios = response;
+        if (response.data && Array.isArray(response.data.clientes)) {
+          clientes = response.data.clientes;
         } else if (response.data && Array.isArray(response.data)) {
-          usuarios = response.data;
+          clientes = response.data;
+        } else if (Array.isArray(response)) {
+          clientes = response;
         } else {
           console.error('Estructura de respuesta no reconocida:', response);
+          this.notificationService.showWarning('No se pudieron cargar los clientes');
           return;
         }
 
-        console.log('Usuarios obtenidos:', usuarios);
-
-        const clientes = usuarios.filter((user: any) => {
-          const rol = user.role?.toUpperCase();
-          console.log(`Usuario: ${user.fullName}, Rol: ${rol}`);
-          return rol === 'CLIENTE';
-        });
-
-        console.log('Clientes filtrados:', clientes);
+        console.log('Clientes cargados:', clientes);
         this.clientes.set(clientes);
 
         if (clientes.length === 0) {
@@ -86,44 +80,6 @@ export class ReservaCreate implements OnInit {
       error: (err: any) => {
         console.error('Error al cargar clientes:', err);
         this.notificationService.showError('No se pudieron cargar los clientes');
-      },
-    });
-  }
-
-  cargarAsesores(): void {
-    this.userSvc.getAll().subscribe({
-      next: (response: any) => {
-        console.log('Respuesta completa de usuarios:', response);
-
-        let usuarios: any[] = [];
-
-        if (Array.isArray(response)) {
-          usuarios = response;
-        } else if (response.data && Array.isArray(response.data)) {
-          usuarios = response.data;
-        } else {
-          console.error('Estructura de respuesta no reconocida:', response);
-          return;
-        }
-
-        console.log('Usuarios obtenidos:', usuarios);
-
-        const asesores = usuarios.filter((user: any) => {
-          const rol = user.role?.toUpperCase();
-          console.log(`Usuario: ${user.fullName}, Rol: ${rol}`);
-          return rol === 'ASESOR';
-        });
-
-        console.log('Asesores filtrados:', asesores);
-        this.asesores.set(asesores);
-
-        if (asesores.length === 0) {
-          this.notificationService.showWarning('No se encontraron asesores registrados');
-        }
-      },
-      error: (err: any) => {
-        console.error('Error al cargar asesores:', err);
-        this.notificationService.showError('No se pudieron cargar los asesores');
       },
     });
   }
@@ -155,9 +111,34 @@ export class ReservaCreate implements OnInit {
       return;
     }
 
-    // Validar fechas
-    const fechaInicio = new Date(this.reservaForm.value.fechaInicio);
-    const fechaVencimiento = new Date(this.reservaForm.value.fechaVencimiento);
+    // Validar fechas - CORREGIDO
+    const fechaInicioStr = this.reservaForm.value.fechaInicio;
+    const fechaVencimientoStr = this.reservaForm.value.fechaVencimiento;
+
+    if (!fechaInicioStr || !fechaVencimientoStr) {
+      this.notificationService.showError('Las fechas son requeridas');
+      return;
+    }
+
+    // Crear objetos Date correctamente
+    const fechaInicio = new Date(fechaInicioStr + 'T00:00:00');
+    const fechaVencimiento = new Date(fechaVencimientoStr + 'T00:00:00');
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+
+    console.log('Fechas validadas:', {
+      fechaInicio,
+      fechaVencimiento,
+      hoy,
+      fechaInicioStr,
+      fechaVencimientoStr,
+    });
+
+    // Validación corregida
+    if (fechaInicio < hoy) {
+      this.notificationService.showError('La fecha de inicio no puede ser anterior a hoy');
+      return;
+    }
 
     if (fechaVencimiento <= fechaInicio) {
       this.notificationService.showError(
@@ -171,9 +152,10 @@ export class ReservaCreate implements OnInit {
     const reservaData = {
       ...this.reservaForm.value,
       clienteId: Number(this.reservaForm.value.clienteId),
-      asesorId: Number(this.reservaForm.value.asesorId),
       inmuebleId: Number(this.reservaForm.value.inmuebleId),
       montoReserva: Number(this.reservaForm.value.montoReserva),
+      fechaInicio: fechaInicio.toISOString(),
+      fechaVencimiento: fechaVencimiento.toISOString(),
     };
 
     console.log('Datos a enviar:', reservaData);
@@ -204,6 +186,8 @@ export class ReservaCreate implements OnInit {
           errorMessage = 'Recurso no encontrado. Verifique los datos ingresados.';
         } else if (err.status === 409) {
           errorMessage = 'El lote ya está reservado. Por favor seleccione otro lote.';
+        } else if (err.status === 403) {
+          errorMessage = 'No tiene permisos para crear reservas. Se requiere rol de ASESOR';
         }
 
         this.notificationService.showError(errorMessage);
@@ -222,29 +206,6 @@ export class ReservaCreate implements OnInit {
 
     const cliente = this.clientes().find((c) => c.id === Number(clienteId));
     return cliente ? cliente.fullName : 'No encontrado';
-  }
-
-  getAsesorNombre(): string {
-    const asesorId = this.reservaForm.get('asesorId')?.value;
-    if (!asesorId) return 'Sin asesor';
-
-    const asesor = this.asesores().find((a) => a.id === Number(asesorId));
-    return asesor ? asesor.fullName : 'No encontrado';
-  }
-
-  // Método para calcular fecha de vencimiento automáticamente (30 días después)
-  calcularFechaVencimiento(): void {
-    const fechaInicio = this.reservaForm.get('fechaInicio')?.value;
-    if (fechaInicio) {
-      const fechaInicioObj = new Date(fechaInicio);
-      const fechaVencimientoObj = new Date(fechaInicioObj);
-      fechaVencimientoObj.setDate(fechaVencimientoObj.getDate() + 30);
-
-      const fechaVencimientoStr = fechaVencimientoObj.toISOString().split('T')[0];
-      this.reservaForm.patchValue({
-        fechaVencimiento: fechaVencimientoStr,
-      });
-    }
   }
 
   // Método seguro para formatear montos

@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { environment } from '../../../../environments/environment'; // Cambiar a environment
+import { environment } from '../../../../environments/environment';
 import { ReservaDto } from '../../../core/interfaces/reserva.interface';
 
 interface ApiResponse<T> {
@@ -28,7 +28,7 @@ export class ReservaService {
 
     return this.http.get<ApiResponse<ReservaDto[]>>(url).pipe(
       map((response) => {
-        console.log('Respuesta de la API:', response); // Para debug
+        console.log('Respuesta de la API:', response);
         return response.data;
       })
     );
