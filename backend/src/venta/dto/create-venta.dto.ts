@@ -1,4 +1,13 @@
-import { IsString, IsNumber, IsEnum, IsOptional, IsInt, Min } from 'class-validator';
+import {
+  IsString,
+  IsNumber,
+  IsEnum,
+  IsOptional,
+  IsInt,
+  Min,
+  IsDate,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export enum EstadoInmueble {
@@ -6,12 +15,6 @@ export enum EstadoInmueble {
   RESERVADO = 'RESERVADO',
   VENDIDO = 'VENDIDO',
   CON_OFERTA = 'CON_OFERTA',
-}
-
-export enum MetodoPago {
-  EFECTIVO = 'EFECTIVO',
-  TRANSFERENCIA = 'TRANSFERENCIA',
-  TARJETA = 'TARJETA',
 }
 
 export enum TipoInmueble {
@@ -25,11 +28,35 @@ export enum EstadoVenta {
   CANCELADO = 'CANCELADO',
 }
 
-export enum UserRole {
-  ADMINISTRADOR = 'ADMINISTRADOR',
-  ASESOR = 'ASESOR',
-  SECRETARIA = 'SECRETARIA',
-  CLIENTE = 'CLIENTE',
+export enum PeriodicidadPago {
+  DIAS = 'DIAS',
+  SEMANAS = 'SEMANAS',
+  MESES = 'MESES',
+}
+
+export enum EstadoPlanPago {
+  ACTIVO = 'ACTIVO',
+  PAGADO = 'PAGADO',
+  MOROSO = 'MOROSO',
+  CANCELADO = 'CANCELADO',
+}
+
+export class CreatePlanPagoDto {
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @Type(() => Number)
+  monto_inicial: number;
+
+  @IsInt()
+  @Min(1)
+  plazo: number;
+
+  @IsEnum(PeriodicidadPago)
+  periodicidad: PeriodicidadPago;
+
+  @IsDate()
+  @Type(() => Date)
+  fecha_inicio: Date;
 }
 
 export class CreateVentaDto {
@@ -55,6 +82,58 @@ export class CreateVentaDto {
   estado?: EstadoVenta;
 
   @IsOptional()
+  @IsString()
+  observaciones?: string;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => CreatePlanPagoDto)
+  plan_pago?: CreatePlanPagoDto;
+}
+
+export class RegistrarPagoDto {
   @IsInt()
-  usuarioId?: number;
+  plan_pago_id: number;
+
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0.01)
+  @Type(() => Number)
+  monto: number;
+
+  @IsOptional()
+  @IsDate()
+  @Type(() => Date)
+  fecha_pago?: Date;
+
+  @IsOptional()
+  @IsString()
+  observacion?: string;
+}
+
+export class UpdateVentaDto {
+  @IsOptional()
+  @IsInt()
+  clienteId?: number;
+
+  @IsOptional()
+  @IsEnum(TipoInmueble)
+  inmuebleTipo?: TipoInmueble;
+
+  @IsOptional()
+  @IsInt()
+  inmuebleId?: number;
+
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0.01)
+  @Type(() => Number)
+  precioFinal?: number;
+
+  @IsOptional()
+  @IsEnum(EstadoVenta)
+  estado?: EstadoVenta;
+
+  @IsOptional()
+  @IsString()
+  observaciones?: string;
 }

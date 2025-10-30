@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
-import { ReservasService } from './reserva.service';
+import { PrismaService } from '../config/prisma.service';
 import { ReservasController } from './reserva.controller';
-import { PrismaService } from 'src/config/prisma.service';
+import { ReservasService } from './reserva.service';
 
 @Module({
   controllers: [ReservasController],

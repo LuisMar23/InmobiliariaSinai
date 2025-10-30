@@ -7,9 +7,12 @@ import { LotesModule } from './lote/lote.module';
 import { VentasModule } from './venta/venta.module';
 import { ReservasModule } from './reserva/reserva.module';
 import { CotizacionesModule } from './cotizacion/cotizacion.module';
+import { CajaModule } from './caja/caja.module';
+import { MovimientoModule } from './movimiento/movimiento.module';
+import { CierreModule } from './cierre/cierre.module';
 
 @Module({
-  imports: [AuthModule, UsersModule, UrbanizacionModule, PromocionModule, LotesModule, VentasModule, ReservasModule, CotizacionesModule],
+  imports: [AuthModule, UsersModule, UrbanizacionModule, PromocionModule, LotesModule, VentasModule, ReservasModule, CotizacionesModule, CajaModule, MovimientoModule, CierreModule],
   controllers: [],
   providers: [],
 })

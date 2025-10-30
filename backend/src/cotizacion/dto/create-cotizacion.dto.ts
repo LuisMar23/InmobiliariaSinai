@@ -19,21 +19,10 @@ export enum TipoInmueble {
   URBANIZACION = 'URBANIZACION',
 }
 
-export enum UserRole {
-  ADMINISTRADOR = 'ADMINISTRADOR',
-  ASESOR = 'ASESOR',
-  SECRETARIA = 'SECRETARIA',
-  CLIENTE = 'CLIENTE',
-}
-
 export class CreateCotizacionDto {
   @IsInt()
   @Min(1)
   clienteId: number;
-
-  @IsInt()
-  @Min(1)
-  asesorId: number;
 
   @IsEnum(TipoInmueble)
   inmuebleTipo: TipoInmueble;
@@ -50,11 +39,6 @@ export class CreateCotizacionDto {
   @IsOptional()
   @IsEnum(EstadoCotizacion)
   estado?: EstadoCotizacion;
-
-  @IsOptional()
-  @IsInt()
-  @Min(1)
-  usuarioId?: number;
 }
 
 export class UpdateCotizacionDto {
@@ -62,11 +46,6 @@ export class UpdateCotizacionDto {
   @IsInt()
   @Min(1)
   clienteId?: number;
-
-  @IsOptional()
-  @IsInt()
-  @Min(1)
-  asesorId?: number;
 
   @IsOptional()
   @IsEnum(TipoInmueble)
@@ -86,9 +65,4 @@ export class UpdateCotizacionDto {
   @IsOptional()
   @IsEnum(EstadoCotizacion)
   estado?: EstadoCotizacion;
-
-  @IsOptional()
-  @IsInt()
-  @Min(1)
-  usuarioId?: number;
 }
