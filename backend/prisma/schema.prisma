@@ -351,6 +351,9 @@ model Auditoria {
   usuario User? @relation(fields: [usuarioId], references: [id])
 }
 
+
+
+///pendiente a revisar o cambiar
 model CategoriaContable {
   id        Int      @id @default(autoincrement())
   uuid      String   @unique @default(uuid())
