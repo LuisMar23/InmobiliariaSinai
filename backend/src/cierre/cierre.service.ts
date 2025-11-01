@@ -25,6 +25,13 @@ export class CierreService {
       const caja = await tx.caja.findUnique({ where: { id: payload.cajaId } });
       if (!caja) throw new NotFoundException('Caja no encontrada');
 
+      // Validar que la caja esté abierta para poder cerrarla
+      if (caja.estado !== 'ABIERTA') {
+        throw new BadRequestException(
+          'La caja debe estar abierta para realizar un cierre',
+        );
+      }
+
       const saldoFinal = Number(caja.saldoActual);
       const diferencia = Number(payload.saldoReal) - saldoFinal;
 
@@ -57,6 +64,7 @@ export class CierreService {
         },
       });
 
+      // Solo cerrar la caja si es un cierre TOTAL
       if ((payload.tipo ?? 'TOTAL') === 'TOTAL') {
         await tx.caja.update({
           where: { id: payload.cajaId },

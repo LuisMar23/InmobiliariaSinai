@@ -18,6 +18,10 @@ export class LoteCreate implements OnInit {
   enviando = signal<boolean>(false);
   urbanizaciones = signal<UrbanizacionDto[]>([]);
 
+  // Signals para búsqueda de urbanización
+  searchUrbanizacion = signal<string>('');
+  showUrbanizacionDropdown = signal<boolean>(false);
+
   router = inject(Router);
   private fb = inject(FormBuilder);
   private loteSvc = inject(LoteService);
@@ -54,6 +58,38 @@ export class LoteCreate implements OnInit {
         this.notificationService.showError('No se pudieron cargar las urbanizaciones');
       },
     });
+  }
+
+  // Métodos para filtrado de urbanizaciones
+  filteredUrbanizaciones() {
+    const search = this.searchUrbanizacion().toLowerCase();
+    if (!search) return this.urbanizaciones();
+
+    return this.urbanizaciones().filter((urbanizacion) =>
+      urbanizacion.nombre?.toLowerCase().includes(search)
+    );
+  }
+
+  // Métodos para selección de urbanización
+  selectUrbanizacion(urbanizacion: UrbanizacionDto) {
+    if (urbanizacion.id) {
+      this.loteForm.patchValue({
+        urbanizacionId: urbanizacion.id.toString(),
+      });
+      this.searchUrbanizacion.set(urbanizacion.nombre || '');
+      this.showUrbanizacionDropdown.set(false);
+    }
+  }
+
+  // Métodos para mostrar/ocultar dropdown
+  toggleUrbanizacionDropdown() {
+    this.showUrbanizacionDropdown.set(!this.showUrbanizacionDropdown());
+  }
+
+  onUrbanizacionBlur() {
+    setTimeout(() => {
+      this.showUrbanizacionDropdown.set(false);
+    }, 200);
   }
 
   onSubmit(): void {

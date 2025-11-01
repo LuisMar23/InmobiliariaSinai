@@ -12,8 +12,11 @@ import {
   UseGuards,
   Request,
 } from '@nestjs/common';
-import { CreateVentaDto, RegistrarPagoDto } from './dto/create-venta.dto';
-import { UpdateVentaDto } from './dto/update-venta.dto';
+import {
+  CreateVentaDto,
+  RegistrarPagoDto,
+  UpdateVentaDto,
+} from './dto/create-venta.dto';
 import { VentasService } from './venta.service';
 import { AuthGuard } from '@nestjs/passport';
 
@@ -35,10 +38,14 @@ export class VentasController {
   findAll(
     @Query('clienteId') clienteId?: string,
     @Query('asesorId') asesorId?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
   ) {
     return this.ventasService.findAll(
       clienteId ? +clienteId : undefined,
       asesorId ? +asesorId : undefined,
+      page ? +page : 1,
+      limit ? +limit : 10,
     );
   }
 
@@ -73,13 +80,12 @@ export class VentasController {
     return this.ventasService.remove(+id, usuarioId, ip, userAgent);
   }
 
-  @Post('plan-pago/pagar')
+  @Post('pagos/registrar')
   crearPagoPlan(@Body() registrarPagoDto: RegistrarPagoDto, @Request() req) {
     const usuarioId = req.user.id;
     const ip = req.ip;
     const userAgent = req.headers['user-agent'];
     return this.ventasService.crearPagoPlan(
-      registrarPagoDto.plan_pago_id,
       registrarPagoDto,
       usuarioId,
       ip,
@@ -87,23 +93,35 @@ export class VentasController {
     );
   }
 
-  @Get('plan-pago/:id/resumen')
+  @Get(':id/resumen-pago')
   obtenerResumenPlanPago(@Param('id') id: string) {
     return this.ventasService.obtenerResumenPlanPago(+id);
   }
 
   @Get('planes-pago/activos')
-  obtenerPlanesPagoActivos() {
-    return this.ventasService.obtenerPlanesPagoActivos();
+  obtenerPlanesPagoActivos(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.ventasService.obtenerPlanesPagoActivos(
+      page ? +page : 1,
+      limit ? +limit : 10,
+    );
   }
 
-  @Post('plan-pago/:id/verificar-morosidad')
+  @Post('planes-pago/:id/verificar-morosidad')
   verificarMorosidadPlanPago(@Param('id') id: string) {
     return this.ventasService.verificarMorosidadPlanPago(+id);
   }
 
-  @Get(':id/plan-pago/pagos')
+  @Get('planes-pago/:id/pagos')
   obtenerPagosPlan(@Param('id') id: string) {
     return this.ventasService.obtenerPagosPlan(+id);
+  }
+
+  @Get('clientes/mis-ventas')
+  obtenerVentasCliente(@Request() req) {
+    const clienteId = req.user.id;
+    return this.ventasService.obtenerVentasPorCliente(clienteId);
   }
 }

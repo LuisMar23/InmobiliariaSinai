@@ -7,6 +7,7 @@ import {
   Min,
   IsDate,
   ValidateNested,
+  IsPositive,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -23,7 +24,7 @@ export enum TipoInmueble {
 }
 
 export enum EstadoVenta {
-  PENDIENTE_PAGO = 'PENDIENTE_PAGO',
+  PENDIENTE = 'PENDIENTE',
   PAGADO = 'PAGADO',
   CANCELADO = 'CANCELADO',
 }
@@ -41,6 +42,12 @@ export enum EstadoPlanPago {
   CANCELADO = 'CANCELADO',
 }
 
+export enum MetodoPago {
+  EFECTIVO = 'EFECTIVO',
+  TRANSFERENCIA = 'TRANSFERENCIA',
+  TARJETA = 'TARJETA',
+}
+
 export class CreatePlanPagoDto {
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
@@ -49,6 +56,7 @@ export class CreatePlanPagoDto {
 
   @IsInt()
   @Min(1)
+  @IsPositive()
   plazo: number;
 
   @IsEnum(PeriodicidadPago)
@@ -61,15 +69,19 @@ export class CreatePlanPagoDto {
 
 export class CreateVentaDto {
   @IsInt()
+  @IsPositive()
   clienteId: number;
 
+  @IsOptional()
   @IsInt()
-  asesorId: number;
+  @IsPositive()
+  asesorId?: number;
 
   @IsEnum(TipoInmueble)
   inmuebleTipo: TipoInmueble;
 
   @IsInt()
+  @IsPositive()
   inmuebleId: number;
 
   @IsNumber({ maxDecimalPlaces: 2 })
@@ -93,6 +105,7 @@ export class CreateVentaDto {
 
 export class RegistrarPagoDto {
   @IsInt()
+  @IsPositive()
   plan_pago_id: number;
 
   @IsNumber({ maxDecimalPlaces: 2 })
@@ -108,11 +121,16 @@ export class RegistrarPagoDto {
   @IsOptional()
   @IsString()
   observacion?: string;
+
+  @IsOptional()
+  @IsEnum(MetodoPago)
+  metodoPago?: MetodoPago;
 }
 
 export class UpdateVentaDto {
   @IsOptional()
   @IsInt()
+  @IsPositive()
   clienteId?: number;
 
   @IsOptional()
@@ -121,6 +139,7 @@ export class UpdateVentaDto {
 
   @IsOptional()
   @IsInt()
+  @IsPositive()
   inmuebleId?: number;
 
   @IsOptional()
@@ -136,4 +155,9 @@ export class UpdateVentaDto {
   @IsOptional()
   @IsString()
   observaciones?: string;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => CreatePlanPagoDto)
+  plan_pago?: CreatePlanPagoDto;
 }

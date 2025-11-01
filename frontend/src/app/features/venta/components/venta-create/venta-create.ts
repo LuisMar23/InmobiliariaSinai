@@ -17,55 +17,73 @@ import { VentaService } from '../../service/venta.service';
 })
 export class VentaCreate implements OnInit {
   ventaForm: FormGroup;
+  planPagoForm: FormGroup;
   enviando = signal<boolean>(false);
   clientes = signal<UserDto[]>([]);
   lotes = signal<LoteDto[]>([]);
   mostrarPlanPago = signal<boolean>(false);
   fechaVencimientoCalculada = signal<string>('');
 
+  searchCliente = signal<string>('');
+  searchLote = signal<string>('');
+  showClientesDropdown = signal<boolean>(false);
+  showLotesDropdown = signal<boolean>(false);
+
+  authService = inject(AuthService);
   router = inject(Router);
   private fb = inject(FormBuilder);
   private ventaSvc = inject(VentaService);
   private loteSvc = inject(LoteService);
   private notificationService = inject(NotificationService);
-  private authService = inject(AuthService);
 
   constructor() {
     this.ventaForm = this.crearFormularioVenta();
+    this.planPagoForm = this.crearPlanPagoForm();
   }
 
   ngOnInit(): void {
     this.cargarClientes();
     this.cargarLotes();
+    this.asignarAsesorLogueado();
     this.setupFormListeners();
   }
 
   crearFormularioVenta(): FormGroup {
+    return this.fb.group({
+      clienteId: ['', Validators.required],
+      asesorId: ['', Validators.required],
+      inmuebleId: ['', Validators.required],
+      precioFinal: [0, [Validators.required, Validators.min(0.01)]],
+      estado: ['PENDIENTE_PAGO'],
+    });
+  }
+
+  crearPlanPagoForm(): FormGroup {
     const hoy = new Date();
     const fechaHoy = hoy.toISOString().split('T')[0];
 
     return this.fb.group({
-      clienteId: ['', Validators.required],
-      inmuebleTipo: ['LOTE', Validators.required],
-      inmuebleId: ['', Validators.required],
-      precioFinal: [0, [Validators.required, Validators.min(0.01)]],
-      estado: ['PENDIENTE_PAGO'],
-      plan_pago: this.fb.group({
-        monto_inicial: [0, [Validators.required, Validators.min(0)]],
-        plazo: [30, [Validators.required, Validators.min(1)]],
-        periodicidad: ['DIAS', Validators.required],
-        fecha_inicio: [fechaHoy, Validators.required],
-      }),
+      monto_inicial: [0, [Validators.required, Validators.min(0)]],
+      plazo: [1, [Validators.required, Validators.min(1)]],
+      periodicidad: ['MESES', Validators.required],
+      fecha_inicio: [fechaHoy, Validators.required],
     });
   }
 
+  asignarAsesorLogueado(): void {
+    const usuarioLogueado = this.authService.getCurrentUser();
+    if (usuarioLogueado && usuarioLogueado.id) {
+      this.ventaForm.patchValue({
+        asesorId: usuarioLogueado.id,
+      });
+    }
+  }
+
   setupFormListeners(): void {
-    // Escuchar cambios en el precio final para sincronizar con el plan de pago
     this.ventaForm.get('precioFinal')?.valueChanges.subscribe(() => {
       this.onPrecioFinalChange();
     });
 
-    // Escuchar cambios en los campos del plan de pago para calcular fecha de vencimiento
     this.planPagoForm.get('fecha_inicio')?.valueChanges.subscribe(() => {
       this.calcularFechaVencimiento();
     });
@@ -90,16 +108,9 @@ export class VentaCreate implements OnInit {
           clientes = response.data;
         } else if (Array.isArray(response)) {
           clientes = response;
-        } else {
-          this.notificationService.showWarning('No se pudieron cargar los clientes');
-          return;
         }
 
         this.clientes.set(clientes);
-
-        if (clientes.length === 0) {
-          this.notificationService.showWarning('No se encontraron clientes registrados');
-        }
       },
       error: (err: any) => {
         this.notificationService.showError('No se pudieron cargar los clientes');
@@ -121,13 +132,81 @@ export class VentaCreate implements OnInit {
     });
   }
 
+  // Métodos para filtrado de clientes
+  filteredClientes() {
+    const search = this.searchCliente().toLowerCase();
+    if (!search) return this.clientes();
+
+    return this.clientes().filter(
+      (cliente) =>
+        cliente.fullName?.toLowerCase().includes(search) ||
+        (cliente.ci && cliente.ci.toLowerCase().includes(search))
+    );
+  }
+
+  // Métodos para filtrado de lotes
+  filteredLotes() {
+    const search = this.searchLote().toLowerCase();
+    if (!search) return this.lotes();
+
+    return this.lotes().filter(
+      (lote) =>
+        lote.numeroLote?.toLowerCase().includes(search) ||
+        (lote.urbanizacion?.nombre && lote.urbanizacion.nombre.toLowerCase().includes(search)) ||
+        lote.precioBase?.toString().includes(search)
+    );
+  }
+
+  // Métodos para selección de cliente
+  selectCliente(cliente: UserDto) {
+    this.ventaForm.patchValue({
+      clienteId: cliente.id.toString(),
+    });
+    this.searchCliente.set(cliente.fullName || '');
+    this.showClientesDropdown.set(false);
+  }
+
+  // Métodos para selección de lote
+  selectLote(lote: LoteDto) {
+    this.ventaForm.patchValue({
+      inmuebleId: lote.id.toString(),
+    });
+    this.searchLote.set(`${lote.numeroLote} - ${lote.urbanizacion?.nombre} - $${lote.precioBase}`);
+    this.showLotesDropdown.set(false);
+  }
+
+  // Métodos para mostrar/ocultar dropdowns
+  toggleClientesDropdown() {
+    this.showClientesDropdown.set(!this.showClientesDropdown());
+    if (this.showClientesDropdown()) {
+      this.showLotesDropdown.set(false);
+    }
+  }
+
+  toggleLotesDropdown() {
+    this.showLotesDropdown.set(!this.showLotesDropdown());
+    if (this.showLotesDropdown()) {
+      this.showClientesDropdown.set(false);
+    }
+  }
+
+  // Métodos para cuando el input pierde el foco
+  onClienteBlur() {
+    setTimeout(() => {
+      this.showClientesDropdown.set(false);
+    }, 200);
+  }
+
+  onLoteBlur() {
+    setTimeout(() => {
+      this.showLotesDropdown.set(false);
+    }, 200);
+  }
+
   togglePlanPago(): void {
     this.mostrarPlanPago.set(!this.mostrarPlanPago());
-
     if (this.mostrarPlanPago()) {
-      // Sincronizar automáticamente el precio final con el plan de pago
       this.onPrecioFinalChange();
-      // Calcular fecha de vencimiento inicial
       this.calcularFechaVencimiento();
     }
   }
@@ -136,8 +215,6 @@ export class VentaCreate implements OnInit {
     if (this.mostrarPlanPago()) {
       const precioFinal = this.ventaForm.get('precioFinal')?.value || 0;
       const montoInicial = this.planPagoForm.get('monto_inicial')?.value || 0;
-
-      // Validar que el monto inicial no sea mayor al precio final
       if (montoInicial > precioFinal) {
         this.planPagoForm.get('monto_inicial')?.setValue(precioFinal);
       }
@@ -153,7 +230,6 @@ export class VentaCreate implements OnInit {
 
     if (fechaInicio && plazo) {
       const fecha = new Date(fechaInicio);
-
       switch (periodicidad) {
         case 'DIAS':
           fecha.setDate(fecha.getDate() + plazo);
@@ -165,7 +241,6 @@ export class VentaCreate implements OnInit {
           fecha.setMonth(fecha.getMonth() + plazo);
           break;
       }
-
       this.fechaVencimientoCalculada.set(fecha.toISOString().split('T')[0]);
     } else {
       this.fechaVencimientoCalculada.set('');
@@ -173,16 +248,13 @@ export class VentaCreate implements OnInit {
   }
 
   getMontoMaximoInicial(): number {
-    const precioFinal = this.ventaForm.get('precioFinal')?.value;
-    return precioFinal || 0;
+    return this.ventaForm.get('precioFinal')?.value || 0;
   }
 
   getSaldoFinanciar(): number {
     if (!this.mostrarPlanPago()) return 0;
-
     const precioFinal = this.ventaForm.get('precioFinal')?.value || 0;
     const montoInicial = this.planPagoForm.get('monto_inicial')?.value || 0;
-
     return Math.max(0, precioFinal - montoInicial);
   }
 
@@ -193,13 +265,31 @@ export class VentaCreate implements OnInit {
       return;
     }
 
-    const currentUser = this.authService.getCurrentUser();
-    if (!currentUser) {
-      this.notificationService.showError('No se pudo identificar al usuario actual');
+    if (this.mostrarPlanPago() && this.planPagoForm.invalid) {
+      this.planPagoForm.markAllAsTouched();
+      this.notificationService.showError(
+        'Complete todos los campos del plan de pago correctamente.'
+      );
       return;
     }
 
-    // Validaciones del plan de pago
+    const asesorId = this.ventaForm.get('asesorId')?.value;
+    if (!asesorId) {
+      this.notificationService.showError('No se pudo identificar al asesor de la venta');
+      return;
+    }
+
+    this.enviando.set(true);
+
+    const ventaData: any = {
+      clienteId: Number(this.ventaForm.value.clienteId),
+      asesorId: Number(asesorId),
+      inmuebleTipo: 'LOTE',
+      inmuebleId: Number(this.ventaForm.value.inmuebleId),
+      precioFinal: Number(this.ventaForm.value.precioFinal),
+      estado: this.ventaForm.value.estado,
+    };
+
     if (this.mostrarPlanPago()) {
       const precioFinal = this.ventaForm.get('precioFinal')?.value;
       const montoInicial = this.planPagoForm.get('monto_inicial')?.value;
@@ -208,6 +298,7 @@ export class VentaCreate implements OnInit {
         this.notificationService.showError(
           'El monto inicial debe ser menor al precio final de la venta'
         );
+        this.enviando.set(false);
         return;
       }
 
@@ -217,36 +308,17 @@ export class VentaCreate implements OnInit {
 
       if (fechaInicio < hoy) {
         this.notificationService.showError('La fecha de inicio no puede ser en el pasado');
+        this.enviando.set(false);
         return;
       }
 
-      if (!this.fechaVencimientoCalculada()) {
-        this.notificationService.showError('Error al calcular la fecha de vencimiento');
-        return;
-      }
-    }
-
-    this.enviando.set(true);
-
-    const ventaData: any = {
-      clienteId: Number(this.ventaForm.value.clienteId),
-      asesorId: currentUser.id,
-      inmuebleTipo: this.ventaForm.value.inmuebleTipo,
-      inmuebleId: Number(this.ventaForm.value.inmuebleId),
-      precioFinal: Number(this.ventaForm.value.precioFinal),
-      estado: this.ventaForm.value.estado,
-    };
-
-    if (this.mostrarPlanPago()) {
       ventaData.plan_pago = {
-        monto_inicial: Number(this.ventaForm.value.plan_pago.monto_inicial),
-        plazo: Number(this.ventaForm.value.plan_pago.plazo),
-        periodicidad: this.ventaForm.value.plan_pago.periodicidad,
-        fecha_inicio: new Date(this.ventaForm.value.plan_pago.fecha_inicio),
+        monto_inicial: Number(this.planPagoForm.value.monto_inicial),
+        plazo: Number(this.planPagoForm.value.plazo),
+        periodicidad: this.planPagoForm.value.periodicidad,
+        fecha_inicio: new Date(this.planPagoForm.value.fecha_inicio),
       };
     }
-
-    console.log('Datos a enviar:', ventaData);
 
     this.ventaSvc.create(ventaData).subscribe({
       next: (response: any) => {
@@ -269,10 +341,9 @@ export class VentaCreate implements OnInit {
         } else if (err.status === 403) {
           errorMessage = 'No tienes permisos para crear ventas';
         } else if (err.status === 404) {
-          errorMessage = 'Cliente o lote no encontrado';
+          errorMessage = 'Cliente, asesor o lote no encontrado';
         }
         this.notificationService.showError(errorMessage);
-        console.error('Error detallado:', err);
       },
     });
   }
@@ -280,17 +351,6 @@ export class VentaCreate implements OnInit {
   handleFormSubmit(event: Event): void {
     event.preventDefault();
     this.onSubmit();
-  }
-
-  getClienteNombre(): string {
-    const clienteId = this.ventaForm.get('clienteId')?.value;
-    if (!clienteId) return 'Sin cliente';
-    const cliente = this.clientes().find((c) => c.id === Number(clienteId));
-    return cliente ? cliente.fullName : 'No encontrado';
-  }
-
-  get planPagoForm(): FormGroup {
-    return this.ventaForm.get('plan_pago') as FormGroup;
   }
 
   getPeriodicidadTexto(): string {

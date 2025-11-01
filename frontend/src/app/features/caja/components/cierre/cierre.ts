@@ -110,9 +110,10 @@ export class CierreComponent implements OnInit {
   obtenerCierres() {
     this.cargando.set(true);
     this.error.set(null);
+
     this.cierreSvc.listarPorCaja(this.cajaId());
 
-    // Simular carga de datos
+    // Usar el signal directamente
     setTimeout(() => {
       this.cierres.set(this.cierreSvc.cierres());
       this.allCierres.set(this.cierreSvc.cierres());
@@ -124,35 +125,61 @@ export class CierreComponent implements OnInit {
     this.cajaSvc.obtenerCaja(this.cajaId()).subscribe({
       next: (caja) => {
         this.caja.set(caja);
+        // Establecer el saldo actual como valor por defecto en el formulario
+        if (caja) {
+          this.form.patchValue({
+            saldoReal: caja.saldoActual,
+          });
+        }
       },
       error: (err) => {
         console.error('Error al obtener caja:', err);
+        this.notificationSvc.showError('Error al obtener información de la caja');
       },
     });
   }
 
   crearCierre() {
-    if (this.form.invalid) return;
+    if (this.form.invalid) {
+      this.notificationSvc.showWarning('Complete todos los campos requeridos');
+      return;
+    }
 
-    this.cierreSvc
-      .crearCierre({
-        cajaId: this.cajaId(),
-        saldoReal: this.form.value.saldoReal,
-        tipo: this.form.value.tipo,
-        observaciones: this.form.value.observaciones,
-      })
-      .subscribe({
-        next: (cierre) => {
-          this.notificationSvc.showSuccess('Cierre registrado correctamente');
-          this.form.reset({ tipo: 'TOTAL', saldoReal: 0 });
-          this.obtenerCierres();
-          this.obtenerCaja();
-        },
-        error: (error) => {
-          console.error('Error al crear cierre:', error);
-          this.notificationSvc.showError('Error al registrar el cierre');
-        },
-      });
+    const payload = {
+      cajaId: this.cajaId(),
+      saldoReal: Number(this.form.value.saldoReal),
+      tipo: this.form.value.tipo,
+      observaciones: this.form.value.observaciones || undefined,
+    };
+
+    console.log('Enviando cierre:', payload);
+
+    this.cierreSvc.crearCierre(payload).subscribe({
+      next: (cierre) => {
+        this.notificationSvc.showSuccess('Cierre registrado correctamente');
+        this.form.reset({
+          tipo: 'TOTAL',
+          saldoReal: 0,
+          observaciones: '',
+        });
+        this.obtenerCierres();
+        this.obtenerCaja(); // Actualizar información de la caja
+      },
+      error: (error) => {
+        console.error('Error al crear cierre:', error);
+        let errorMessage = 'Error al registrar el cierre';
+
+        if (error.status === 400) {
+          errorMessage = error.error?.message || 'Datos inválidos para el cierre';
+        } else if (error.status === 403) {
+          errorMessage = 'No tiene permisos para realizar cierres de caja';
+        } else if (error.status === 404) {
+          errorMessage = 'Caja no encontrada';
+        }
+
+        this.notificationSvc.showError(errorMessage);
+      },
+    });
   }
 
   cambiarOrden(columna: keyof CierreCaja) {

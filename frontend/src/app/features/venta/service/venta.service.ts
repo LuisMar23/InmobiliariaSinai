@@ -24,11 +24,18 @@ export class VentaService {
 
   constructor(private http: HttpClient) {}
 
-  getAll(clienteId?: number, asesorId?: number): Observable<VentaDto[]> {
+  getAll(
+    clienteId?: number,
+    asesorId?: number,
+    page: number = 1,
+    limit: number = 10
+  ): Observable<VentaDto[]> {
     let url = this.apiUrl;
     const params = [];
     if (clienteId) params.push(`clienteId=${clienteId}`);
     if (asesorId) params.push(`asesorId=${asesorId}`);
+    if (page > 1) params.push(`page=${page}`);
+    if (limit !== 10) params.push(`limit=${limit}`);
     if (params.length > 0) url += `?${params.join('&')}`;
 
     return this.http
@@ -56,18 +63,33 @@ export class VentaService {
 
   // Métodos para plan de pagos - CORREGIDOS
   crearPagoPlan(pagoData: RegistrarPagoDto): Observable<any> {
-    return this.http.post<ApiResponse<any>>(`${this.apiUrl}/plan-pago/pagar`, pagoData);
+    return this.http.post<ApiResponse<any>>(`${this.apiUrl}/pagos/registrar`, pagoData);
   }
 
-  obtenerPagosPlan(ventaId: number): Observable<any> {
-    return this.http.get<ApiResponse<any>>(`${this.apiUrl}/${ventaId}/plan-pago/pagos`);
+  obtenerPagosPlan(planPagoId: number): Observable<any> {
+    return this.http.get<ApiResponse<any>>(`${this.apiUrl}/planes-pago/${planPagoId}/pagos`);
   }
 
   obtenerResumenPlanPago(ventaId: number): Observable<any> {
-    return this.http.get<ApiResponse<any>>(`${this.apiUrl}/${ventaId}/plan-pago/resumen`);
+    return this.http.get<ApiResponse<any>>(`${this.apiUrl}/${ventaId}/resumen-pago`);
   }
 
-  obtenerPlanesPagoActivos(): Observable<any> {
-    return this.http.get<ApiResponse<any>>(`${this.apiUrl}/planes-pago/activos`);
+  obtenerPlanesPagoActivos(page: number = 1, limit: number = 10): Observable<any> {
+    return this.http.get<ApiResponse<any>>(
+      `${this.apiUrl}/planes-pago/activos?page=${page}&limit=${limit}`
+    );
+  }
+
+  verificarMorosidadPlanPago(planPagoId: number): Observable<any> {
+    return this.http.post<ApiResponse<any>>(
+      `${this.apiUrl}/planes-pago/${planPagoId}/verificar-morosidad`,
+      {}
+    );
+  }
+
+  obtenerVentasPorCliente(clienteId: number): Observable<VentaDto[]> {
+    return this.http
+      .get<ApiResponse<{ ventas: VentaDto[] }>>(`${this.apiUrl}/clientes/mis-ventas`)
+      .pipe(map((response) => response.data.ventas || []));
   }
 }

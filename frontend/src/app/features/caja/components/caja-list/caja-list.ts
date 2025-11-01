@@ -11,6 +11,7 @@ import {
 import { Caja } from '../../../../core/interfaces/caja.interface';
 import { AuthService } from '../../../../components/services/auth.service';
 import { CajaService } from '../../service/caja.service';
+import { NotificationService } from '../../../../core/services/notification.service';
 
 interface ColumnConfig {
   key: keyof Caja;
@@ -28,6 +29,7 @@ export class CajaList implements OnInit {
   private cajaSvc = inject(CajaService);
   private fb = inject(FormBuilder);
   private authSvc = inject(AuthService);
+  private notificationSvc = inject(NotificationService);
 
   cajas = signal<Caja[]>([]);
   allCajas = signal<Caja[]>([]);
@@ -47,7 +49,10 @@ export class CajaList implements OnInit {
   ];
 
   form!: FormGroup;
+  formAbrirCaja!: FormGroup;
   mostrarFormNuevaCaja = signal(false);
+  mostrarModalAbrirCaja = signal(false);
+  cajaSeleccionada = signal<Caja | null>(null);
 
   filteredCajas = computed(() => {
     const term = this.searchTerm().toLowerCase();
@@ -97,10 +102,10 @@ export class CajaList implements OnInit {
   ngOnInit(): void {
     this.obtenerCajas();
     this.inicializarForm();
+    this.inicializarFormAbrirCaja();
   }
 
   inicializarForm() {
-    // Usar usuario por defecto para pruebas
     this.form = this.fb.group({
       nombre: ['', [Validators.required, Validators.minLength(3)]],
       montoInicial: [0, [Validators.required, Validators.min(0)]],
@@ -108,12 +113,19 @@ export class CajaList implements OnInit {
     });
   }
 
+  inicializarFormAbrirCaja() {
+    this.formAbrirCaja = this.fb.group({
+      montoInicial: [0, [Validators.required, Validators.min(0)]],
+    });
+  }
+
   obtenerCajas() {
     this.cargando.set(true);
     this.error.set(null);
+
     this.cajaSvc.cargarCajas();
 
-    // Simular carga de datos
+    // Usar el signal directamente sin subscribe
     setTimeout(() => {
       this.cajas.set(this.cajaSvc.cajas());
       this.allCajas.set(this.cajaSvc.cajas());
@@ -122,26 +134,77 @@ export class CajaList implements OnInit {
   }
 
   crearCaja() {
-    if (this.form.invalid) return;
-
-    this.cajaSvc.crearCaja(this.form.value);
-    this.form.reset({
-      montoInicial: 0,
-      usuarioAperturaId: 1,
-    });
-    this.mostrarFormNuevaCaja.set(false);
-  }
-
-  abrirCaja(caja: Caja) {
-    const montoInicial = prompt('Ingrese el monto inicial:');
-    if (montoInicial && !isNaN(Number(montoInicial))) {
-      this.cajaSvc.abrirCaja(caja.id, Number(montoInicial));
+    if (this.form.invalid) {
+      this.notificationSvc.showWarning('Complete todos los campos requeridos');
+      return;
     }
+
+    this.cajaSvc.crearCaja(this.form.value).subscribe({
+      next: (nuevaCaja) => {
+        this.cajas.update((prev) => [...prev, nuevaCaja]);
+        this.allCajas.update((prev) => [...prev, nuevaCaja]);
+        this.form.reset({
+          montoInicial: 0,
+          usuarioAperturaId: 1,
+        });
+        this.mostrarFormNuevaCaja.set(false);
+        this.notificationSvc.showSuccess('Caja creada correctamente');
+      },
+      error: (error) => {
+        console.error('Error al crear caja:', error);
+        this.notificationSvc.showError('Error al crear la caja');
+      },
+    });
   }
 
-  cerrarCaja(caja: Caja) {
-    if (confirm(`¿Está seguro que desea cerrar la caja ${caja.nombre}?`)) {
-      this.cajaSvc.cerrarCaja(caja.id);
+  abrirCajaModal(caja: Caja) {
+    this.cajaSeleccionada.set(caja);
+    this.formAbrirCaja.reset({ montoInicial: 0 });
+    this.mostrarModalAbrirCaja.set(true);
+  }
+
+  confirmarAbrirCaja() {
+    if (this.formAbrirCaja.invalid || !this.cajaSeleccionada()) {
+      this.notificationSvc.showWarning('Ingrese un monto inicial válido');
+      return;
+    }
+
+    const caja = this.cajaSeleccionada()!;
+    const montoInicial = this.formAbrirCaja.value.montoInicial;
+
+    this.cajaSvc.abrirCaja(caja.id, montoInicial).subscribe({
+      next: (cajaActualizada) => {
+        this.cajas.update((prev) => prev.map((c) => (c.id === caja.id ? cajaActualizada : c)));
+        this.allCajas.update((prev) => prev.map((c) => (c.id === caja.id ? cajaActualizada : c)));
+        this.mostrarModalAbrirCaja.set(false);
+        this.cajaSeleccionada.set(null);
+        this.notificationSvc.showSuccess(`Caja ${caja.nombre} abierta correctamente`);
+      },
+      error: (error) => {
+        console.error('Error al abrir caja:', error);
+        this.notificationSvc.showError('Error al abrir la caja');
+      },
+    });
+  }
+
+  async cerrarCaja(caja: Caja) {
+    const result = await this.notificationSvc.confirmDelete(
+      `¿Está seguro que desea cerrar la caja ${caja.nombre}?`,
+      'Cerrar Caja'
+    );
+
+    if (result.isConfirmed) {
+      this.cajaSvc.cerrarCaja(caja.id).subscribe({
+        next: (cajaActualizada) => {
+          this.cajas.update((prev) => prev.map((c) => (c.id === caja.id ? cajaActualizada : c)));
+          this.allCajas.update((prev) => prev.map((c) => (c.id === caja.id ? cajaActualizada : c)));
+          this.notificationSvc.showSuccess(`Caja ${caja.nombre} cerrada correctamente`);
+        },
+        error: (error) => {
+          console.error('Error al cerrar caja:', error);
+          this.notificationSvc.showError('Error al cerrar la caja');
+        },
+      });
     }
   }
 
@@ -189,8 +252,19 @@ export class CajaList implements OnInit {
     this.mostrarFormNuevaCaja.set(!this.mostrarFormNuevaCaja());
   }
 
+  cerrarModalAbrirCaja() {
+    this.mostrarModalAbrirCaja.set(false);
+    this.cajaSeleccionada.set(null);
+  }
+
   tienePermisoAdmin(): boolean {
     const user = this.authSvc.getCurrentUser();
     return user?.role === 'ADMINISTRADOR' || user?.role === 'SECRETARIA';
+  }
+
+  // Método para manejar cambios en el buscador
+  onSearchChange(event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    this.searchTerm.set(value);
   }
 }

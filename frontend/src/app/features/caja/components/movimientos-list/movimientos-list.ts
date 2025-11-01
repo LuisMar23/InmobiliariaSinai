@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { Movimiento } from '../../../../core/interfaces/caja.interface';
 import { MovimientoService } from '../../service/movimiento.service';
+import { NotificationService } from '../../../../core/services/notification.service';
 
 interface ColumnConfig {
   key: keyof Movimiento;
@@ -21,6 +22,7 @@ interface ColumnConfig {
 export class MovimientosList implements OnInit {
   private route = inject(ActivatedRoute);
   private movSvc = inject(MovimientoService);
+  private notificationSvc = inject(NotificationService);
 
   movimientos = signal<Movimiento[]>([]);
   allMovimientos = signal<Movimiento[]>([]);
@@ -109,19 +111,29 @@ export class MovimientosList implements OnInit {
     this.cargando.set(true);
     this.error.set(null);
 
-    this.movSvc.loadByCaja(this.cajaId(), this.currentPage(), this.pageSize());
+    try {
+      this.movSvc.loadByCaja(this.cajaId(), this.currentPage(), this.pageSize());
 
-    // Simular carga de datos
-    setTimeout(() => {
-      this.movimientos.set(this.movSvc.movimientos());
-      this.allMovimientos.set(this.movSvc.movimientos());
-      this.total.set(this.movSvc.total());
+      // Simular carga de datos
+      setTimeout(() => {
+        this.movimientos.set(this.movSvc.movimientos());
+        this.allMovimientos.set(this.movSvc.movimientos());
+        this.total.set(this.movSvc.total());
+        this.cargando.set(false);
+      }, 1000);
+    } catch (error) {
       this.cargando.set(false);
-    }, 1000);
+      this.error.set('Error al cargar los movimientos');
+      this.notificationSvc.showError('Error al cargar los movimientos');
+    }
   }
 
   obtenerTotales() {
-    this.movSvc.loadTotales(this.cajaId());
+    try {
+      this.movSvc.loadTotales(this.cajaId());
+    } catch (error) {
+      this.notificationSvc.showError('Error al cargar los totales');
+    }
   }
 
   obtenerResumenCaja() {
@@ -131,6 +143,7 @@ export class MovimientosList implements OnInit {
       },
       error: (err) => {
         console.error('Error al obtener resumen:', err);
+        this.notificationSvc.showError('Error al obtener el resumen de caja');
       },
     });
   }

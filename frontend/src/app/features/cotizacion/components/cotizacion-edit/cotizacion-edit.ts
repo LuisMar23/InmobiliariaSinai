@@ -27,6 +27,14 @@ export class CotizacionEdit implements OnInit {
   clientes = signal<UserDto[]>([]);
   lotes = signal<LoteDto[]>([]);
 
+  // Signals para búsqueda
+  searchCliente = signal<string>('');
+  searchLote = signal<string>('');
+
+  // Signals para mostrar/ocultar dropdowns
+  showClientesDropdown = signal<boolean>(false);
+  showLotesDropdown = signal<boolean>(false);
+
   router = inject(Router);
   private fb = inject(FormBuilder);
   private cotizacionSvc = inject(CotizacionService);
@@ -102,6 +110,76 @@ export class CotizacionEdit implements OnInit {
     });
   }
 
+  // Métodos para filtrado de clientes
+  filteredClientes() {
+    const search = this.searchCliente().toLowerCase();
+    if (!search) return this.clientes();
+
+    return this.clientes().filter((cliente) => cliente.fullName?.toLowerCase().includes(search));
+  }
+
+  // Métodos para filtrado de lotes
+  filteredLotes() {
+    const search = this.searchLote().toLowerCase();
+    if (!search) return this.lotes();
+
+    return this.lotes().filter(
+      (lote) =>
+        lote.numeroLote?.toLowerCase().includes(search) ||
+        lote.estado?.toLowerCase().includes(search) ||
+        lote.precioBase?.toString().includes(search) ||
+        lote.urbanizacion?.nombre?.toLowerCase().includes(search)
+    );
+  }
+
+  // Métodos para selección de cliente
+  selectCliente(cliente: UserDto) {
+    this.cotizacionForm.patchValue({
+      clienteId: cliente.id.toString(),
+    });
+    this.searchCliente.set(cliente.fullName || '');
+    this.showClientesDropdown.set(false);
+  }
+
+  // Métodos para selección de lote
+  selectLote(lote: LoteDto) {
+    this.cotizacionForm.patchValue({
+      inmuebleId: lote.id.toString(),
+    });
+    this.searchLote.set(
+      `${lote.numeroLote} - ${lote.urbanizacion?.nombre} - ${lote.estado} - $${lote.precioBase}`
+    );
+    this.showLotesDropdown.set(false);
+  }
+
+  // Métodos para mostrar/ocultar dropdowns
+  toggleClientesDropdown() {
+    this.showClientesDropdown.set(!this.showClientesDropdown());
+    if (this.showClientesDropdown()) {
+      this.showLotesDropdown.set(false);
+    }
+  }
+
+  toggleLotesDropdown() {
+    this.showLotesDropdown.set(!this.showLotesDropdown());
+    if (this.showLotesDropdown()) {
+      this.showClientesDropdown.set(false);
+    }
+  }
+
+  // Métodos para cuando el input pierde el foco
+  onClienteBlur() {
+    setTimeout(() => {
+      this.showClientesDropdown.set(false);
+    }, 200);
+  }
+
+  onLoteBlur() {
+    setTimeout(() => {
+      this.showLotesDropdown.set(false);
+    }, 200);
+  }
+
   obtenerCotizacion(): void {
     this.cotizacionId = Number(this.route.snapshot.paramMap.get('id'));
     if (!this.cotizacionId) {
@@ -130,6 +208,10 @@ export class CotizacionEdit implements OnInit {
   }
 
   cargarDatosFormulario(cotizacion: any): void {
+    // Encontrar el cliente y lote seleccionados para mostrar en los inputs de búsqueda
+    const clienteSeleccionado = this.clientes().find((c) => c.id === cotizacion.clienteId);
+    const loteSeleccionado = this.lotes().find((l) => l.id === cotizacion.inmuebleId);
+
     this.cotizacionForm.patchValue({
       clienteId: cotizacion.clienteId?.toString() || '',
       inmuebleTipo: cotizacion.inmuebleTipo || 'LOTE',
@@ -137,6 +219,16 @@ export class CotizacionEdit implements OnInit {
       precioOfertado: cotizacion.precioOfertado || 0,
       estado: cotizacion.estado || 'PENDIENTE',
     });
+
+    // Establecer los valores de búsqueda
+    if (clienteSeleccionado) {
+      this.searchCliente.set(clienteSeleccionado.fullName || '');
+    }
+    if (loteSeleccionado) {
+      this.searchLote.set(
+        `${loteSeleccionado.numeroLote} - ${loteSeleccionado.urbanizacion?.nombre} - ${loteSeleccionado.estado} - $${loteSeleccionado.precioBase}`
+      );
+    }
   }
 
   formatDate(date: any): string {
@@ -167,6 +259,7 @@ export class CotizacionEdit implements OnInit {
       clienteId: Number(this.cotizacionForm.value.clienteId),
       inmuebleId: Number(this.cotizacionForm.value.inmuebleId),
       precioOfertado: Number(this.cotizacionForm.value.precioOfertado),
+      inmuebleTipo: 'LOTE', // Siempre será LOTE
     };
 
     console.log('Datos a actualizar:', dataActualizada);

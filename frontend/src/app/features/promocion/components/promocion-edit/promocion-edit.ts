@@ -114,36 +114,29 @@ export class PromocionEdit implements OnInit {
 
     this.enviando.set(true);
 
-    const dataActualizada: any = {};
-
-    if (this.promocionForm.value.titulo) dataActualizada.titulo = this.promocionForm.value.titulo;
-    if (this.promocionForm.value.descripcion !== undefined)
-      dataActualizada.descripcion = this.promocionForm.value.descripcion;
-    if (this.promocionForm.value.descuento)
-      dataActualizada.descuento = Number(this.promocionForm.value.descuento);
-    if (this.promocionForm.value.fechaInicio)
-      dataActualizada.fechaInicio = new Date(this.promocionForm.value.fechaInicio).toISOString();
-    if (this.promocionForm.value.fechaFin)
-      dataActualizada.fechaFin = new Date(this.promocionForm.value.fechaFin).toISOString();
-    if (this.promocionForm.value.aplicaA)
-      dataActualizada.aplicaA = this.promocionForm.value.aplicaA;
+    const dataActualizada = {
+      ...this.promocionForm.value,
+      descuento: Number(this.promocionForm.value.descuento),
+      fechaInicio: new Date(this.promocionForm.value.fechaInicio).toISOString(),
+      fechaFin: new Date(this.promocionForm.value.fechaFin).toISOString(),
+    };
 
     this.promocionSvc.update(this.promocionId, dataActualizada).subscribe({
       next: (response: any) => {
         this.enviando.set(false);
+        console.log('Respuesta de actualización:', response);
 
-        if (response.success) {
-          this.notificationService.showSuccess(
-            response.message || 'Promoción actualizada exitosamente!'
-          );
-          setTimeout(() => {
-            this.router.navigate(['/promociones/lista']);
-          }, 1000);
-        } else if (response.id) {
+        // Verificar diferentes formatos de respuesta exitosa
+        if (response.success === true || response.id || response.data) {
           this.notificationService.showSuccess('Promoción actualizada exitosamente!');
           setTimeout(() => {
             this.router.navigate(['/promociones/lista']);
-          }, 1000);
+          }, 1500);
+        } else if (response.message && !response.message.includes('error')) {
+          this.notificationService.showSuccess('Promoción actualizada exitosamente!');
+          setTimeout(() => {
+            this.router.navigate(['/promociones/lista']);
+          }, 1500);
         } else {
           this.notificationService.showError(
             response.message || 'Error al actualizar la promoción'
@@ -152,15 +145,22 @@ export class PromocionEdit implements OnInit {
       },
       error: (err: any) => {
         this.enviando.set(false);
+        console.error('Error en actualización:', err);
+
         let errorMessage = 'Error al actualizar la promoción';
-        if (err.status === 400) {
-          errorMessage =
-            err.error?.message || 'Datos inválidos. Verifique la información ingresada.';
+
+        if (err.error?.message) {
+          errorMessage = err.error.message;
+        } else if (err.status === 400) {
+          errorMessage = 'Datos inválidos. Verifique la información ingresada.';
         } else if (err.status === 404) {
           errorMessage = 'Promoción no encontrada.';
         } else if (err.status === 409) {
           errorMessage = 'El título de la promoción ya existe.';
+        } else if (err.status === 500) {
+          errorMessage = 'Error interno del servidor. Intente nuevamente.';
         }
+
         this.notificationService.showError(errorMessage);
       },
     });

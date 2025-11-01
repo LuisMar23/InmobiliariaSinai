@@ -30,7 +30,7 @@ enum EstadoCotizacion {
 }
 
 enum EstadoVenta {
-  PENDIENTE_PAGO
+  PENDIENTE
   PAGADO
   CANCELADO
 }
@@ -213,7 +213,7 @@ model Venta {
   inmuebleTipo TipoInmueble @default(LOTE)
   inmuebleId   Int
   precioFinal  Decimal      @map("precio_final") @db.Decimal(12, 2)
-  estado       EstadoVenta  @default(PENDIENTE_PAGO)
+  estado       EstadoVenta  @default(PENDIENTE)
   createdAt    DateTime     @default(now()) @map("created_at")
   updatedAt    DateTime     @updatedAt @map("updated_at")
 

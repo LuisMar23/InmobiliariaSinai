@@ -52,18 +52,18 @@ export interface PlanPagoDto {
   periodicidad: string;
   fecha_inicio: string;
   fecha_vencimiento: string;
-  estado: string; // CAMBIADO: quitado el optional
+  estado: string;
   pagos?: PagoPlanDto[];
-  // Campos calculados
   saldo_pendiente?: number;
   total_pagado?: number;
   porcentaje_pagado?: number;
+  monto_cuota?: number;
 }
 
 export interface PagoPlanDto {
   id_pago_plan?: number;
   uuid?: string;
-  plan_pago_id: number; // CAMBIADO: quitado el optional
+  plan_pago_id: number;
   monto: number;
   fecha_pago?: string;
   observacion?: string;
@@ -71,12 +71,20 @@ export interface PagoPlanDto {
 
 export interface CreateVentaDto {
   clienteId: number;
-  asesorId: number;
+  asesorId?: number;
   inmuebleTipo: string;
   inmuebleId: number;
   precioFinal: number;
   estado?: string;
-  plan_pago?: PlanPagoDto;
+  observaciones?: string;
+  plan_pago?: CreatePlanPagoDto;
+}
+
+export interface CreatePlanPagoDto {
+  monto_inicial: number;
+  plazo: number;
+  periodicidad: string;
+  fecha_inicio: string;
 }
 
 export interface UpdateVentaDto {
@@ -85,6 +93,8 @@ export interface UpdateVentaDto {
   inmuebleId?: number;
   precioFinal?: number;
   estado?: string;
+  observaciones?: string;
+  plan_pago?: CreatePlanPagoDto;
 }
 
 export interface RegistrarPagoDto {
@@ -92,4 +102,5 @@ export interface RegistrarPagoDto {
   monto: number;
   fecha_pago?: string;
   observacion?: string;
+  metodoPago?: string;
 }

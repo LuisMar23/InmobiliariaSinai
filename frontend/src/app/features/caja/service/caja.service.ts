@@ -20,26 +20,23 @@ export class CajaService {
         this.cajas.set(data);
         this.cargando.set(false);
       },
-      error: () => this.cargando.set(false),
+      error: (error) => {
+        console.error('Error al cargar cajas:', error);
+        this.cargando.set(false);
+      },
     });
   }
 
   crearCaja(data: { nombre: string; montoInicial: number; usuarioAperturaId: number }) {
-    return this.http.post<Caja>(this.apiUrl, data).subscribe((nueva) => {
-      this.cajas.update((prev) => [...prev, nueva]);
-    });
+    return this.http.post<Caja>(this.apiUrl, data);
   }
 
   abrirCaja(id: number, montoInicial: number) {
-    return this.http.post<Caja>(`${this.apiUrl}/${id}/abrir`, { montoInicial }).subscribe((upd) => {
-      this.cajas.update((prev) => prev.map((c) => (c.id === id ? upd : c)));
-    });
+    return this.http.post<Caja>(`${this.apiUrl}/${id}/abrir`, { montoInicial });
   }
 
   cerrarCaja(id: number) {
-    return this.http.post<Caja>(`${this.apiUrl}/${id}/cerrar`, {}).subscribe((upd) => {
-      this.cajas.update((prev) => prev.map((c) => (c.id === id ? upd : c)));
-    });
+    return this.http.post<Caja>(`${this.apiUrl}/${id}/cerrar`, {});
   }
 
   obtenerCaja(id: number) {

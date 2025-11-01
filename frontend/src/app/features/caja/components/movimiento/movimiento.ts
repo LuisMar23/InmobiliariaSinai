@@ -47,6 +47,7 @@ export class MovimientoModalComponent {
   guardar() {
     if (this.form.invalid) {
       this.marcarCamposComoSucios();
+      this.notificationSvc.showWarning('Complete todos los campos requeridos');
       return;
     }
 
@@ -63,9 +64,7 @@ export class MovimientoModalComponent {
 
     this.movimientoSvc.crearMovimiento(movimientoData).subscribe({
       next: (movimiento) => {
-        this.notificationSvc.showSuccess(
-          `Movimiento de ${movimientoData.tipo.toLowerCase()} registrado correctamente`
-        );
+        this.notificationSvc.showSuccess('Movimiento registrado correctamente');
         this.cargando.set(false);
         this.close();
         this.movimientoCreado.emit();

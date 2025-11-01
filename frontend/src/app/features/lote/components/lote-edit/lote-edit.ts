@@ -23,6 +23,10 @@ export class LoteEdit implements OnInit {
   loteData: any = null;
   urbanizaciones = signal<UrbanizacionDto[]>([]);
 
+  // Signals para búsqueda de urbanización
+  searchUrbanizacion = signal<string>('');
+  showUrbanizacionDropdown = signal<boolean>(false);
+
   router = inject(Router);
   private fb = inject(FormBuilder);
   private loteSvc = inject(LoteService);
@@ -64,6 +68,38 @@ export class LoteEdit implements OnInit {
     });
   }
 
+  // Métodos para filtrado de urbanizaciones
+  filteredUrbanizaciones() {
+    const search = this.searchUrbanizacion().toLowerCase();
+    if (!search) return this.urbanizaciones();
+
+    return this.urbanizaciones().filter((urbanizacion) =>
+      urbanizacion.nombre?.toLowerCase().includes(search)
+    );
+  }
+
+  // Métodos para selección de urbanización
+  selectUrbanizacion(urbanizacion: UrbanizacionDto) {
+    if (urbanizacion.id) {
+      this.loteForm.patchValue({
+        urbanizacionId: urbanizacion.id.toString(),
+      });
+      this.searchUrbanizacion.set(urbanizacion.nombre || '');
+      this.showUrbanizacionDropdown.set(false);
+    }
+  }
+
+  // Métodos para mostrar/ocultar dropdown
+  toggleUrbanizacionDropdown() {
+    this.showUrbanizacionDropdown.set(!this.showUrbanizacionDropdown());
+  }
+
+  onUrbanizacionBlur() {
+    setTimeout(() => {
+      this.showUrbanizacionDropdown.set(false);
+    }, 200);
+  }
+
   obtenerLote(): void {
     this.loteId = Number(this.route.snapshot.paramMap.get('id'));
     if (!this.loteId) {
@@ -92,6 +128,11 @@ export class LoteEdit implements OnInit {
   }
 
   cargarDatosFormulario(lote: any): void {
+    // Encontrar la urbanización seleccionada para mostrar en el input de búsqueda
+    const urbanizacionSeleccionada = this.urbanizaciones().find(
+      (u) => u.id === lote.urbanizacionId
+    );
+
     this.loteForm.patchValue({
       urbanizacionId: lote.urbanizacionId?.toString() || '',
       numeroLote: lote.numeroLote || '',
@@ -101,6 +142,11 @@ export class LoteEdit implements OnInit {
       ubicacion: lote.ubicacion || '',
       estado: lote.estado || 'DISPONIBLE',
     });
+
+    // Establecer el valor de búsqueda
+    if (urbanizacionSeleccionada) {
+      this.searchUrbanizacion.set(urbanizacionSeleccionada.nombre || '');
+    }
   }
 
   formatDate(date: any): string {

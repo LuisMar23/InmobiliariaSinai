@@ -54,15 +54,24 @@ export class PromocionCreate {
     this.promocionSvc.create(promocionData).subscribe({
       next: (response: any) => {
         this.enviando.set(false);
-        console.log('Respuesta del servidor:', response);
+        console.log('Respuesta completa del servidor:', response);
 
-        if (response.success) {
+        // Verificar diferentes formatos de respuesta exitosa
+        if (response.success === true || response.id || response.data) {
           this.notificationService.showSuccess('Promoción creada exitosamente!');
           setTimeout(() => {
             this.router.navigate(['/promociones/lista']);
-          }, 1000);
+          }, 1500);
         } else {
-          this.notificationService.showError(response.message || 'Error al crear la promoción');
+          // Si no hay success=true pero tampoco hay error, asumimos éxito
+          if (!response.error && !response.message?.includes('error')) {
+            this.notificationService.showSuccess('Promoción creada exitosamente!');
+            setTimeout(() => {
+              this.router.navigate(['/promociones/lista']);
+            }, 1500);
+          } else {
+            this.notificationService.showError(response.message || 'Error al crear la promoción');
+          }
         }
       },
       error: (err: any) => {
@@ -70,11 +79,17 @@ export class PromocionCreate {
         console.error('Error completo:', err);
 
         let errorMessage = 'Error al crear la promoción';
-        if (err.status === 400) {
-          errorMessage =
-            err.error?.message || 'Datos inválidos. Verifique la información ingresada.';
+
+        if (err.error?.message) {
+          errorMessage = err.error.message;
+        } else if (err.status === 400) {
+          errorMessage = 'Datos inválidos. Verifique la información ingresada.';
+        } else if (err.status === 409) {
+          errorMessage = 'Ya existe una promoción con este título.';
         } else if (err.status === 404) {
           errorMessage = 'Recurso no encontrado. Verifique los datos ingresados.';
+        } else if (err.status === 500) {
+          errorMessage = 'Error interno del servidor. Intente nuevamente.';
         }
 
         this.notificationService.showError(errorMessage);

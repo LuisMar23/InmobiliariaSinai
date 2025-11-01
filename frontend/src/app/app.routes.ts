@@ -68,6 +68,11 @@ export const routes: Routes = [
         loadChildren: () =>
           import('./features/caja/caja.routes').then((r) => r.CajaRoutingModule),
       },
+      {
+        path: 'visitas',
+        loadChildren: () =>
+          import('./features/visita/visita.routes').then((r) => r.VisitasRoutingModule),
+      },
     ],
   },
   { path: '**', redirectTo: '/login' },
