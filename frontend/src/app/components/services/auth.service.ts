@@ -26,10 +26,32 @@ export interface RegisterResponse {
   };
 }
 
+export interface ChangePasswordResponse {
+  success: boolean;
+  message: string;
+  data: {
+    user: {
+      username: string;
+      email: string;
+      role: string;
+    };
+  };
+}
+
 export interface ForgotPasswordResponse {
   message?: string;
   success?: boolean;
   data?: any;
+}
+
+export interface UserResponse {
+  success: boolean;
+  data: {
+    user?: any;
+    users?: any[];
+    clientes?: any[];
+  };
+  message?: string;
 }
 
 @Injectable({
@@ -42,6 +64,7 @@ export class AuthService {
 
   constructor(private http: HttpClient, private router: Router) {}
 
+  // ========== AUTH METHODS ==========
   login(data: LoginDto): Observable<LoginResponse> {
     return this.http.post<LoginResponse>(`${this.apiUrl}/auth/login`, data).pipe(
       tap((res) => {
@@ -74,7 +97,12 @@ export class AuthService {
   }
 
   register(data: RegisterDto): Observable<RegisterResponse> {
-    return this.http.post<RegisterResponse>(`${this.apiUrl}/auth/register`, data).pipe(
+    const registerData = {
+      ...data,
+      role: data.role || 'USUARIO',
+    };
+
+    return this.http.post<RegisterResponse>(`${this.apiUrl}/auth/register`, registerData).pipe(
       tap((res) => {
         console.log('Respuesta registro completa:', res);
       }),
@@ -107,6 +135,29 @@ export class AuthService {
           status: error.status,
           error: error.error,
         }));
+      })
+    );
+  }
+
+  changePassword(data: {
+    identifier: string;
+    newPassword: string;
+    confirmPassword: string;
+  }): Observable<ChangePasswordResponse> {
+    return this.http.post<ChangePasswordResponse>(`${this.apiUrl}/auth/change-password`, data).pipe(
+      catchError((error) => {
+        console.error('Error en change password service:', error);
+        let errorMessage = 'Error al cambiar la contraseña';
+
+        if (error.error?.message) {
+          errorMessage = error.error.message;
+        } else if (error.status === 404) {
+          errorMessage = 'No se encontró ningún usuario con ese username o email';
+        } else if (error.status === 400) {
+          errorMessage = 'Datos inválidos. Verifica la información ingresada.';
+        }
+
+        return throwError(() => new Error(errorMessage));
       })
     );
   }
@@ -159,6 +210,160 @@ export class AuthService {
       );
   }
 
+  // ========== USERS CRUD METHODS (ADMINISTRADOR, ASESOR, SECRETARIA, USUARIO) ==========
+  getAllUsers(): Observable<UserResponse> {
+    return this.http.get<UserResponse>(`${this.apiUrl}/auth/users`).pipe(
+      catchError((error) => {
+        console.error('Error al obtener usuarios:', error);
+        let errorMessage = 'Error al cargar los usuarios';
+
+        if (error.error?.message) {
+          errorMessage = error.error.message;
+        }
+
+        return throwError(() => new Error(errorMessage));
+      })
+    );
+  }
+
+  getUserById(id: number): Observable<UserResponse> {
+    return this.http.get<UserResponse>(`${this.apiUrl}/auth/users/${id}`).pipe(
+      catchError((error) => {
+        console.error('Error al obtener usuario:', error);
+        let errorMessage = 'Error al cargar el usuario';
+
+        if (error.error?.message) {
+          errorMessage = error.error.message;
+        } else if (error.status === 404) {
+          errorMessage = 'Usuario no encontrado';
+        }
+
+        return throwError(() => new Error(errorMessage));
+      })
+    );
+  }
+
+  updateUser(id: number, userData: any): Observable<UserResponse> {
+    return this.http.put<UserResponse>(`${this.apiUrl}/auth/users/${id}`, userData).pipe(
+      catchError((error) => {
+        console.error('Error al actualizar usuario:', error);
+        let errorMessage = 'Error al actualizar el usuario';
+
+        if (error.error?.message) {
+          errorMessage = error.error.message;
+        } else if (error.status === 404) {
+          errorMessage = 'Usuario no encontrado';
+        } else if (error.status === 409) {
+          errorMessage = 'El email, username, CI o teléfono ya está en uso';
+        }
+
+        return throwError(() => new Error(errorMessage));
+      })
+    );
+  }
+
+  deleteUser(id: number): Observable<UserResponse> {
+    return this.http.delete<UserResponse>(`${this.apiUrl}/auth/users/${id}`).pipe(
+      catchError((error) => {
+        console.error('Error al eliminar usuario:', error);
+        let errorMessage = 'Error al eliminar el usuario';
+
+        if (error.error?.message) {
+          errorMessage = error.error.message;
+        } else if (error.status === 404) {
+          errorMessage = 'Usuario no encontrado';
+        }
+
+        return throwError(() => new Error(errorMessage));
+      })
+    );
+  }
+
+  // ========== CLIENTES CRUD METHODS (CLIENTES QUE NO INICIAN SESIÓN) ==========
+  registerCliente(clienteData: any): Observable<UserResponse> {
+    return this.http.post<UserResponse>(`${this.apiUrl}/auth/register-cliente`, clienteData).pipe(
+      catchError((error) => {
+        console.error('Error al registrar cliente:', error);
+        let errorMessage = 'Error al registrar el cliente';
+
+        if (error.error?.message) {
+          errorMessage = error.error.message;
+        } else if (error.status === 409) {
+          errorMessage = 'Ya existe un cliente con este CI o teléfono';
+        }
+
+        return throwError(() => new Error(errorMessage));
+      })
+    );
+  }
+
+  getClientes(): Observable<UserResponse> {
+    return this.http.get<UserResponse>(`${this.apiUrl}/auth/clientes`).pipe(
+      catchError((error) => {
+        console.error('Error al obtener clientes:', error);
+        let errorMessage = 'Error al cargar los clientes';
+
+        if (error.error?.message) {
+          errorMessage = error.error.message;
+        }
+
+        return throwError(() => new Error(errorMessage));
+      })
+    );
+  }
+
+  getClienteById(id: number): Observable<UserResponse> {
+    return this.http.get<UserResponse>(`${this.apiUrl}/auth/users/${id}`).pipe(
+      catchError((error) => {
+        console.error('Error al obtener cliente:', error);
+        let errorMessage = 'Error al cargar el cliente';
+
+        if (error.error?.message) {
+          errorMessage = error.error.message;
+        } else if (error.status === 404) {
+          errorMessage = 'Cliente no encontrado';
+        }
+
+        return throwError(() => new Error(errorMessage));
+      })
+    );
+  }
+
+  updateCliente(id: number, clienteData: any): Observable<UserResponse> {
+    return this.http.put<UserResponse>(`${this.apiUrl}/auth/clientes/${id}`, clienteData).pipe(
+      catchError((error) => {
+        console.error('Error al actualizar cliente:', error);
+        let errorMessage = 'Error al actualizar el cliente';
+
+        if (error.error?.message) {
+          errorMessage = error.error.message;
+        } else if (error.status === 404) {
+          errorMessage = 'Cliente no encontrado';
+        }
+
+        return throwError(() => new Error(errorMessage));
+      })
+    );
+  }
+
+  deleteCliente(id: number): Observable<UserResponse> {
+    return this.http.delete<UserResponse>(`${this.apiUrl}/auth/clientes/${id}`).pipe(
+      catchError((error) => {
+        console.error('Error al eliminar cliente:', error);
+        let errorMessage = 'Error al eliminar el cliente';
+
+        if (error.error?.message) {
+          errorMessage = error.error.message;
+        } else if (error.status === 404) {
+          errorMessage = 'Cliente no encontrado';
+        }
+
+        return throwError(() => new Error(errorMessage));
+      })
+    );
+  }
+
+  // ========== UTILITY METHODS ==========
   getToken(): string | null {
     if (typeof window !== 'undefined') {
       return localStorage.getItem(this.tokenKey) || sessionStorage.getItem(this.tokenKey);
@@ -194,5 +399,19 @@ export class AuthService {
       }
     }
     return null;
+  }
+
+  hasRole(role: string): boolean {
+    const user = this.getCurrentUser();
+    return user?.role === role;
+  }
+
+  isAdmin(): boolean {
+    return this.hasRole('ADMINISTRADOR');
+  }
+
+  canManageUsers(): boolean {
+    const user = this.getCurrentUser();
+    return user?.role === 'ADMINISTRADOR' || user?.role === 'ASESOR';
   }
 }

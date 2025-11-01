@@ -2,10 +2,14 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/config/prisma.service';
-import { CreateLoteDto, EstadoInmueble } from './dto/create-lote.dto';
-import { UpdateLoteDto } from './dto/update-lote.dto';
+import {
+  CreateLoteDto,
+  EstadoInmueble,
+  UpdateLoteDto,
+} from './dto/create-lote.dto';
 
 @Injectable()
 export class LotesService {
@@ -65,6 +69,10 @@ export class LotesService {
           superficieM2: createLoteDto.superficieM2,
           precioBase: createLoteDto.precioBase,
           estado: createLoteDto.estado || EstadoInmueble.DISPONIBLE,
+          descripcion: createLoteDto.descripcion,
+          ubicacion: createLoteDto.ubicacion,
+          latitud: createLoteDto.latitud,
+          longitud: createLoteDto.longitud,
         },
         include: {
           urbanizacion: {
@@ -112,6 +120,8 @@ export class LotesService {
             cotizaciones: true,
             ventas: true,
             reservas: true,
+            visitas: true,
+            imagenes: true,
           },
         },
       },
@@ -146,6 +156,17 @@ export class LotesService {
           },
         },
         cotizaciones: {
+          include: {
+            cliente: {
+              select: {
+                id: true,
+                fullName: true,
+                email: true,
+              },
+            },
+          },
+        },
+        visitas: {
           include: {
             cliente: {
               select: {
@@ -210,7 +231,17 @@ export class LotesService {
 
       const loteActualizado = await prisma.lote.update({
         where: { id },
-        data: updateLoteDto,
+        data: {
+          urbanizacionId: updateLoteDto.urbanizacionId,
+          numeroLote: updateLoteDto.numeroLote,
+          superficieM2: updateLoteDto.superficieM2,
+          precioBase: updateLoteDto.precioBase,
+          estado: updateLoteDto.estado,
+          descripcion: updateLoteDto.descripcion,
+          ubicacion: updateLoteDto.ubicacion,
+          latitud: updateLoteDto.latitud,
+          longitud: updateLoteDto.longitud,
+        },
         include: {
           urbanizacion: {
             select: {
@@ -247,6 +278,8 @@ export class LotesService {
           cotizaciones: true,
           ventas: true,
           reservas: true,
+          visitas: true,
+          imagenes: true,
         },
       });
 
@@ -254,12 +287,15 @@ export class LotesService {
         throw new NotFoundException(`Lote con ID ${id} no encontrado`);
       }
 
-      // Verificar si tiene relaciones
-      if (
+      // Verificar si tiene relaciones activas
+      const tieneRelaciones =
         lote.cotizaciones.length > 0 ||
         lote.ventas.length > 0 ||
-        lote.reservas.length > 0
-      ) {
+        lote.reservas.length > 0 ||
+        lote.visitas.length > 0 ||
+        lote.imagenes.length > 0;
+
+      if (tieneRelaciones) {
         throw new BadRequestException(
           'No se puede eliminar el lote porque tiene relaciones activas',
         );

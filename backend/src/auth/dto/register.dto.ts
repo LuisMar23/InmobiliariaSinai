@@ -13,6 +13,7 @@ export enum UserRole {
   ASESOR = 'ASESOR',
   SECRETARIA = 'SECRETARIA',
   CLIENTE = 'CLIENTE',
+  USUARIO = 'USUARIO',
 }
 
 export class RegisterDto {
@@ -46,7 +47,7 @@ export class RegisterDto {
   @IsOptional()
   @IsEnum(UserRole, {
     message:
-      'Rol inválido. Valores permitidos: ADMINISTRADOR, ASESOR, SECRETARIA, CLIENTE',
+      'Rol inválido. Valores permitidos: ADMINISTRADOR, ASESOR, SECRETARIA, CLIENTE, USUARIO',
   })
-  role?: UserRole;
+  role: UserRole;
 }

@@ -1,4 +1,3 @@
-// src/app/modules/cotizacion/components/cotizacion-edit/cotizacion-edit.component.ts
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule, DatePipe } from '@angular/common';
@@ -7,8 +6,9 @@ import { NotificationService } from '../../../../core/services/notification.serv
 import { UserDto } from '../../../../core/interfaces/user.interface';
 import { LoteDto } from '../../../../core/interfaces/lote.interface';
 import { CotizacionService } from '../../service/cotizacion.service';
-import { UserService } from '../../../../core/services/users.service';
 import { LoteService } from '../../../lote/service/lote.service';
+import { UserService } from '../../../users/services/users.service';
+import { AuthService } from '../../../../components/services/auth.service';
 
 @Component({
   selector: 'app-cotizacion-edit',
@@ -25,8 +25,15 @@ export class CotizacionEdit implements OnInit {
   enviando = signal<boolean>(false);
   cotizacionData: any = null;
   clientes = signal<UserDto[]>([]);
-  asesores = signal<UserDto[]>([]);
   lotes = signal<LoteDto[]>([]);
+
+  // Signals para búsqueda
+  searchCliente = signal<string>('');
+  searchLote = signal<string>('');
+
+  // Signals para mostrar/ocultar dropdowns
+  showClientesDropdown = signal<boolean>(false);
+  showLotesDropdown = signal<boolean>(false);
 
   router = inject(Router);
   private fb = inject(FormBuilder);
@@ -36,6 +43,7 @@ export class CotizacionEdit implements OnInit {
   private route = inject(ActivatedRoute);
   private notificationService = inject(NotificationService);
   private datePipe = inject(DatePipe);
+  private authService = inject(AuthService);
 
   constructor() {
     this.cotizacionForm = this.crearFormularioCotizacion();
@@ -43,7 +51,6 @@ export class CotizacionEdit implements OnInit {
 
   ngOnInit(): void {
     this.cargarClientes();
-    this.cargarAsesores();
     this.cargarLotes();
     this.obtenerCotizacion();
   }
@@ -51,7 +58,6 @@ export class CotizacionEdit implements OnInit {
   crearFormularioCotizacion(): FormGroup {
     return this.fb.group({
       clienteId: ['', Validators.required],
-      asesorId: ['', Validators.required],
       inmuebleTipo: ['LOTE', Validators.required],
       inmuebleId: ['', Validators.required],
       precioOfertado: [0, [Validators.required, Validators.min(0.01)]],
@@ -60,32 +66,25 @@ export class CotizacionEdit implements OnInit {
   }
 
   cargarClientes(): void {
-    this.userSvc.getAll().subscribe({
+    this.authService.getClientes().subscribe({
       next: (response: any) => {
-        console.log('Respuesta completa de usuarios:', response);
+        console.log('Respuesta completa de clientes:', response);
 
-        // CORREGIDO: El backend devuelve el array directamente, no response.data
-        let usuarios: any[] = [];
+        let clientes: any[] = [];
 
-        if (Array.isArray(response)) {
-          usuarios = response;
+        if (response.data && Array.isArray(response.data.clientes)) {
+          clientes = response.data.clientes;
         } else if (response.data && Array.isArray(response.data)) {
-          usuarios = response.data;
+          clientes = response.data;
+        } else if (Array.isArray(response)) {
+          clientes = response;
         } else {
           console.error('Estructura de respuesta no reconocida:', response);
+          this.notificationService.showWarning('No se pudieron cargar los clientes');
           return;
         }
 
-        console.log('Usuarios obtenidos:', usuarios);
-
-        // Filtra solo usuarios con rol CLIENTE
-        const clientes = usuarios.filter((user: any) => {
-          const rol = user.role?.toUpperCase();
-          console.log(`Usuario: ${user.fullName}, Rol: ${rol}`);
-          return rol === 'CLIENTE';
-        });
-
-        console.log('Clientes filtrados:', clientes);
+        console.log('Clientes cargados:', clientes);
         this.clientes.set(clientes);
 
         if (clientes.length === 0) {
@@ -95,46 +94,6 @@ export class CotizacionEdit implements OnInit {
       error: (err: any) => {
         console.error('Error al cargar clientes:', err);
         this.notificationService.showError('No se pudieron cargar los clientes');
-      },
-    });
-  }
-
-  cargarAsesores(): void {
-    this.userSvc.getAll().subscribe({
-      next: (response: any) => {
-        console.log('Respuesta completa de usuarios:', response);
-
-        // CORREGIDO: El backend devuelve el array directamente, no response.data
-        let usuarios: any[] = [];
-
-        if (Array.isArray(response)) {
-          usuarios = response;
-        } else if (response.data && Array.isArray(response.data)) {
-          usuarios = response.data;
-        } else {
-          console.error('Estructura de respuesta no reconocida:', response);
-          return;
-        }
-
-        console.log('Usuarios obtenidos:', usuarios);
-
-        // Filtra solo usuarios con rol ASESOR
-        const asesores = usuarios.filter((user: any) => {
-          const rol = user.role?.toUpperCase();
-          console.log(`Usuario: ${user.fullName}, Rol: ${rol}`);
-          return rol === 'ASESOR';
-        });
-
-        console.log('Asesores filtrados:', asesores);
-        this.asesores.set(asesores);
-
-        if (asesores.length === 0) {
-          this.notificationService.showWarning('No se encontraron asesores registrados');
-        }
-      },
-      error: (err: any) => {
-        console.error('Error al cargar asesores:', err);
-        this.notificationService.showError('No se pudieron cargar los asesores');
       },
     });
   }
@@ -149,6 +108,76 @@ export class CotizacionEdit implements OnInit {
         this.notificationService.showError('No se pudieron cargar los lotes');
       },
     });
+  }
+
+  // Métodos para filtrado de clientes
+  filteredClientes() {
+    const search = this.searchCliente().toLowerCase();
+    if (!search) return this.clientes();
+
+    return this.clientes().filter((cliente) => cliente.fullName?.toLowerCase().includes(search));
+  }
+
+  // Métodos para filtrado de lotes
+  filteredLotes() {
+    const search = this.searchLote().toLowerCase();
+    if (!search) return this.lotes();
+
+    return this.lotes().filter(
+      (lote) =>
+        lote.numeroLote?.toLowerCase().includes(search) ||
+        lote.estado?.toLowerCase().includes(search) ||
+        lote.precioBase?.toString().includes(search) ||
+        lote.urbanizacion?.nombre?.toLowerCase().includes(search)
+    );
+  }
+
+  // Métodos para selección de cliente
+  selectCliente(cliente: UserDto) {
+    this.cotizacionForm.patchValue({
+      clienteId: cliente.id.toString(),
+    });
+    this.searchCliente.set(cliente.fullName || '');
+    this.showClientesDropdown.set(false);
+  }
+
+  // Métodos para selección de lote
+  selectLote(lote: LoteDto) {
+    this.cotizacionForm.patchValue({
+      inmuebleId: lote.id.toString(),
+    });
+    this.searchLote.set(
+      `${lote.numeroLote} - ${lote.urbanizacion?.nombre} - ${lote.estado} - $${lote.precioBase}`
+    );
+    this.showLotesDropdown.set(false);
+  }
+
+  // Métodos para mostrar/ocultar dropdowns
+  toggleClientesDropdown() {
+    this.showClientesDropdown.set(!this.showClientesDropdown());
+    if (this.showClientesDropdown()) {
+      this.showLotesDropdown.set(false);
+    }
+  }
+
+  toggleLotesDropdown() {
+    this.showLotesDropdown.set(!this.showLotesDropdown());
+    if (this.showLotesDropdown()) {
+      this.showClientesDropdown.set(false);
+    }
+  }
+
+  // Métodos para cuando el input pierde el foco
+  onClienteBlur() {
+    setTimeout(() => {
+      this.showClientesDropdown.set(false);
+    }, 200);
+  }
+
+  onLoteBlur() {
+    setTimeout(() => {
+      this.showLotesDropdown.set(false);
+    }, 200);
   }
 
   obtenerCotizacion(): void {
@@ -179,14 +208,27 @@ export class CotizacionEdit implements OnInit {
   }
 
   cargarDatosFormulario(cotizacion: any): void {
+    // Encontrar el cliente y lote seleccionados para mostrar en los inputs de búsqueda
+    const clienteSeleccionado = this.clientes().find((c) => c.id === cotizacion.clienteId);
+    const loteSeleccionado = this.lotes().find((l) => l.id === cotizacion.inmuebleId);
+
     this.cotizacionForm.patchValue({
       clienteId: cotizacion.clienteId?.toString() || '',
-      asesorId: cotizacion.asesorId?.toString() || '',
       inmuebleTipo: cotizacion.inmuebleTipo || 'LOTE',
       inmuebleId: cotizacion.inmuebleId?.toString() || '',
       precioOfertado: cotizacion.precioOfertado || 0,
       estado: cotizacion.estado || 'PENDIENTE',
     });
+
+    // Establecer los valores de búsqueda
+    if (clienteSeleccionado) {
+      this.searchCliente.set(clienteSeleccionado.fullName || '');
+    }
+    if (loteSeleccionado) {
+      this.searchLote.set(
+        `${loteSeleccionado.numeroLote} - ${loteSeleccionado.urbanizacion?.nombre} - ${loteSeleccionado.estado} - $${loteSeleccionado.precioBase}`
+      );
+    }
   }
 
   formatDate(date: any): string {
@@ -215,9 +257,9 @@ export class CotizacionEdit implements OnInit {
     const dataActualizada = {
       ...this.cotizacionForm.value,
       clienteId: Number(this.cotizacionForm.value.clienteId),
-      asesorId: Number(this.cotizacionForm.value.asesorId),
       inmuebleId: Number(this.cotizacionForm.value.inmuebleId),
       precioOfertado: Number(this.cotizacionForm.value.precioOfertado),
+      inmuebleTipo: 'LOTE', // Siempre será LOTE
     };
 
     console.log('Datos a actualizar:', dataActualizada);

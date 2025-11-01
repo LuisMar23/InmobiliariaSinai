@@ -1,4 +1,3 @@
-// src/app/modules/cotizacion/services/cotizacion.service.ts
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
@@ -51,6 +50,12 @@ export class CotizacionService {
   delete(id: number): Observable<any> {
     return this.http
       .delete<ApiResponse<any>>(`${this.apiUrl}/${id}`)
+      .pipe(map((response) => response));
+  }
+
+  getByCliente(clienteId: number): Observable<any> {
+    return this.http
+      .get<ApiResponse<any>>(`${this.apiUrl}/cliente/${clienteId}`)
       .pipe(map((response) => response));
   }
 }

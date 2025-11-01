@@ -23,6 +23,10 @@ export class LoteEdit implements OnInit {
   loteData: any = null;
   urbanizaciones = signal<UrbanizacionDto[]>([]);
 
+  // Signals para búsqueda de urbanización
+  searchUrbanizacion = signal<string>('');
+  showUrbanizacionDropdown = signal<boolean>(false);
+
   router = inject(Router);
   private fb = inject(FormBuilder);
   private loteSvc = inject(LoteService);
@@ -46,6 +50,8 @@ export class LoteEdit implements OnInit {
       numeroLote: ['', [Validators.required, Validators.minLength(2)]],
       superficieM2: [0, [Validators.required, Validators.min(0.01)]],
       precioBase: [0, [Validators.required, Validators.min(0.01)]],
+      descripcion: [''],
+      ubicacion: [''],
       estado: ['DISPONIBLE'],
     });
   }
@@ -62,6 +68,38 @@ export class LoteEdit implements OnInit {
     });
   }
 
+  // Métodos para filtrado de urbanizaciones
+  filteredUrbanizaciones() {
+    const search = this.searchUrbanizacion().toLowerCase();
+    if (!search) return this.urbanizaciones();
+
+    return this.urbanizaciones().filter((urbanizacion) =>
+      urbanizacion.nombre?.toLowerCase().includes(search)
+    );
+  }
+
+  // Métodos para selección de urbanización
+  selectUrbanizacion(urbanizacion: UrbanizacionDto) {
+    if (urbanizacion.id) {
+      this.loteForm.patchValue({
+        urbanizacionId: urbanizacion.id.toString(),
+      });
+      this.searchUrbanizacion.set(urbanizacion.nombre || '');
+      this.showUrbanizacionDropdown.set(false);
+    }
+  }
+
+  // Métodos para mostrar/ocultar dropdown
+  toggleUrbanizacionDropdown() {
+    this.showUrbanizacionDropdown.set(!this.showUrbanizacionDropdown());
+  }
+
+  onUrbanizacionBlur() {
+    setTimeout(() => {
+      this.showUrbanizacionDropdown.set(false);
+    }, 200);
+  }
+
   obtenerLote(): void {
     this.loteId = Number(this.route.snapshot.paramMap.get('id'));
     if (!this.loteId) {
@@ -72,10 +110,10 @@ export class LoteEdit implements OnInit {
 
     this.cargando.set(true);
     this.loteSvc.getById(this.loteId).subscribe({
-      next: (resp) => {
-        if (resp) {
-          this.loteData = resp;
-          this.cargarDatosFormulario(resp);
+      next: (lote) => {
+        if (lote) {
+          this.loteData = lote;
+          this.cargarDatosFormulario(lote);
         } else {
           this.error.set('No se encontró el lote');
         }
@@ -90,16 +128,27 @@ export class LoteEdit implements OnInit {
   }
 
   cargarDatosFormulario(lote: any): void {
+    // Encontrar la urbanización seleccionada para mostrar en el input de búsqueda
+    const urbanizacionSeleccionada = this.urbanizaciones().find(
+      (u) => u.id === lote.urbanizacionId
+    );
+
     this.loteForm.patchValue({
       urbanizacionId: lote.urbanizacionId?.toString() || '',
       numeroLote: lote.numeroLote || '',
       superficieM2: lote.superficieM2 || 0,
       precioBase: lote.precioBase || 0,
+      descripcion: lote.descripcion || '',
+      ubicacion: lote.ubicacion || '',
       estado: lote.estado || 'DISPONIBLE',
     });
+
+    // Establecer el valor de búsqueda
+    if (urbanizacionSeleccionada) {
+      this.searchUrbanizacion.set(urbanizacionSeleccionada.nombre || '');
+    }
   }
 
-  // Método para formatear fecha
   formatDate(date: any): string {
     if (!date) return 'N/A';
     try {
@@ -123,36 +172,52 @@ export class LoteEdit implements OnInit {
 
     this.enviando.set(true);
 
-    // Convertir urbanizacionId a número
-    const dataActualizada = {
-      ...this.loteForm.value,
-      urbanizacionId: Number(this.loteForm.value.urbanizacionId),
-      superficieM2: Number(this.loteForm.value.superficieM2),
-      precioBase: Number(this.loteForm.value.precioBase),
-    };
+    const dataActualizada: any = {};
 
-    console.log('Datos a actualizar:', dataActualizada);
+    if (this.loteForm.value.urbanizacionId)
+      dataActualizada.urbanizacionId = Number(this.loteForm.value.urbanizacionId);
+    if (this.loteForm.value.numeroLote) dataActualizada.numeroLote = this.loteForm.value.numeroLote;
+    if (this.loteForm.value.superficieM2)
+      dataActualizada.superficieM2 = Number(this.loteForm.value.superficieM2);
+    if (this.loteForm.value.precioBase)
+      dataActualizada.precioBase = Number(this.loteForm.value.precioBase);
+    if (this.loteForm.value.descripcion !== undefined)
+      dataActualizada.descripcion = this.loteForm.value.descripcion;
+    if (this.loteForm.value.ubicacion !== undefined)
+      dataActualizada.ubicacion = this.loteForm.value.ubicacion;
+    if (this.loteForm.value.estado) dataActualizada.estado = this.loteForm.value.estado;
 
     this.loteSvc.update(this.loteId, dataActualizada).subscribe({
-      next: (response) => {
+      next: (response: any) => {
         this.enviando.set(false);
-        this.notificationService.showSuccess('Lote actualizado exitosamente!');
-        setTimeout(() => {
-          this.router.navigate(['/lotes/lista']);
-        }, 1000);
-      },
-      error: (err) => {
-        this.enviando.set(false);
-        console.error('Error al actualizar:', err);
 
+        if (response.success) {
+          this.notificationService.showSuccess(
+            response.message || 'Lote actualizado exitosamente!'
+          );
+          setTimeout(() => {
+            this.router.navigate(['/lotes/lista']);
+          }, 1000);
+        } else if (response.id) {
+          this.notificationService.showSuccess('Lote actualizado exitosamente!');
+          setTimeout(() => {
+            this.router.navigate(['/lotes/lista']);
+          }, 1000);
+        } else {
+          this.notificationService.showError(response.message || 'Error al actualizar el lote');
+        }
+      },
+      error: (err: any) => {
+        this.enviando.set(false);
         let errorMessage = 'Error al actualizar el lote';
         if (err.status === 400) {
-          errorMessage = 'Datos inválidos. Verifique la información ingresada.';
-          if (err.error?.message) {
-            errorMessage += ` Detalles: ${err.error.message}`;
-          }
+          errorMessage =
+            err.error?.message || 'Datos inválidos. Verifique la información ingresada.';
+        } else if (err.status === 404) {
+          errorMessage = 'Lote no encontrado.';
+        } else if (err.status === 409) {
+          errorMessage = 'El número de lote ya existe en esta urbanización.';
         }
-
         this.notificationService.showError(errorMessage);
       },
     });
@@ -162,7 +227,6 @@ export class LoteEdit implements OnInit {
     this.router.navigate(['/lotes/lista']);
   }
 
-  // Método para manejar el evento submit del formulario
   handleFormSubmit(event: Event): void {
     event.preventDefault();
     this.onSubmit();

@@ -1,11 +1,11 @@
 import { Component, inject, signal, OnInit, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { CotizacionDto } from '../../../../core/interfaces/cotizacion.interface';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { CotizacionService } from '../../service/cotizacion.service';
 
-// Interface para las columnas con tipo seguro
 interface ColumnConfig {
   key: keyof CotizacionDto;
   label: string;
@@ -15,24 +15,21 @@ interface ColumnConfig {
 @Component({
   selector: 'app-cotizacion-list',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, FormsModule],
   templateUrl: './cotizacion-list.html',
 })
 export class CotizacionList implements OnInit {
   cotizaciones = signal<CotizacionDto[]>([]);
+  allCotizaciones = signal<CotizacionDto[]>([]);
+  searchTerm = signal('');
   cargando = signal<boolean>(true);
   error = signal<string | null>(null);
-  page = signal<number>(1);
-  pageSize = signal<number>(10);
-  totalPages = signal<number>(1);
   cotizacionSeleccionada = signal<CotizacionDto | null>(null);
   mostrarModal = signal<boolean>(false);
 
-  // Señales para ordenamiento
   sortColumn = signal<keyof CotizacionDto>('id');
   sortDirection = signal<'asc' | 'desc'>('desc');
 
-  // Configuración de columnas
   columns: ColumnConfig[] = [
     { key: 'id', label: 'ID', sortable: true },
     { key: 'cliente', label: 'Cliente', sortable: true },
@@ -42,12 +39,27 @@ export class CotizacionList implements OnInit {
     { key: 'estado', label: 'Estado', sortable: true },
   ];
 
+  total = signal(0);
+  pageSize = signal(10);
+  currentPage = signal(1);
+
   private cotizacionSvc = inject(CotizacionService);
   private notificationService = inject(NotificationService);
 
-  // Computed para cotizaciones ordenadas
-  cotizacionesOrdenadas = computed(() => {
-    const cotizaciones = this.cotizaciones();
+  filteredCotizaciones = computed(() => {
+    const term = this.searchTerm().toLowerCase();
+    let cotizaciones = this.allCotizaciones();
+
+    if (term) {
+      cotizaciones = cotizaciones.filter(
+        (cotizacion: CotizacionDto) =>
+          cotizacion.cliente?.fullName?.toLowerCase().includes(term) ||
+          cotizacion.asesor?.fullName?.toLowerCase().includes(term) ||
+          cotizacion.lote?.numeroLote?.toLowerCase().includes(term) ||
+          cotizacion.estado?.toLowerCase().includes(term)
+      );
+    }
+
     const column = this.sortColumn();
     const direction = this.sortDirection();
 
@@ -57,7 +69,6 @@ export class CotizacionList implements OnInit {
       let aValue: any = a[column];
       let bValue: any = b[column];
 
-      // Manejar valores anidados
       if (column === 'cliente') {
         aValue = a.cliente?.fullName;
         bValue = b.cliente?.fullName;
@@ -71,16 +82,13 @@ export class CotizacionList implements OnInit {
         bValue = b.lote?.numeroLote;
       }
 
-      // Manejar valores undefined/null
       if (aValue === undefined || aValue === null) aValue = '';
       if (bValue === undefined || bValue === null) bValue = '';
 
-      // Ordenar por números
       if (typeof aValue === 'number' && typeof bValue === 'number') {
         return direction === 'asc' ? aValue - bValue : bValue - aValue;
       }
 
-      // Ordenar por texto
       const aString = aValue.toString().toLowerCase();
       const bString = bValue.toString().toLowerCase();
 
@@ -101,42 +109,33 @@ export class CotizacionList implements OnInit {
     this.error.set(null);
     this.cotizacionSvc.getAll().subscribe({
       next: (cotizaciones) => {
+        console.log('Cotizaciones recibidas:', cotizaciones);
         this.cotizaciones.set(cotizaciones);
-        this.totalPages.set(Math.ceil(cotizaciones.length / this.pageSize()));
+        this.allCotizaciones.set(cotizaciones);
+        this.total.set(cotizaciones.length);
         this.cargando.set(false);
       },
       error: (err) => {
-        console.error('Error al cargar cotizaciones:', err);
         this.error.set('No se pudieron cargar las cotizaciones');
         this.cargando.set(false);
       },
     });
   }
 
-  // Método para cambiar ordenamiento
   cambiarOrden(columna: keyof CotizacionDto) {
     if (this.sortColumn() === columna) {
-      // Misma columna, cambiar dirección
       this.sortDirection.set(this.sortDirection() === 'asc' ? 'desc' : 'asc');
     } else {
-      // Nueva columna, orden descendente por defecto
       this.sortColumn.set(columna);
       this.sortDirection.set('desc');
     }
   }
 
-  // Método para obtener clase de flecha
   getClaseFlecha(columna: keyof CotizacionDto): string {
     if (this.sortColumn() !== columna) {
       return 'opacity-30';
     }
     return this.sortDirection() === 'asc' ? '' : 'rotate-180';
-  }
-
-  cambiarPagina(nuevaPagina: number) {
-    if (nuevaPagina >= 1 && nuevaPagina <= this.totalPages()) {
-      this.page.set(nuevaPagina);
-    }
   }
 
   verDetalles(cotizacion: CotizacionDto) {
@@ -150,21 +149,26 @@ export class CotizacionList implements OnInit {
   }
 
   eliminarCotizacion(id: number) {
-    if (confirm('¿Está seguro que desea eliminar esta cotización?')) {
-      this.cotizacionSvc.delete(id).subscribe({
-        next: () => {
-          this.cotizaciones.update((list) => list.filter((c) => c.id !== id));
-          this.notificationService.showSuccess('Cotización eliminada correctamente');
-          if (this.cotizacionSeleccionada()?.id === id) {
-            this.cerrarModal();
-          }
-        },
-        error: (err) => {
-          console.error('Error al eliminar cotización:', err);
-          this.notificationService.showError('No se pudo eliminar la cotización');
-        },
+    this.notificationService
+      .confirmDelete('¿Está seguro que desea eliminar esta cotización?')
+      .then((result) => {
+        if (result.isConfirmed) {
+          this.cotizacionSvc.delete(id).subscribe({
+            next: () => {
+              this.cotizaciones.update((list) => list.filter((c) => c.id !== id));
+              this.allCotizaciones.update((list) => list.filter((c) => c.id !== id));
+              this.total.update((total) => total - 1);
+              this.notificationService.showSuccess('Cotización eliminada correctamente');
+              if (this.cotizacionSeleccionada()?.id === id) {
+                this.cerrarModal();
+              }
+            },
+            error: (err) => {
+              this.notificationService.showError('No se pudo eliminar la cotización');
+            },
+          });
+        }
       });
-    }
   }
 
   getEstadoBadgeClass(estado: string): string {
@@ -176,19 +180,49 @@ export class CotizacionList implements OnInit {
     return classes[estado as keyof typeof classes] || classes['PENDIENTE'];
   }
 
-  getPages(): number[] {
-    const pages = [];
-    const startPage = Math.max(1, this.page() - 2);
-    const endPage = Math.min(this.totalPages(), startPage + 4);
-    for (let i = startPage; i <= endPage; i++) {
-      pages.push(i);
+  nextPage() {
+    if (this.currentPage() < this.totalPages()) {
+      this.currentPage.update((v) => v + 1);
     }
-    return pages;
+  }
+
+  prevPage() {
+    if (this.currentPage() > 1) {
+      this.currentPage.update((v) => v - 1);
+    }
+  }
+
+  goToPage(page: number) {
+    if (page >= 1 && page <= this.totalPages()) {
+      this.currentPage.set(page);
+    }
+  }
+
+  totalPages() {
+    return Math.ceil(this.total() / this.pageSize());
+  }
+
+  pageArray(): number[] {
+    return Array.from({ length: this.totalPages() }, (_, i) => i + 1);
+  }
+
+  rangeStart(): number {
+    return (this.currentPage() - 1) * this.pageSize() + 1;
+  }
+
+  rangeEnd(): number {
+    const end = this.currentPage() * this.pageSize();
+    return end > this.total() ? this.total() : end;
   }
 
   getCotizacionesPaginadas(): CotizacionDto[] {
-    const startIndex = (this.page() - 1) * this.pageSize();
+    const startIndex = (this.currentPage() - 1) * this.pageSize();
     const endIndex = startIndex + this.pageSize();
-    return this.cotizacionesOrdenadas().slice(startIndex, endIndex);
+    return this.filteredCotizaciones().slice(startIndex, endIndex);
+  }
+
+  onSearchChange(event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    this.searchTerm.set(value);
   }
 }

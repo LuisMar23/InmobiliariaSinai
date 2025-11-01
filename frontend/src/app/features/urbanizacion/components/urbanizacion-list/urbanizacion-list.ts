@@ -1,7 +1,19 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { faBuilding, faEye, faPenToSquare, faSearch, faTrash } from '@fortawesome/free-solid-svg-icons';
+import {
+  faBuilding,
+  faEye,
+  faPenToSquare,
+  faSearch,
+  faTrash,
+} from '@fortawesome/free-solid-svg-icons';
 import { UrbanizacionDto } from '../../../../core/interfaces/urbanizacion.interface';
-import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  FormBuilder,
+  FormGroup,
+  FormsModule,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { UrbanizacionService } from '../../services/urbanizacion.service';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
@@ -9,13 +21,13 @@ import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-urbanizacion-list',
-  standalone:true,
-  imports: [FontAwesomeModule,CommonModule,ReactiveFormsModule,FormsModule],
+  standalone: true,
+  imports: [FontAwesomeModule, CommonModule, ReactiveFormsModule, FormsModule],
   templateUrl: './urbanizacion-list.html',
-  styleUrl: './urbanizacion-list.css'
+  styleUrl: './urbanizacion-list.css',
 })
 export class UrbanizacionList {
- faBuilding = faBuilding;
+  faBuilding = faBuilding;
   faEye = faEye;
   faPenToSquare = faPenToSquare;
   faTrash = faTrash;
@@ -163,6 +175,14 @@ export class UrbanizacionList {
       this.sortDirection.set('asc');
     }
     this.ordenarUrbanizaciones();
+  }
+
+  // Método para obtener clase de flecha (igual que en cotizaciones)
+  getClaseFlecha(columna: string): string {
+    if (this.sortColumn() !== columna) {
+      return 'opacity-30';
+    }
+    return this.sortDirection() === 'asc' ? '' : 'rotate-180';
   }
 
   // paginador

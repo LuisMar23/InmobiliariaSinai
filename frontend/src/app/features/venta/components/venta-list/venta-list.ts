@@ -1,93 +1,51 @@
 import { Component, inject, signal, OnInit, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { VentaDto } from '../../../../core/interfaces/venta.interface';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { VentaService } from '../../service/venta.service';
 
-// Interface para las columnas con tipo seguro
-interface ColumnConfig {
-  key: keyof VentaDto;
-  label: string;
-  sortable?: boolean;
-}
-
 @Component({
   selector: 'app-venta-list',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, FormsModule],
   templateUrl: './venta-list.html',
 })
 export class VentaList implements OnInit {
   ventas = signal<VentaDto[]>([]);
+  allVentas = signal<VentaDto[]>([]);
+  searchTerm = signal('');
   cargando = signal<boolean>(true);
   error = signal<string | null>(null);
-  page = signal<number>(1);
-  pageSize = signal<number>(10);
-  totalPages = signal<number>(1);
   ventaSeleccionada = signal<VentaDto | null>(null);
   mostrarModal = signal<boolean>(false);
 
-  // Señales para ordenamiento
-  sortColumn = signal<keyof VentaDto>('id');
-  sortDirection = signal<'asc' | 'desc'>('desc');
-
-  // Configuración de columnas
-  columns: ColumnConfig[] = [
-    { key: 'id', label: 'ID', sortable: true },
-    { key: 'cliente', label: 'Cliente', sortable: true },
-    { key: 'asesor', label: 'Asesor', sortable: true },
-    { key: 'lote', label: 'Lote', sortable: true },
-    { key: 'precioFinal', label: 'Precio Final', sortable: true },
-    { key: 'estado', label: 'Estado', sortable: true },
-  ];
+  // Paginación
+  total = signal(0);
+  pageSize = signal(10);
+  currentPage = signal(1);
 
   private ventaSvc = inject(VentaService);
   private notificationService = inject(NotificationService);
 
-  // Computed para ventas ordenadas
-  ventasOrdenadas = computed(() => {
-    const ventas = this.ventas();
-    const column = this.sortColumn();
-    const direction = this.sortDirection();
+  // Computed para ventas filtradas
+  filteredVentas = computed(() => {
+    const term = this.searchTerm().toLowerCase();
+    let ventas = this.allVentas();
 
-    if (!column) return ventas;
+    if (term) {
+      ventas = ventas.filter(
+        (venta: VentaDto) =>
+          venta.cliente?.fullName?.toLowerCase().includes(term) ||
+          venta.asesor?.fullName?.toLowerCase().includes(term) ||
+          venta.lote?.numeroLote?.toLowerCase().includes(term) ||
+          venta.estado?.toLowerCase().includes(term) ||
+          venta.id?.toString().includes(term)
+      );
+    }
 
-    return [...ventas].sort((a, b) => {
-      let aValue: any = a[column];
-      let bValue: any = b[column];
-
-      // Manejar valores anidados
-      if (column === 'cliente') {
-        aValue = a.cliente?.fullName;
-        bValue = b.cliente?.fullName;
-      } else if (column === 'asesor') {
-        aValue = a.asesor?.fullName;
-        bValue = b.asesor?.fullName;
-      } else if (column === 'lote') {
-        aValue = a.lote?.numeroLote;
-        bValue = b.lote?.numeroLote;
-      }
-
-      // Manejar valores undefined/null
-      if (aValue === undefined || aValue === null) aValue = '';
-      if (bValue === undefined || bValue === null) bValue = '';
-
-      // Ordenar por números
-      if (typeof aValue === 'number' && typeof bValue === 'number') {
-        return direction === 'asc' ? aValue - bValue : bValue - aValue;
-      }
-
-      // Ordenar por texto
-      const aString = aValue.toString().toLowerCase();
-      const bString = bValue.toString().toLowerCase();
-
-      if (direction === 'asc') {
-        return aString.localeCompare(bString);
-      } else {
-        return bString.localeCompare(aString);
-      }
-    });
+    return ventas;
   });
 
   ngOnInit(): void {
@@ -100,7 +58,8 @@ export class VentaList implements OnInit {
     this.ventaSvc.getAll().subscribe({
       next: (ventas) => {
         this.ventas.set(ventas);
-        this.totalPages.set(Math.ceil(ventas.length / this.pageSize()));
+        this.allVentas.set(ventas);
+        this.total.set(ventas.length);
         this.cargando.set(false);
       },
       error: (err) => {
@@ -111,30 +70,72 @@ export class VentaList implements OnInit {
     });
   }
 
-  // Método para cambiar ordenamiento
-  cambiarOrden(columna: keyof VentaDto) {
-    if (this.sortColumn() === columna) {
-      // Misma columna, cambiar dirección
-      this.sortDirection.set(this.sortDirection() === 'asc' ? 'desc' : 'asc');
-    } else {
-      // Nueva columna, orden descendente por defecto
-      this.sortColumn.set(columna);
-      this.sortDirection.set('desc');
+  getTotalPagado(venta: VentaDto): number {
+    if (!venta.planPago) return 0;
+    return venta.planPago.total_pagado || 0;
+  }
+
+  getSaldoPendiente(venta: VentaDto): number {
+    if (!venta.planPago) return 0;
+    return (
+      venta.planPago.saldo_pendiente ||
+      Math.max(0, venta.planPago.total - this.getTotalPagado(venta))
+    );
+  }
+
+  getPorcentajePagado(venta: VentaDto): number {
+    if (!venta.planPago || venta.planPago.total === 0) return 0;
+    return (
+      venta.planPago.porcentaje_pagado || (this.getTotalPagado(venta) / venta.planPago.total) * 100
+    );
+  }
+
+  // Métodos de paginación
+  totalPages() {
+    return Math.ceil(this.filteredVentas().length / this.pageSize());
+  }
+
+  getVentasPaginadas(): VentaDto[] {
+    const startIndex = (this.currentPage() - 1) * this.pageSize();
+    const endIndex = startIndex + this.pageSize();
+    return this.filteredVentas().slice(startIndex, endIndex);
+  }
+
+  nextPage() {
+    if (this.currentPage() < this.totalPages()) {
+      this.currentPage.update((v) => v + 1);
     }
   }
 
-  // Método para obtener clase de flecha
-  getClaseFlecha(columna: keyof VentaDto): string {
-    if (this.sortColumn() !== columna) {
-      return 'opacity-30';
+  prevPage() {
+    if (this.currentPage() > 1) {
+      this.currentPage.update((v) => v - 1);
     }
-    return this.sortDirection() === 'asc' ? '' : 'rotate-180';
   }
 
-  cambiarPagina(nuevaPagina: number) {
-    if (nuevaPagina >= 1 && nuevaPagina <= this.totalPages()) {
-      this.page.set(nuevaPagina);
+  goToPage(page: number) {
+    if (page >= 1 && page <= this.totalPages()) {
+      this.currentPage.set(page);
     }
+  }
+
+  pageArray(): number[] {
+    return Array.from({ length: this.totalPages() }, (_, i) => i + 1);
+  }
+
+  rangeStart(): number {
+    return (this.currentPage() - 1) * this.pageSize() + 1;
+  }
+
+  rangeEnd(): number {
+    const end = this.currentPage() * this.pageSize();
+    return end > this.filteredVentas().length ? this.filteredVentas().length : end;
+  }
+
+  onSearchChange(event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    this.searchTerm.set(value);
+    this.currentPage.set(1);
   }
 
   verDetalles(venta: VentaDto) {
@@ -148,45 +149,59 @@ export class VentaList implements OnInit {
   }
 
   eliminarVenta(id: number) {
-    if (confirm('¿Está seguro que desea eliminar esta venta?')) {
-      this.ventaSvc.delete(id).subscribe({
-        next: () => {
-          this.ventas.update((list) => list.filter((v) => v.id !== id));
-          this.notificationService.showSuccess('Venta eliminada correctamente');
-          if (this.ventaSeleccionada()?.id === id) {
-            this.cerrarModal();
-          }
-        },
-        error: (err) => {
-          console.error('Error al eliminar venta:', err);
-          this.notificationService.showError('No se pudo eliminar la venta');
-        },
+    this.notificationService
+      .confirmDelete('¿Está seguro que desea eliminar esta venta?')
+      .then((result) => {
+        if (result.isConfirmed) {
+          this.ventaSvc.delete(id).subscribe({
+            next: (response: any) => {
+              if (response.success) {
+                this.ventas.update((list) => list.filter((v) => v.id !== id));
+                this.allVentas.update((list) => list.filter((v) => v.id !== id));
+                this.total.update((total) => total - 1);
+                this.notificationService.showSuccess('Venta eliminada correctamente');
+                if (this.ventaSeleccionada()?.id === id) {
+                  this.cerrarModal();
+                }
+              } else {
+                this.notificationService.showError(
+                  response.message || 'Error al eliminar la venta'
+                );
+              }
+            },
+            error: (err) => {
+              console.error('Error al eliminar venta:', err);
+              let errorMessage = 'No se pudo eliminar la venta';
+              if (err.status === 400) {
+                errorMessage =
+                  err.error?.message ||
+                  'No se puede eliminar la venta porque tiene documentos asociados';
+              } else if (err.status === 404) {
+                errorMessage = 'Venta no encontrada';
+              }
+              this.notificationService.showError(errorMessage);
+            },
+          });
+        }
       });
-    }
   }
 
   getEstadoBadgeClass(estado: string): string {
-    const classes = {
+    const classes: { [key: string]: string } = {
       PENDIENTE_PAGO: 'px-3 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-700',
       PAGADO: 'px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700',
       CANCELADO: 'px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700',
     };
-    return classes[estado as keyof typeof classes] || classes['PENDIENTE_PAGO'];
+    return classes[estado] || classes['PENDIENTE_PAGO'];
   }
 
-  getPages(): number[] {
-    const pages = [];
-    const startPage = Math.max(1, this.page() - 2);
-    const endPage = Math.min(this.totalPages(), startPage + 4);
-    for (let i = startPage; i <= endPage; i++) {
-      pages.push(i);
-    }
-    return pages;
-  }
-
-  getVentasPaginadas(): VentaDto[] {
-    const startIndex = (this.page() - 1) * this.pageSize();
-    const endIndex = startIndex + this.pageSize();
-    return this.ventasOrdenadas().slice(startIndex, endIndex);
+  getEstadoPlanPagoClass(estado: string): string {
+    const classes: { [key: string]: string } = {
+      ACTIVO: 'px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700',
+      PAGADO: 'px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700',
+      MOROSO: 'px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700',
+      CANCELADO: 'px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-700',
+    };
+    return classes[estado] || classes['ACTIVO'];
   }
 }

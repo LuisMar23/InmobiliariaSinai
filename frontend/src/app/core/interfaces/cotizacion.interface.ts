@@ -1,4 +1,3 @@
-// src/app/core/interfaces/cotizacion.interface.ts
 export interface CotizacionDto {
   id: number;
   uuid: string;

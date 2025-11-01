@@ -1,6 +1,6 @@
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
-import { CommonModule } from '@angular/common';
+import { CommonModule, DatePipe } from '@angular/common';
 import { RouterModule, Router, ActivatedRoute } from '@angular/router';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { PromocionService } from '../../service/promocion.service';
@@ -10,6 +10,7 @@ import { PromocionService } from '../../service/promocion.service';
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterModule],
   templateUrl: './promocion-edit.html',
+  providers: [DatePipe],
 })
 export class PromocionEdit implements OnInit {
   promocionForm: FormGroup;
@@ -24,6 +25,7 @@ export class PromocionEdit implements OnInit {
   private promocionSvc = inject(PromocionService);
   private route = inject(ActivatedRoute);
   private notificationService = inject(NotificationService);
+  private datePipe = inject(DatePipe);
 
   constructor() {
     this.promocionForm = this.crearFormularioPromocion();
@@ -31,6 +33,17 @@ export class PromocionEdit implements OnInit {
 
   ngOnInit(): void {
     this.obtenerPromocion();
+  }
+
+  crearFormularioPromocion(): FormGroup {
+    return this.fb.group({
+      titulo: ['', [Validators.required, Validators.minLength(2)]],
+      descripcion: [''],
+      descuento: [0, [Validators.required, Validators.min(0.01), Validators.max(100)]],
+      fechaInicio: ['', Validators.required],
+      fechaFin: ['', Validators.required],
+      aplicaA: ['', Validators.required],
+    });
   }
 
   obtenerPromocion(): void {
@@ -43,30 +56,20 @@ export class PromocionEdit implements OnInit {
 
     this.cargando.set(true);
     this.promocionSvc.getById(this.promocionId).subscribe({
-      next: (resp) => {
-        if (resp) {
-          this.promocionData = resp;
-          this.cargarDatosFormulario(resp);
+      next: (promocion) => {
+        if (promocion) {
+          this.promocionData = promocion;
+          this.cargarDatosFormulario(promocion);
         } else {
           this.error.set('No se encontró la promoción');
         }
         this.cargando.set(false);
       },
       error: (err) => {
+        console.error('Error al cargar promoción:', err);
         this.error.set('No se pudo cargar la promoción');
         this.cargando.set(false);
       },
-    });
-  }
-
-  crearFormularioPromocion(): FormGroup {
-    return this.fb.group({
-      titulo: ['', [Validators.required, Validators.minLength(2)]],
-      descripcion: [''],
-      descuento: [0, [Validators.required, Validators.min(0.01), Validators.max(100)]],
-      fechaInicio: ['', Validators.required],
-      fechaFin: ['', Validators.required],
-      aplicaA: ['', Validators.required],
     });
   }
 
@@ -88,6 +91,15 @@ export class PromocionEdit implements OnInit {
     });
   }
 
+  formatDate(date: any): string {
+    if (!date) return 'N/A';
+    try {
+      return this.datePipe.transform(date, 'dd/MM/yyyy HH:mm') || 'N/A';
+    } catch {
+      return 'N/A';
+    }
+  }
+
   onSubmit(): void {
     if (this.promocionForm.invalid) {
       this.promocionForm.markAllAsTouched();
@@ -101,6 +113,7 @@ export class PromocionEdit implements OnInit {
     }
 
     this.enviando.set(true);
+
     const dataActualizada = {
       ...this.promocionForm.value,
       descuento: Number(this.promocionForm.value.descuento),
@@ -109,21 +122,56 @@ export class PromocionEdit implements OnInit {
     };
 
     this.promocionSvc.update(this.promocionId, dataActualizada).subscribe({
-      next: (response) => {
+      next: (response: any) => {
         this.enviando.set(false);
-        this.notificationService.showSuccess('Promoción actualizada exitosamente!');
-        setTimeout(() => {
-          this.router.navigate(['/promociones/lista']);
-        }, 1000);
+        console.log('Respuesta de actualización:', response);
+
+        // Verificar diferentes formatos de respuesta exitosa
+        if (response.success === true || response.id || response.data) {
+          this.notificationService.showSuccess('Promoción actualizada exitosamente!');
+          setTimeout(() => {
+            this.router.navigate(['/promociones/lista']);
+          }, 1500);
+        } else if (response.message && !response.message.includes('error')) {
+          this.notificationService.showSuccess('Promoción actualizada exitosamente!');
+          setTimeout(() => {
+            this.router.navigate(['/promociones/lista']);
+          }, 1500);
+        } else {
+          this.notificationService.showError(
+            response.message || 'Error al actualizar la promoción'
+          );
+        }
       },
-      error: (err) => {
+      error: (err: any) => {
         this.enviando.set(false);
-        this.notificationService.showError('Error al actualizar la promoción');
+        console.error('Error en actualización:', err);
+
+        let errorMessage = 'Error al actualizar la promoción';
+
+        if (err.error?.message) {
+          errorMessage = err.error.message;
+        } else if (err.status === 400) {
+          errorMessage = 'Datos inválidos. Verifique la información ingresada.';
+        } else if (err.status === 404) {
+          errorMessage = 'Promoción no encontrada.';
+        } else if (err.status === 409) {
+          errorMessage = 'El título de la promoción ya existe.';
+        } else if (err.status === 500) {
+          errorMessage = 'Error interno del servidor. Intente nuevamente.';
+        }
+
+        this.notificationService.showError(errorMessage);
       },
     });
   }
 
   volverAlListado(): void {
     this.router.navigate(['/promociones/lista']);
+  }
+
+  handleFormSubmit(event: Event): void {
+    event.preventDefault();
+    this.onSubmit();
   }
 }

@@ -13,6 +13,7 @@ enum UserRole {
   ASESOR
   SECRETARIA
   CLIENTE
+  USUARIO
 }
 
 enum EstadoInmueble {
@@ -29,7 +30,7 @@ enum EstadoCotizacion {
 }
 
 enum EstadoVenta {
-  PENDIENTE_PAGO
+  PENDIENTE
   PAGADO
   CANCELADO
 }
@@ -76,22 +77,36 @@ enum TipoInmueble {
   URBANIZACION
 }
 
+enum PeriodicidadPago {
+  DIAS
+  SEMANAS
+  MESES
+}
+
+enum EstadoPlanPago {
+  ACTIVO
+  PAGADO
+  MOROSO
+  CANCELADO
+}
 model User {
-  id           Int      @id @default(autoincrement())
-  uuid         String   @unique @default(uuid())
-  fullName     String   @map("full_name")
-  username     String   @unique
-  ci           String   @unique
-  email        String   @unique
-  passwordHash String   @map("password_hash")
-  avatarUrl    String?  @map("avatar_url")
-  telefono     String   @unique
-  role         UserRole @default(CLIENTE)
-  isActive     Boolean  @default(true) @map("is_active")
+  id           Int       @id @default(autoincrement())
+  uuid         String    @unique @default(uuid())
+  fullName     String    @map("full_name")
+  username     String?    @unique
+  ci           String    @unique
+  email        String?    @unique
+  passwordHash String?    @map("password_hash")
+  avatarUrl    String?   @map("avatar_url")
+  telefono     String    @unique
+  direccion    String?
+  observaciones String?
+  role         UserRole  @default(CLIENTE)
+  isActive     Boolean   @default(true) @map("is_active")
   lastLogin    DateTime? @map("last_login")
-  createdAt  DateTime @default(now()) @map("created_at")
-  estado       Boolean  @default(true)
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  estado       Boolean   @default(true)
+  updatedAt    DateTime  @updatedAt @map("updated_at")
 
   // Campos de seguridad
   failedAttempts       Int       @default(0) @map("failed_attempts")
@@ -112,10 +127,12 @@ model User {
   ticketsAtendidos        Ticket[]     @relation("TicketsAtendidos")
   imagenesSubidas         Imagen[]
   documentosSubidos       Documento[]
-  pagosRegistrados        Pago[]
   auditorias              Auditoria[]
   ingresosRegistrados     Ingreso[]
   egresosRegistrados      Egreso[]
+  cajasApertura      Caja[]           @relation("UsuarioApertura")
+  movimientosCaja    MovimientoCaja[]
+  cierresCaja        CierreCaja[]
 }
 
 model Urbanizacion {
@@ -138,6 +155,10 @@ model Lote {
   numeroLote     String         @map("numero_lote")
   superficieM2   Decimal        @map("superficie_m2") @db.Decimal(10, 2)
   precioBase     Decimal        @map("precio_base") @db.Decimal(12, 2)
+  descripcion    String?
+  ubicacion      String? 
+  latitud        Decimal?       @db.Decimal(10, 7)
+  longitud       Decimal?       @db.Decimal(10, 7)
   estado         EstadoInmueble @default(DISPONIBLE)
   createdAt      DateTime       @default(now()) @map("created_at")
   updatedAt      DateTime       @updatedAt @map("updated_at")
@@ -192,64 +213,17 @@ model Venta {
   inmuebleTipo TipoInmueble @default(LOTE)
   inmuebleId   Int
   precioFinal  Decimal      @map("precio_final") @db.Decimal(12, 2)
-  estado       EstadoVenta  @default(PENDIENTE_PAGO)
+  estado       EstadoVenta  @default(PENDIENTE)
   createdAt    DateTime     @default(now()) @map("created_at")
   updatedAt    DateTime     @updatedAt @map("updated_at")
 
   cliente            User                @relation("VentasCliente", fields: [clienteId], references: [id])
   asesor             User                @relation("VentasAsesor", fields: [asesorId], references: [id])
   lote               Lote?               @relation("VentasLote", fields: [inmuebleId], references: [id], map: "fk_venta_lote")
-  pagos              Pago[]
-  planFinanciamiento PlanFinanciamiento?
   documentos         Documento[]
   ingresos           Ingreso[]
-}
+  planPago      PlanPago?
 
-model Pago {
-  id          Int        @id @default(autoincrement())
-  uuid        String     @unique @default(uuid())
-  ventaId     Int
-  monto       Decimal    @db.Decimal(12, 2)
-  metodo      MetodoPago @default(EFECTIVO)
-  recibidoPor Int        @map("recibido_por")
-  comprobante String?
-  createdAt   DateTime   @default(now()) @map("created_at")
-  updatedAt   DateTime   @updatedAt @map("updated_at")
-
-  venta   Venta   @relation(fields: [ventaId], references: [id])
-  usuario User    @relation(fields: [recibidoPor], references: [id])
-  cuotas  Cuota[]
-}
-
-model PlanFinanciamiento {
-  id            Int                      @id @default(autoincrement())
-  uuid          String                   @unique @default(uuid())
-  ventaId       Int                      @unique
-  montoTotal    Decimal                  @map("monto_total") @db.Decimal(12, 2)
-  cuotasTotales Int                      @map("cuotas_totales")
-  interes       Decimal                  @db.Decimal(5, 2)
-  estado        EstadoPlanFinanciamiento @default(ACTIVO)
-  createdAt     DateTime                 @default(now()) @map("created_at")
-  updatedAt     DateTime                 @updatedAt @map("updated_at")
-
-  venta  Venta   @relation(fields: [ventaId], references: [id])
-  cuotas Cuota[]
-}
-
-model Cuota {
-  id               Int         @id @default(autoincrement())
-  uuid             String      @unique @default(uuid())
-  planId           Int
-  numeroCuota      Int         @map("numero_cuota")
-  montoCuota       Decimal     @map("monto_cuota") @db.Decimal(12, 2)
-  fechaVencimiento DateTime    @map("fecha_vencimiento")
-  estado           EstadoCuota @default(PENDIENTE)
-  pagoId           Int?
-  createdAt        DateTime    @default(now()) @map("created_at")
-  updatedAt        DateTime    @updatedAt @map("updated_at")
-
-  plan PlanFinanciamiento @relation(fields: [planId], references: [id])
-  pago Pago?              @relation(fields: [pagoId], references: [id])
 }
 
 model Reserva {
@@ -408,4 +382,105 @@ model BalanceMensual {
   utilidad      Decimal  @db.Decimal(12, 2)
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
+}
+
+model PlanPago {
+  id_plan_pago      Int              @id @default(autoincrement())
+  uuid              String           @unique @default(uuid())
+  ventaId           Int              @unique
+  total             Decimal          @db.Decimal(12, 2)
+  monto_inicial     Decimal          @db.Decimal(12, 2)
+  plazo             Int
+  periodicidad      PeriodicidadPago
+  fecha_inicio      DateTime
+  fecha_vencimiento DateTime
+  estado            EstadoPlanPago   @default(ACTIVO)
+  creado_en         DateTime         @default(now())
+  actualizado_en    DateTime         @updatedAt
+
+  venta   Venta          @relation(fields: [ventaId], references: [id], onDelete: Cascade)
+  pagos   PagoPlanPago[]
+
+  @@map("planes_pago")
+}
+
+model PagoPlanPago {
+  id_pago_plan Int      @id @default(autoincrement())
+  uuid         String   @unique @default(uuid())
+  plan_pago_id Int
+  monto        Decimal  @db.Decimal(12, 2)
+  fecha_pago   DateTime @default(now())
+  observacion  String?
+  creado_en    DateTime @default(now())
+
+  planPago PlanPago @relation(fields: [plan_pago_id], references: [id_plan_pago], onDelete: Cascade)
+
+  @@map("pagos_plan_pago")
+}
+
+enum EstadoCaja {
+  ABIERTA
+  CERRADA
+}
+
+enum TipoMovimiento {
+  INGRESO
+  EGRESO
+}
+
+enum TipoCierre {
+  PARCIAL
+  TOTAL
+}
+
+model Caja {
+  id                Int        @id @default(autoincrement())
+  uuid              String     @unique @default(uuid())
+  nombre            String     @db.VarChar(100)
+  saldoActual       Decimal    @default(0) @db.Decimal(12, 2)
+  montoInicial      Decimal    @db.Decimal(12, 2)
+  creadoEn          DateTime   @default(now())
+  actualizadoEn     DateTime   @updatedAt
+  estado            EstadoCaja @default(ABIERTA)
+  usuarioAperturaId Int
+  usuarioApertura   User       @relation("UsuarioApertura", fields: [usuarioAperturaId], references: [id])
+
+  movimientos MovimientoCaja[]
+  cierreCaja  CierreCaja[]
+
+  @@map("cajas")
+}
+
+model MovimientoCaja {
+  id          Int            @id @default(autoincrement())
+  uuid        String         @unique @default(uuid())
+  cajaId      Int
+  usuarioId   Int
+  tipo        TipoMovimiento
+  monto       Decimal        @db.Decimal(12, 2)
+  fecha       DateTime       @default(now())
+  descripcion String?
+  referencia  String?
+  metodoPago  MetodoPago     @default(EFECTIVO)
+  caja        Caja           @relation(fields: [cajaId], references: [id])
+  usuario     User           @relation(fields: [usuarioId], references: [id])
+
+  @@map("movimientos_caja")
+}
+
+model CierreCaja {
+  id            Int        @id @default(autoincrement())
+  cajaId        Int
+  usuarioId     Int
+  fechaCierre   DateTime   @default(now())
+  saldoInicial  Decimal    @db.Decimal(12, 2)
+  saldoFinal    Decimal    @db.Decimal(12, 2)
+  saldoReal     Decimal    @db.Decimal(12, 2)
+  diferencia    Decimal    @db.Decimal(12, 2)
+  tipo          TipoCierre @default(TOTAL)
+  observaciones String?
+  caja          Caja       @relation(fields: [cajaId], references: [id])
+  usuario       User       @relation(fields: [usuarioId], references: [id])
+
+  @@map("cierre_caja")
 }

@@ -1,19 +1,21 @@
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
-import { CommonModule } from '@angular/common';
+import { CommonModule, DatePipe } from '@angular/common';
 import { RouterModule, Router, ActivatedRoute } from '@angular/router';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { UserDto } from '../../../../core/interfaces/user.interface';
 import { LoteDto } from '../../../../core/interfaces/lote.interface';
-import { UserService } from '../../../../core/services/users.service';
 import { LoteService } from '../../../lote/service/lote.service';
 import { ReservaService } from '../../service/reserva.service';
+import { UserService } from '../../../users/services/users.service';
+import { AuthService } from '../../../../components/services/auth.service';
 
 @Component({
   selector: 'app-reserva-edit',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterModule],
   templateUrl: './reserva-edit.html',
+  providers: [DatePipe],
 })
 export class ReservaEdit implements OnInit {
   reservaForm: FormGroup;
@@ -23,7 +25,6 @@ export class ReservaEdit implements OnInit {
   enviando = signal<boolean>(false);
   reservaData: any = null;
   clientes = signal<UserDto[]>([]);
-  asesores = signal<UserDto[]>([]);
   lotes = signal<LoteDto[]>([]);
 
   router = inject(Router);
@@ -33,6 +34,8 @@ export class ReservaEdit implements OnInit {
   private loteSvc = inject(LoteService);
   private route = inject(ActivatedRoute);
   private notificationService = inject(NotificationService);
+  private datePipe = inject(DatePipe);
+  private authService = inject(AuthService);
 
   constructor() {
     this.reservaForm = this.crearFormularioReserva();
@@ -45,7 +48,6 @@ export class ReservaEdit implements OnInit {
   crearFormularioReserva(): FormGroup {
     return this.fb.group({
       clienteId: ['', Validators.required],
-      asesorId: ['', Validators.required],
       inmuebleTipo: ['LOTE', Validators.required],
       inmuebleId: ['', Validators.required],
       montoReserva: [0, [Validators.required, Validators.min(0.01)]],
@@ -56,24 +58,24 @@ export class ReservaEdit implements OnInit {
   }
 
   cargarClientes(): void {
-    this.userSvc.getAll().subscribe({
+    this.authService.getClientes().subscribe({
       next: (response: any) => {
-        let usuarios: any[] = [];
+        console.log('Respuesta completa de clientes:', response);
 
-        if (Array.isArray(response)) {
-          usuarios = response;
+        let clientes: any[] = [];
+
+        if (response.data && Array.isArray(response.data.clientes)) {
+          clientes = response.data.clientes;
         } else if (response.data && Array.isArray(response.data)) {
-          usuarios = response.data;
+          clientes = response.data;
+        } else if (Array.isArray(response)) {
+          clientes = response;
         } else {
           console.error('Estructura de respuesta no reconocida:', response);
           return;
         }
 
-        const clientes = usuarios.filter((user: any) => {
-          const rol = user.role?.toUpperCase();
-          return rol === 'CLIENTE';
-        });
-
+        console.log('Clientes cargados:', clientes);
         this.clientes.set(clientes);
 
         if (clientes.length === 0) {
@@ -83,38 +85,6 @@ export class ReservaEdit implements OnInit {
       error: (err: any) => {
         console.error('Error al cargar clientes:', err);
         this.notificationService.showError('No se pudieron cargar los clientes');
-      },
-    });
-  }
-
-  cargarAsesores(): void {
-    this.userSvc.getAll().subscribe({
-      next: (response: any) => {
-        let usuarios: any[] = [];
-
-        if (Array.isArray(response)) {
-          usuarios = response;
-        } else if (response.data && Array.isArray(response.data)) {
-          usuarios = response.data;
-        } else {
-          console.error('Estructura de respuesta no reconocida:', response);
-          return;
-        }
-
-        const asesores = usuarios.filter((user: any) => {
-          const rol = user.role?.toUpperCase();
-          return rol === 'ASESOR';
-        });
-
-        this.asesores.set(asesores);
-
-        if (asesores.length === 0) {
-          this.notificationService.showWarning('No se encontraron asesores registrados');
-        }
-      },
-      error: (err: any) => {
-        console.error('Error al cargar asesores:', err);
-        this.notificationService.showError('No se pudieron cargar los asesores');
       },
     });
   }
@@ -156,7 +126,7 @@ export class ReservaEdit implements OnInit {
           // Primero cargar los datos del formulario
           this.cargarDatosFormulario(reserva);
 
-          // Luego cargar los datos adicionales (clientes, asesores, lotes)
+          // Luego cargar los datos adicionales (clientes, lotes)
           this.cargarDatosAdicionales(reserva);
         } else {
           this.error.set('No se encontró la reserva');
@@ -178,7 +148,6 @@ export class ReservaEdit implements OnInit {
 
     // Cargar todos los datos en paralelo
     this.cargarClientes();
-    this.cargarAsesores();
     this.cargarLotes(loteActualId);
 
     // Marcar como cargado
@@ -187,12 +156,10 @@ export class ReservaEdit implements OnInit {
 
   cargarDatosFormulario(reserva: any): void {
     const clienteId = reserva.cliente?.id || reserva.clienteId;
-    const asesorId = reserva.asesor?.id || reserva.asesorId;
     const inmuebleId = reserva.lote?.id || reserva.inmuebleId;
 
     console.log('Cargando datos en formulario:', {
       clienteId,
-      asesorId,
       inmuebleId,
       montoReserva: reserva.montoReserva,
       fechaInicio: reserva.fechaInicio,
@@ -201,7 +168,6 @@ export class ReservaEdit implements OnInit {
 
     this.reservaForm.patchValue({
       clienteId: clienteId?.toString() || '',
-      asesorId: asesorId?.toString() || '',
       inmuebleTipo: reserva.inmuebleTipo || 'LOTE',
       inmuebleId: inmuebleId?.toString() || '',
       montoReserva: reserva.montoReserva || 0,
@@ -227,14 +193,7 @@ export class ReservaEdit implements OnInit {
   formatDate(date: any): string {
     if (!date) return 'N/A';
     try {
-      const dateObj = new Date(date);
-      return dateObj.toLocaleDateString('es-ES', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      });
+      return this.datePipe.transform(date, 'dd/MM/yyyy HH:mm') || 'N/A';
     } catch {
       return 'N/A';
     }
@@ -265,22 +224,36 @@ export class ReservaEdit implements OnInit {
 
     this.enviando.set(true);
 
-    const dataActualizada = {
-      ...this.reservaForm.value,
-      clienteId: Number(this.reservaForm.value.clienteId),
-      asesorId: Number(this.reservaForm.value.asesorId),
-      inmuebleId: Number(this.reservaForm.value.inmuebleId),
-      montoReserva: Number(this.reservaForm.value.montoReserva),
-    };
+    const dataActualizada: any = {};
 
-    console.log('Datos a actualizar:', dataActualizada);
+    if (this.reservaForm.value.clienteId)
+      dataActualizada.clienteId = Number(this.reservaForm.value.clienteId);
+    if (this.reservaForm.value.inmuebleId)
+      dataActualizada.inmuebleId = Number(this.reservaForm.value.inmuebleId);
+    if (this.reservaForm.value.montoReserva)
+      dataActualizada.montoReserva = Number(this.reservaForm.value.montoReserva);
+    if (this.reservaForm.value.fechaInicio)
+      dataActualizada.fechaInicio = new Date(this.reservaForm.value.fechaInicio).toISOString();
+    if (this.reservaForm.value.fechaVencimiento)
+      dataActualizada.fechaVencimiento = new Date(
+        this.reservaForm.value.fechaVencimiento
+      ).toISOString();
+    if (this.reservaForm.value.estado) dataActualizada.estado = this.reservaForm.value.estado;
+    if (this.reservaForm.value.inmuebleTipo)
+      dataActualizada.inmuebleTipo = this.reservaForm.value.inmuebleTipo;
 
     this.reservaSvc.update(this.reservaId, dataActualizada).subscribe({
       next: (response: any) => {
         this.enviando.set(false);
-        console.log('Respuesta del servidor:', response);
 
         if (response.success) {
+          this.notificationService.showSuccess(
+            response.message || 'Reserva actualizada exitosamente!'
+          );
+          setTimeout(() => {
+            this.router.navigate(['/reservas/lista']);
+          }, 1000);
+        } else if (response.id) {
           this.notificationService.showSuccess('Reserva actualizada exitosamente!');
           setTimeout(() => {
             this.router.navigate(['/reservas/lista']);
@@ -291,16 +264,15 @@ export class ReservaEdit implements OnInit {
       },
       error: (err: any) => {
         this.enviando.set(false);
-        console.error('Error al actualizar:', err);
-
         let errorMessage = 'Error al actualizar la reserva';
         if (err.status === 400) {
           errorMessage =
             err.error?.message || 'Datos inválidos. Verifique la información ingresada.';
         } else if (err.status === 404) {
           errorMessage = 'Reserva no encontrada.';
+        } else if (err.status === 409) {
+          errorMessage = 'El lote ya está reservado. Por favor seleccione otro lote.';
         }
-
         this.notificationService.showError(errorMessage);
       },
     });
@@ -321,14 +293,6 @@ export class ReservaEdit implements OnInit {
 
     const cliente = this.clientes().find((c) => c.id === Number(clienteId));
     return cliente ? cliente.fullName : 'No encontrado';
-  }
-
-  getAsesorNombre(): string {
-    const asesorId = this.reservaForm.get('asesorId')?.value;
-    if (!asesorId) return 'Sin asesor';
-
-    const asesor = this.asesores().find((a) => a.id === Number(asesorId));
-    return asesor ? asesor.fullName : 'No encontrado';
   }
 
   // Método seguro para formatear montos

@@ -5,6 +5,10 @@ export interface LoteDto {
   numeroLote: string;
   superficieM2: number;
   precioBase: number;
+  descripcion?: string;
+  ubicacion?: string;
+  latitud?: number;
+  longitud?: number;
   estado: string;
   createdAt: string;
   updatedAt: string;
@@ -17,5 +21,7 @@ export interface LoteDto {
     cotizaciones: number;
     ventas: number;
     reservas: number;
+    visitas: number;
+    imagenes: number;
   };
 }
