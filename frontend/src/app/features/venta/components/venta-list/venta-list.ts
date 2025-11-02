@@ -1,4 +1,3 @@
-// venta-list.ts
 import { Component, inject, signal, OnInit, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
@@ -55,10 +54,26 @@ export class VentaList implements OnInit {
     this.cargando.set(true);
     this.error.set(null);
     this.ventaSvc.getAll().subscribe({
-      next: (ventas) => {
+      next: (response: any) => {
+        let ventas: VentaDto[] = [];
+
+        if (response.ventas) {
+          ventas = response.ventas;
+          if (response.pagination) {
+            this.total.set(response.pagination.total);
+          } else {
+            this.total.set(ventas.length);
+          }
+        } else if (Array.isArray(response)) {
+          ventas = response;
+          this.total.set(ventas.length);
+        } else if (response.data && response.data.ventas) {
+          ventas = response.data.ventas;
+          this.total.set(ventas.length);
+        }
+
         this.ventas.set(ventas);
         this.allVentas.set(ventas);
-        this.total.set(ventas.length);
         this.cargando.set(false);
       },
       error: (err) => {
@@ -118,7 +133,8 @@ export class VentaList implements OnInit {
   }
 
   pageArray(): number[] {
-    return Array.from({ length: this.totalPages() }, (_, i) => i + 1);
+    const totalPages = this.totalPages();
+    return Array.from({ length: totalPages }, (_, i) => i + 1);
   }
 
   rangeStart(): number {
@@ -176,6 +192,8 @@ export class VentaList implements OnInit {
                   'No se puede eliminar la venta porque tiene documentos asociados';
               } else if (err.status === 404) {
                 errorMessage = 'Venta no encontrada';
+              } else if (err.error?.message) {
+                errorMessage = err.error.message;
               }
               this.notificationService.showError(errorMessage);
             },
@@ -201,5 +219,16 @@ export class VentaList implements OnInit {
       CANCELADO: 'px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-700',
     };
     return classes[estado] || classes['ACTIVO'];
+  }
+
+  formatPrecio(precio: number): string {
+    return precio.toLocaleString('es-BO', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  }
+
+  formatPorcentaje(porcentaje: number): string {
+    return porcentaje.toFixed(1) + '%';
   }
 }

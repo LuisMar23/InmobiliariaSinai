@@ -125,8 +125,6 @@ model User {
   visitasComoAsesor       Visita[]     @relation("VisitasAsesor")
   ticketsCreados          Ticket[]     @relation("TicketsCliente")
   ticketsAtendidos        Ticket[]     @relation("TicketsAtendidos")
-  imagenesSubidas         Imagen[]
-  documentosSubidos       Documento[]
   auditorias              Auditoria[]
   ingresosRegistrados     Ingreso[]
   egresosRegistrados      Egreso[]
@@ -145,7 +143,7 @@ model Urbanizacion {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   lotes    Lote[]
-  imagenes Imagen[] @relation("ImagenesUrbanizacion")
+  archivos Archivo[]
 }
 
 model Lote {
@@ -164,29 +162,29 @@ model Lote {
   updatedAt      DateTime       @updatedAt @map("updated_at")
 
   urbanizacion Urbanizacion @relation(fields: [urbanizacionId], references: [id])
-  imagenes     Imagen[]     @relation("ImagenesLote")
+  archivos     Archivo[]    
   cotizaciones Cotizacion[] @relation("CotizacionesLote")
   ventas       Venta[]      @relation("VentasLote")
   reservas     Reserva[]    @relation("ReservasLote")
   visitas      Visita[]     @relation("VisitasLote")
 }
 
-model Imagen {
-  id           Int          @id @default(autoincrement())
-  uuid         String       @unique @default(uuid())
-  inmuebleTipo TipoInmueble
-  inmuebleId   Int
-  urlImagen    String       @map("url_imagen")
-  descripcion  String?
-  orden        Int          @default(0)
-  subidoPor    Int
-  createdAt    DateTime     @default(now()) @map("created_at")
-  updatedAt    DateTime     @updatedAt @map("updated_at")
+// model Imagen {
+//   id           Int          @id @default(autoincrement())
+//   uuid         String       @unique @default(uuid())
+//   inmuebleTipo TipoInmueble
+//   inmuebleId   Int
+//   urlImagen    String       @map("url_imagen")
+//   descripcion  String?
+//   orden        Int          @default(0)
+//   subidoPor    Int
+//   createdAt    DateTime     @default(now()) @map("created_at")
+//   updatedAt    DateTime     @updatedAt @map("updated_at")
 
-  usuario      User          @relation(fields: [subidoPor], references: [id])
-  urbanizacion Urbanizacion? @relation("ImagenesUrbanizacion", fields: [inmuebleId], references: [id], map: "fk_imagen_urbanizacion")
-  lote         Lote?         @relation("ImagenesLote", fields: [inmuebleId], references: [id], map: "fk_imagen_lote")
-}
+//   usuario      User          @relation(fields: [subidoPor], references: [id])
+//   urbanizacion Urbanizacion? @relation("ImagenesUrbanizacion", fields: [inmuebleId], references: [id], map: "fk_imagen_urbanizacion")
+//   lote         Lote?         @relation("ImagenesLote", fields: [inmuebleId], references: [id], map: "fk_imagen_lote")
+// }
 
 model Cotizacion {
   id             Int              @id @default(autoincrement())
@@ -220,7 +218,7 @@ model Venta {
   cliente            User                @relation("VentasCliente", fields: [clienteId], references: [id])
   asesor             User                @relation("VentasAsesor", fields: [asesorId], references: [id])
   lote               Lote?               @relation("VentasLote", fields: [inmuebleId], references: [id], map: "fk_venta_lote")
-  documentos         Documento[]
+  archivos        Archivo[]
   ingresos           Ingreso[]
   planPago      PlanPago?
 
@@ -243,24 +241,10 @@ model Reserva {
   cliente    User        @relation("ReservasCliente", fields: [clienteId], references: [id])
   asesor     User        @relation("ReservasAsesor", fields: [asesorId], references: [id])
   lote       Lote?       @relation("ReservasLote", fields: [inmuebleId], references: [id], map: "fk_reserva_lote")
-  documentos Documento[]
+  archivios Archivo[]
 }
 
-model Documento {
-  id         Int      @id @default(autoincrement())
-  uuid       String   @unique @default(uuid())
-  ventaId    Int?
-  reservaId  Int?
-  tipo       String
-  urlArchivo String   @map("url_archivo")
-  subidoPor  Int
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
 
-  venta   Venta?   @relation(fields: [ventaId], references: [id])
-  reserva Reserva? @relation(fields: [reservaId], references: [id])
-  usuario User     @relation(fields: [subidoPor], references: [id])
-}
 
 model Visita {
   id           Int          @id @default(autoincrement())
@@ -325,6 +309,9 @@ model Auditoria {
   usuario User? @relation(fields: [usuarioId], references: [id])
 }
 
+
+
+///pendiente a revisar o cambiar
 model CategoriaContable {
   id        Int      @id @default(autoincrement())
   uuid      String   @unique @default(uuid())
@@ -480,4 +467,22 @@ model CierreCaja {
   usuario       User       @relation(fields: [usuarioId], references: [id])
 
   @@map("cierre_caja")
+}
+
+model Archivo {
+  id             Int           @id @default(autoincrement())
+  uuid           String        @unique @default(uuid())
+  ventaId        Int?
+  reservaId  Int?
+  urbanizacionId   Int?
+  urlArchivo     String
+  tipoArchivo    String?
+  nombreArchivo  String?
+  loteId  Int?
+  creado_en      DateTime      @default(now())
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  venta   Venta?   @relation(fields: [ventaId], references: [id])
+  lote    Lote?    @relation(fields: [loteId],references: [id])
+  reserva Reserva? @relation(fields: [reservaId], references: [id])
+  urbanizacion Urbanizacion? @relation(fields: [urbanizacionId],references: [id])
 }

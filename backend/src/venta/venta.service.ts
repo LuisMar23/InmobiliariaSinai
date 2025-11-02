@@ -1,4 +1,3 @@
-// venta.service.ts
 import {
   Injectable,
   NotFoundException,
@@ -354,7 +353,7 @@ export class VentasService {
               fecha_pago: new Date(),
               observacion: 'Pago inicial',
             },
-          });
+            });
 
           await this.registrarMovimientoCaja(
             {
@@ -432,6 +431,7 @@ export class VentasService {
                 pagos: true,
               },
             },
+            archivos: true,
           },
         });
 
@@ -506,6 +506,7 @@ export class VentasService {
                 },
               },
             },
+            archivos: true,
           },
           orderBy: {
             createdAt: 'desc',
@@ -581,6 +582,7 @@ export class VentasService {
               },
             },
           },
+          archivos: true,
         },
       });
 
@@ -704,6 +706,7 @@ export class VentasService {
                 pagos: true,
               },
             },
+            archivos: true,
           },
         });
 
@@ -746,7 +749,7 @@ export class VentasService {
                 pagos: true,
               },
             },
-            documentos: true,
+            archivos: true,
             ingresos: true,
           },
         });
@@ -771,9 +774,9 @@ export class VentasService {
           );
         }
 
-        if (venta.documentos.length > 0 || venta.ingresos.length > 0) {
+        if (venta.archivos.length > 0 || venta.ingresos.length > 0) {
           throw new BadRequestException(
-            'No se puede eliminar la venta porque tiene documentos o ingresos asociados',
+            'No se puede eliminar la venta porque tiene archivos o ingresos asociados',
           );
         }
 
