@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { LoteDto } from '../../../../core/interfaces/lote.interface';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { LoteService } from '../../service/lote.service';
+import { ArchivosComponent } from '../../../../components/archivos/archivos/archivos';
 
 interface ColumnConfig {
   key: keyof LoteDto;
@@ -15,7 +16,7 @@ interface ColumnConfig {
 @Component({
   selector: 'app-lote-list',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule],
+  imports: [CommonModule, RouterModule, FormsModule, ArchivosComponent],
   templateUrl: './lote-list.html',
 })
 export class LoteList implements OnInit {
@@ -229,5 +230,20 @@ export class LoteList implements OnInit {
 
   tieneUbicacion(lote: LoteDto): boolean {
     return !!lote.ubicacion;
+  }
+
+  mostrarUploader = signal(false);
+  abrirModalSubirArchivos(lote: LoteDto) {
+    this.loteSeleccionado.set(lote);
+    this.mostrarUploader.set(true);
+  }
+
+  cerrarModalUploader() {
+    this.mostrarUploader.set(false);
+    this.loteSeleccionado.set(null);
+  }
+  onSubidaCompleta() {
+    this.cerrarModalUploader();
+    this.notificationService.showSuccess('Archivos subidos correctamente');
   }
 }
