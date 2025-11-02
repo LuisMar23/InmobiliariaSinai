@@ -1,3 +1,4 @@
+// venta.controller.ts
 import {
   Controller,
   Get,
@@ -12,13 +13,11 @@ import {
   UseGuards,
   Request,
 } from '@nestjs/common';
-import {
-  CreateVentaDto,
-  RegistrarPagoDto,
-  UpdateVentaDto,
-} from './dto/create-venta.dto';
+import { CreateVentaDto, RegistrarPagoDto } from './dto/create-venta.dto';
 import { VentasService } from './venta.service';
 import { AuthGuard } from '@nestjs/passport';
+import { UpdatePagoPlanDto } from './dto/pago-plan.dto';
+import { UpdateVentaDto } from './dto/update-venta.dto';
 
 @Controller('ventas')
 @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
@@ -87,6 +86,37 @@ export class VentasController {
     const userAgent = req.headers['user-agent'];
     return this.ventasService.crearPagoPlan(
       registrarPagoDto,
+      usuarioId,
+      ip,
+      userAgent,
+    );
+  }
+
+  @Patch('pagos/:pagoId')
+  actualizarPagoPlan(
+    @Param('pagoId') pagoId: string,
+    @Body() updatePagoPlanDto: UpdatePagoPlanDto,
+    @Request() req,
+  ) {
+    const usuarioId = req.user.id;
+    const ip = req.ip;
+    const userAgent = req.headers['user-agent'];
+    return this.ventasService.actualizarPagoPlan(
+      +pagoId,
+      updatePagoPlanDto,
+      usuarioId,
+      ip,
+      userAgent,
+    );
+  }
+
+  @Delete('pagos/:pagoId')
+  eliminarPagoPlan(@Param('pagoId') pagoId: string, @Request() req) {
+    const usuarioId = req.user.id;
+    const ip = req.ip;
+    const userAgent = req.headers['user-agent'];
+    return this.ventasService.eliminarPagoPlan(
+      +pagoId,
       usuarioId,
       ip,
       userAgent,

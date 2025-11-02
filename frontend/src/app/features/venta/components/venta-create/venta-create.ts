@@ -1,3 +1,4 @@
+// venta-create.ts
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
@@ -44,17 +45,15 @@ export class VentaCreate implements OnInit {
   ngOnInit(): void {
     this.cargarClientes();
     this.cargarLotes();
-    this.asignarAsesorLogueado();
     this.setupFormListeners();
   }
 
   crearFormularioVenta(): FormGroup {
     return this.fb.group({
       clienteId: ['', Validators.required],
-      asesorId: ['', Validators.required],
       inmuebleId: ['', Validators.required],
       precioFinal: [0, [Validators.required, Validators.min(0.01)]],
-      estado: ['PENDIENTE_PAGO'],
+      estado: ['PENDIENTE'],
     });
   }
 
@@ -68,15 +67,6 @@ export class VentaCreate implements OnInit {
       periodicidad: ['MESES', Validators.required],
       fecha_inicio: [fechaHoy, Validators.required],
     });
-  }
-
-  asignarAsesorLogueado(): void {
-    const usuarioLogueado = this.authService.getCurrentUser();
-    if (usuarioLogueado && usuarioLogueado.id) {
-      this.ventaForm.patchValue({
-        asesorId: usuarioLogueado.id,
-      });
-    }
   }
 
   setupFormListeners(): void {
@@ -132,7 +122,6 @@ export class VentaCreate implements OnInit {
     });
   }
 
-  // Métodos para filtrado de clientes
   filteredClientes() {
     const search = this.searchCliente().toLowerCase();
     if (!search) return this.clientes();
@@ -144,7 +133,6 @@ export class VentaCreate implements OnInit {
     );
   }
 
-  // Métodos para filtrado de lotes
   filteredLotes() {
     const search = this.searchLote().toLowerCase();
     if (!search) return this.lotes();
@@ -157,7 +145,6 @@ export class VentaCreate implements OnInit {
     );
   }
 
-  // Métodos para selección de cliente
   selectCliente(cliente: UserDto) {
     this.ventaForm.patchValue({
       clienteId: cliente.id.toString(),
@@ -166,7 +153,6 @@ export class VentaCreate implements OnInit {
     this.showClientesDropdown.set(false);
   }
 
-  // Métodos para selección de lote
   selectLote(lote: LoteDto) {
     this.ventaForm.patchValue({
       inmuebleId: lote.id.toString(),
@@ -175,7 +161,6 @@ export class VentaCreate implements OnInit {
     this.showLotesDropdown.set(false);
   }
 
-  // Métodos para mostrar/ocultar dropdowns
   toggleClientesDropdown() {
     this.showClientesDropdown.set(!this.showClientesDropdown());
     if (this.showClientesDropdown()) {
@@ -190,7 +175,6 @@ export class VentaCreate implements OnInit {
     }
   }
 
-  // Métodos para cuando el input pierde el foco
   onClienteBlur() {
     setTimeout(() => {
       this.showClientesDropdown.set(false);
@@ -273,17 +257,10 @@ export class VentaCreate implements OnInit {
       return;
     }
 
-    const asesorId = this.ventaForm.get('asesorId')?.value;
-    if (!asesorId) {
-      this.notificationService.showError('No se pudo identificar al asesor de la venta');
-      return;
-    }
-
     this.enviando.set(true);
 
     const ventaData: any = {
       clienteId: Number(this.ventaForm.value.clienteId),
-      asesorId: Number(asesorId),
       inmuebleTipo: 'LOTE',
       inmuebleId: Number(this.ventaForm.value.inmuebleId),
       precioFinal: Number(this.ventaForm.value.precioFinal),
@@ -302,21 +279,24 @@ export class VentaCreate implements OnInit {
         return;
       }
 
-      const fechaInicio = new Date(this.planPagoForm.get('fecha_inicio')?.value);
-      const hoy = new Date();
-      hoy.setHours(0, 0, 0, 0);
-
-      if (fechaInicio < hoy) {
-        this.notificationService.showError('La fecha de inicio no puede ser en el pasado');
-        this.enviando.set(false);
-        return;
-      }
+      const fechaInicioInput = this.planPagoForm.get('fecha_inicio')?.value;
 
       ventaData.plan_pago = {
         monto_inicial: Number(this.planPagoForm.value.monto_inicial),
         plazo: Number(this.planPagoForm.value.plazo),
         periodicidad: this.planPagoForm.value.periodicidad,
-        fecha_inicio: new Date(this.planPagoForm.value.fecha_inicio),
+        fecha_inicio: fechaInicioInput,
+      };
+    } else {
+      // Si no se muestra plan de pago, enviar uno por defecto
+      const hoy = new Date();
+      const fechaHoy = hoy.toISOString().split('T')[0];
+
+      ventaData.plan_pago = {
+        monto_inicial: 0,
+        plazo: 1,
+        periodicidad: 'MESES',
+        fecha_inicio: fechaHoy,
       };
     }
 

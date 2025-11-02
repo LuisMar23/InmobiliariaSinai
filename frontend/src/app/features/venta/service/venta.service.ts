@@ -1,3 +1,4 @@
+// venta.service.ts
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
@@ -50,7 +51,17 @@ export class VentaService {
   }
 
   create(venta: CreateVentaDto): Observable<any> {
-    return this.http.post<ApiResponse<any>>(this.apiUrl, venta);
+    const ventaData: any = {
+      clienteId: venta.clienteId,
+      inmuebleTipo: venta.inmuebleTipo,
+      inmuebleId: venta.inmuebleId,
+      precioFinal: venta.precioFinal,
+      estado: venta.estado,
+      observaciones: venta.observaciones,
+      plan_pago: venta.plan_pago,
+    };
+
+    return this.http.post<ApiResponse<any>>(this.apiUrl, ventaData);
   }
 
   update(id: number, venta: UpdateVentaDto): Observable<any> {
@@ -61,7 +72,6 @@ export class VentaService {
     return this.http.delete<ApiResponse<any>>(`${this.apiUrl}/${id}`);
   }
 
-  // Métodos para plan de pagos - CORREGIDOS
   crearPagoPlan(pagoData: RegistrarPagoDto): Observable<any> {
     return this.http.post<ApiResponse<any>>(`${this.apiUrl}/pagos/registrar`, pagoData);
   }

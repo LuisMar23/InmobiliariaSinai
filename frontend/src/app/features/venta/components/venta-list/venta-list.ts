@@ -1,3 +1,4 @@
+// venta-list.ts
 import { Component, inject, signal, OnInit, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
@@ -21,7 +22,6 @@ export class VentaList implements OnInit {
   ventaSeleccionada = signal<VentaDto | null>(null);
   mostrarModal = signal<boolean>(false);
 
-  // Paginación
   total = signal(0);
   pageSize = signal(10);
   currentPage = signal(1);
@@ -29,7 +29,6 @@ export class VentaList implements OnInit {
   private ventaSvc = inject(VentaService);
   private notificationService = inject(NotificationService);
 
-  // Computed para ventas filtradas
   filteredVentas = computed(() => {
     const term = this.searchTerm().toLowerCase();
     let ventas = this.allVentas();
@@ -90,7 +89,6 @@ export class VentaList implements OnInit {
     );
   }
 
-  // Métodos de paginación
   totalPages() {
     return Math.ceil(this.filteredVentas().length / this.pageSize());
   }
@@ -188,11 +186,11 @@ export class VentaList implements OnInit {
 
   getEstadoBadgeClass(estado: string): string {
     const classes: { [key: string]: string } = {
-      PENDIENTE_PAGO: 'px-3 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-700',
+      PENDIENTE: 'px-3 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-700',
       PAGADO: 'px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700',
       CANCELADO: 'px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700',
     };
-    return classes[estado] || classes['PENDIENTE_PAGO'];
+    return classes[estado] || classes['PENDIENTE'];
   }
 
   getEstadoPlanPagoClass(estado: string): string {
