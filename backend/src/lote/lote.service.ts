@@ -121,7 +121,7 @@ export class LotesService {
             ventas: true,
             reservas: true,
             visitas: true,
-            imagenes: true,
+            archivos: true,
           },
         },
       },
@@ -148,11 +148,11 @@ export class LotesService {
             descripcion: true,
           },
         },
-        imagenes: {
+        archivos: {
           select: {
             id: true,
-            urlImagen: true,
-            descripcion: true,
+            urlArchivo: true,
+       
           },
         },
         cotizaciones: {
@@ -279,7 +279,7 @@ export class LotesService {
           ventas: true,
           reservas: true,
           visitas: true,
-          imagenes: true,
+          archivos: true,
         },
       });
 
@@ -293,7 +293,7 @@ export class LotesService {
         lote.ventas.length > 0 ||
         lote.reservas.length > 0 ||
         lote.visitas.length > 0 ||
-        lote.imagenes.length > 0;
+        lote.archivos.length > 0;
 
       if (tieneRelaciones) {
         throw new BadRequestException(

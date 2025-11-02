@@ -11,9 +11,10 @@ import { CajaModule } from './caja/caja.module';
 import { MovimientoModule } from './movimiento/movimiento.module';
 import { CierreModule } from './cierre/cierre.module';
 import { VisitasModule } from './visita/visita.module';
+import { ArchivosModule } from './archivos/archivos.module';
 
 @Module({
-  imports: [AuthModule, UsersModule, UrbanizacionModule, PromocionModule, LotesModule, VentasModule, ReservasModule, CotizacionesModule, CajaModule, MovimientoModule, CierreModule, VisitasModule],
+  imports: [AuthModule, UsersModule, UrbanizacionModule, PromocionModule, LotesModule, VentasModule, ReservasModule, CotizacionesModule, CajaModule, MovimientoModule, CierreModule, VisitasModule, ArchivosModule],
   controllers: [],
   providers: [],
 })
