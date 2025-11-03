@@ -21,7 +21,7 @@ export class VentaCreate implements OnInit {
   enviando = signal<boolean>(false);
   clientes = signal<UserDto[]>([]);
   lotes = signal<LoteDto[]>([]);
-  mostrarPlanPago = signal<boolean>(false);
+  mostrarPlanPago = signal<boolean>(true);
   fechaVencimientoCalculada = signal<string>('');
 
   searchCliente = signal<string>('');
@@ -44,39 +44,31 @@ export class VentaCreate implements OnInit {
   ngOnInit(): void {
     this.cargarClientes();
     this.cargarLotes();
-    this.asignarAsesorLogueado();
     this.setupFormListeners();
   }
 
   crearFormularioVenta(): FormGroup {
     return this.fb.group({
       clienteId: ['', Validators.required],
-      asesorId: ['', Validators.required],
       inmuebleId: ['', Validators.required],
       precioFinal: [0, [Validators.required, Validators.min(0.01)]],
-      estado: ['PENDIENTE_PAGO'],
+      estado: ['PENDIENTE'],
+      observaciones: [''],
     });
   }
 
   crearPlanPagoForm(): FormGroup {
     const hoy = new Date();
     const fechaHoy = hoy.toISOString().split('T')[0];
+    const fechaInicio = new Date();
+    fechaInicio.setDate(fechaInicio.getDate() + 1);
 
     return this.fb.group({
       monto_inicial: [0, [Validators.required, Validators.min(0)]],
-      plazo: [1, [Validators.required, Validators.min(1)]],
-      periodicidad: ['MESES', Validators.required],
-      fecha_inicio: [fechaHoy, Validators.required],
+      plazo: ['', [Validators.required, Validators.min(1)]], // Sin valor predeterminado
+      periodicidad: ['', Validators.required], // Sin valor predeterminado
+      fecha_inicio: [fechaInicio.toISOString().split('T')[0], Validators.required],
     });
-  }
-
-  asignarAsesorLogueado(): void {
-    const usuarioLogueado = this.authService.getCurrentUser();
-    if (usuarioLogueado && usuarioLogueado.id) {
-      this.ventaForm.patchValue({
-        asesorId: usuarioLogueado.id,
-      });
-    }
   }
 
   setupFormListeners(): void {
@@ -108,11 +100,15 @@ export class VentaCreate implements OnInit {
           clientes = response.data;
         } else if (Array.isArray(response)) {
           clientes = response;
+        } else if (response.success && response.data) {
+          clientes = response.data.clientes || response.data.users || response.data || [];
         }
 
+        console.log('Clientes cargados:', clientes);
         this.clientes.set(clientes);
       },
       error: (err: any) => {
+        console.error('Error cargando clientes:', err);
         this.notificationService.showError('No se pudieron cargar los clientes');
       },
     });
@@ -121,18 +117,19 @@ export class VentaCreate implements OnInit {
   cargarLotes(): void {
     this.loteSvc.getAll().subscribe({
       next: (lotes: LoteDto[]) => {
+        console.log('Lotes cargados:', lotes);
         const lotesDisponibles = lotes.filter(
           (lote) => lote.estado === 'DISPONIBLE' || lote.estado === 'CON_OFERTA'
         );
         this.lotes.set(lotesDisponibles);
       },
       error: (err: any) => {
+        console.error('Error cargando lotes:', err);
         this.notificationService.showError('No se pudieron cargar los lotes');
       },
     });
   }
 
-  // Métodos para filtrado de clientes
   filteredClientes() {
     const search = this.searchCliente().toLowerCase();
     if (!search) return this.clientes();
@@ -140,11 +137,11 @@ export class VentaCreate implements OnInit {
     return this.clientes().filter(
       (cliente) =>
         cliente.fullName?.toLowerCase().includes(search) ||
-        (cliente.ci && cliente.ci.toLowerCase().includes(search))
+        (cliente.ci && cliente.ci.toLowerCase().includes(search)) ||
+        (cliente.email && cliente.email.toLowerCase().includes(search))
     );
   }
 
-  // Métodos para filtrado de lotes
   filteredLotes() {
     const search = this.searchLote().toLowerCase();
     if (!search) return this.lotes();
@@ -157,8 +154,8 @@ export class VentaCreate implements OnInit {
     );
   }
 
-  // Métodos para selección de cliente
   selectCliente(cliente: UserDto) {
+    console.log('Cliente seleccionado:', cliente);
     this.ventaForm.patchValue({
       clienteId: cliente.id.toString(),
     });
@@ -166,16 +163,26 @@ export class VentaCreate implements OnInit {
     this.showClientesDropdown.set(false);
   }
 
-  // Métodos para selección de lote
   selectLote(lote: LoteDto) {
+    console.log('Lote seleccionado:', lote);
     this.ventaForm.patchValue({
       inmuebleId: lote.id.toString(),
+      precioFinal: lote.precioBase,
     });
-    this.searchLote.set(`${lote.numeroLote} - ${lote.urbanizacion?.nombre} - $${lote.precioBase}`);
+    this.searchLote.set(this.getLoteDisplayText(lote));
     this.showLotesDropdown.set(false);
   }
 
-  // Métodos para mostrar/ocultar dropdowns
+  getLoteDisplayText(lote: LoteDto): string {
+    return `${lote.numeroLote} - ${lote.urbanizacion?.nombre} - $${this.formatNumber(
+      lote.precioBase
+    )}`;
+  }
+
+  formatNumber(value: number): string {
+    return value.toLocaleString('es-BO');
+  }
+
   toggleClientesDropdown() {
     this.showClientesDropdown.set(!this.showClientesDropdown());
     if (this.showClientesDropdown()) {
@@ -190,7 +197,6 @@ export class VentaCreate implements OnInit {
     }
   }
 
-  // Métodos para cuando el input pierde el foco
   onClienteBlur() {
     setTimeout(() => {
       this.showClientesDropdown.set(false);
@@ -225,20 +231,21 @@ export class VentaCreate implements OnInit {
     if (!this.mostrarPlanPago()) return;
 
     const fechaInicio = this.planPagoForm.get('fecha_inicio')?.value;
-    const plazo = this.planPagoForm.get('plazo')?.value || 1;
+    const plazo = this.planPagoForm.get('plazo')?.value;
     const periodicidad = this.planPagoForm.get('periodicidad')?.value;
 
-    if (fechaInicio && plazo) {
+    // Solo calcular si todos los campos están completos
+    if (fechaInicio && plazo && periodicidad) {
       const fecha = new Date(fechaInicio);
       switch (periodicidad) {
         case 'DIAS':
-          fecha.setDate(fecha.getDate() + plazo);
+          fecha.setDate(fecha.getDate() + Number(plazo));
           break;
         case 'SEMANAS':
-          fecha.setDate(fecha.getDate() + plazo * 7);
+          fecha.setDate(fecha.getDate() + Number(plazo) * 7);
           break;
         case 'MESES':
-          fecha.setMonth(fecha.getMonth() + plazo);
+          fecha.setMonth(fecha.getMonth() + Number(plazo));
           break;
       }
       this.fechaVencimientoCalculada.set(fecha.toISOString().split('T')[0]);
@@ -273,41 +280,33 @@ export class VentaCreate implements OnInit {
       return;
     }
 
-    const asesorId = this.ventaForm.get('asesorId')?.value;
-    if (!asesorId) {
-      this.notificationService.showError('No se pudo identificar al asesor de la venta');
+    const clienteId = this.ventaForm.get('clienteId')?.value;
+    const inmuebleId = this.ventaForm.get('inmuebleId')?.value;
+
+    if (!clienteId || !inmuebleId) {
+      this.notificationService.showError('Debe seleccionar un cliente y un lote');
       return;
     }
 
     this.enviando.set(true);
 
     const ventaData: any = {
-      clienteId: Number(this.ventaForm.value.clienteId),
-      asesorId: Number(asesorId),
+      clienteId: Number(clienteId),
       inmuebleTipo: 'LOTE',
-      inmuebleId: Number(this.ventaForm.value.inmuebleId),
+      inmuebleId: Number(inmuebleId),
       precioFinal: Number(this.ventaForm.value.precioFinal),
       estado: this.ventaForm.value.estado,
+      observaciones: this.ventaForm.value.observaciones,
     };
 
     if (this.mostrarPlanPago()) {
       const precioFinal = this.ventaForm.get('precioFinal')?.value;
       const montoInicial = this.planPagoForm.get('monto_inicial')?.value;
 
-      if (montoInicial >= precioFinal) {
+      if (montoInicial > precioFinal) {
         this.notificationService.showError(
-          'El monto inicial debe ser menor al precio final de la venta'
+          'El monto inicial no puede ser mayor al precio final de la venta'
         );
-        this.enviando.set(false);
-        return;
-      }
-
-      const fechaInicio = new Date(this.planPagoForm.get('fecha_inicio')?.value);
-      const hoy = new Date();
-      hoy.setHours(0, 0, 0, 0);
-
-      if (fechaInicio < hoy) {
-        this.notificationService.showError('La fecha de inicio no puede ser en el pasado');
         this.enviando.set(false);
         return;
       }
@@ -316,13 +315,27 @@ export class VentaCreate implements OnInit {
         monto_inicial: Number(this.planPagoForm.value.monto_inicial),
         plazo: Number(this.planPagoForm.value.plazo),
         periodicidad: this.planPagoForm.value.periodicidad,
-        fecha_inicio: new Date(this.planPagoForm.value.fecha_inicio),
+        fecha_inicio: this.planPagoForm.value.fecha_inicio,
+      };
+    } else {
+      const hoy = new Date();
+      const fechaHoy = hoy.toISOString().split('T')[0];
+
+      ventaData.plan_pago = {
+        monto_inicial: 0,
+        plazo: 1,
+        periodicidad: 'MESES',
+        fecha_inicio: fechaHoy,
       };
     }
+
+    console.log('Enviando datos de venta:', ventaData);
 
     this.ventaSvc.create(ventaData).subscribe({
       next: (response: any) => {
         this.enviando.set(false);
+        console.log('Respuesta del servidor:', response);
+
         if (response.success) {
           this.notificationService.showSuccess('Venta creada exitosamente!');
           setTimeout(() => {
@@ -334,15 +347,19 @@ export class VentaCreate implements OnInit {
       },
       error: (err: any) => {
         this.enviando.set(false);
+        console.error('Error completo:', err);
+
         let errorMessage = 'Error al crear la venta';
-        if (err.status === 400) {
-          errorMessage =
-            err.error?.message || 'Datos inválidos. Verifique la información ingresada.';
+        if (err.error?.message) {
+          errorMessage = err.error.message;
+        } else if (err.status === 400) {
+          errorMessage = 'Datos inválidos. Verifique la información ingresada.';
         } else if (err.status === 403) {
           errorMessage = 'No tienes permisos para crear ventas';
         } else if (err.status === 404) {
-          errorMessage = 'Cliente, asesor o lote no encontrado';
+          errorMessage = 'Cliente o lote no encontrado';
         }
+
         this.notificationService.showError(errorMessage);
       },
     });
@@ -365,5 +382,12 @@ export class VentaCreate implements OnInit {
       default:
         return '';
     }
+  }
+
+  debugForm(): void {
+    console.log('Venta Form:', this.ventaForm.value);
+    console.log('Plan Pago Form:', this.planPagoForm.value);
+    console.log('Clientes:', this.clientes());
+    console.log('Lotes:', this.lotes());
   }
 }

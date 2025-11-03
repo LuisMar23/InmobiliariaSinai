@@ -150,8 +150,7 @@ export class CajaList implements OnInit {
         this.mostrarFormNuevaCaja.set(false);
         this.notificationSvc.showSuccess('Caja creada correctamente');
       },
-      error: (error) => {
-        console.error('Error al crear caja:', error);
+      error: () => {
         this.notificationSvc.showError('Error al crear la caja');
       },
     });
@@ -180,8 +179,7 @@ export class CajaList implements OnInit {
         this.cajaSeleccionada.set(null);
         this.notificationSvc.showSuccess(`Caja ${caja.nombre} abierta correctamente`);
       },
-      error: (error) => {
-        console.error('Error al abrir caja:', error);
+      error: () => {
         this.notificationSvc.showError('Error al abrir la caja');
       },
     });
@@ -200,8 +198,7 @@ export class CajaList implements OnInit {
           this.allCajas.update((prev) => prev.map((c) => (c.id === caja.id ? cajaActualizada : c)));
           this.notificationSvc.showSuccess(`Caja ${caja.nombre} cerrada correctamente`);
         },
-        error: (error) => {
-          console.error('Error al cerrar caja:', error);
+        error: () => {
           this.notificationSvc.showError('Error al cerrar la caja');
         },
       });
@@ -245,7 +242,8 @@ export class CajaList implements OnInit {
   }
 
   getTotalEnCajas(): number {
-    return this.cajas().reduce((sum, c) => sum + c.saldoActual, 0);
+    // Sumar solo los saldos actuales de todas las cajas
+    return this.cajas().reduce((sum, c) => sum + Number(c.saldoActual), 0);
   }
 
   toggleFormNuevaCaja() {
@@ -262,7 +260,6 @@ export class CajaList implements OnInit {
     return user?.role === 'ADMINISTRADOR' || user?.role === 'SECRETARIA';
   }
 
-  // Método para manejar cambios en el buscador
   onSearchChange(event: Event): void {
     const value = (event.target as HTMLInputElement).value;
     this.searchTerm.set(value);

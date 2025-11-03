@@ -1,3 +1,4 @@
+// create-venta.dto.ts
 import {
   IsString,
   IsNumber,
@@ -72,11 +73,6 @@ export class CreateVentaDto {
   @IsPositive()
   clienteId: number;
 
-  @IsOptional()
-  @IsInt()
-  @IsPositive()
-  asesorId?: number;
-
   @IsEnum(TipoInmueble)
   inmuebleTipo: TipoInmueble;
 
@@ -97,10 +93,9 @@ export class CreateVentaDto {
   @IsString()
   observaciones?: string;
 
-  @IsOptional()
   @ValidateNested()
   @Type(() => CreatePlanPagoDto)
-  plan_pago?: CreatePlanPagoDto;
+  plan_pago: CreatePlanPagoDto;
 }
 
 export class RegistrarPagoDto {
@@ -127,37 +122,23 @@ export class RegistrarPagoDto {
   metodoPago?: MetodoPago;
 }
 
-export class UpdateVentaDto {
-  @IsOptional()
-  @IsInt()
-  @IsPositive()
-  clienteId?: number;
-
-  @IsOptional()
-  @IsEnum(TipoInmueble)
-  inmuebleTipo?: TipoInmueble;
-
-  @IsOptional()
-  @IsInt()
-  @IsPositive()
-  inmuebleId?: number;
-
+export class UpdatePagoPlanDto {
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0.01)
   @Type(() => Number)
-  precioFinal?: number;
+  monto?: number;
 
   @IsOptional()
-  @IsEnum(EstadoVenta)
-  estado?: EstadoVenta;
+  @IsDate()
+  @Type(() => Date)
+  fecha_pago?: Date;
 
   @IsOptional()
   @IsString()
-  observaciones?: string;
+  observacion?: string;
 
   @IsOptional()
-  @ValidateNested()
-  @Type(() => CreatePlanPagoDto)
-  plan_pago?: CreatePlanPagoDto;
+  @IsEnum(MetodoPago)
+  metodoPago?: MetodoPago;
 }

@@ -1,4 +1,6 @@
+// venta.interface.ts
 export interface VentaDto {
+  observaciones: string;
   id: number;
   uuid: string;
   clienteId: number;
@@ -71,13 +73,12 @@ export interface PagoPlanDto {
 
 export interface CreateVentaDto {
   clienteId: number;
-  asesorId?: number;
   inmuebleTipo: string;
   inmuebleId: number;
   precioFinal: number;
   estado?: string;
   observaciones?: string;
-  plan_pago?: CreatePlanPagoDto;
+  plan_pago: CreatePlanPagoDto;
 }
 
 export interface CreatePlanPagoDto {
@@ -94,7 +95,6 @@ export interface UpdateVentaDto {
   precioFinal?: number;
   estado?: string;
   observaciones?: string;
-  plan_pago?: CreatePlanPagoDto;
 }
 
 export interface RegistrarPagoDto {

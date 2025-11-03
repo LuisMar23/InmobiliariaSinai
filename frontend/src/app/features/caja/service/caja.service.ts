@@ -20,8 +20,7 @@ export class CajaService {
         this.cajas.set(data);
         this.cargando.set(false);
       },
-      error: (error) => {
-        console.error('Error al cargar cajas:', error);
+      error: () => {
         this.cargando.set(false);
       },
     });
