@@ -1,15 +1,21 @@
 import { Component, inject, signal, OnInit, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
-import { FormsModule } from '@angular/forms';
-import { VentaDto } from '../../../../core/interfaces/venta.interface';
+import {
+  FormsModule,
+  ReactiveFormsModule,
+  FormBuilder,
+  FormGroup,
+  Validators,
+} from '@angular/forms';
+import { VentaDto, RegistrarPagoDto } from '../../../../core/interfaces/venta.interface';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { VentaService } from '../../service/venta.service';
 
 @Component({
   selector: 'app-venta-list',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule],
+  imports: [CommonModule, RouterModule, FormsModule, ReactiveFormsModule],
   templateUrl: './venta-list.html',
 })
 export class VentaList implements OnInit {
@@ -20,6 +26,10 @@ export class VentaList implements OnInit {
   error = signal<string | null>(null);
   ventaSeleccionada = signal<VentaDto | null>(null);
   mostrarModal = signal<boolean>(false);
+  mostrarFormPago = signal<boolean>(false);
+  enviandoPago = signal<boolean>(false);
+
+  pagoForm: FormGroup;
 
   total = signal(0);
   pageSize = signal(10);
@@ -27,6 +37,11 @@ export class VentaList implements OnInit {
 
   private ventaSvc = inject(VentaService);
   private notificationService = inject(NotificationService);
+  private fb = inject(FormBuilder);
+
+  constructor() {
+    this.pagoForm = this.crearPagoForm();
+  }
 
   filteredVentas = computed(() => {
     const term = this.searchTerm().toLowerCase();
@@ -48,6 +63,18 @@ export class VentaList implements OnInit {
 
   ngOnInit(): void {
     this.obtenerVentas();
+  }
+
+  crearPagoForm(): FormGroup {
+    const hoy = new Date();
+    const fechaHoy = hoy.toISOString().split('T')[0];
+
+    return this.fb.group({
+      monto: [0, [Validators.required, Validators.min(0.01)]],
+      fecha_pago: [fechaHoy, Validators.required],
+      observacion: ['Pago registrado desde el sistema'],
+      metodoPago: ['EFECTIVO', Validators.required],
+    });
   }
 
   obtenerVentas() {
@@ -86,22 +113,44 @@ export class VentaList implements OnInit {
 
   getTotalPagado(venta: VentaDto): number {
     if (!venta.planPago) return 0;
-    return venta.planPago.total_pagado || 0;
+
+    if (venta.planPago.total_pagado !== undefined && venta.planPago.total_pagado !== null) {
+      return Number(venta.planPago.total_pagado);
+    }
+
+    if (venta.planPago.pagos && Array.isArray(venta.planPago.pagos)) {
+      return venta.planPago.pagos.reduce(
+        (sum: number, pago: any) => sum + Number(pago.monto || 0),
+        0
+      );
+    }
+
+    return 0;
   }
 
   getSaldoPendiente(venta: VentaDto): number {
     if (!venta.planPago) return 0;
-    return (
-      venta.planPago.saldo_pendiente ||
-      Math.max(0, venta.planPago.total - this.getTotalPagado(venta))
-    );
+
+    if (venta.planPago.saldo_pendiente !== undefined && venta.planPago.saldo_pendiente !== null) {
+      return Number(venta.planPago.saldo_pendiente);
+    }
+
+    const total = Number(venta.planPago.total || 0);
+    return Math.max(0, total - this.getTotalPagado(venta));
   }
 
   getPorcentajePagado(venta: VentaDto): number {
     if (!venta.planPago || venta.planPago.total === 0) return 0;
-    return (
-      venta.planPago.porcentaje_pagado || (this.getTotalPagado(venta) / venta.planPago.total) * 100
-    );
+
+    if (
+      venta.planPago.porcentaje_pagado !== undefined &&
+      venta.planPago.porcentaje_pagado !== null
+    ) {
+      return Number(venta.planPago.porcentaje_pagado);
+    }
+
+    const total = Number(venta.planPago.total || 0);
+    return (this.getTotalPagado(venta) / total) * 100;
   }
 
   totalPages() {
@@ -155,11 +204,118 @@ export class VentaList implements OnInit {
   verDetalles(venta: VentaDto) {
     this.ventaSeleccionada.set(venta);
     this.mostrarModal.set(true);
+    this.mostrarFormPago.set(false);
+    this.pagoForm.reset();
+
+    const hoy = new Date();
+    const fechaHoy = hoy.toISOString().split('T')[0];
+    this.pagoForm.patchValue({
+      fecha_pago: fechaHoy,
+      metodoPago: 'EFECTIVO',
+      monto: 0,
+      observacion: 'Pago registrado desde el sistema',
+    });
   }
 
   cerrarModal() {
     this.mostrarModal.set(false);
     this.ventaSeleccionada.set(null);
+    this.mostrarFormPago.set(false);
+    this.pagoForm.reset();
+  }
+
+  toggleFormPago(): void {
+    this.mostrarFormPago.set(!this.mostrarFormPago());
+  }
+
+  getMontoMaximoPago(): number {
+    const venta = this.ventaSeleccionada();
+    if (!venta?.planPago) return 0;
+    return this.getSaldoPendiente(venta);
+  }
+
+  registrarPago(): void {
+    if (this.pagoForm.invalid) {
+      this.pagoForm.markAllAsTouched();
+      this.notificationService.showError('Complete todos los campos del pago correctamente.');
+      return;
+    }
+
+    const venta = this.ventaSeleccionada();
+    if (!venta?.planPago) {
+      this.notificationService.showError('No hay plan de pago para esta venta.');
+      return;
+    }
+
+    const monto = Number(this.pagoForm.value.monto);
+    const saldoPendiente = this.getSaldoPendiente(venta);
+
+    if (monto <= 0) {
+      this.notificationService.showError('El monto debe ser mayor a cero.');
+      return;
+    }
+
+    if (monto > saldoPendiente) {
+      this.notificationService.showError(
+        `El monto no puede ser mayor al saldo pendiente (${this.formatPrecio(saldoPendiente)})`
+      );
+      return;
+    }
+
+    this.enviandoPago.set(true);
+
+    const pagoData: RegistrarPagoDto = {
+      plan_pago_id: venta.planPago.id_plan_pago!,
+      monto: monto,
+      fecha_pago: this.pagoForm.value.fecha_pago,
+      observacion: this.pagoForm.value.observacion || 'Pago registrado desde el sistema',
+      metodoPago: this.pagoForm.value.metodoPago,
+    };
+
+    this.ventaSvc.crearPagoPlan(pagoData).subscribe({
+      next: (response: any) => {
+        this.enviandoPago.set(false);
+        if (response.success) {
+          this.notificationService.showSuccess('Pago registrado exitosamente!');
+          this.pagoForm.reset();
+          this.mostrarFormPago.set(false);
+
+          this.obtenerVentas();
+
+          if (venta.id) {
+            this.ventaSvc.getById(venta.id).subscribe({
+              next: (ventaActualizada: VentaDto) => {
+                this.ventaSeleccionada.set(ventaActualizada);
+              },
+              error: (err) => {
+                console.error('Error al actualizar venta:', err);
+              },
+            });
+          }
+
+          const hoy = new Date();
+          const fechaHoy = hoy.toISOString().split('T')[0];
+          this.pagoForm.patchValue({
+            fecha_pago: fechaHoy,
+            metodoPago: 'EFECTIVO',
+            monto: 0,
+            observacion: 'Pago registrado desde el sistema',
+          });
+        } else {
+          this.notificationService.showError(response.message || 'Error al registrar el pago');
+        }
+      },
+      error: (err: any) => {
+        this.enviandoPago.set(false);
+        let errorMessage = 'Error al registrar el pago';
+        if (err.status === 400) {
+          errorMessage = err.error?.message || 'Datos inválidos para el pago.';
+        } else if (err.error?.message) {
+          errorMessage = err.error.message;
+        }
+        this.notificationService.showError(errorMessage);
+      },
+    });
   }
 
   eliminarVenta(id: number) {

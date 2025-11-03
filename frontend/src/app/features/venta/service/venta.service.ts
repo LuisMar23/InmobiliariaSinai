@@ -205,6 +205,36 @@ export class VentaService {
       );
   }
 
+  actualizarPagoPlan(pagoId: number, updateData: any): Observable<any> {
+    return this.http.patch<ApiResponse<any>>(`${this.apiUrl}/pagos/${pagoId}`, updateData).pipe(
+      map((response) => {
+        if (!response.success) {
+          throw new Error(response.message || 'Error al actualizar pago');
+        }
+        return response;
+      }),
+      catchError((error) => {
+        console.error('Error updating payment:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  eliminarPagoPlan(pagoId: number): Observable<any> {
+    return this.http.delete<ApiResponse<any>>(`${this.apiUrl}/pagos/${pagoId}`).pipe(
+      map((response) => {
+        if (!response.success) {
+          throw new Error(response.message || 'Error al eliminar pago');
+        }
+        return response;
+      }),
+      catchError((error) => {
+        console.error('Error deleting payment:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
   obtenerPagosPlan(planPagoId: number): Observable<any> {
     return this.http.get<ApiResponse<any>>(`${this.apiUrl}/planes-pago/${planPagoId}/pagos`).pipe(
       map((response) => {

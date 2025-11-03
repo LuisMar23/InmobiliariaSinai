@@ -259,17 +259,38 @@ export class VentasService {
 
   private validarFechaPago(fechaPago: Date): void {
     const hoy = new Date();
-    if (fechaPago > hoy) {
+    hoy.setHours(0, 0, 0, 0); // Normalizar a inicio del día
+
+    const fechaPagoNormalizada = new Date(fechaPago);
+    fechaPagoNormalizada.setHours(0, 0, 0, 0);
+
+    if (fechaPagoNormalizada > hoy) {
       throw new BadRequestException('La fecha de pago no puede ser futura');
     }
   }
 
   private validarSecuenciaPagos(pagos: any[], nuevaFecha: Date): void {
     if (pagos && pagos.length > 0) {
-      const fechaPrimerPago = new Date(pagos[0].fecha_pago);
-      if (nuevaFecha < fechaPrimerPago) {
+      // Convertir a fechas válidas y normalizar (sin horas)
+      const fechasPagos = pagos.map((p) => {
+        const fecha = new Date(p.fecha_pago);
+        fecha.setHours(0, 0, 0, 0);
+        return fecha;
+      });
+
+      // Encontrar el primer pago (fecha más antigua)
+      const fechaPrimerPago = new Date(
+        Math.min(...fechasPagos.map((d) => d.getTime())),
+      );
+
+      // Normalizar la nueva fecha (sin horas)
+      const nuevaFechaNormalizada = new Date(nuevaFecha);
+      nuevaFechaNormalizada.setHours(0, 0, 0, 0);
+
+      // Validar que no sea anterior al primer pago
+      if (nuevaFechaNormalizada < fechaPrimerPago) {
         throw new BadRequestException(
-          'La fecha de pago no puede ser anterior al primer pago del plan',
+          `La fecha de pago no puede ser anterior al primer pago del plan (${fechaPrimerPago.toLocaleDateString()})`,
         );
       }
     }
@@ -353,7 +374,7 @@ export class VentasService {
               fecha_pago: new Date(),
               observacion: 'Pago inicial',
             },
-            });
+          });
 
           await this.registrarMovimientoCaja(
             {
@@ -882,7 +903,11 @@ export class VentasService {
                 asesor: true,
               },
             },
-            pagos: true,
+            pagos: {
+              orderBy: {
+                fecha_pago: 'asc',
+              },
+            },
           },
         });
 
@@ -986,7 +1011,11 @@ export class VentasService {
         const planActualizado = await prisma.planPago.findUnique({
           where: { id_plan_pago: registrarPagoDto.plan_pago_id },
           include: {
-            pagos: true,
+            pagos: {
+              orderBy: {
+                fecha_pago: 'asc',
+              },
+            },
             venta: true,
           },
         });
@@ -1038,7 +1067,11 @@ export class VentasService {
             planPago: {
               include: {
                 venta: true,
-                pagos: true,
+                pagos: {
+                  orderBy: {
+                    fecha_pago: 'asc',
+                  },
+                },
               },
             },
           },
@@ -1062,6 +1095,8 @@ export class VentasService {
 
         if (updatePagoPlanDto.fecha_pago) {
           this.validarFechaPago(updatePagoPlanDto.fecha_pago);
+
+          // Filtrar otros pagos (excluyendo el actual) para la validación de secuencia
           const otrosPagos = pagoExistente.planPago.pagos.filter(
             (p) => p.id_pago_plan !== pagoId,
           );
@@ -1183,7 +1218,11 @@ export class VentasService {
             planPago: {
               include: {
                 venta: true,
-                pagos: true,
+                pagos: {
+                  orderBy: {
+                    fecha_pago: 'asc',
+                  },
+                },
               },
             },
           },
@@ -1253,7 +1292,11 @@ export class VentasService {
     const planPago = await this.prisma.planPago.findUnique({
       where: { id_plan_pago: planPagoId },
       include: {
-        pagos: true,
+        pagos: {
+          orderBy: {
+            fecha_pago: 'asc',
+          },
+        },
         venta: true,
       },
     });
@@ -1291,7 +1334,11 @@ export class VentasService {
     const planPago = await this.prisma.planPago.findUnique({
       where: { id_plan_pago: planPagoId },
       include: {
-        pagos: true,
+        pagos: {
+          orderBy: {
+            fecha_pago: 'asc',
+          },
+        },
         venta: true,
       },
     });

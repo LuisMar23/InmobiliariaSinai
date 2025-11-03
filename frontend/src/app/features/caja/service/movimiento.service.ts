@@ -31,7 +31,6 @@ export class MovimientoService {
           this.cargando.set(false);
         },
         error: (err) => {
-          console.error('Error al cargar movimientos:', err);
           this.cargando.set(false);
         },
       });

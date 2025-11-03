@@ -132,8 +132,7 @@ export class CierreComponent implements OnInit {
           });
         }
       },
-      error: (err) => {
-        console.error('Error al obtener caja:', err);
+      error: () => {
         this.notificationSvc.showError('Error al obtener información de la caja');
       },
     });
@@ -152,10 +151,8 @@ export class CierreComponent implements OnInit {
       observaciones: this.form.value.observaciones || undefined,
     };
 
-    console.log('Enviando cierre:', payload);
-
     this.cierreSvc.crearCierre(payload).subscribe({
-      next: (cierre) => {
+      next: () => {
         this.notificationSvc.showSuccess('Cierre registrado correctamente');
         this.form.reset({
           tipo: 'TOTAL',
@@ -166,7 +163,6 @@ export class CierreComponent implements OnInit {
         this.obtenerCaja(); // Actualizar información de la caja
       },
       error: (error) => {
-        console.error('Error al crear cierre:', error);
         let errorMessage = 'Error al registrar el cierre';
 
         if (error.status === 400) {

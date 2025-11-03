@@ -120,7 +120,6 @@ export class CajaService {
       if (caja.estado === 'ABIERTA')
         throw new BadRequestException('La caja ya está abierta');
 
-      // Si la caja estaba cerrada, reiniciamos los saldos con el monto inicial
       const cajaActualizada = await tx.caja.update({
         where: { id: cajaId },
         data: {

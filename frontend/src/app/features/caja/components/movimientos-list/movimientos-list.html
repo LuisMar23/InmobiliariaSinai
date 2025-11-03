@@ -6,7 +6,7 @@
         <div class="flex items-center gap-3">
           <svg class="w-8 h-8 sm:w-10 sm:h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
           </svg>
           <div>
             <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold text-white">Movimientos de Caja</h1>
@@ -33,7 +33,7 @@
           <div class="flex items-center justify-between">
             <div>
               <p class="text-sm font-semibold">Total Ingresos</p>
-              <p class="text-xl sm:text-2xl font-bold">{{ getTotalIngresos() | number:'1.2-2' }} Bs</p>
+              <p class="text-xl sm:text-2xl font-bold">$ {{ getTotalIngresos() | number:'1.0-2' }}</p>
             </div>
             <svg class="w-6 h-6 sm:w-8 sm:h-8 text-white opacity-80" fill="none" stroke="currentColor"
               viewBox="0 0 24 24">
@@ -46,7 +46,7 @@
           <div class="flex items-center justify-between">
             <div>
               <p class="text-sm font-semibold">Total Egresos</p>
-              <p class="text-xl sm:text-2xl font-bold">{{ getTotalEgresos() | number:'1.2-2' }} Bs</p>
+              <p class="text-xl sm:text-2xl font-bold">$ {{ getTotalEgresos() | number:'1.0-2' }}</p>
             </div>
             <svg class="w-6 h-6 sm:w-8 sm:h-8 text-white opacity-80" fill="none" stroke="currentColor"
               viewBox="0 0 24 24">
@@ -59,7 +59,7 @@
           <div class="flex items-center justify-between">
             <div>
               <p class="text-sm font-semibold">Balance</p>
-              <p class="text-xl sm:text-2xl font-bold">{{ getBalance() | number:'1.2-2' }} Bs</p>
+              <p class="text-xl sm:text-2xl font-bold">$ {{ getBalance() | number:'1.0-2' }}</p>
             </div>
             <svg class="w-6 h-6 sm:w-8 sm:h-8 text-white opacity-80" fill="none" stroke="currentColor"
               viewBox="0 0 24 24">
@@ -168,7 +168,7 @@
                 <td class="px-4 py-4 whitespace-nowrap">
                   <span class="text-lg font-bold" [class.text-green-600]="movimiento.tipo === 'INGRESO'"
                     [class.text-red-600]="movimiento.tipo === 'EGRESO'">
-                    {{ movimiento.tipo === 'INGRESO' ? '+' : '-' }} {{ movimiento.monto | number:'1.2-2' }} Bs
+                    {{ movimiento.tipo === 'INGRESO' ? '+' : '-' }} $ {{ movimiento.monto | number:'1.0-2' }}
                   </span>
                 </td>
                 <td class="px-4 py-4 whitespace-nowrap">
@@ -228,7 +228,7 @@
             <div class="flex justify-between items-center">
               <span class="text-xl sm:text-2xl font-bold" [class.text-green-600]="movimiento.tipo === 'INGRESO'"
                 [class.text-red-600]="movimiento.tipo === 'EGRESO'">
-                {{ movimiento.tipo === 'INGRESO' ? '+' : '-' }} {{ movimiento.monto | number:'1.2-2' }} Bs
+                {{ movimiento.tipo === 'INGRESO' ? '+' : '-' }} $ {{ movimiento.monto | number:'1.0-2' }}
               </span>
             </div>
             <div class="flex items-center gap-2 text-sm">

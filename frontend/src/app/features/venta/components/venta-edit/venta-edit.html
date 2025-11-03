@@ -47,7 +47,7 @@
             </div>
             }
 
-            @if (getVentaData() && !cargando()) {
+            @if (ventaData() && !cargando()) {
             <form [formGroup]="ventaForm" (submit)="handleFormSubmit($event)">
                 <div class="mb-8">
                     <h2
@@ -60,7 +60,6 @@
                     </h2>
                     <div class="bg-white border-2 border-gray-200 rounded-xl p-4 sm:p-6">
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                            <!-- Cliente con buscador -->
                             <div class="relative">
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     Cliente <span class="text-red-500">*</span>
@@ -80,8 +79,6 @@
                                         </svg>
                                     </div>
                                 </div>
-
-                                <!-- Dropdown de clientes -->
                                 @if (showClientesDropdown()) {
                                 <div
                                     class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
@@ -95,19 +92,15 @@
                                     </div>
                                     }
                                     @if (filteredClientes().length === 0) {
-                                    <div class="px-4 py-3 text-gray-500 text-center">
-                                        No se encontraron clientes
-                                    </div>
+                                    <div class="px-4 py-3 text-gray-500 text-center">No se encontraron clientes</div>
                                     }
                                 </div>
                                 }
-
                                 @if (ventaForm.get('clienteId')?.invalid && ventaForm.get('clienteId')?.touched) {
                                 <p class="mt-1 text-xs text-red-600">El cliente es requerido</p>
                                 }
                             </div>
 
-                            <!-- Lote con buscador -->
                             <div class="relative">
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     Lote <span class="text-red-500">*</span>
@@ -127,8 +120,6 @@
                                         </svg>
                                     </div>
                                 </div>
-
-                                <!-- Dropdown de lotes -->
                                 @if (showLotesDropdown()) {
                                 <div
                                     class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
@@ -142,13 +133,10 @@
                                     </div>
                                     }
                                     @if (filteredLotes().length === 0) {
-                                    <div class="px-4 py-3 text-gray-500 text-center">
-                                        No se encontraron lotes
-                                    </div>
+                                    <div class="px-4 py-3 text-gray-500 text-center">No se encontraron lotes</div>
                                     }
                                 </div>
                                 }
-
                                 @if (ventaForm.get('inmuebleId')?.invalid && ventaForm.get('inmuebleId')?.touched) {
                                 <p class="mt-1 text-xs text-red-600">El lote es requerido</p>
                                 }
@@ -172,9 +160,7 @@
                             </div>
 
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    Estado
-                                </label>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Estado</label>
                                 <select formControlName="estado"
                                     class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm sm:text-base">
                                     <option value="PENDIENTE">Pendiente</option>
@@ -184,9 +170,7 @@
                             </div>
 
                             <div class="sm:col-span-2 lg:col-span-3">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    Observaciones
-                                </label>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Observaciones</label>
                                 <textarea formControlName="observaciones" rows="3"
                                     class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm sm:text-base"
                                     placeholder="Observaciones adicionales..."></textarea>
@@ -195,7 +179,6 @@
                     </div>
                 </div>
 
-                <!-- Sección de Plan de Pago Editable -->
                 @if (tienePlanPago()) {
                 <div class="mb-8">
                     <h2
@@ -265,7 +248,6 @@
                             </div>
                         </div>
 
-                        <!-- Información calculada del plan de pago -->
                         <div class="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
                             <h3 class="text-md font-semibold text-blue-900 mb-3">Resumen del Plan de Pago</h3>
                             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -275,25 +257,22 @@
                                 </div>
                                 <div class="text-center">
                                     <p class="text-xs text-green-600">Total Pagado</p>
-                                    <p class="text-sm font-bold text-green-800">$ {{ getTotalPagado() | number:'1.2-2'
-                                        }}
+                                    <p class="text-sm font-bold text-green-800">$ {{ totalPagado() | number:'1.2-2' }}
                                     </p>
                                 </div>
                                 <div class="text-center">
                                     <p class="text-xs text-orange-600">Saldo Pendiente</p>
-                                    <p class="text-sm font-bold text-orange-800">$ {{ getSaldoPendiente() |
-                                        number:'1.2-2' }}</p>
+                                    <p class="text-sm font-bold text-orange-800">$ {{ saldoPendiente() | number:'1.2-2'
+                                        }}</p>
                                 </div>
                                 <div class="text-center">
                                     <p class="text-xs text-purple-600">Porcentaje Pagado</p>
-                                    <p class="text-sm font-bold text-purple-800">{{ getPorcentajePagado() |
-                                        number:'1.0-0'
+                                    <p class="text-sm font-bold text-purple-800">{{ porcentajePagado() | number:'1.0-0'
                                         }}%</p>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Botón para actualizar plan de pago -->
                         <div class="mt-6 flex justify-end">
                             <button type="button" (click)="actualizarPlanPago()"
                                 [disabled]="planPagoForm.invalid || enviando()"
@@ -305,8 +284,7 @@
                 </div>
                 }
 
-                <!-- Sección para Registrar Pagos -->
-                @if (tienePlanPago()) {
+                @if (tienePlanPago() && saldoPendiente() > 0) {
                 <div class="mb-8">
                     <div class="flex items-center justify-between mb-6">
                         <h2 class="text-lg sm:text-xl font-semibold text-gray-900 flex items-center gap-2">
@@ -322,7 +300,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                             </svg>
-                            {{ mostrarFormPago() ? 'Ocultar' : 'Nuevo Pago' }}
+                            {{ mostrarFormPago() ? 'Ocultar Formulario' : 'Agregar Pago' }}
                         </button>
                     </div>
 
@@ -339,11 +317,10 @@
                                             class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">$</span>
                                         <input type="number" step="0.01" formControlName="monto"
                                             class="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm sm:text-base"
-                                            placeholder="0.00" [max]="getMontoMaximoPago()" />
+                                            placeholder="0.00" [max]="montoMaximoPago()" />
                                     </div>
-                                    <p class="mt-1 text-xs text-gray-500">
-                                        Máximo: $ {{ getMontoMaximoPago() | number:'1.2-2' }}
-                                    </p>
+                                    <p class="mt-1 text-xs text-gray-500">Máximo: $ {{ montoMaximoPago() |
+                                        number:'1.2-2' }}</p>
                                 </div>
 
                                 <div>
@@ -354,10 +331,20 @@
                                         class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm sm:text-base" />
                                 </div>
 
-                                <div class="sm:col-span-2">
+                                <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">
-                                        Observación
+                                        Método de Pago <span class="text-red-500">*</span>
                                     </label>
+                                    <select formControlName="metodoPago"
+                                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm sm:text-base">
+                                        <option value="EFECTIVO">Efectivo</option>
+                                        <option value="TRANSFERENCIA">Transferencia</option>
+                                        <option value="TARJETA">Tarjeta</option>
+                                    </select>
+                                </div>
+
+                                <div class="sm:col-span-2 lg:col-span-1">
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Observación</label>
                                     <input type="text" formControlName="observacion"
                                         class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm sm:text-base"
                                         placeholder="Observación del pago..." />
@@ -366,12 +353,10 @@
 
                             <div class="flex justify-end gap-3">
                                 <button type="button" (click)="toggleFormPago()"
-                                    class="px-6 py-3 bg-gray-500 hover:bg-gray-600 text-white rounded-lg shadow-md transition-all duration-200 font-semibold">
-                                    Cancelar
-                                </button>
-                                <button type="submit" [disabled]="pagoForm.invalid || enviando()"
+                                    class="px-6 py-3 bg-gray-500 hover:bg-gray-600 text-white rounded-lg shadow-md transition-all duration-200 font-semibold">Cancelar</button>
+                                <button type="submit" [disabled]="pagoForm.invalid || enviandoPago()"
                                     class="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-md transition-all duration-200 font-semibold disabled:bg-gray-400 disabled:cursor-not-allowed">
-                                    {{ enviando() ? 'Registrando...' : 'Registrar Pago' }}
+                                    {{ enviandoPago() ? 'Registrando...' : 'Registrar Pago' }}
                                 </button>
                             </div>
                         </form>
@@ -391,27 +376,21 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div class="bg-white rounded-lg p-4 shadow">
                             <p class="text-xs sm:text-sm text-gray-600 mb-1">Cliente</p>
-                            <p class="text-lg sm:text-xl font-bold text-blue-700">
-                                {{ getClienteNombre() }}
-                            </p>
+                            <p class="text-lg sm:text-xl font-bold text-blue-700">{{ clienteNombre() }}</p>
                         </div>
                         <div class="bg-white rounded-lg p-4 shadow">
                             <p class="text-xs sm:text-sm text-gray-600 mb-1">Precio Final</p>
-                            <p class="text-lg sm:text-xl font-bold text-gray-700">
-                                $ {{ (ventaForm.get('precioFinal')?.value || 0) | number:'1.2-2' }}
-                            </p>
+                            <p class="text-lg sm:text-xl font-bold text-gray-700">$ {{
+                                (ventaForm.get('precioFinal')?.value || 0) | number:'1.2-2' }}</p>
                         </div>
                         <div class="bg-white rounded-lg p-4 shadow">
                             <p class="text-xs sm:text-sm text-gray-600 mb-1">Estado</p>
-                            <p class="text-lg sm:text-xl font-bold text-gray-700">
-                                {{ ventaForm.get('estado')?.value || 'PENDIENTE' }}
-                            </p>
+                            <p class="text-lg sm:text-xl font-bold text-gray-700">{{ ventaForm.get('estado')?.value ||
+                                'PENDIENTE' }}</p>
                         </div>
                         <div class="bg-white rounded-lg p-4 shadow">
                             <p class="text-xs sm:text-sm text-gray-600 mb-1">Lote</p>
-                            <p class="text-lg sm:text-xl font-bold text-green-700">
-                                {{ getLoteNombre() }}
-                            </p>
+                            <p class="text-lg sm:text-xl font-bold text-green-700">{{ loteNombre() }}</p>
                         </div>
                     </div>
                 </div>
