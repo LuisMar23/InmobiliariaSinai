@@ -1,5 +1,6 @@
 // venta.interface.ts
 export interface VentaDto {
+  observaciones: string;
   id: number;
   uuid: string;
   clienteId: number;

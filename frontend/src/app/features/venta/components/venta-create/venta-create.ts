@@ -65,8 +65,8 @@ export class VentaCreate implements OnInit {
 
     return this.fb.group({
       monto_inicial: [0, [Validators.required, Validators.min(0)]],
-      plazo: [12, [Validators.required, Validators.min(1)]],
-      periodicidad: ['MESES', Validators.required],
+      plazo: ['', [Validators.required, Validators.min(1)]], // Sin valor predeterminado
+      periodicidad: ['', Validators.required], // Sin valor predeterminado
       fecha_inicio: [fechaInicio.toISOString().split('T')[0], Validators.required],
     });
   }
@@ -87,10 +87,6 @@ export class VentaCreate implements OnInit {
     this.planPagoForm.get('periodicidad')?.valueChanges.subscribe(() => {
       this.calcularFechaVencimiento();
     });
-
-    setTimeout(() => {
-      this.calcularFechaVencimiento();
-    }, 100);
   }
 
   cargarClientes(): void {
@@ -235,20 +231,21 @@ export class VentaCreate implements OnInit {
     if (!this.mostrarPlanPago()) return;
 
     const fechaInicio = this.planPagoForm.get('fecha_inicio')?.value;
-    const plazo = this.planPagoForm.get('plazo')?.value || 1;
+    const plazo = this.planPagoForm.get('plazo')?.value;
     const periodicidad = this.planPagoForm.get('periodicidad')?.value;
 
-    if (fechaInicio && plazo) {
+    // Solo calcular si todos los campos están completos
+    if (fechaInicio && plazo && periodicidad) {
       const fecha = new Date(fechaInicio);
       switch (periodicidad) {
         case 'DIAS':
-          fecha.setDate(fecha.getDate() + plazo);
+          fecha.setDate(fecha.getDate() + Number(plazo));
           break;
         case 'SEMANAS':
-          fecha.setDate(fecha.getDate() + plazo * 7);
+          fecha.setDate(fecha.getDate() + Number(plazo) * 7);
           break;
         case 'MESES':
-          fecha.setMonth(fecha.getMonth() + plazo);
+          fecha.setMonth(fecha.getMonth() + Number(plazo));
           break;
       }
       this.fechaVencimientoCalculada.set(fecha.toISOString().split('T')[0]);

@@ -140,6 +140,31 @@ export class VentaService {
     );
   }
 
+  actualizarPlanPago(id: number, planPagoData: any): Observable<any> {
+    const updateData = {
+      precioFinal: Number(planPagoData.precioFinal),
+      plan_pago: {
+        monto_inicial: Number(planPagoData.monto_inicial),
+        plazo: Number(planPagoData.plazo),
+        periodicidad: planPagoData.periodicidad,
+        fecha_inicio: planPagoData.fecha_inicio,
+      },
+    };
+
+    return this.http.patch<ApiResponse<any>>(`${this.apiUrl}/${id}`, updateData).pipe(
+      map((response) => {
+        if (!response.success) {
+          throw new Error(response.message || 'Error al actualizar plan de pago');
+        }
+        return response;
+      }),
+      catchError((error) => {
+        console.error('Error updating payment plan:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
   delete(id: number): Observable<any> {
     return this.http.delete<ApiResponse<any>>(`${this.apiUrl}/${id}`).pipe(
       map((response) => {
