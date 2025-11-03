@@ -31,6 +31,9 @@ export class UrbanizacionService {
   async findOne(id: number) {
     const urbanizacion = await this.prisma.urbanizacion.findUnique({
       where: { id },
+      include:{
+        archivos:true
+      }
     });
     if (!urbanizacion) {
       throw new NotFoundException(`Urbanización con id ${id} no encontrada`);

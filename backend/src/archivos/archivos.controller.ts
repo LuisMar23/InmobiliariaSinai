@@ -26,25 +26,7 @@ export class ArchivosController {
   @UseInterceptors(
     FilesInterceptor('files', 10, {
       storage: diskStorage({
-        destination: (req, file, cb) => {
-          // Determinar carpeta dinámica según el body
-          const { ventaId, reservaId, loteId, urbanizacionId } = req.body;
-          let folder = 'otros';
-
-          if (ventaId) folder = 'ventas';
-          else if (reservaId) folder = 'reservas';
-          else if (loteId) folder = 'lotes';
-          else if (urbanizacionId) folder = 'urbanizaciones';
-
-          const uploadPath = `./uploads/${folder}`;
-
-          // Crear carpeta si no existe
-          if (!fs.existsSync(uploadPath)) {
-            fs.mkdirSync(uploadPath, { recursive: true });
-          }
-
-          cb(null, uploadPath);
-        },
+        destination: './uploads/tmp',
         filename: (req, file, cb) => {
           const uniqueSuffix =
             Date.now() + '-' + Math.round(Math.random() * 1e9);
@@ -61,12 +43,115 @@ export class ArchivosController {
       throw new BadRequestException('No se recibieron archivos');
     }
 
-    // Determinar la carpeta nuevamente (para guardar la URL correcta)
+    console.log('📦 Body recibido (raw):', dto);
+    const normalizedDto = {
+      ...dto,
+      ventaId: dto.ventaId ? Number(dto.ventaId) : undefined,
+      reservaId: dto.reservaId ? Number(dto.reservaId) : undefined,
+      loteId: dto.loteId ? Number(dto.loteId) : undefined,
+      urbanizacionId: dto.urbanizacionId
+        ? Number(dto.urbanizacionId)
+        : undefined,
+    };
+
+
     let folder = 'otros';
-    if (dto.ventaId) folder = 'ventas';
-    else if (dto.reservaId) folder = 'reservas';
-    else if (dto.loteId) folder = 'lotes';
-    else if (dto.urbanizacionId) folder = 'urbanizaciones';
+    if (normalizedDto.ventaId) folder = 'ventas';
+    else if (normalizedDto.reservaId) folder = 'reservas';
+    else if (normalizedDto.loteId) folder = 'lotes';
+    else if (normalizedDto.urbanizacionId) folder = 'urbanizaciones';
+
+    const targetPath = `./uploads/${folder}`;
+    if (!fs.existsSync(targetPath)) {
+      fs.mkdirSync(targetPath, { recursive: true });
+    }
+
+    const movedFiles = files.map((file) => {
+      const oldPath = file.path;
+      const newPath = `${targetPath}/${file.filename}`;
+      fs.renameSync(oldPath, newPath);
+      console.log(`✅ Movido: ${oldPath} → ${newPath}`);
+      return { ...file, path: newPath };
+    });
+
+    if (movedFiles.length === 1) {
+      const file = movedFiles[0];
+      return this.archivosService.create({
+        ...normalizedDto,
+        urlArchivo: `/uploads/${folder}/${file.filename}`,
+        tipoArchivo: file.mimetype,
+        nombreArchivo: file.originalname,
+      });
+    } else {
+      return this.archivosService.createMultiple(
+        normalizedDto,
+        movedFiles,
+        folder,
+      );
+    }
+  }
+
+  @Post('update')
+  @UseInterceptors(
+    FilesInterceptor('files', 10, {
+      storage: diskStorage({
+        destination: (req, file, cb) => {
+          const { ventaId, reservaId, loteId, urbanizacionId } = req.body;
+          let folder = 'otros';
+
+          if (ventaId) folder = 'ventas';
+          else if (reservaId) folder = 'reservas';
+          else if (loteId) folder = 'lotes';
+          else if (urbanizacionId) folder = 'urbanizaciones';
+
+          const uploadPath = `./uploads/${folder}`;
+          if (!fs.existsSync(uploadPath)) {
+            fs.mkdirSync(uploadPath, { recursive: true });
+          }
+          cb(null, uploadPath);
+        },
+        filename: (req, file, cb) => {
+          const uniqueSuffix =
+            Date.now() + '-' + Math.round(Math.random() * 1e9);
+          cb(null, uniqueSuffix + extname(file.originalname));
+        },
+      }),
+    }),
+  )
+  async updateArchivos(
+    @UploadedFiles() files: Express.Multer.File[],
+    @Body() dto: CreateArchivoDto,
+  ) {
+    if (!files || files.length === 0) {
+      throw new BadRequestException('No se recibieron archivos');
+    }
+
+    let folder = 'otros';
+    const where: any = {};
+    if (dto.ventaId)
+      ((folder = 'ventas'), (where.ventaId = Number(dto.ventaId)));
+    else if (dto.reservaId)
+      ((folder = 'reservas'), (where.reservaId = Number(dto.reservaId)));
+    else if (dto.loteId)
+      ((folder = 'lotes'), (where.loteId = Number(dto.loteId)));
+    else if (dto.urbanizacionId)
+      ((folder = 'urbanizaciones'),
+        (where.urbanizacionId = Number(dto.urbanizacionId)));
+    else {
+      throw new BadRequestException(
+        'Debe especificar ventaId, reservaId, loteId o urbanizacionId',
+      );
+    }
+    const prisma = this.archivosService.prisma;
+
+    const existentes = await prisma.archivo.findMany({ where });
+
+    for (const archivo of existentes) {
+      const filePath = join(process.cwd(), archivo.urlArchivo);
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    }
+
+    await prisma.archivo.deleteMany({ where });
 
     if (files.length === 1) {
       const file = files[0];
@@ -77,91 +162,19 @@ export class ArchivosController {
         nombreArchivo: file.originalname,
       });
     } else {
-      return this.archivosService.createMultiple(dto, files, folder);
+      const nuevos = await Promise.all(
+        files.map((file) =>
+          this.archivosService.create({
+            ...dto,
+            urlArchivo: `/uploads/${folder}/${file.filename}`,
+            tipoArchivo: file.mimetype,
+            nombreArchivo: file.originalname,
+          }),
+        ),
+      );
+      return nuevos;
     }
   }
-
-@Post('update')
-@UseInterceptors(
-  FilesInterceptor('files', 10, {
-    storage: diskStorage({
-      destination: (req, file, cb) => {
-        const { ventaId, reservaId, loteId, urbanizacionId } = req.body;
-        let folder = 'otros';
-
-        if (ventaId) folder = 'ventas';
-        else if (reservaId) folder = 'reservas';
-        else if (loteId) folder = 'lotes';
-        else if (urbanizacionId) folder = 'urbanizaciones';
-
-        const uploadPath = `./uploads/${folder}`;
-        if (!fs.existsSync(uploadPath)) {
-          fs.mkdirSync(uploadPath, { recursive: true });
-        }
-        cb(null, uploadPath);
-      },
-      filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-        cb(null, uniqueSuffix + extname(file.originalname));
-      },
-    }),
-  }),
-)
-async updateArchivos(
-  @UploadedFiles() files: Express.Multer.File[],
-  @Body() dto: CreateArchivoDto,
-) {
-  if (!files || files.length === 0) {
-    throw new BadRequestException('No se recibieron archivos');
-  }
-
-  let folder = 'otros';
-  const where: any = {};
-  if (dto.ventaId) (folder = 'ventas'), (where.ventaId = Number(dto.ventaId));
-  else if (dto.reservaId)
-    (folder = 'reservas'), (where.reservaId = Number(dto.reservaId));
-  else if (dto.loteId) (folder = 'lotes'), (where.loteId = Number(dto.loteId));
-  else if (dto.urbanizacionId)
-    (folder = 'urbanizaciones'),
-      (where.urbanizacionId = Number(dto.urbanizacionId));
-  else {
-    throw new BadRequestException(
-      'Debe especificar ventaId, reservaId, loteId o urbanizacionId',
-    );
-  }
-  const prisma = this.archivosService.prisma;
-
-  const existentes = await prisma.archivo.findMany({ where });
-
-  for (const archivo of existentes) {
-    const filePath = join(process.cwd(), archivo.urlArchivo);
-    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-  }
-
-  await prisma.archivo.deleteMany({ where });
-
-  if (files.length === 1) {
-    const file = files[0];
-    return this.archivosService.create({
-      ...dto,
-      urlArchivo: `/uploads/${folder}/${file.filename}`,
-      tipoArchivo: file.mimetype,
-      nombreArchivo: file.originalname,
-    });
-  } else {
-    const nuevos = await Promise.all(
-      files.map((file) =>
-        this.archivosService.create({
-          ...dto,
-          urlArchivo: `/uploads/${folder}/${file.filename}`,
-          tipoArchivo: file.mimetype,
-          nombreArchivo: file.originalname,
-        }),
-      ),
-    );
-    return nuevos;
-  }
-}
 
   @Get()
   findAll() {
@@ -172,4 +185,11 @@ async updateArchivos(
   findByVenta(@Param('id', ParseIntPipe) id: number) {
     return this.archivosService.findByVenta(id);
   }
+
+ @Delete(':id')
+  async remove(@Param('id', ParseIntPipe) id: number) {
+    console.log(id)
+    return this.archivosService.remove(id);
+  }
+
 }

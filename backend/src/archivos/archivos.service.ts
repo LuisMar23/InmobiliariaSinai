@@ -87,6 +87,7 @@ export class ArchivosService {
   }
   async remove(id: number) {
     const recibo = await this.prisma.archivo.findUnique({ where: { id } });
+    console.log(recibo)
     if (!recibo) throw new NotFoundException('Recibo no encontrado');
 
     if (recibo.urlArchivo) {
@@ -102,4 +103,6 @@ export class ArchivosService {
     }
     return this.prisma.archivo.delete({ where: { id } });
   }
+
+
 }

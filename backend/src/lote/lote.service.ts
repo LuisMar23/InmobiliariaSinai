@@ -148,13 +148,7 @@ export class LotesService {
             descripcion: true,
           },
         },
-        archivos: {
-          select: {
-            id: true,
-            urlArchivo: true,
-       
-          },
-        },
+        archivos: true,
         cotizaciones: {
           include: {
             cliente: {

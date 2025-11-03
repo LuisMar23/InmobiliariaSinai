@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import * as bcrypt from 'bcrypt'; // CORREGIDO: usar * as bcrypt
@@ -65,4 +65,26 @@ export class UsersService {
       where: { id },
     });
   }
+async changePassword(userId: number, currentPassword: string, newPassword: string) {
+  const user = await this.prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw new NotFoundException('Usuario no encontrado');
+
+  if (!user.passwordHash) {
+    throw new UnauthorizedException('El usuario no tiene una contraseña registrada');
+  }
+
+  const isMatch = await bcrypt.compare(currentPassword, user.passwordHash);
+  if (!isMatch) throw new UnauthorizedException('Contraseña actual incorrecta');
+
+  const hashedPassword = await bcrypt.hash(newPassword, 12);
+
+  await this.prisma.user.update({
+    where: { id: userId },
+    data: { passwordHash: hashedPassword },
+  });
+
+  return { message: 'Contraseña actualizada correctamente' };
+}
+
+
 }
