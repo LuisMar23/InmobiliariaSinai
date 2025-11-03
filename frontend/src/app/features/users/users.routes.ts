@@ -1,14 +1,15 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 import { UsersEditComponent } from './components/users-edit/users-edit';
-import { UsersComponent } from './components/users-list/users-list'; 
+import { UsersComponent } from './components/users-list/users-list';
 import { AuthGuard } from '../../core/guards/auth.guard';
 import { RoleGuard } from '../../core/guards/role.guard';
+import { Perfil } from './components/perfil/perfil';
 
 const routes: Routes = [
   {
     path: '',
-    component: UsersComponent, 
+    component: UsersComponent,
     canActivate: [AuthGuard, RoleGuard],
     data: { roles: ['ADMINISTRADOR', 'SECRETARIA'] },
   },
@@ -18,6 +19,8 @@ const routes: Routes = [
     canActivate: [AuthGuard, RoleGuard],
     data: { roles: ['ADMINISTRADOR', 'SECRETARIA'] },
   },
+
+  { path: 'perfil', component: Perfil, canActivate: [AuthGuard] },
 ];
 
 @NgModule({

@@ -6,4 +6,5 @@ export interface UrbanizacionDto {
   descripcion?: string;
   createdAt?: Date;
   updatedAt?: Date;
+   archivos?:any;
 }

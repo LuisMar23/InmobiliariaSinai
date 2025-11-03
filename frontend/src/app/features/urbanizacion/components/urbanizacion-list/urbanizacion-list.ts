@@ -18,11 +18,13 @@ import { NotificationService } from '../../../../core/services/notification.serv
 import { UrbanizacionService } from '../../services/urbanizacion.service';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { CommonModule } from '@angular/common';
+import { ArchivosComponent } from "../../../../components/archivos/archivos/archivos";
+import { RouterModule } from '@angular/router';
 
 @Component({
   selector: 'app-urbanizacion-list',
   standalone: true,
-  imports: [FontAwesomeModule, CommonModule, ReactiveFormsModule, FormsModule],
+  imports: [FontAwesomeModule, CommonModule, ReactiveFormsModule, FormsModule, ArchivosComponent,RouterModule],
   templateUrl: './urbanizacion-list.html',
   styleUrl: './urbanizacion-list.css',
 })
@@ -222,5 +224,20 @@ export class UrbanizacionList {
   rangeEnd(): number {
     const end = this.currentPage() * this.pageSize();
     return end > this.total() ? this.total() : end;
+  }
+  urbanizacionSeleccionada = signal<UrbanizacionDto| null>(null);
+    mostrarUploader = signal(false);
+  abrirModalSubirArchivos(urbanizacion: UrbanizacionDto) {
+    this.  urbanizacionSeleccionada.set(urbanizacion);
+    this.mostrarUploader.set(true);
+  }
+
+  cerrarModalUploader() {
+    this.mostrarUploader.set(false);
+    this.urbanizacionSeleccionada.set(null);
+  }
+  onSubidaCompleta() {
+    this.cerrarModalUploader();
+    this._notificationService.showSuccess('Archivos subidos correctamente');
   }
 }

@@ -1,14 +1,20 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { UploadArchivosService } from '../../services/archivos.service';
-
+interface PreviewArchivo {
+  url: string;
+  nombre: string;
+  tipo: 'imagen' | 'archivo';
+}
 @Component({
   selector: 'app-archivos',
   imports: [],
   templateUrl: './archivos.html',
   styleUrl: './archivos.css'
 })
-export class ArchivosComponent  {
- @Input() ventaId?: number;
+
+
+export class ArchivosComponent {
+  @Input() ventaId?: number;
   @Input() reservaId?: number;
   @Input() loteId?: number;
   @Input() urbanizacionId?: number;
@@ -16,26 +22,51 @@ export class ArchivosComponent  {
   @Output() subidaCompleta = new EventEmitter<any>();
 
   archivosSeleccionados: File[] = [];
-  previsualizaciones: string[] = [];
+  previsualizaciones: PreviewArchivo[] = [];
   cargando = false;
 
   constructor(private uploadService: UploadArchivosService) {}
 
-  onSeleccionarArchivos(event: any) {
-    const files = Array.from(event.target.files) as File[];
-    this.archivosSeleccionados = files;
+onSeleccionarArchivos(event: Event): void {
+  const input = event.target as HTMLInputElement;
+  const files = input.files;
+  if (!files || files.length === 0) return;
+  const nuevosArchivos = Array.from(files);
+  nuevosArchivos.forEach((file) => {
+    const esImagen = file.type.startsWith('image/');
 
-    this.previsualizaciones = [];
-    for (const file of files) {
-      if (file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = (e: any) => this.previsualizaciones.push(e.target.result);
-        reader.readAsDataURL(file);
-      }
+    if (esImagen) {
+      const objectUrl = URL.createObjectURL(file);
+
+      this.previsualizaciones.push({
+        url: objectUrl,
+        nombre: file.name,
+        tipo: 'imagen',
+      });
+    } else {
+
+      this.previsualizaciones.push({
+        url: '',
+        nombre: file.name,
+        tipo: 'archivo',
+      });
     }
-  }
+  });
 
-  subirArchivos() {
+  this.archivosSeleccionados.push(...nuevosArchivos);
+
+  input.value = '';
+}
+
+  eliminarPrevisualizacion(index: number): void {
+    if (this.previsualizaciones[index].tipo === 'imagen' && 
+        this.previsualizaciones[index].url.startsWith('blob:')) {
+      URL.revokeObjectURL(this.previsualizaciones[index].url);
+    }
+    this.previsualizaciones.splice(index, 1);
+    this.archivosSeleccionados.splice(index, 1);
+  }
+  subirArchivos(): void {
     if (this.archivosSeleccionados.length === 0) return;
 
     this.cargando = true;
@@ -54,9 +85,8 @@ export class ArchivosComponent  {
 
     request.subscribe({
       next: (res) => {
+        this.limpiarSeleccion();
         this.cargando = false;
-        this.archivosSeleccionados = [];
-        this.previsualizaciones = [];
         this.subidaCompleta.emit(res);
       },
       error: (err) => {
@@ -64,5 +94,20 @@ export class ArchivosComponent  {
         console.error('Error al subir archivos:', err);
       },
     });
+  }
+
+  limpiarSeleccion(): void {
+    this.previsualizaciones.forEach(preview => {
+      if (preview.tipo === 'imagen' && preview.url.startsWith('blob:')) {
+        URL.revokeObjectURL(preview.url);
+      }
+    });
+
+    this.archivosSeleccionados = [];
+    this.previsualizaciones = [];
+  }
+
+  ngOnDestroy(): void {
+    this.limpiarSeleccion();
   }
 }

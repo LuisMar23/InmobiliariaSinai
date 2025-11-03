@@ -57,4 +57,9 @@ export class UploadArchivosService {
 
     return this.http.post(`${this.baseUrl}/update`, formData);
   }
+
+  eliminarArchivo(id:number):Observable<any>{
+    return this.http.delete<any>(`${this.baseUrl}/${id}`)
+  }
+
 }
