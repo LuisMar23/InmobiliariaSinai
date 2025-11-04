@@ -122,6 +122,18 @@ export class RegistrarPagoDto {
   metodoPago?: MetodoPago;
 }
 
+export class UpdatePlanPagoDto {
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @IsPositive()
+  plazo?: number;
+
+  @IsOptional()
+  @IsEnum(PeriodicidadPago)
+  periodicidad?: PeriodicidadPago;
+}
+
 export class UpdatePagoPlanDto {
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 2 })

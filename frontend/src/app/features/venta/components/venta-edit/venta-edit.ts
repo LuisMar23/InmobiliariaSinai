@@ -24,7 +24,6 @@ import {
 })
 export class VentaEdit implements OnInit {
   ventaForm: FormGroup;
-  planPagoForm: FormGroup;
   pagoForm: FormGroup;
 
   ventaId = signal<number | null>(null);
@@ -32,17 +31,20 @@ export class VentaEdit implements OnInit {
   error = signal<string | null>(null);
   enviando = signal<boolean>(false);
   enviandoPago = signal<boolean>(false);
+  enviandoEditarPago = signal<boolean>(false);
   ventaData = signal<VentaDto | null>(null);
 
   clientes = signal<UserDto[]>([]);
   lotes = signal<LoteDto[]>([]);
 
   mostrarFormPago = signal<boolean>(false);
-  fechaVencimientoCalculada = signal<string>('');
+  mostrarFormEditarPago = signal<boolean>(false);
   searchCliente = signal<string>('');
   searchLote = signal<string>('');
   showClientesDropdown = signal<boolean>(false);
   showLotesDropdown = signal<boolean>(false);
+
+  pagoSeleccionado = signal<any>(null);
 
   filteredClientes = computed(() => {
     const search = this.searchCliente().toLowerCase();
@@ -110,34 +112,6 @@ export class VentaEdit implements OnInit {
     return this.saldoPendiente();
   });
 
-  clienteNombre = computed(() => {
-    const clienteId = this.ventaForm.get('clienteId')?.value;
-    if (!clienteId) return 'Sin cambios';
-    const cliente = this.clientes().find((c) => c.id === Number(clienteId));
-    return cliente ? cliente.fullName : 'Nuevo cliente';
-  });
-
-  loteNombre = computed(() => {
-    const loteId = this.ventaForm.get('inmuebleId')?.value;
-    if (!loteId) return 'Sin cambios';
-    const lote = this.lotes().find((l) => l.id === Number(loteId));
-    return lote ? `${lote.numeroLote} - ${lote.urbanizacion?.nombre}` : 'Nuevo lote';
-  });
-
-  periodicidadTexto = computed(() => {
-    const periodicidad = this.planPagoForm.get('periodicidad')?.value;
-    switch (periodicidad) {
-      case 'DIAS':
-        return 'días';
-      case 'SEMANAS':
-        return 'semanas';
-      case 'MESES':
-        return 'meses';
-      default:
-        return '';
-    }
-  });
-
   private router = inject(Router);
   private fb = inject(FormBuilder);
   private ventaSvc = inject(VentaService);
@@ -149,13 +123,11 @@ export class VentaEdit implements OnInit {
 
   constructor() {
     this.ventaForm = this.crearFormularioVenta();
-    this.planPagoForm = this.crearPlanPagoForm();
     this.pagoForm = this.crearPagoForm();
   }
 
   ngOnInit(): void {
     this.obtenerVenta();
-    this.setupFormListeners();
   }
 
   crearFormularioVenta(): FormGroup {
@@ -168,17 +140,6 @@ export class VentaEdit implements OnInit {
     });
   }
 
-  crearPlanPagoForm(): FormGroup {
-    const hoy = new Date();
-    const fechaHoy = hoy.toISOString().split('T')[0];
-    return this.fb.group({
-      monto_inicial: [0, [Validators.required, Validators.min(0)]],
-      plazo: [1, [Validators.required, Validators.min(1)]],
-      periodicidad: ['MESES', Validators.required],
-      fecha_inicio: [fechaHoy, Validators.required],
-    });
-  }
-
   crearPagoForm(): FormGroup {
     const hoy = new Date();
     const fechaHoy = hoy.toISOString().split('T')[0];
@@ -187,18 +148,6 @@ export class VentaEdit implements OnInit {
       fecha_pago: [fechaHoy, Validators.required],
       observacion: [''],
       metodoPago: ['EFECTIVO', Validators.required],
-    });
-  }
-
-  setupFormListeners(): void {
-    this.planPagoForm.get('fecha_inicio')?.valueChanges.subscribe(() => {
-      this.calcularFechaVencimiento();
-    });
-    this.planPagoForm.get('plazo')?.valueChanges.subscribe(() => {
-      this.calcularFechaVencimiento();
-    });
-    this.planPagoForm.get('periodicidad')?.valueChanges.subscribe(() => {
-      this.calcularFechaVencimiento();
     });
   }
 
@@ -333,37 +282,7 @@ export class VentaEdit implements OnInit {
       estado: venta.estado || 'PENDIENTE',
       observaciones: venta.observaciones || '',
     });
-
-    if (venta.planPago) {
-      this.planPagoForm.patchValue({
-        monto_inicial: venta.planPago.monto_inicial || 0,
-        plazo: venta.planPago.plazo || 1,
-        periodicidad: venta.planPago.periodicidad || 'MESES',
-        fecha_inicio:
-          this.formatDateForInput(venta.planPago.fecha_inicio) ||
-          new Date().toISOString().split('T')[0],
-      });
-
-      if (venta.planPago.fecha_vencimiento) {
-        this.fechaVencimientoCalculada.set(
-          this.formatDateForInput(venta.planPago.fecha_vencimiento)
-        );
-      } else {
-        this.calcularFechaVencimiento();
-      }
-    }
     this.cargando.set(false);
-  }
-
-  private formatDateForInput(dateString: any): string {
-    if (!dateString) return '';
-    try {
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) return '';
-      return date.toISOString().split('T')[0];
-    } catch {
-      return '';
-    }
   }
 
   setupSearchValues(venta: VentaDto): void {
@@ -380,70 +299,266 @@ export class VentaEdit implements OnInit {
   formatDate(date: any): string {
     if (!date) return 'N/A';
     try {
-      return this.datePipe.transform(date, 'dd/MM/yyyy HH:mm') || 'N/A';
+      return this.datePipe.transform(date, 'dd/MM/yyyy') || 'N/A';
     } catch {
       return 'N/A';
     }
   }
 
-  calcularFechaVencimiento(): void {
-    const fechaInicio = this.planPagoForm.get('fecha_inicio')?.value;
-    const plazo = this.planPagoForm.get('plazo')?.value || 1;
-    const periodicidad = this.planPagoForm.get('periodicidad')?.value;
-    if (fechaInicio && plazo && periodicidad) {
-      const fecha = new Date(fechaInicio);
-      switch (periodicidad) {
-        case 'DIAS':
-          fecha.setDate(fecha.getDate() + plazo);
-          break;
-        case 'SEMANAS':
-          fecha.setDate(fecha.getDate() + plazo * 7);
-          break;
-        case 'MESES':
-          fecha.setMonth(fecha.getMonth() + plazo);
-          break;
-      }
-      const fechaCalculada = fecha.toISOString().split('T')[0];
-      this.fechaVencimientoCalculada.set(fechaCalculada);
-    } else {
-      this.fechaVencimientoCalculada.set('');
+  obtenerPrimerPago(pagos: any[]): Date | null {
+    if (!pagos || !Array.isArray(pagos) || pagos.length === 0) {
+      return null;
     }
+
+    const pagosOrdenados = [...pagos].sort((a, b) => {
+      const fechaA = new Date(a.fecha_pago || a.createdAt).getTime();
+      const fechaB = new Date(b.fecha_pago || b.createdAt).getTime();
+      return fechaA - fechaB;
+    });
+
+    const primerPago = pagosOrdenados[0];
+    return new Date(primerPago.fecha_pago || primerPago.createdAt);
   }
 
-  actualizarPlanPago(): void {
-    const id = this.ventaId();
-    if (!id || this.planPagoForm.invalid) {
-      this.notificationService.showError(
-        'Complete todos los campos del plan de pago correctamente.'
-      );
+  obtenerUltimoPago(pagos: any[]): Date | null {
+    if (!pagos || !Array.isArray(pagos) || pagos.length === 0) {
+      return null;
+    }
+
+    const pagosOrdenados = [...pagos].sort((a, b) => {
+      const fechaA = new Date(a.fecha_pago || a.createdAt).getTime();
+      const fechaB = new Date(b.fecha_pago || b.createdAt).getTime();
+      return fechaB - fechaA;
+    });
+
+    const ultimoPago = pagosOrdenados[0];
+    return new Date(ultimoPago.fecha_pago || ultimoPago.createdAt);
+  }
+
+  editarPago(pago: any): void {
+    this.pagoSeleccionado.set(pago);
+    this.mostrarFormEditarPago.set(true);
+    this.mostrarFormPago.set(false);
+
+    const fechaPago = pago.fecha_pago ? new Date(pago.fecha_pago) : new Date();
+    const fechaFormateada = fechaPago.toISOString().split('T')[0];
+
+    this.pagoForm.patchValue({
+      monto: pago.monto,
+      fecha_pago: fechaFormateada,
+      observacion: pago.observacion || '',
+      metodoPago: pago.metodoPago || 'EFECTIVO',
+    });
+  }
+
+  actualizarPago(): void {
+    if (this.pagoForm.invalid) {
+      this.pagoForm.markAllAsTouched();
+      this.notificationService.showError('Complete todos los campos del pago correctamente.');
       return;
     }
-    this.enviando.set(true);
-    const planPagoData = {
-      precioFinal: Number(this.ventaForm.value.precioFinal),
-      monto_inicial: Number(this.planPagoForm.value.monto_inicial),
-      plazo: Number(this.planPagoForm.value.plazo),
-      periodicidad: this.planPagoForm.value.periodicidad,
-      fecha_inicio: this.planPagoForm.value.fecha_inicio,
+
+    const pagoId = this.pagoSeleccionado()?.id_pago_plan;
+    if (!pagoId) {
+      this.notificationService.showError('No se ha seleccionado un pago para editar.');
+      return;
+    }
+
+    this.enviandoEditarPago.set(true);
+    const updateData = {
+      monto: Number(this.pagoForm.value.monto),
+      fecha_pago: this.pagoForm.value.fecha_pago,
+      observacion: this.pagoForm.value.observacion,
+      metodoPago: this.pagoForm.value.metodoPago,
     };
-    this.ventaSvc.actualizarPlanPago(id, planPagoData).subscribe({
+
+    this.ventaSvc.actualizarPagoPlan(pagoId, updateData).subscribe({
       next: (response: any) => {
-        this.enviando.set(false);
+        this.enviandoEditarPago.set(false);
         if (response.success) {
-          this.notificationService.showSuccess('Plan de pago actualizado exitosamente!');
+          this.notificationService.showSuccess('Pago actualizado exitosamente!');
+          this.cancelarEdicionPago();
           this.obtenerVenta();
         } else {
-          this.notificationService.showError(
-            response.message || 'Error al actualizar el plan de pago'
-          );
+          this.notificationService.showError(response.message || 'Error al actualizar el pago');
         }
       },
       error: (err: any) => {
-        this.enviando.set(false);
-        console.error('Error al actualizar plan de pago:', err);
-        this.notificationService.showError('Error al actualizar el plan de pago');
+        this.enviandoEditarPago.set(false);
+        console.error('Error al actualizar pago:', err);
+        let errorMessage = 'Error al actualizar el pago';
+        if (err.error?.message) {
+          errorMessage = err.error.message;
+        } else if (err.status === 400) {
+          errorMessage = 'Datos inválidos para el pago. Verifique la fecha.';
+        }
+        this.notificationService.showError(errorMessage);
       },
     });
+  }
+
+  eliminarPago(pago: any): void {
+    this.notificationService
+      .confirmDelete('¿Está seguro que desea eliminar este pago?')
+      .then((result) => {
+        if (result.isConfirmed) {
+          this.ventaSvc.eliminarPagoPlan(pago.id_pago_plan).subscribe({
+            next: (response: any) => {
+              if (response.success) {
+                this.notificationService.showSuccess('Pago eliminado exitosamente!');
+                this.obtenerVenta();
+              } else {
+                this.notificationService.showError(response.message || 'Error al eliminar el pago');
+              }
+            },
+            error: (err: any) => {
+              console.error('Error al eliminar pago:', err);
+              this.notificationService.showError('Error al eliminar el pago');
+            },
+          });
+        }
+      });
+  }
+
+  registrarPago(): void {
+    if (this.pagoForm.invalid) {
+      this.pagoForm.markAllAsTouched();
+      this.notificationService.showError('Complete todos los campos del pago correctamente.');
+      return;
+    }
+
+    const venta = this.ventaData();
+    if (!venta?.planPago) {
+      this.notificationService.showError('No hay plan de pago para esta venta.');
+      return;
+    }
+
+    const monto = Number(this.pagoForm.value.monto);
+    const saldoPendiente = this.saldoPendiente();
+
+    if (monto <= 0) {
+      this.notificationService.showError('El monto debe ser mayor a cero.');
+      return;
+    }
+
+    if (monto > saldoPendiente) {
+      this.notificationService.showError(
+        `El monto no puede ser mayor al saldo pendiente (${this.formatPrecio(saldoPendiente)})`
+      );
+      return;
+    }
+
+    const fechaPago = new Date(this.pagoForm.value.fecha_pago);
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    fechaPago.setHours(0, 0, 0, 0);
+
+    if (fechaPago > hoy) {
+      this.notificationService.showError('La fecha de pago no puede ser futura.');
+      return;
+    }
+
+    const pagosExistentes = venta.planPago.pagos || [];
+    const primerPago = this.obtenerPrimerPago(pagosExistentes);
+
+    if (primerPago && fechaPago < primerPago) {
+      this.notificationService.showError(
+        `La fecha de pago no puede ser anterior al primer pago registrado (${this.formatDate(
+          primerPago
+        )})`
+      );
+      return;
+    }
+
+    const fechaCreacionPlan = new Date(
+      venta.planPago.fecha_creacion || venta.fecha_creacion || venta.createdAt
+    );
+    fechaCreacionPlan.setHours(0, 0, 0, 0);
+
+    if (fechaPago < fechaCreacionPlan) {
+      this.notificationService.showError(
+        `La fecha de pago no puede ser anterior a la creación del plan de pago (${this.formatDate(
+          fechaCreacionPlan
+        )})`
+      );
+      return;
+    }
+
+    if (pagosExistentes.length > 0) {
+      const ultimoPago = this.obtenerUltimoPago(pagosExistentes);
+      if (ultimoPago && fechaPago < ultimoPago) {
+        this.notificationService.showError(
+          `La fecha de pago no puede ser anterior al último pago registrado (${this.formatDate(
+            ultimoPago
+          )})`
+        );
+        return;
+      }
+    }
+
+    this.enviandoPago.set(true);
+    const pagoData: RegistrarPagoDto = {
+      plan_pago_id: venta.planPago.id_plan_pago!,
+      monto: monto,
+      fecha_pago: this.pagoForm.value.fecha_pago,
+      observacion: this.pagoForm.value.observacion,
+      metodoPago: this.pagoForm.value.metodoPago,
+    };
+
+    this.ventaSvc.crearPagoPlan(pagoData).subscribe({
+      next: (response: any) => {
+        this.enviandoPago.set(false);
+        if (response.success) {
+          this.notificationService.showSuccess('Pago registrado exitosamente!');
+          this.cancelarEdicionPago();
+          this.obtenerVenta();
+        } else {
+          this.notificationService.showError(response.message || 'Error al registrar el pago');
+        }
+      },
+      error: (err: any) => {
+        this.enviandoPago.set(false);
+        let errorMessage = 'Error al registrar el pago';
+        if (err.status === 400) {
+          errorMessage = err.error?.message || 'Datos inválidos para el pago. Verifique la fecha.';
+        } else if (err.error?.message) {
+          errorMessage = err.error.message;
+        }
+        this.notificationService.showError(errorMessage);
+      },
+    });
+  }
+
+  cancelarEdicionPago(): void {
+    this.mostrarFormPago.set(false);
+    this.mostrarFormEditarPago.set(false);
+    this.pagoSeleccionado.set(null);
+
+    const hoy = new Date();
+    const fechaHoy = hoy.toISOString().split('T')[0];
+    this.pagoForm.patchValue({
+      fecha_pago: fechaHoy,
+      metodoPago: 'EFECTIVO',
+      monto: 0,
+      observacion: '',
+    });
+  }
+
+  toggleFormPago(): void {
+    this.mostrarFormPago.set(!this.mostrarFormPago());
+    this.mostrarFormEditarPago.set(false);
+    this.pagoSeleccionado.set(null);
+
+    if (this.mostrarFormPago()) {
+      const hoy = new Date();
+      const fechaHoy = hoy.toISOString().split('T')[0];
+      this.pagoForm.patchValue({
+        fecha_pago: fechaHoy,
+        metodoPago: 'EFECTIVO',
+        monto: 0,
+        observacion: '',
+      });
+    }
   }
 
   onSubmit(): void {
@@ -513,74 +628,6 @@ export class VentaEdit implements OnInit {
         this.notificationService.showError(errorMessage);
       },
     });
-  }
-
-  registrarPago(): void {
-    if (this.pagoForm.invalid) {
-      this.pagoForm.markAllAsTouched();
-      this.notificationService.showError('Complete todos los campos del pago correctamente.');
-      return;
-    }
-    const venta = this.ventaData();
-    if (!venta?.planPago) {
-      this.notificationService.showError('No hay plan de pago para esta venta.');
-      return;
-    }
-    const monto = Number(this.pagoForm.value.monto);
-    const saldoPendiente = this.saldoPendiente();
-    if (monto <= 0) {
-      this.notificationService.showError('El monto debe ser mayor a cero.');
-      return;
-    }
-    if (monto > saldoPendiente) {
-      this.notificationService.showError(
-        `El monto no puede ser mayor al saldo pendiente (${this.formatPrecio(saldoPendiente)})`
-      );
-      return;
-    }
-    this.enviandoPago.set(true);
-    const pagoData: RegistrarPagoDto = {
-      plan_pago_id: venta.planPago.id_plan_pago!,
-      monto: monto,
-      fecha_pago: this.pagoForm.value.fecha_pago,
-      observacion: this.pagoForm.value.observacion,
-      metodoPago: this.pagoForm.value.metodoPago,
-    };
-    this.ventaSvc.crearPagoPlan(pagoData).subscribe({
-      next: (response: any) => {
-        this.enviandoPago.set(false);
-        if (response.success) {
-          this.notificationService.showSuccess('Pago registrado exitosamente!');
-          this.pagoForm.reset();
-          this.mostrarFormPago.set(false);
-          this.obtenerVenta();
-          const hoy = new Date();
-          const fechaHoy = hoy.toISOString().split('T')[0];
-          this.pagoForm.patchValue({
-            fecha_pago: fechaHoy,
-            metodoPago: 'EFECTIVO',
-            monto: 0,
-            observacion: '',
-          });
-        } else {
-          this.notificationService.showError(response.message || 'Error al registrar el pago');
-        }
-      },
-      error: (err: any) => {
-        this.enviandoPago.set(false);
-        let errorMessage = 'Error al registrar el pago';
-        if (err.status === 400) {
-          errorMessage = err.error?.message || 'Datos inválidos para el pago.';
-        } else if (err.error?.message) {
-          errorMessage = err.error.message;
-        }
-        this.notificationService.showError(errorMessage);
-      },
-    });
-  }
-
-  toggleFormPago(): void {
-    this.mostrarFormPago.set(!this.mostrarFormPago());
   }
 
   volverAlListado(): void {

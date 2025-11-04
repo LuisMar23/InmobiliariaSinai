@@ -54,15 +54,18 @@ export class VentaService {
 
     return this.http.get<ApiResponse<VentasResponse>>(url).pipe(
       map((response) => {
-        return {
-          ventas: response.data.ventas ? response.data.ventas.map((v) => this.parseVenta(v)) : [],
-          pagination: response.data.pagination || {
-            page,
-            limit,
-            total: response.data.ventas?.length || 0,
-            pages: 1,
-          },
-        };
+        if (response.success && response.data) {
+          return {
+            ventas: response.data.ventas ? response.data.ventas.map((v) => this.parseVenta(v)) : [],
+            pagination: response.data.pagination || {
+              page,
+              limit,
+              total: response.data.ventas?.length || 0,
+              pages: 1,
+            },
+          };
+        }
+        throw new Error('Respuesta inválida del servidor');
       }),
       catchError((error) => {
         console.error('Error loading sales:', error);

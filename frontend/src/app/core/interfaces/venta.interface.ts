@@ -1,5 +1,5 @@
-// venta.interface.ts
 export interface VentaDto {
+  fecha_creacion: any;
   observaciones: string;
   id: number;
   uuid: string;
@@ -42,9 +42,12 @@ export interface VentaDto {
     pagos: number;
     documentos: number;
   };
+  archivos?: any[];
+  ingresos?: any[];
 }
 
 export interface PlanPagoDto {
+  fecha_creacion: any;
   id_plan_pago?: number;
   uuid?: string;
   ventaId?: number;
@@ -60,6 +63,8 @@ export interface PlanPagoDto {
   total_pagado?: number;
   porcentaje_pagado?: number;
   monto_cuota?: number;
+  dias_restantes?: number;
+  actualizado_en?: string;
 }
 
 export interface PagoPlanDto {
@@ -69,6 +74,9 @@ export interface PagoPlanDto {
   monto: number;
   fecha_pago?: string;
   observacion?: string;
+  metodoPago?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface CreateVentaDto {
