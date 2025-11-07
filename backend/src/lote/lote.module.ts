@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
 import { PrismaService } from 'src/config/prisma.service';
-import { LotesController } from 'src/lote/lote.controller';
-import { LotesService } from 'src/lote/lote.service';
+import { LoteController } from 'src/lote/lote.controller';
+import { LoteService } from 'src/lote/lote.service';
 
 @Module({
-  controllers: [LotesController],
-  providers: [LotesService, PrismaService],
+  controllers: [LoteController],
+  providers: [LoteService, PrismaService],
 })
 export class LotesModule {}

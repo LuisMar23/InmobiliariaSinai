@@ -1,9 +1,14 @@
+// src/app/modules/promocion/components/promocion-edit/promocion-edit.ts
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule, DatePipe } from '@angular/common';
 import { RouterModule, Router, ActivatedRoute } from '@angular/router';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { PromocionService } from '../../service/promocion.service';
+import { LoteService } from '../../../lote/service/lote.service';
+import { LoteDto } from '../../../../core/interfaces/lote.interface';
+import { UrbanizacionService } from '../../../urbanizacion/services/urbanizacion.service';
+import { UrbanizacionDto } from '../../../../core/interfaces/urbanizacion.interface';
 
 @Component({
   selector: 'app-promocion-edit',
@@ -19,10 +24,15 @@ export class PromocionEdit implements OnInit {
   error = signal<string | null>(null);
   enviando = signal<boolean>(false);
   promocionData: any = null;
+  lotesDisponibles = signal<LoteDto[]>([]);
+  urbanizaciones = signal<UrbanizacionDto[]>([]);
+  lotesSeleccionados = signal<number[]>([]);
 
   router = inject(Router);
   private fb = inject(FormBuilder);
   private promocionSvc = inject(PromocionService);
+  private loteSvc = inject(LoteService);
+  private urbanizacionSvc = inject(UrbanizacionService);
   private route = inject(ActivatedRoute);
   private notificationService = inject(NotificationService);
   private datePipe = inject(DatePipe);
@@ -32,6 +42,8 @@ export class PromocionEdit implements OnInit {
   }
 
   ngOnInit(): void {
+    this.cargarLotesDisponibles();
+    this.cargarUrbanizaciones();
     this.obtenerPromocion();
   }
 
@@ -42,7 +54,37 @@ export class PromocionEdit implements OnInit {
       descuento: [0, [Validators.required, Validators.min(0.01), Validators.max(100)]],
       fechaInicio: ['', Validators.required],
       fechaFin: ['', Validators.required],
-      aplicaA: ['', Validators.required],
+      urbanizacionId: [''],
+    });
+  }
+
+  cargarLotesDisponibles(): void {
+    this.promocionSvc.getLotesDisponibles().subscribe({
+      next: (lotes) => {
+        this.lotesDisponibles.set(lotes);
+      },
+      error: (err) => {
+        console.error('Error al cargar lotes:', err);
+        this.loteSvc.getAll().subscribe({
+          next: (lotes) => {
+            this.lotesDisponibles.set(lotes.filter((lote) => lote.estado === 'DISPONIBLE'));
+          },
+          error: (err) => {
+            console.error('Error al cargar lotes alternativo:', err);
+          },
+        });
+      },
+    });
+  }
+
+  cargarUrbanizaciones(): void {
+    this.urbanizacionSvc.getAll(1, 100).subscribe({
+      next: (response) => {
+        this.urbanizaciones.set(response.data);
+      },
+      error: (err) => {
+        console.error('Error al cargar urbanizaciones:', err);
+      },
     });
   }
 
@@ -60,6 +102,7 @@ export class PromocionEdit implements OnInit {
         if (promocion) {
           this.promocionData = promocion;
           this.cargarDatosFormulario(promocion);
+          this.cargarLotesSeleccionados(promocion);
         } else {
           this.error.set('No se encontró la promoción');
         }
@@ -84,20 +127,31 @@ export class PromocionEdit implements OnInit {
     this.promocionForm.patchValue({
       titulo: promocion.titulo || '',
       descripcion: promocion.descripcion || '',
-      descuento: promocion.descuento || 0,
+      descuento: Number(promocion.descuento) || 0,
       fechaInicio: fechaInicio,
       fechaFin: fechaFin,
-      aplicaA: promocion.aplicaA || '',
+      urbanizacionId: promocion.urbanizacionId || '',
     });
   }
 
-  formatDate(date: any): string {
-    if (!date) return 'N/A';
-    try {
-      return this.datePipe.transform(date, 'dd/MM/yyyy HH:mm') || 'N/A';
-    } catch {
-      return 'N/A';
+  cargarLotesSeleccionados(promocion: any): void {
+    if (promocion.lotesAfectados && promocion.lotesAfectados.length > 0) {
+      const lotesIds = promocion.lotesAfectados.map((lp: any) => lp.loteId);
+      this.lotesSeleccionados.set(lotesIds);
     }
+  }
+
+  toggleLoteSeleccionado(loteId: number): void {
+    const seleccionados = this.lotesSeleccionados();
+    if (seleccionados.includes(loteId)) {
+      this.lotesSeleccionados.set(seleccionados.filter((id) => id !== loteId));
+    } else {
+      this.lotesSeleccionados.set([...seleccionados, loteId]);
+    }
+  }
+
+  estaLoteSeleccionado(loteId: number): boolean {
+    return this.lotesSeleccionados().includes(loteId);
   }
 
   onSubmit(): void {
@@ -114,25 +168,21 @@ export class PromocionEdit implements OnInit {
 
     this.enviando.set(true);
 
+    const formValue = this.promocionForm.value;
     const dataActualizada = {
-      ...this.promocionForm.value,
-      descuento: Number(this.promocionForm.value.descuento),
-      fechaInicio: new Date(this.promocionForm.value.fechaInicio).toISOString(),
-      fechaFin: new Date(this.promocionForm.value.fechaFin).toISOString(),
+      titulo: formValue.titulo,
+      descripcion: formValue.descripcion,
+      descuento: Number(formValue.descuento),
+      fechaInicio: new Date(formValue.fechaInicio).toISOString(),
+      fechaFin: new Date(formValue.fechaFin).toISOString(),
+      urbanizacionId: formValue.urbanizacionId ? Number(formValue.urbanizacionId) : undefined,
+      lotesIds: this.lotesSeleccionados().length > 0 ? this.lotesSeleccionados() : undefined,
     };
 
     this.promocionSvc.update(this.promocionId, dataActualizada).subscribe({
       next: (response: any) => {
         this.enviando.set(false);
-        console.log('Respuesta de actualización:', response);
-
-        // Verificar diferentes formatos de respuesta exitosa
-        if (response.success === true || response.id || response.data) {
-          this.notificationService.showSuccess('Promoción actualizada exitosamente!');
-          setTimeout(() => {
-            this.router.navigate(['/promociones/lista']);
-          }, 1500);
-        } else if (response.message && !response.message.includes('error')) {
+        if (response.success === true) {
           this.notificationService.showSuccess('Promoción actualizada exitosamente!');
           setTimeout(() => {
             this.router.navigate(['/promociones/lista']);
@@ -145,22 +195,16 @@ export class PromocionEdit implements OnInit {
       },
       error: (err: any) => {
         this.enviando.set(false);
-        console.error('Error en actualización:', err);
-
         let errorMessage = 'Error al actualizar la promoción';
-
         if (err.error?.message) {
           errorMessage = err.error.message;
         } else if (err.status === 400) {
           errorMessage = 'Datos inválidos. Verifique la información ingresada.';
         } else if (err.status === 404) {
           errorMessage = 'Promoción no encontrada.';
-        } else if (err.status === 409) {
-          errorMessage = 'El título de la promoción ya existe.';
         } else if (err.status === 500) {
           errorMessage = 'Error interno del servidor. Intente nuevamente.';
         }
-
         this.notificationService.showError(errorMessage);
       },
     });
@@ -173,5 +217,14 @@ export class PromocionEdit implements OnInit {
   handleFormSubmit(event: Event): void {
     event.preventDefault();
     this.onSubmit();
+  }
+
+  seleccionarTodosLotes(): void {
+    const todosLotesIds = this.lotesDisponibles().map((lote) => lote.id);
+    this.lotesSeleccionados.set(todosLotesIds);
+  }
+
+  deseleccionarTodosLotes(): void {
+    this.lotesSeleccionados.set([]);
   }
 }

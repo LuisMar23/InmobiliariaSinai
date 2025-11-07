@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
 import { PrismaService } from '../config/prisma.service';
-import { CotizacionesController } from './cotizacion.controller';
-import { CotizacionesService } from './cotizacion.service';
+import { CotizacionController } from './cotizacion.controller';
+import { CotizacionService } from './cotizacion.service';
 
 @Module({
-  controllers: [CotizacionesController],
-  providers: [CotizacionesService, PrismaService],
+  controllers: [CotizacionController],
+  providers: [CotizacionService, PrismaService],
 })
 export class CotizacionesModule {}

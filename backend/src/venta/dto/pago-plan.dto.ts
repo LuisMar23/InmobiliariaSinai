@@ -1,6 +1,4 @@
-// pago-plan.dto.ts
 import {
-  IsInt,
   IsNumber,
   IsOptional,
   IsString,
@@ -9,7 +7,12 @@ import {
   IsEnum,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { MetodoPago } from './create-venta.dto';
+
+export enum MetodoPago {
+  EFECTIVO = 'EFECTIVO',
+  TRANSFERENCIA = 'TRANSFERENCIA',
+  TARJETA = 'TARJETA',
+}
 
 export class UpdatePagoPlanDto {
   @IsOptional()

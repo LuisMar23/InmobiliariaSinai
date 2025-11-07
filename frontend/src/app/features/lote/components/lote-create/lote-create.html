@@ -28,6 +28,33 @@
         <!-- Formulario -->
         <div class="bg-white rounded-b-2xl shadow-xl p-4 sm:p-6 lg:p-8">
             <form [formGroup]="loteForm" (submit)="handleFormSubmit($event)">
+                <!-- Tipo de Lote -->
+                <div class="mb-8">
+                    <h2 class="text-lg sm:text-xl font-semibold text-gray-900 mb-6 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Tipo de Lote
+                    </h2>
+                    <div class="bg-white border-2 border-gray-200 rounded-xl p-4 sm:p-6">
+                        <div class="flex items-center gap-4">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" formControlName="esIndependiente"
+                                    (change)="onEsIndependienteChange()"
+                                    class="w-4 h-4 text-emerald-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500">
+                                <span class="text-sm font-medium text-gray-700">Lote Independiente</span>
+                            </label>
+                            <span class="text-xs text-gray-500">(Sin urbanización)</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2">
+                            {{ loteForm.get('esIndependiente')?.value ?
+                            'Este lote será independiente y no pertenecerá a ninguna urbanización.' :
+                            'Este lote pertenecerá a una urbanización existente.' }}
+                        </p>
+                    </div>
+                </div>
+
                 <div class="mb-8">
                     <h2 class="text-lg sm:text-xl font-semibold text-gray-900 mb-6 flex items-center gap-2">
                         <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -38,8 +65,9 @@
                     </h2>
                     <div class="bg-white border-2 border-gray-200 rounded-xl p-4 sm:p-6">
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                            <!-- Urbanización con buscador -->
-                            <div class="relative">
+                            <!-- Urbanización con buscador (solo si no es independiente) -->
+                            @if (!loteForm.get('esIndependiente')?.value) {
+                            <div class="relative sm:col-span-2 lg:col-span-1">
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     Urbanización <span class="text-red-500">*</span>
                                 </label>
@@ -67,6 +95,8 @@
                                     <div (click)="selectUrbanizacion(urbanizacion)"
                                         class="px-4 py-3 hover:bg-emerald-50 cursor-pointer border-b border-gray-100 last:border-b-0">
                                         <div class="font-medium text-gray-900">{{ urbanizacion.nombre }}</div>
+                                        <div class="text-xs text-gray-500">{{ urbanizacion.ubicacion }} - {{
+                                            urbanizacion.ciudad }}</div>
                                     </div>
                                     }
                                     @if (filteredUrbanizaciones().length === 0) {
@@ -82,8 +112,26 @@
                                 <p class="mt-1 text-xs text-red-600">La urbanización es requerida</p>
                                 }
                             </div>
+                            }
 
-                            <!-- Resto del formulario sin cambios -->
+                            <!-- Ciudad (solo si es independiente) -->
+                            @if (loteForm.get('esIndependiente')?.value) {
+                            <div class="sm:col-span-2 lg:col-span-1">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Ciudad <span class="text-red-500">*</span>
+                                </label>
+                                <input type="text" formControlName="ciudad"
+                                    class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm sm:text-base"
+                                    placeholder="Ej: Quito, Guayaquil"
+                                    [class.border-red-500]="loteForm.get('ciudad')?.invalid && loteForm.get('ciudad')?.touched" />
+                                @if (loteForm.get('ciudad')?.invalid && loteForm.get('ciudad')?.touched) {
+                                <p class="mt-1 text-xs text-red-600">La ciudad es requerida para lotes independientes
+                                </p>
+                                }
+                            </div>
+                            }
+
+                            <!-- Número de Lote -->
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     Número de Lote <span class="text-red-500">*</span>
@@ -97,6 +145,7 @@
                                 }
                             </div>
 
+                            <!-- Superficie -->
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     Superficie (m²) <span class="text-red-500">*</span>
@@ -110,6 +159,7 @@
                                 }
                             </div>
 
+                            <!-- Precio Base -->
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     Precio Base ($) <span class="text-red-500">*</span>
@@ -127,6 +177,7 @@
                                 }
                             </div>
 
+                            <!-- Estado -->
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     Estado
@@ -143,7 +194,6 @@
                     </div>
                 </div>
 
-                <!-- Resto del HTML sin cambios -->
                 <!-- Información Adicional -->
                 <div class="mb-8">
                     <h2 class="text-lg sm:text-xl font-semibold text-gray-900 mb-6 flex items-center gap-2">
@@ -191,15 +241,23 @@
                     </h3>
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div class="bg-white rounded-lg p-4 shadow">
+                            <p class="text-xs sm:text-sm text-gray-600 mb-1">Tipo de Lote</p>
+                            <p class="text-lg sm:text-xl font-bold text-blue-700">
+                                {{ getTipoLote() }}
+                            </p>
+                        </div>
+                        <div class="bg-white rounded-lg p-4 shadow">
                             <p class="text-xs sm:text-sm text-gray-600 mb-1">Número de Lote</p>
                             <p class="text-lg sm:text-xl font-bold text-blue-700">
                                 {{ loteForm.get('numeroLote')?.value || 'Sin número' }}
                             </p>
                         </div>
                         <div class="bg-white rounded-lg p-4 shadow">
-                            <p class="text-xs sm:text-sm text-gray-600 mb-1">Urbanización</p>
+                            <p class="text-xs sm:text-sm text-gray-600 mb-1">Urbanización/Ciudad</p>
                             <p class="text-lg sm:text-xl font-bold text-emerald-700">
-                                {{ getUrbanizacionNombre() }}
+                                {{ loteForm.get('esIndependiente')?.value ?
+                                (loteForm.get('ciudad')?.value || 'Sin ciudad') :
+                                getUrbanizacionNombre() }}
                             </p>
                         </div>
                         <div class="bg-white rounded-lg p-4 shadow">

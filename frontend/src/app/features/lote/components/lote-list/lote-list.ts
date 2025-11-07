@@ -1,3 +1,4 @@
+// src/app/modules/lote/components/lote-list/lote-list.ts
 import { Component, inject, signal, OnInit, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
@@ -34,6 +35,7 @@ export class LoteList implements OnInit {
   columns: ColumnConfig[] = [
     { key: 'numeroLote', label: 'Lote', sortable: true },
     { key: 'urbanizacion', label: 'Urbanización', sortable: true },
+    { key: 'ciudad', label: 'Ciudad', sortable: true },
     { key: 'superficieM2', label: 'Superficie', sortable: true },
     { key: 'precioBase', label: 'Precio Base', sortable: true },
     { key: 'estado', label: 'Estado', sortable: true },
@@ -55,6 +57,7 @@ export class LoteList implements OnInit {
         (lote: LoteDto) =>
           lote.numeroLote?.toLowerCase().includes(term) ||
           lote.urbanizacion?.nombre?.toLowerCase().includes(term) ||
+          lote.ciudad?.toLowerCase().includes(term) ||
           lote.estado?.toLowerCase().includes(term) ||
           lote.descripcion?.toLowerCase().includes(term)
       );
@@ -173,13 +176,23 @@ export class LoteList implements OnInit {
   }
 
   getEstadoBadgeClass(estado: string): string {
-    const classes = {
+    const classes: { [key: string]: string } = {
       DISPONIBLE: 'px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700',
       RESERVADO: 'px-3 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-700',
       VENDIDO: 'px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700',
       CON_OFERTA: 'px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700',
     };
-    return classes[estado as keyof typeof classes] || classes['DISPONIBLE'];
+    return classes[estado] || classes['DISPONIBLE'];
+  }
+
+  getTipoLoteBadgeClass(esIndependiente: boolean): string {
+    return esIndependiente
+      ? 'px-3 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-700'
+      : 'px-3 py-1 rounded-full text-xs font-bold bg-indigo-100 text-indigo-700';
+  }
+
+  getTipoLoteText(esIndependiente: boolean): string {
+    return esIndependiente ? 'Independiente' : 'Urbanización';
   }
 
   nextPage() {

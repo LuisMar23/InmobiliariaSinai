@@ -1,4 +1,3 @@
-// create-venta.dto.ts
 import {
   IsString,
   IsNumber,
@@ -132,25 +131,4 @@ export class UpdatePlanPagoDto {
   @IsOptional()
   @IsEnum(PeriodicidadPago)
   periodicidad?: PeriodicidadPago;
-}
-
-export class UpdatePagoPlanDto {
-  @IsOptional()
-  @IsNumber({ maxDecimalPlaces: 2 })
-  @Min(0.01)
-  @Type(() => Number)
-  monto?: number;
-
-  @IsOptional()
-  @IsDate()
-  @Type(() => Date)
-  fecha_pago?: Date;
-
-  @IsOptional()
-  @IsString()
-  observacion?: string;
-
-  @IsOptional()
-  @IsEnum(MetodoPago)
-  metodoPago?: MetodoPago;
 }

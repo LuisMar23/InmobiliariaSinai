@@ -1,3 +1,4 @@
+// src/app/modules/cotizacion/components/cotizacion-edit/cotizacion-edit.ts
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule, DatePipe } from '@angular/common';
@@ -26,12 +27,8 @@ export class CotizacionEdit implements OnInit {
   cotizacionData: any = null;
   clientes = signal<UserDto[]>([]);
   lotes = signal<LoteDto[]>([]);
-
-  // Signals para búsqueda
   searchCliente = signal<string>('');
   searchLote = signal<string>('');
-
-  // Signals para mostrar/ocultar dropdowns
   showClientesDropdown = signal<boolean>(false);
   showLotesDropdown = signal<boolean>(false);
 
@@ -72,10 +69,14 @@ export class CotizacionEdit implements OnInit {
 
         let clientes: any[] = [];
 
-        if (response.data && Array.isArray(response.data.clientes)) {
-          clientes = response.data.clientes;
-        } else if (response.data && Array.isArray(response.data)) {
+        if (response.data && Array.isArray(response.data)) {
           clientes = response.data;
+        } else if (
+          response.data &&
+          response.data.clientes &&
+          Array.isArray(response.data.clientes)
+        ) {
+          clientes = response.data.clientes;
         } else if (Array.isArray(response)) {
           clientes = response;
         } else {
@@ -84,11 +85,17 @@ export class CotizacionEdit implements OnInit {
           return;
         }
 
-        console.log('Clientes cargados:', clientes);
-        this.clientes.set(clientes);
+        const clientesFiltrados = clientes.filter(
+          (cliente) => cliente.role === 'CLIENTE' && cliente.isActive !== false
+        );
 
-        if (clientes.length === 0) {
-          this.notificationService.showWarning('No se encontraron clientes registrados');
+        console.log('Clientes cargados:', clientesFiltrados);
+        this.clientes.set(clientesFiltrados);
+
+        if (clientesFiltrados.length === 0) {
+          this.notificationService.showWarning(
+            'No se encontraron clientes registrados con rol CLIENTE'
+          );
         }
       },
       error: (err: any) => {
@@ -101,6 +108,7 @@ export class CotizacionEdit implements OnInit {
   cargarLotes(): void {
     this.loteSvc.getAll().subscribe({
       next: (lotes: LoteDto[]) => {
+        console.log('Lotes cargados:', lotes);
         this.lotes.set(lotes);
       },
       error: (err: any) => {
@@ -110,15 +118,18 @@ export class CotizacionEdit implements OnInit {
     });
   }
 
-  // Métodos para filtrado de clientes
   filteredClientes() {
     const search = this.searchCliente().toLowerCase();
     if (!search) return this.clientes();
 
-    return this.clientes().filter((cliente) => cliente.fullName?.toLowerCase().includes(search));
+    return this.clientes().filter(
+      (cliente) =>
+        cliente.fullName?.toLowerCase().includes(search) ||
+        cliente.ci?.toLowerCase().includes(search) ||
+        cliente.email?.toLowerCase().includes(search)
+    );
   }
 
-  // Métodos para filtrado de lotes
   filteredLotes() {
     const search = this.searchLote().toLowerCase();
     if (!search) return this.lotes();
@@ -126,13 +137,11 @@ export class CotizacionEdit implements OnInit {
     return this.lotes().filter(
       (lote) =>
         lote.numeroLote?.toLowerCase().includes(search) ||
-        lote.estado?.toLowerCase().includes(search) ||
-        lote.precioBase?.toString().includes(search) ||
-        lote.urbanizacion?.nombre?.toLowerCase().includes(search)
+        lote.urbanizacion?.nombre?.toLowerCase().includes(search) ||
+        lote.precioBase?.toString().includes(search)
     );
   }
 
-  // Métodos para selección de cliente
   selectCliente(cliente: UserDto) {
     this.cotizacionForm.patchValue({
       clienteId: cliente.id.toString(),
@@ -141,18 +150,16 @@ export class CotizacionEdit implements OnInit {
     this.showClientesDropdown.set(false);
   }
 
-  // Métodos para selección de lote
   selectLote(lote: LoteDto) {
     this.cotizacionForm.patchValue({
       inmuebleId: lote.id.toString(),
     });
     this.searchLote.set(
-      `${lote.numeroLote} - ${lote.urbanizacion?.nombre} - ${lote.estado} - $${lote.precioBase}`
+      `Lote ${lote.numeroLote} - ${lote.urbanizacion?.nombre} - $${lote.precioBase}`
     );
     this.showLotesDropdown.set(false);
   }
 
-  // Métodos para mostrar/ocultar dropdowns
   toggleClientesDropdown() {
     this.showClientesDropdown.set(!this.showClientesDropdown());
     if (this.showClientesDropdown()) {
@@ -167,7 +174,6 @@ export class CotizacionEdit implements OnInit {
     }
   }
 
-  // Métodos para cuando el input pierde el foco
   onClienteBlur() {
     setTimeout(() => {
       this.showClientesDropdown.set(false);
@@ -208,7 +214,6 @@ export class CotizacionEdit implements OnInit {
   }
 
   cargarDatosFormulario(cotizacion: any): void {
-    // Encontrar el cliente y lote seleccionados para mostrar en los inputs de búsqueda
     const clienteSeleccionado = this.clientes().find((c) => c.id === cotizacion.clienteId);
     const loteSeleccionado = this.lotes().find((l) => l.id === cotizacion.inmuebleId);
 
@@ -220,13 +225,12 @@ export class CotizacionEdit implements OnInit {
       estado: cotizacion.estado || 'PENDIENTE',
     });
 
-    // Establecer los valores de búsqueda
     if (clienteSeleccionado) {
       this.searchCliente.set(clienteSeleccionado.fullName || '');
     }
     if (loteSeleccionado) {
       this.searchLote.set(
-        `${loteSeleccionado.numeroLote} - ${loteSeleccionado.urbanizacion?.nombre} - ${loteSeleccionado.estado} - $${loteSeleccionado.precioBase}`
+        `Lote ${loteSeleccionado.numeroLote} - ${loteSeleccionado.urbanizacion?.nombre} - $${loteSeleccionado.precioBase}`
       );
     }
   }
@@ -259,7 +263,7 @@ export class CotizacionEdit implements OnInit {
       clienteId: Number(this.cotizacionForm.value.clienteId),
       inmuebleId: Number(this.cotizacionForm.value.inmuebleId),
       precioOfertado: Number(this.cotizacionForm.value.precioOfertado),
-      inmuebleTipo: 'LOTE', // Siempre será LOTE
+      inmuebleTipo: 'LOTE',
     };
 
     console.log('Datos a actualizar:', dataActualizada);
@@ -304,5 +308,32 @@ export class CotizacionEdit implements OnInit {
   handleFormSubmit(event: Event): void {
     event.preventDefault();
     this.onSubmit();
+  }
+
+  // CORREGIDO: Método getClienteNombre agregado
+  getClienteNombre(): string {
+    const clienteId = this.cotizacionForm.get('clienteId')?.value;
+    if (!clienteId) return 'Sin cliente';
+
+    const cliente = this.clientes().find((c) => c.id === Number(clienteId));
+    return cliente ? cliente.fullName : 'No encontrado';
+  }
+
+  getLoteInfo(): string {
+    const loteId = this.cotizacionForm.get('inmuebleId')?.value;
+    if (!loteId) return 'Sin lote';
+
+    const lote = this.lotes().find((l) => l.id === Number(loteId));
+    return lote ? `Lote ${lote.numeroLote} - ${lote.urbanizacion?.nombre}` : 'No encontrado';
+  }
+
+  getEstadoBadgeClass(estado: string): string {
+    const classes: { [key: string]: string } = {
+      DISPONIBLE: 'px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700',
+      RESERVADO: 'px-3 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-700',
+      VENDIDO: 'px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700',
+      CON_OFERTA: 'px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700',
+    };
+    return classes[estado] || classes['DISPONIBLE'];
   }
 }

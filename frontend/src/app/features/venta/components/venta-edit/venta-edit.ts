@@ -459,41 +459,16 @@ export class VentaEdit implements OnInit {
     }
 
     const pagosExistentes = venta.planPago.pagos || [];
-    const primerPago = this.obtenerPrimerPago(pagosExistentes);
+    const ultimoPago = this.obtenerUltimoPago(pagosExistentes);
 
-    if (primerPago && fechaPago < primerPago) {
+    // CORRECCIÓN: Solo validar si hay pagos existentes y la fecha es anterior
+    if (ultimoPago && fechaPago < ultimoPago) {
       this.notificationService.showError(
-        `La fecha de pago no puede ser anterior al primer pago registrado (${this.formatDate(
-          primerPago
+        `La fecha de pago no puede ser anterior al último pago registrado (${this.formatDate(
+          ultimoPago
         )})`
       );
       return;
-    }
-
-    const fechaCreacionPlan = new Date(
-      venta.planPago.fecha_creacion || venta.fecha_creacion || venta.createdAt
-    );
-    fechaCreacionPlan.setHours(0, 0, 0, 0);
-
-    if (fechaPago < fechaCreacionPlan) {
-      this.notificationService.showError(
-        `La fecha de pago no puede ser anterior a la creación del plan de pago (${this.formatDate(
-          fechaCreacionPlan
-        )})`
-      );
-      return;
-    }
-
-    if (pagosExistentes.length > 0) {
-      const ultimoPago = this.obtenerUltimoPago(pagosExistentes);
-      if (ultimoPago && fechaPago < ultimoPago) {
-        this.notificationService.showError(
-          `La fecha de pago no puede ser anterior al último pago registrado (${this.formatDate(
-            ultimoPago
-          )})`
-        );
-        return;
-      }
     }
 
     this.enviandoPago.set(true);
