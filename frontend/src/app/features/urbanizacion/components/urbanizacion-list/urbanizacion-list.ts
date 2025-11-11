@@ -1,12 +1,5 @@
+// src/app/modules/urbanizacion/components/urbanizacion-list/urbanizacion-list.ts
 import { Component, computed, inject, signal } from '@angular/core';
-import {
-  faBuilding,
-  faEye,
-  faPenToSquare,
-  faSearch,
-  faTrash,
-} from '@fortawesome/free-solid-svg-icons';
-import { UrbanizacionDto } from '../../../../core/interfaces/urbanizacion.interface';
 import {
   FormBuilder,
   FormGroup,
@@ -14,159 +7,187 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
+import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { UrbanizacionService } from '../../services/urbanizacion.service';
+
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
-import { CommonModule } from '@angular/common';
+
 import { ArchivosComponent } from "../../../../components/archivos/archivos/archivos";
-import { RouterModule } from '@angular/router';
+
+
+import { UrbanizacionDto } from '../../../../core/interfaces/urbanizacion.interface';
+
 
 @Component({
   selector: 'app-urbanizacion-list',
   standalone: true,
   imports: [FontAwesomeModule, CommonModule, ReactiveFormsModule, FormsModule, ArchivosComponent,RouterModule],
   templateUrl: './urbanizacion-list.html',
-  styleUrl: './urbanizacion-list.css',
 })
 export class UrbanizacionList {
-  faBuilding = faBuilding;
-  faEye = faEye;
-  faPenToSquare = faPenToSquare;
-  faTrash = faTrash;
-  faSearch = faSearch;
-
   urbanizaciones = signal<UrbanizacionDto[]>([]);
-  editId = signal<number | null>(null);
+  allUrbanizaciones = signal<UrbanizacionDto[]>([]);
   searchTerm = signal('');
   showModal = signal(false);
-  editMode = signal(false);
+  showDetailModal = signal(false);
+  cargando = signal(true);
+  urbanizacionSeleccionada = signal<UrbanizacionDto | null>(null);
 
   columns = [
-    { key: 'id', label: 'N°' },
-    { key: 'nombre', label: 'Nombre' },
-    { key: 'ubicacion', label: 'Ubicación' },
-    { key: 'descripcion', label: 'Descripción' },
-    { key: 'createdAt', label: 'Creado' },
-    { key: 'updatedAt', label: 'Actualizado' },
+    { key: 'id', label: 'N°', sortable: true },
+    { key: 'nombre', label: 'Nombre', sortable: true },
+    { key: 'ubicacion', label: 'Ubicación', sortable: true },
+    { key: 'ciudad', label: 'Ciudad', sortable: true },
+    { key: 'descripcion', label: 'Descripción', sortable: true },
   ];
 
   total = signal(0);
   pageSize = signal(10);
   currentPage = signal(1);
-  sortColumn = signal<string>('');
-  sortDirection = signal<'asc' | 'desc'>('asc');
+  sortColumn = signal<string>('id');
+  sortDirection = signal<'asc' | 'desc'>('desc');
 
   form: FormGroup;
 
-  _notificationService = inject(NotificationService);
+  private notificationService = inject(NotificationService);
+  private urbanizacionService = inject(UrbanizacionService);
+  private fb = inject(FormBuilder);
 
-  constructor(private urbanizacionService: UrbanizacionService, private fb: FormBuilder) {
+  constructor() {
     this.form = this.fb.group({
       nombre: ['', Validators.required],
       ubicacion: ['', Validators.required],
+      ciudad: ['', Validators.required],
       descripcion: [''],
     });
-
     this.loadUrbanizaciones();
   }
 
-  // cargar datos
   loadUrbanizaciones() {
-    this.urbanizacionService.getAll(this.currentPage(), this.pageSize()).subscribe((res) => {
-      this.urbanizaciones.set(res.data);
-      this.total.set(res.total);
-
-      if (this.sortColumn()) this.ordenarUrbanizaciones();
+    this.cargando.set(true);
+    this.urbanizacionService.getAll(this.currentPage(), this.pageSize()).subscribe({
+      next: (res) => {
+        this.urbanizaciones.set(res.data);
+        this.allUrbanizaciones.set(res.data);
+        this.total.set(res.pagination?.total || res.data.length);
+        this.cargando.set(false);
+      },
+      error: (err) => {
+        this.notificationService.showError('Error al cargar urbanizaciones');
+        this.cargando.set(false);
+      },
     });
   }
 
-  // búsqueda
   filteredUrbanizaciones = computed(() => {
     const term = this.searchTerm().toLowerCase();
-    return this.urbanizaciones().filter(
-      (u) =>
-        u.nombre.toLowerCase().includes(term) ||
-        u.ubicacion.toLowerCase().includes(term) ||
-        (u.descripcion ?? '').toLowerCase().includes(term)
-    );
+    let urbanizaciones = this.allUrbanizaciones();
+
+    if (term) {
+      urbanizaciones = urbanizaciones.filter(
+        (u) =>
+          u.nombre.toLowerCase().includes(term) ||
+          u.ubicacion.toLowerCase().includes(term) ||
+          u.ciudad.toLowerCase().includes(term) ||
+          (u.descripcion ?? '').toLowerCase().includes(term)
+      );
+    }
+
+    const column = this.sortColumn();
+    const direction = this.sortDirection();
+
+    if (!column) return urbanizaciones;
+
+    return [...urbanizaciones].sort((a, b) => {
+      let aValue: any = a[column as keyof UrbanizacionDto];
+      let bValue: any = b[column as keyof UrbanizacionDto];
+
+      if (aValue === undefined || aValue === null) aValue = '';
+      if (bValue === undefined || bValue === null) bValue = '';
+
+      if (typeof aValue === 'number' && typeof bValue === 'number') {
+        return direction === 'asc' ? aValue - bValue : bValue - aValue;
+      }
+
+      const aString = aValue.toString().toLowerCase();
+      const bString = bValue.toString().toLowerCase();
+
+      if (direction === 'asc') {
+        return aString.localeCompare(bString);
+      } else {
+        return bString.localeCompare(aString);
+      }
+    });
   });
 
-  // crear/editar
   submit() {
-    if (this.form.invalid) return;
-    const data = this.form.value;
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      this.notificationService.showError('Complete todos los campos requeridos');
+      return;
+    }
 
-    if (this.editMode()) {
-      const id = this.editId();
-      if (id != null) {
-        this.urbanizacionService.update(id, data).subscribe(() => {
-          this._notificationService.showSuccess(`Se ha actualizado la urbanización`);
+    const data = this.form.value;
+    this.urbanizacionService.create(data).subscribe({
+      next: (response: any) => {
+        if (response.success === true) {
+          this.notificationService.showSuccess('Urbanización creada correctamente');
           this.loadUrbanizaciones();
           this.cancelEdit();
-        });
-      }
-    } else {
-      this.urbanizacionService.create(data).subscribe(() => {
-        this._notificationService.showSuccess(`Se ha creado la urbanización ${data.nombre}`);
-        this.loadUrbanizaciones();
-        this.cancelEdit();
-      });
-    }
-  }
-
-  edit(urbanizacion: UrbanizacionDto) {
-    this.showModal.set(true);
-    this.editMode.set(true);
-    this.editId.set(urbanizacion.id!);
-    this.form.patchValue(urbanizacion);
+        } else {
+          this.notificationService.showError(response.message || 'Error al crear urbanización');
+        }
+      },
+      error: (err) => {
+        this.notificationService.showError('Error al crear urbanización');
+      },
+    });
   }
 
   openModal() {
     this.showModal.set(true);
-    this.editMode.set(false);
     this.form.reset();
   }
 
   cancelEdit() {
     this.showModal.set(false);
-    this.editMode.set(false);
-    this.editId.set(null);
     this.form.reset();
   }
 
-  delete(data: any) {
-    this._notificationService
-      .confirmDelete(`Se eliminará la urbanización ${data.nombre}`)
-      .then((result) => {
-        if (result.isConfirmed) {
-          this._notificationService.showSuccess('Eliminado correctamente');
-          this.urbanizacionService.delete(data.id).subscribe(() => this.loadUrbanizaciones());
-        }
-      });
+  verDetalles(urbanizacion: UrbanizacionDto) {
+    this.urbanizacionSeleccionada.set(urbanizacion);
+    this.showDetailModal.set(true);
   }
 
-  ordenarUrbanizaciones() {
-    const col = this.sortColumn();
-    const dir = this.sortDirection();
-    if (!col) return;
+  cerrarModalDetalles() {
+    this.showDetailModal.set(false);
+    this.urbanizacionSeleccionada.set(null);
+  }
 
-    const arr = [...this.urbanizaciones()];
-
-    arr.sort((a, b) => {
-      const valA = a[col as keyof UrbanizacionDto];
-      const valB = b[col as keyof UrbanizacionDto];
-
-      if (valA == null) return 1;
-      if (valB == null) return -1;
-
-      if (typeof valA === 'string' && typeof valB === 'string') {
-        return dir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
-      }
-
-      return dir === 'asc' ? (valA < valB ? -1 : 1) : valA < valB ? 1 : -1;
-    });
-
-    this.urbanizaciones.set(arr);
+  delete(data: UrbanizacionDto) {
+    this.notificationService
+      .confirmDelete(`¿Eliminar la urbanización ${data.nombre}?`)
+      .then((result) => {
+        if (result.isConfirmed) {
+          this.urbanizacionService.delete(data.id!).subscribe({
+            next: (response: any) => {
+              if (response.success === true) {
+                this.notificationService.showSuccess('Urbanización eliminada correctamente');
+                this.loadUrbanizaciones();
+              } else {
+                this.notificationService.showError(
+                  response.message || 'Error al eliminar urbanización'
+                );
+              }
+            },
+            error: (err) => {
+              this.notificationService.showError('Error al eliminar urbanización');
+            },
+          });
+        }
+      });
   }
 
   sort(column: string) {
@@ -176,10 +197,8 @@ export class UrbanizacionList {
       this.sortColumn.set(column);
       this.sortDirection.set('asc');
     }
-    this.ordenarUrbanizaciones();
   }
 
-  // Método para obtener clase de flecha (igual que en cotizaciones)
   getClaseFlecha(columna: string): string {
     if (this.sortColumn() !== columna) {
       return 'opacity-30';
@@ -187,7 +206,6 @@ export class UrbanizacionList {
     return this.sortDirection() === 'asc' ? '' : 'rotate-180';
   }
 
-  // paginador
   nextPage() {
     if (this.currentPage() < this.totalPages()) {
       this.currentPage.update((v) => v + 1);
@@ -225,7 +243,7 @@ export class UrbanizacionList {
     const end = this.currentPage() * this.pageSize();
     return end > this.total() ? this.total() : end;
   }
-  urbanizacionSeleccionada = signal<UrbanizacionDto| null>(null);
+  // urbanizacionSeleccionada = signal<UrbanizacionDto| null>(null);
     mostrarUploader = signal(false);
   abrirModalSubirArchivos(urbanizacion: UrbanizacionDto) {
     this.  urbanizacionSeleccionada.set(urbanizacion);
@@ -238,6 +256,6 @@ export class UrbanizacionList {
   }
   onSubidaCompleta() {
     this.cerrarModalUploader();
-    this._notificationService.showSuccess('Archivos subidos correctamente');
+    this.notificationService.showSuccess('Archivos subidos correctamente');
   }
 }

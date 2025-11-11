@@ -21,58 +21,101 @@ export class LoteService {
 
   getAll(urbanizacionId?: number): Observable<LoteDto[]> {
     const url = urbanizacionId ? `${this.apiUrl}?urbanizacionId=${urbanizacionId}` : this.apiUrl;
-    return this.http
-      .get<ApiResponse<LoteDto[]>>(url)
-      .pipe(map((response) => this.parseLotes(response.data)));
+    return this.http.get<ApiResponse<LoteDto[]>>(url).pipe(
+      map((response) => {
+        if (response.success && response.data) {
+          return Array.isArray(response.data) ? response.data : [response.data];
+        }
+        return [];
+      })
+    );
   }
 
   getById(id: number): Observable<LoteDto> {
-    return this.http
-      .get<ApiResponse<LoteDto>>(`${this.apiUrl}/${id}`)
-      .pipe(map((response) => this.parseLote(response.data)));
+    return this.http.get<ApiResponse<LoteDto>>(`${this.apiUrl}/${id}`).pipe(
+      map((response) => {
+        if (response.success) {
+          return response.data;
+        }
+        throw new Error(response.message || 'Error al obtener el lote');
+      })
+    );
+  }
+
+  getLotesParaCotizacion(): Observable<LoteDto[]> {
+    return this.http.get<ApiResponse<LoteDto[]>>(`${this.apiUrl}/para-cotizacion`).pipe(
+      map((response) => {
+        if (response.success && response.data) {
+          return Array.isArray(response.data) ? response.data : [response.data];
+        }
+        return [];
+      })
+    );
+  }
+
+  getLotesConPromociones(): Observable<LoteDto[]> {
+    return this.http.get<ApiResponse<LoteDto[]>>(`${this.apiUrl}/con-promociones`).pipe(
+      map((response) => {
+        if (response.success && response.data) {
+          return Array.isArray(response.data) ? response.data : [response.data];
+        }
+        return [];
+      })
+    );
   }
 
   create(lote: any): Observable<any> {
     const loteData = {
       ...lote,
-      urbanizacionId: Number(lote.urbanizacionId),
+      urbanizacionId: lote.esIndependiente ? null : Number(lote.urbanizacionId),
       superficieM2: Number(lote.superficieM2),
       precioBase: Number(lote.precioBase),
-      usuarioId: 1,
+      esIndependiente: Boolean(lote.esIndependiente),
     };
 
-    return this.http.post<any>(this.apiUrl, loteData).pipe(map((response) => response));
+    return this.http.post<ApiResponse<any>>(this.apiUrl, loteData).pipe(
+      map((response) => {
+        if (response.success) {
+          return response;
+        }
+        throw new Error(response.message || 'Error al crear el lote');
+      })
+    );
   }
 
   update(id: number, lote: any): Observable<any> {
     const loteData: any = {};
 
-    if (lote.urbanizacionId !== undefined) loteData.urbanizacionId = Number(lote.urbanizacionId);
+    if (lote.urbanizacionId !== undefined)
+      loteData.urbanizacionId = lote.esIndependiente ? null : Number(lote.urbanizacionId);
     if (lote.numeroLote !== undefined) loteData.numeroLote = lote.numeroLote;
     if (lote.superficieM2 !== undefined) loteData.superficieM2 = Number(lote.superficieM2);
     if (lote.precioBase !== undefined) loteData.precioBase = Number(lote.precioBase);
     if (lote.descripcion !== undefined) loteData.descripcion = lote.descripcion;
     if (lote.ubicacion !== undefined) loteData.ubicacion = lote.ubicacion;
     if (lote.estado !== undefined) loteData.estado = lote.estado;
+    if (lote.ciudad !== undefined) loteData.ciudad = lote.ciudad;
+    if (lote.esIndependiente !== undefined)
+      loteData.esIndependiente = Boolean(lote.esIndependiente);
 
-    loteData.usuarioId = 1;
-
-    return this.http.patch<any>(`${this.apiUrl}/${id}`, loteData).pipe(map((response) => response));
+    return this.http.patch<ApiResponse<any>>(`${this.apiUrl}/${id}`, loteData).pipe(
+      map((response) => {
+        if (response.success) {
+          return response;
+        }
+        throw new Error(response.message || 'Error al actualizar el lote');
+      })
+    );
   }
 
   delete(id: number): Observable<any> {
-    return this.http.delete<any>(`${this.apiUrl}/${id}`).pipe(map((response) => response));
-  }
-
-  private parseLote(lote: any): LoteDto {
-    return {
-      ...lote,
-      superficieM2: Number(lote.superficieM2),
-      precioBase: Number(lote.precioBase),
-    };
-  }
-
-  private parseLotes(lotes: any[]): LoteDto[] {
-    return lotes.map((lote) => this.parseLote(lote));
+    return this.http.delete<ApiResponse<any>>(`${this.apiUrl}/${id}`).pipe(
+      map((response) => {
+        if (response.success) {
+          return response;
+        }
+        throw new Error(response.message || 'Error al eliminar el lote');
+      })
+    );
   }
 }

@@ -1,4 +1,3 @@
-// venta.controller.ts
 import {
   Controller,
   Get,
@@ -13,7 +12,11 @@ import {
   UseGuards,
   Request,
 } from '@nestjs/common';
-import { CreateVentaDto, RegistrarPagoDto } from './dto/create-venta.dto';
+import {
+  CreateVentaDto,
+  RegistrarPagoDto,
+  UpdatePlanPagoDto,
+} from './dto/create-venta.dto';
 import { VentasService } from './venta.service';
 import { AuthGuard } from '@nestjs/passport';
 import { UpdatePagoPlanDto } from './dto/pago-plan.dto';
@@ -35,6 +38,7 @@ export class VentasController {
 
   @Get()
   findAll(
+    @Request() req,
     @Query('clienteId') clienteId?: string,
     @Query('asesorId') asesorId?: string,
     @Query('page') page?: string,
@@ -45,6 +49,8 @@ export class VentasController {
       asesorId ? +asesorId : undefined,
       page ? +page : 1,
       limit ? +limit : 10,
+      req.user.id,
+      req.user.role,
     );
   }
 
@@ -92,6 +98,16 @@ export class VentasController {
     );
   }
 
+  @Get('pagos/:pagoId')
+  obtenerPago(@Param('pagoId') pagoId: string) {
+    return this.ventasService.obtenerPago(+pagoId);
+  }
+
+  @Get('planes-pago/:planPagoId/pagos')
+  obtenerPagosPlan(@Param('planPagoId') planPagoId: string) {
+    return this.ventasService.obtenerPagosPlan(+planPagoId);
+  }
+
   @Patch('pagos/:pagoId')
   actualizarPagoPlan(
     @Param('pagoId') pagoId: string,
@@ -123,6 +139,24 @@ export class VentasController {
     );
   }
 
+  @Patch('planes-pago/:planPagoId')
+  actualizarPlanPago(
+    @Param('planPagoId') planPagoId: string,
+    @Body() updatePlanPagoDto: UpdatePlanPagoDto,
+    @Request() req,
+  ) {
+    const usuarioId = req.user.id;
+    const ip = req.ip;
+    const userAgent = req.headers['user-agent'];
+    return this.ventasService.actualizarPlanPago(
+      +planPagoId,
+      updatePlanPagoDto,
+      usuarioId,
+      ip,
+      userAgent,
+    );
+  }
+
   @Get(':id/resumen-pago')
   obtenerResumenPlanPago(@Param('id') id: string) {
     return this.ventasService.obtenerResumenPlanPago(+id);
@@ -142,11 +176,6 @@ export class VentasController {
   @Post('planes-pago/:id/verificar-morosidad')
   verificarMorosidadPlanPago(@Param('id') id: string) {
     return this.ventasService.verificarMorosidadPlanPago(+id);
-  }
-
-  @Get('planes-pago/:id/pagos')
-  obtenerPagosPlan(@Param('id') id: string) {
-    return this.ventasService.obtenerPagosPlan(+id);
   }
 
   @Get('clientes/mis-ventas')

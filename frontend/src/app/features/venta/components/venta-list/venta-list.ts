@@ -91,11 +91,11 @@ export class VentaList implements OnInit {
           } else {
             this.total.set(ventas.length);
           }
-        } else if (Array.isArray(response)) {
-          ventas = response;
-          this.total.set(ventas.length);
         } else if (response.data && response.data.ventas) {
           ventas = response.data.ventas;
+          this.total.set(response.data.pagination?.total || ventas.length);
+        } else if (Array.isArray(response)) {
+          ventas = response;
           this.total.set(ventas.length);
         }
 
@@ -151,6 +151,21 @@ export class VentaList implements OnInit {
 
     const total = Number(venta.planPago.total || 0);
     return (this.getTotalPagado(venta) / total) * 100;
+  }
+
+  obtenerUltimoPago(pagos: any[]): Date | null {
+    if (!pagos || !Array.isArray(pagos) || pagos.length === 0) {
+      return null;
+    }
+
+    const pagosOrdenados = [...pagos].sort((a, b) => {
+      const fechaA = new Date(a.fecha_pago || a.createdAt).getTime();
+      const fechaB = new Date(b.fecha_pago || b.createdAt).getTime();
+      return fechaB - fechaA;
+    });
+
+    const ultimoPago = pagosOrdenados[0];
+    return new Date(ultimoPago.fecha_pago || ultimoPago.createdAt);
   }
 
   totalPages() {
@@ -262,6 +277,29 @@ export class VentaList implements OnInit {
       return;
     }
 
+    const fechaPago = new Date(this.pagoForm.value.fecha_pago);
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    fechaPago.setHours(0, 0, 0, 0);
+
+    if (fechaPago > hoy) {
+      this.notificationService.showError('La fecha de pago no puede ser futura.');
+      return;
+    }
+
+    const pagosExistentes = venta.planPago.pagos || [];
+    const ultimoPago = this.obtenerUltimoPago(pagosExistentes);
+
+    // CORRECCIÓN: Solo validar si hay pagos existentes y la fecha es anterior
+    if (ultimoPago && fechaPago < ultimoPago) {
+      this.notificationService.showError(
+        `La fecha de pago no puede ser anterior al último pago registrado (${this.formatDate(
+          ultimoPago
+        )})`
+      );
+      return;
+    }
+
     this.enviandoPago.set(true);
 
     const pagoData: RegistrarPagoDto = {
@@ -309,7 +347,7 @@ export class VentaList implements OnInit {
         this.enviandoPago.set(false);
         let errorMessage = 'Error al registrar el pago';
         if (err.status === 400) {
-          errorMessage = err.error?.message || 'Datos inválidos para el pago.';
+          errorMessage = err.error?.message || 'Datos inválidos para el pago. Verifique la fecha.';
         } else if (err.error?.message) {
           errorMessage = err.error.message;
         }
@@ -386,5 +424,16 @@ export class VentaList implements OnInit {
 
   formatPorcentaje(porcentaje: number): string {
     return porcentaje.toFixed(1) + '%';
+  }
+
+  formatDate(date: any): string {
+    if (!date) return 'N/A';
+    try {
+      const dateObj = new Date(date);
+      if (isNaN(dateObj.getTime())) return 'N/A';
+      return dateObj.toLocaleDateString('es-BO');
+    } catch {
+      return 'N/A';
+    }
   }
 }

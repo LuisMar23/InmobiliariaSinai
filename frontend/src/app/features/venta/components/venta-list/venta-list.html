@@ -536,7 +536,8 @@
 
                 @if (mostrarFormPago()) {
                 <div class="bg-white rounded-lg p-3 sm:p-4 border border-emerald-100">
-                    <form [formGroup]="pagoForm" (submit)="registrarPago()" class="space-y-3 sm:space-y-4">
+                    <!-- FORMULARIO DE PAGO SEPARADO -->
+                    <form [formGroup]="pagoForm" class="space-y-3 sm:space-y-4">
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                             <div>
                                 <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
@@ -589,7 +590,8 @@
                                 class="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded text-xs sm:text-sm font-medium transition-colors">
                                 Cancelar
                             </button>
-                            <button type="submit" [disabled]="pagoForm.invalid || enviandoPago()"
+                            <button type="button" (click)="registrarPago()"
+                                [disabled]="pagoForm.invalid || enviandoPago()"
                                 class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs sm:text-sm font-medium disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors">
                                 {{ enviandoPago() ? 'Registrando...' : 'Registrar Pago' }}
                             </button>

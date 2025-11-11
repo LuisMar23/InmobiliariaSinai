@@ -1,3 +1,4 @@
+// src/promocion/promocion.controller.ts
 import {
   Controller,
   Get,
@@ -8,6 +9,7 @@ import {
   Delete,
   UsePipes,
   ValidationPipe,
+  Put,
 } from '@nestjs/common';
 import { PromocionService } from './promocion.service';
 import { CreatePromocionDto } from './dto/create-promocion.dto';
@@ -28,6 +30,16 @@ export class PromocionController {
     return this.promocionService.findAll();
   }
 
+  @Get('activas')
+  getPromocionesActivas() {
+    return this.promocionService.getPromocionesActivas();
+  }
+
+  @Get('lotes-disponibles')
+  getLotesDisponibles() {
+    return this.promocionService.getLotesDisponibles();
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.promocionService.findOne(+id);
@@ -44,5 +56,37 @@ export class PromocionController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.promocionService.remove(+id);
+  }
+
+  // Nuevos endpoints para asignación flexible
+  @Post(':id/asignar-lotes')
+  asignarLotes(@Param('id') id: string, @Body() body: { lotesIds: number[] }) {
+    return this.promocionService.asignarLotesAPromocion(+id, body.lotesIds);
+  }
+
+  @Post(':id/remover-lotes')
+  removerLotes(@Param('id') id: string, @Body() body: { lotesIds: number[] }) {
+    return this.promocionService.removerLotesDePromocion(+id, body.lotesIds);
+  }
+
+  @Put(':id/asignar-urbanizacion/:urbanizacionId')
+  asignarUrbanizacion(
+    @Param('id') id: string,
+    @Param('urbanizacionId') urbanizacionId: string,
+  ) {
+    return this.promocionService.asignarUrbanizacionAPromocion(
+      +id,
+      +urbanizacionId,
+    );
+  }
+
+  @Post(':id/asignar-todos-lotes')
+  asignarTodosLotes(@Param('id') id: string) {
+    return this.promocionService.asignarTodosLotesAPromocion(+id);
+  }
+
+  @Post('verificar-expiradas')
+  verificarExpiradas() {
+    return this.promocionService.verificarPromocionesExpiradas();
   }
 }

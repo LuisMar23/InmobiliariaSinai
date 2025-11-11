@@ -1,3 +1,4 @@
+// src/cotizacion/cotizacion.controller.ts (sin cambios)
 import {
   Controller,
   Get,
@@ -12,21 +13,21 @@ import {
   UseGuards,
   Request,
 } from '@nestjs/common';
+import { CotizacionService } from './cotizacion.service';
 import { CreateCotizacionDto } from './dto/create-cotizacion.dto';
 import { UpdateCotizacionDto } from './dto/update-cotizacion.dto';
-import { CotizacionesService } from './cotizacion.service';
 import { AuthGuard } from '@nestjs/passport';
 
 @Controller('cotizaciones')
 @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
 @UseGuards(AuthGuard('jwt'))
-export class CotizacionesController {
-  constructor(private readonly cotizacionesService: CotizacionesService) {}
+export class CotizacionController {
+  constructor(private readonly cotizacionService: CotizacionService) {}
 
   @Post()
   create(@Body() createCotizacionDto: CreateCotizacionDto, @Request() req) {
     const asesorId = req.user.id;
-    return this.cotizacionesService.create(createCotizacionDto, asesorId);
+    return this.cotizacionService.create(createCotizacionDto, asesorId);
   }
 
   @Get()
@@ -34,20 +35,15 @@ export class CotizacionesController {
     @Query('clienteId') clienteId?: string,
     @Query('estado') estado?: string,
   ) {
-    return this.cotizacionesService.findAll(
+    return this.cotizacionService.findAll(
       clienteId ? +clienteId : undefined,
       estado,
     );
   }
 
-  @Get('cliente/:clienteId')
-  getCotizacionesPorCliente(@Param('clienteId') clienteId: string) {
-    return this.cotizacionesService.getCotizacionesPorCliente(+clienteId);
-  }
-
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.cotizacionesService.findOne(+id);
+    return this.cotizacionService.findOne(+id);
   }
 
   @Patch(':id')
@@ -57,12 +53,12 @@ export class CotizacionesController {
     @Request() req,
   ) {
     const usuarioId = req.user.id;
-    return this.cotizacionesService.update(+id, updateCotizacionDto, usuarioId);
+    return this.cotizacionService.update(+id, updateCotizacionDto, usuarioId);
   }
 
   @Delete(':id')
   remove(@Param('id') id: string, @Request() req) {
     const usuarioId = req.user.id;
-    return this.cotizacionesService.remove(+id, usuarioId);
+    return this.cotizacionService.remove(+id, usuarioId);
   }
 }

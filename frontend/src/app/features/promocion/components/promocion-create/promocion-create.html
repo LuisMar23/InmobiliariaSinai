@@ -1,6 +1,6 @@
+<!-- src/app/modules/promocion/components/promocion-create/promocion-create.html -->
 <div class="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-emerald-50 py-4 px-2 sm:px-4 lg:px-8">
     <div class="max-w-full mx-auto">
-        <!-- Header -->
         <div class="bg-emerald-500 rounded-t-2xl shadow-lg p-4 sm:p-6">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div class="flex items-center gap-3">
@@ -25,7 +25,6 @@
             </div>
         </div>
 
-        <!-- Formulario -->
         <div class="bg-white rounded-b-2xl shadow-xl p-4 sm:p-6 lg:p-8">
             <form [formGroup]="promocionForm" (submit)="handleFormSubmit($event)">
                 <div class="mb-8">
@@ -37,14 +36,14 @@
                         Información de la Promoción
                     </h2>
                     <div class="bg-white border-2 border-gray-200 rounded-xl p-4 sm:p-6">
-                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                        <div class="space-y-4">
                             <!-- Título -->
-                            <div class="sm:col-span-2">
+                            <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     Título <span class="text-red-500">*</span>
                                 </label>
                                 <input type="text" formControlName="titulo"
-                                    class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm sm:text-base"
+                                    class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-base"
                                     placeholder="Título de la promoción"
                                     [class.border-red-500]="promocionForm.get('titulo')?.invalid && promocionForm.get('titulo')?.touched" />
                                 @if (promocionForm.get('titulo')?.invalid && promocionForm.get('titulo')?.touched) {
@@ -52,124 +51,154 @@
                                 }
                             </div>
 
-                            <!-- Descuento -->
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    Descuento (%) <span class="text-red-500">*</span>
-                                </label>
-                                <div class="relative">
-                                    <span
-                                        class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">%</span>
-                                    <input type="number" step="0.01" formControlName="descuento"
-                                        class="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm sm:text-base"
-                                        placeholder="0.00" min="0.01" max="100"
-                                        [class.border-red-500]="promocionForm.get('descuento')?.invalid && promocionForm.get('descuento')?.touched" />
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <!-- Descuento -->
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                        Descuento (%) <span class="text-red-500">*</span>
+                                    </label>
+                                    <div class="relative">
+                                        <span
+                                            class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">%</span>
+                                        <input type="number" step="0.01" formControlName="descuento"
+                                            class="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-base"
+                                            placeholder="0.00" min="0.01" max="100"
+                                            [class.border-red-500]="promocionForm.get('descuento')?.invalid && promocionForm.get('descuento')?.touched" />
+                                    </div>
+                                    @if (promocionForm.get('descuento')?.invalid &&
+                                    promocionForm.get('descuento')?.touched)
+                                    {
+                                    <p class="mt-1 text-xs text-red-600">El descuento debe estar entre 0.01 y 100</p>
+                                    }
                                 </div>
-                                @if (promocionForm.get('descuento')?.invalid && promocionForm.get('descuento')?.touched)
-                                {
-                                <p class="mt-1 text-xs text-red-600">El descuento debe estar entre 0.01 y 100</p>
-                                }
+
+                                <!-- Urbanización -->
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                        Urbanización
+                                    </label>
+                                    <select formControlName="urbanizacionId"
+                                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-base">
+                                        <option value="">Seleccione urbanización...</option>
+                                        @for (urbanizacion of urbanizaciones(); track urbanizacion.id) {
+                                        <option [value]="urbanizacion.id">{{ urbanizacion.nombre }}</option>
+                                        }
+                                    </select>
+                                </div>
                             </div>
 
-                            <!-- Fecha Inicio -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <!-- Fecha de Inicio -->
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                        Fecha de Inicio <span class="text-red-500">*</span>
+                                    </label>
+                                    <input type="date" formControlName="fechaInicio"
+                                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-base"
+                                        [class.border-red-500]="promocionForm.get('fechaInicio')?.invalid && promocionForm.get('fechaInicio')?.touched" />
+                                    @if (promocionForm.get('fechaInicio')?.invalid &&
+                                    promocionForm.get('fechaInicio')?.touched) {
+                                    <p class="mt-1 text-xs text-red-600">La fecha de inicio es requerida</p>
+                                    }
+                                </div>
+
+                                <!-- Fecha de Fin -->
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                        Fecha de Fin <span class="text-red-500">*</span>
+                                    </label>
+                                    <input type="date" formControlName="fechaFin"
+                                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-base"
+                                        [class.border-red-500]="promocionForm.get('fechaFin')?.invalid && promocionForm.get('fechaFin')?.touched" />
+                                    @if (promocionForm.get('fechaFin')?.invalid &&
+                                    promocionForm.get('fechaFin')?.touched) {
+                                    <p class="mt-1 text-xs text-red-600">La fecha de fin es requerida</p>
+                                    }
+                                </div>
+                            </div>
+
+                            <!-- Descripción -->
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    Fecha de Inicio <span class="text-red-500">*</span>
+                                    Descripción
                                 </label>
-                                <input type="date" formControlName="fechaInicio"
-                                    class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm sm:text-base"
-                                    [class.border-red-500]="promocionForm.get('fechaInicio')?.invalid && promocionForm.get('fechaInicio')?.touched" />
-                                @if (promocionForm.get('fechaInicio')?.invalid &&
-                                promocionForm.get('fechaInicio')?.touched) {
-                                <p class="mt-1 text-xs text-red-600">La fecha de inicio es requerida</p>
-                                }
+                                <textarea formControlName="descripcion" rows="4"
+                                    class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-base"
+                                    placeholder="Descripción de la promoción..."></textarea>
                             </div>
-
-                            <!-- Fecha Fin -->
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    Fecha de Fin <span class="text-red-500">*</span>
-                                </label>
-                                <input type="date" formControlName="fechaFin"
-                                    class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm sm:text-base"
-                                    [class.border-red-500]="promocionForm.get('fechaFin')?.invalid && promocionForm.get('fechaFin')?.touched" />
-                                @if (promocionForm.get('fechaFin')?.invalid && promocionForm.get('fechaFin')?.touched) {
-                                <p class="mt-1 text-xs text-red-600">La fecha de fin es requerida</p>
-                                }
-                            </div>
-
-                            <!-- Aplica a -->
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    Aplica a <span class="text-red-500">*</span>
-                                </label>
-                                <select formControlName="aplicaA"
-                                    class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm sm:text-base"
-                                    [class.border-red-500]="promocionForm.get('aplicaA')?.invalid && promocionForm.get('aplicaA')?.touched">
-                                    <option value="">Seleccione...</option>
-                                    <option value="TODOS">Todos los productos</option>
-                                    <option value="PRODUCTO">Producto específico</option>
-                                    <option value="CATEGORIA">Categoría</option>
-                                </select>
-                                @if (promocionForm.get('aplicaA')?.invalid && promocionForm.get('aplicaA')?.touched) {
-                                <p class="mt-1 text-xs text-red-600">Este campo es requerido</p>
-                                }
-                            </div>
-                        </div>
-
-                        <!-- Descripción -->
-                        <div class="mt-6">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                Descripción
-                            </label>
-                            <textarea formControlName="descripcion" rows="4"
-                                class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm sm:text-base"
-                                placeholder="Descripción de la promoción..."></textarea>
                         </div>
                     </div>
                 </div>
 
-                <!-- Resumen -->
-                <div class="border-2 border-gray-300 rounded-xl p-4 sm:p-6 mb-6 bg-blue-50">
-                    <h3 class="text-base sm:text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                        <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <!-- Selección de Lotes -->
+                <div class="mb-8">
+                    <h2 class="text-lg sm:text-xl font-semibold text-gray-900 mb-6 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                         </svg>
-                        Resumen de la Promoción
-                    </h3>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div class="bg-white rounded-lg p-4 shadow">
-                            <p class="text-xs sm:text-sm text-gray-600 mb-1">Título</p>
-                            <p class="text-lg sm:text-xl font-bold text-blue-700 truncate">
-                                {{ promocionForm.get('titulo')?.value || 'Sin título' }}
-                            </p>
+                        Selección de Lotes
+                    </h2>
+                    <div class="bg-white border-2 border-gray-200 rounded-xl p-4 sm:p-6">
+                        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
+                            <h3 class="text-lg font-semibold text-gray-900">Lotes Disponibles</h3>
+                            <div class="flex flex-col xs:flex-row gap-2">
+                                <button type="button" (click)="seleccionarTodosLotes()"
+                                    class="px-4 py-2 bg-emerald-500 text-white rounded-lg text-sm font-medium hover:bg-emerald-600 transition-colors text-center">
+                                    Seleccionar Todos
+                                </button>
+                                <button type="button" (click)="deseleccionarTodosLotes()"
+                                    class="px-4 py-2 bg-gray-500 text-white rounded-lg text-sm font-medium hover:bg-gray-600 transition-colors text-center">
+                                    Deseleccionar Todos
+                                </button>
+                            </div>
                         </div>
-                        <div class="bg-white rounded-lg p-4 shadow">
-                            <p class="text-xs sm:text-sm text-gray-600 mb-1">Descuento</p>
-                            <p class="text-lg sm:text-xl font-bold text-emerald-700">
-                                {{ (promocionForm.get('descuento')?.value || 0) | number:'1.2-2' }}%
-                            </p>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-96 overflow-y-auto p-2">
+                            @for (lote of lotesDisponibles(); track lote.id) {
+                            <div class="border border-gray-200 rounded-lg p-3 hover:bg-gray-50 transition-colors cursor-pointer"
+                                [class.bg-emerald-50]="estaLoteSeleccionado(lote.id)"
+                                [class.border-emerald-500]="estaLoteSeleccionado(lote.id)"
+                                (click)="toggleLoteSeleccionado(lote.id)">
+                                <div class="flex items-start gap-3">
+                                    <div class="flex-shrink-0 mt-1">
+                                        <input type="checkbox" [checked]="estaLoteSeleccionado(lote.id)"
+                                            class="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500" />
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <h4 class="font-medium text-gray-900 truncate">{{ lote.numeroLote }}</h4>
+                                        <p class="text-sm text-gray-600 truncate">{{ lote.urbanizacion?.nombre }}</p>
+                                        <div class="flex justify-between items-center mt-1">
+                                            <p class="text-sm font-semibold text-emerald-600">${{ lote.precioBase |
+                                                number:'1.2-2' }}</p>
+                                            <p class="text-xs text-gray-500">{{ lote.superficieM2 }} m²</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            }
+                            @if (lotesDisponibles().length === 0) {
+                            <div class="col-span-full text-center py-8 text-gray-500">
+                                No hay lotes disponibles
+                            </div>
+                            }
                         </div>
-                        <div class="bg-white rounded-lg p-4 shadow">
-                            <p class="text-xs sm:text-sm text-gray-600 mb-1">Fecha Inicio</p>
-                            <p class="text-lg sm:text-xl font-bold text-gray-700">
-                                {{ promocionForm.get('fechaInicio')?.value || 'No definida' }}
+
+                        <div class="mt-4 p-3 bg-blue-50 rounded-lg">
+                            <p class="text-sm text-blue-700 font-medium">
+                                <strong>{{ lotesSeleccionados().length }}</strong> lotes seleccionados
                             </p>
-                        </div>
-                        <div class="bg-white rounded-lg p-4 shadow">
-                            <p class="text-xs sm:text-sm text-gray-600 mb-1">Fecha Fin</p>
-                            <p class="text-lg sm:text-xl font-bold text-gray-700">
-                                {{ promocionForm.get('fechaFin')?.value || 'No definida' }}
+                            <p class="text-xs text-blue-600 mt-1">
+                                Puede seleccionar lotes individuales, asignar una urbanización completa o dejar vacío
+                                para crear la promoción sin asignar
                             </p>
                         </div>
                     </div>
                 </div>
 
-                <!-- Botones de acción -->
-                <div class="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 pt-6 border-t border-gray-200">
+                <div class="flex flex-col-reverse sm:flex-row gap-3 sm:gap-4 justify-end pt-6 border-t border-gray-200">
                     <button type="button" (click)="router.navigate(['/promociones/lista'])"
-                        class="flex items-center justify-center gap-2 bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg shadow-md transition-all duration-200 font-semibold w-full sm:w-auto">
+                        class="flex items-center justify-center gap-2 bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg shadow-md transition-all duration-200 font-semibold w-full sm:w-auto text-center">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -177,7 +206,7 @@
                         Cancelar
                     </button>
                     <button type="submit" [disabled]="promocionForm.invalid || enviando()"
-                        class="flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white px-8 py-3 rounded-lg shadow-md transition-all duration-200 font-semibold w-full sm:w-auto disabled:bg-gray-400 disabled:cursor-not-allowed">
+                        class="flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white px-8 py-3 rounded-lg shadow-md transition-all duration-200 font-semibold w-full sm:w-auto disabled:bg-gray-400 disabled:cursor-not-allowed text-center">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                         </svg>

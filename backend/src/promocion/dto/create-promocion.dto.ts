@@ -1,3 +1,4 @@
+// src/promocion/dto/create-promocion.dto.ts
 import {
   IsString,
   IsNumber,
@@ -5,6 +6,8 @@ import {
   IsOptional,
   Min,
   Max,
+  IsInt,
+  IsArray,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -28,9 +31,19 @@ export class CreatePromocionDto {
   @IsDateString()
   fechaFin: string;
 
-  @IsString()
-  aplicaA: string;
+  @IsOptional()
+  @IsArray()
+  @IsInt({ each: true })
+  @Type(() => Number)
+  lotesIds?: number[];
 
   @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  urbanizacionId?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Type(() => Number)
   usuarioId?: number;
 }

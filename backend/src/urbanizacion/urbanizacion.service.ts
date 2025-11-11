@@ -1,117 +1,260 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
+import { PrismaService } from 'src/config/prisma.service';
 import { CreateUrbanizacionDto } from './dto/create-urbanizacion.dto';
 import { UpdateUrbanizacionDto } from './dto/update-urbanizacion.dto';
-import { PrismaService } from 'src/config/prisma.service';
 
 @Injectable()
 export class UrbanizacionService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll(page: number, pageSize: number) {
-    const skip = (page - 1) * pageSize;
+  private async crearAuditoria(
+    usuarioId: number | undefined,
+    accion: string,
+    tablaAfectada: string,
+    registroId: number,
+    datosAntes?: any,
+    datosDespues?: any,
+  ) {
+    await this.prisma.auditoria.create({
+      data: {
+        usuarioId: usuarioId || undefined,
+        accion,
+        tablaAfectada,
+        registroId,
+        datosAntes: datosAntes ? JSON.stringify(datosAntes) : null,
+        datosDespues: datosDespues ? JSON.stringify(datosDespues) : null,
+        ip: '127.0.0.1',
+        dispositivo: 'API',
+      },
+    });
+  }
 
-    const [data, total] = await Promise.all([
+  async create(createUrbanizacionDto: CreateUrbanizacionDto) {
+    return this.prisma.$transaction(async (prisma) => {
+      const urbanizacionExistente = await prisma.urbanizacion.findFirst({
+        where: {
+          nombre: createUrbanizacionDto.nombre,
+        },
+      });
+
+      if (urbanizacionExistente) {
+        throw new BadRequestException(
+          'Ya existe una urbanización con este nombre',
+        );
+      }
+
+      const urbanizacion = await prisma.urbanizacion.create({
+        data: {
+          nombre: createUrbanizacionDto.nombre,
+          ubicacion: createUrbanizacionDto.ubicacion,
+          ciudad: createUrbanizacionDto.ciudad,
+          descripcion: createUrbanizacionDto.descripcion,
+        },
+      });
+
+      await this.crearAuditoria(
+        undefined,
+        'CREAR',
+        'Urbanizacion',
+        urbanizacion.id,
+        null,
+        urbanizacion,
+      );
+
+      return {
+        success: true,
+        message: 'Urbanización creada correctamente',
+        data: urbanizacion,
+      };
+    });
+  }
+
+  async findAll(page: number = 1, limit: number = 10) {
+    const skip = (page - 1) * limit;
+
+    const [urbanizaciones, total] = await Promise.all([
       this.prisma.urbanizacion.findMany({
         skip,
-        take: pageSize,
-        orderBy: { createdAt: 'desc' },
+        take: limit,
+        include: {
+          _count: {
+            select: {
+              lotes: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
       }),
       this.prisma.urbanizacion.count(),
     ]);
 
     return {
-      data,
-      total,
-      page,
-      pageSize,
-      totalPages: Math.ceil(total / pageSize),
+      success: true,
+      data: urbanizaciones,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
     };
   }
 
-  async findOne(id: number) {
-    const urbanizacion = await this.prisma.urbanizacion.findUnique({
-      where: { id },
-      include:{
-        archivos:true
+async findOne(id: number) {
+  const urbanizacion = await this.prisma.urbanizacion.findUnique({
+    where: { id },
+    include: {
+      lotes: {
+        include: {
+          _count: {
+            select: {
+              cotizaciones: true,
+              ventas: true,
+              reservas: true,
+              archivos: true,
+            },
+          },
+        },
+      },
+      _count: {
+        select: {
+          lotes: true,
+        },
+      },
+    },
+  });
+
+  if (!urbanizacion) {
+    throw new NotFoundException(`Urbanización con ID ${id} no encontrada`);
+  }
+
+  return {
+    success: true,
+    data: urbanizacion,
+  };
+}
+
+  async update(id: number, updateUrbanizacionDto: UpdateUrbanizacionDto) {
+    return this.prisma.$transaction(async (prisma) => {
+      const urbanizacionExistente = await prisma.urbanizacion.findUnique({
+        where: { id },
+      });
+
+      if (!urbanizacionExistente) {
+        throw new NotFoundException(`Urbanización con ID ${id} no encontrada`);
       }
+
+      const datosAntes = { ...urbanizacionExistente };
+
+      if (updateUrbanizacionDto.nombre) {
+        const urbanizacionConMismoNombre = await prisma.urbanizacion.findFirst({
+          where: {
+            nombre: updateUrbanizacionDto.nombre,
+            id: { not: id },
+          },
+        });
+
+        if (urbanizacionConMismoNombre) {
+          throw new BadRequestException(
+            'Ya existe una urbanización con este nombre',
+          );
+        }
+      }
+
+      const dataToUpdate: any = {};
+
+      if (updateUrbanizacionDto.nombre !== undefined) {
+        dataToUpdate.nombre = updateUrbanizacionDto.nombre;
+      }
+
+      if (updateUrbanizacionDto.ubicacion !== undefined) {
+        dataToUpdate.ubicacion = updateUrbanizacionDto.ubicacion;
+      }
+
+      if (updateUrbanizacionDto.ciudad !== undefined) {
+        dataToUpdate.ciudad = updateUrbanizacionDto.ciudad;
+      }
+
+      if (updateUrbanizacionDto.descripcion !== undefined) {
+        dataToUpdate.descripcion = updateUrbanizacionDto.descripcion;
+      }
+
+      const urbanizacionActualizada = await prisma.urbanizacion.update({
+        where: { id },
+        data: dataToUpdate,
+      });
+
+      await this.crearAuditoria(
+        undefined,
+        'ACTUALIZAR',
+        'Urbanizacion',
+        id,
+        datosAntes,
+        urbanizacionActualizada,
+      );
+
+      return {
+        success: true,
+        message: 'Urbanización actualizada correctamente',
+        data: urbanizacionActualizada,
+      };
     });
-    if (!urbanizacion) {
-      throw new NotFoundException(`Urbanización con id ${id} no encontrada`);
-    }
-    return urbanizacion;
   }
 
-   async create(dto: CreateUrbanizacionDto, usuarioId?: number, ip?: string, dispositivo?: string) {
-    const nueva = await this.prisma.urbanizacion.create({
-      data: {
-        nombre: dto.nombre,
-        ubicacion: dto.ubicacion,
-        descripcion: dto.descripcion,
-      },
+  async remove(id: number) {
+    return this.prisma.$transaction(async (prisma) => {
+      const urbanizacion = await prisma.urbanizacion.findUnique({
+        where: { id },
+        include: {
+          lotes: {
+            include: {
+              _count: {
+                select: {
+                  cotizaciones: true,
+                  ventas: true,
+                  reservas: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!urbanizacion) {
+        throw new NotFoundException(`Urbanización con ID ${id} no encontrada`);
+      }
+
+      const datosAntes = { ...urbanizacion };
+
+      if (urbanizacion.lotes.length > 0) {
+        throw new BadRequestException(
+          'No se puede eliminar la urbanización porque tiene lotes asociados',
+        );
+      }
+
+      await prisma.urbanizacion.delete({
+        where: { id },
+      });
+
+      await this.crearAuditoria(
+        undefined,
+        'ELIMINAR',
+        'Urbanizacion',
+        id,
+        datosAntes,
+        null,
+      );
+
+      return {
+        success: true,
+        message: 'Urbanización eliminada correctamente',
+      };
     });
-
-    // registrar en auditoría
-    await this.prisma.auditoria.create({
-      data: {
-        usuarioId,
-        accion: 'CREATE',
-        tablaAfectada: 'Urbanizacion',
-        registroId: nueva.id,
-        datosDespues: JSON.stringify(nueva),
-        ip,
-        dispositivo,
-      },
-    });
-
-    return nueva;
-  }
-
-  async update(id: number, dto: UpdateUrbanizacionDto, usuarioId?: number, ip?: string, dispositivo?: string) {
-    const anterior = await this.findOne(id);
-
-    const actualizada = await this.prisma.urbanizacion.update({
-      where: { id },
-      data: {
-        nombre: dto.nombre,
-        ubicacion: dto.ubicacion,
-        descripcion: dto.descripcion,
-      },
-    });
-
-    await this.prisma.auditoria.create({
-      data: {
-        usuarioId,
-        accion: 'UPDATE',
-        tablaAfectada: 'Urbanizacion',
-        registroId: id,
-        datosAntes: JSON.stringify(anterior),
-        datosDespues: JSON.stringify(actualizada),
-        ip,
-        dispositivo,
-      },
-    });
-
-    return actualizada;
-  }
-  async remove(id: number, usuarioId?: number, ip?: string, dispositivo?: string) {
-    const anterior = await this.findOne(id);
-
-    const eliminada = await this.prisma.urbanizacion.delete({
-      where: { id },
-    });
-
-    await this.prisma.auditoria.create({
-      data: {
-        usuarioId,
-        accion: 'DELETE',
-        tablaAfectada: 'Urbanizacion',
-        registroId: id,
-        datosAntes: JSON.stringify(anterior),
-        ip,
-        dispositivo,
-      },
-    });
-
-    return eliminada;
   }
 }

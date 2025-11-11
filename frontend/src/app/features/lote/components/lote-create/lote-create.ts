@@ -18,7 +18,6 @@ export class LoteCreate implements OnInit {
   enviando = signal<boolean>(false);
   urbanizaciones = signal<UrbanizacionDto[]>([]);
 
-  // Signals para búsqueda de urbanización
   searchUrbanizacion = signal<string>('');
   showUrbanizacionDropdown = signal<boolean>(false);
 
@@ -38,10 +37,12 @@ export class LoteCreate implements OnInit {
 
   crearFormularioLote(): FormGroup {
     return this.fb.group({
-      urbanizacionId: ['', Validators.required],
+      esIndependiente: [false],
+      urbanizacionId: [''],
       numeroLote: ['', [Validators.required, Validators.minLength(2)]],
       superficieM2: [0, [Validators.required, Validators.min(0.01)]],
       precioBase: [0, [Validators.required, Validators.min(0.01)]],
+      ciudad: [''],
       descripcion: [''],
       ubicacion: [''],
       estado: ['DISPONIBLE'],
@@ -60,7 +61,31 @@ export class LoteCreate implements OnInit {
     });
   }
 
-  // Métodos para filtrado de urbanizaciones
+  onEsIndependienteChange(): void {
+    const esIndependiente = this.loteForm.get('esIndependiente')?.value;
+    const urbanizacionIdControl = this.loteForm.get('urbanizacionId');
+    const ciudadControl = this.loteForm.get('ciudad');
+
+    if (esIndependiente) {
+      urbanizacionIdControl?.clearValidators();
+      ciudadControl?.setValidators([Validators.required]);
+    } else {
+      urbanizacionIdControl?.setValidators([Validators.required]);
+      ciudadControl?.clearValidators();
+    }
+
+    urbanizacionIdControl?.updateValueAndValidity();
+    ciudadControl?.updateValueAndValidity();
+
+    // Limpiar campos cuando cambia el tipo
+    if (esIndependiente) {
+      this.loteForm.patchValue({ urbanizacionId: '' });
+      this.searchUrbanizacion.set('');
+    } else {
+      this.loteForm.patchValue({ ciudad: '' });
+    }
+  }
+
   filteredUrbanizaciones() {
     const search = this.searchUrbanizacion().toLowerCase();
     if (!search) return this.urbanizaciones();
@@ -70,18 +95,17 @@ export class LoteCreate implements OnInit {
     );
   }
 
-  // Métodos para selección de urbanización
   selectUrbanizacion(urbanizacion: UrbanizacionDto) {
     if (urbanizacion.id) {
       this.loteForm.patchValue({
         urbanizacionId: urbanizacion.id.toString(),
+        ciudad: urbanizacion.ciudad,
       });
       this.searchUrbanizacion.set(urbanizacion.nombre || '');
       this.showUrbanizacionDropdown.set(false);
     }
   }
 
-  // Métodos para mostrar/ocultar dropdown
   toggleUrbanizacionDropdown() {
     this.showUrbanizacionDropdown.set(!this.showUrbanizacionDropdown());
   }
@@ -103,17 +127,17 @@ export class LoteCreate implements OnInit {
 
     const loteData = {
       ...this.loteForm.value,
-      urbanizacionId: Number(this.loteForm.value.urbanizacionId),
+      urbanizacionId: this.loteForm.value.esIndependiente
+        ? null
+        : Number(this.loteForm.value.urbanizacionId),
       superficieM2: Number(this.loteForm.value.superficieM2),
       precioBase: Number(this.loteForm.value.precioBase),
+      esIndependiente: Boolean(this.loteForm.value.esIndependiente),
     };
-
-    console.log('Datos a enviar:', loteData);
 
     this.loteSvc.create(loteData).subscribe({
       next: (response: any) => {
         this.enviando.set(false);
-        console.log('Respuesta del servidor:', response);
 
         if (response.success) {
           this.notificationService.showSuccess('Lote creado exitosamente!');
@@ -126,7 +150,6 @@ export class LoteCreate implements OnInit {
       },
       error: (err: any) => {
         this.enviando.set(false);
-        console.error('Error completo:', err);
 
         let errorMessage = 'Error al crear el lote';
         if (err.status === 400) {
@@ -148,9 +171,15 @@ export class LoteCreate implements OnInit {
 
   getUrbanizacionNombre(): string {
     const urbanizacionId = this.loteForm.get('urbanizacionId')?.value;
-    if (!urbanizacionId) return 'Sin urbanización';
+    if (!urbanizacionId) return 'Lote Independiente';
 
     const urbanizacion = this.urbanizaciones().find((u) => u.id === Number(urbanizacionId));
     return urbanizacion ? urbanizacion.nombre : 'No encontrada';
+  }
+
+  getTipoLote(): string {
+    return this.loteForm.get('esIndependiente')?.value
+      ? 'Lote Independiente'
+      : 'Lote en Urbanización';
   }
 }

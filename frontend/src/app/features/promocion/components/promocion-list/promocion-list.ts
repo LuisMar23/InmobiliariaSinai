@@ -1,3 +1,4 @@
+// src/app/modules/promocion/components/promocion-list/promocion-list.ts
 import { Component, inject, signal, OnInit, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
@@ -35,7 +36,6 @@ export class PromocionList implements OnInit {
     { key: 'descuento', label: 'Descuento', sortable: true },
     { key: 'fechaInicio', label: 'Fecha Inicio', sortable: true },
     { key: 'fechaFin', label: 'Fecha Fin', sortable: true },
-    { key: 'aplicaA', label: 'Aplica a', sortable: true },
   ];
 
   total = signal(0);
@@ -54,7 +54,7 @@ export class PromocionList implements OnInit {
         (promocion: PromocionDto) =>
           promocion.titulo?.toLowerCase().includes(term) ||
           promocion.descripcion?.toLowerCase().includes(term) ||
-          promocion.aplicaA?.toLowerCase().includes(term)
+          promocion.urbanizacion?.nombre?.toLowerCase().includes(term)
       );
     }
 
@@ -145,13 +145,19 @@ export class PromocionList implements OnInit {
       .then((result) => {
         if (result.isConfirmed) {
           this.promocionSvc.delete(id).subscribe({
-            next: () => {
-              this.promociones.update((list) => list.filter((p) => p.id !== id));
-              this.allPromociones.update((list) => list.filter((p) => p.id !== id));
-              this.total.update((total) => total - 1);
-              this.notificationService.showSuccess('Promoción eliminada correctamente');
-              if (this.promocionSeleccionada()?.id === id) {
-                this.cerrarModal();
+            next: (response: any) => {
+              if (response.success === true) {
+                this.promociones.update((list) => list.filter((p) => p.id !== id));
+                this.allPromociones.update((list) => list.filter((p) => p.id !== id));
+                this.total.update((total) => total - 1);
+                this.notificationService.showSuccess('Promoción eliminada correctamente');
+                if (this.promocionSeleccionada()?.id === id) {
+                  this.cerrarModal();
+                }
+              } else {
+                this.notificationService.showError(
+                  response.message || 'No se pudo eliminar la promoción'
+                );
               }
             },
             error: (err) => {
@@ -163,13 +169,24 @@ export class PromocionList implements OnInit {
       });
   }
 
-  getAplicaABadgeClass(aplicaA: string): string {
-    const classes = {
-      TODOS: 'px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700',
-      PRODUCTO: 'px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700',
-      CATEGORIA: 'px-3 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-700',
-    };
-    return classes[aplicaA as keyof typeof classes] || classes['TODOS'];
+  getAplicaAText(promocion: PromocionDto): string {
+    if (promocion.urbanizacionId) {
+      return `Urbanización: ${promocion.urbanizacion?.nombre}`;
+    } else if (promocion.lotesAfectados && promocion.lotesAfectados.length > 0) {
+      return `${promocion.lotesAfectados.length} lote(s) individual(es)`;
+    } else {
+      return 'Sin asignar';
+    }
+  }
+
+  getAplicaABadgeClass(promocion: PromocionDto): string {
+    if (promocion.urbanizacionId) {
+      return 'px-3 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-700';
+    } else if (promocion.lotesAfectados && promocion.lotesAfectados.length > 0) {
+      return 'px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700';
+    } else {
+      return 'px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-700';
+    }
   }
 
   nextPage() {

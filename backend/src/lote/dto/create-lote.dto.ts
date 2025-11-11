@@ -5,6 +5,7 @@ import {
   IsOptional,
   IsInt,
   Min,
+  IsBoolean,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -16,9 +17,10 @@ export enum EstadoInmueble {
 }
 
 export class CreateLoteDto {
+  @IsOptional()
   @IsInt()
   @Type(() => Number)
-  urbanizacionId: number;
+  urbanizacionId?: number;
 
   @IsString()
   numeroLote: string;
@@ -45,6 +47,9 @@ export class CreateLoteDto {
   @IsString()
   ubicacion?: string;
 
+  @IsString()
+  ciudad: string;
+
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 7 })
   @Type(() => Number)
@@ -55,55 +60,9 @@ export class CreateLoteDto {
   @Type(() => Number)
   longitud?: number;
 
-  @IsOptional()
-  @IsInt()
-  @Type(() => Number)
-  usuarioId?: number;
-}
-
-export class UpdateLoteDto {
-  @IsOptional()
-  @IsInt()
-  @Type(() => Number)
-  urbanizacionId?: number;
-
-  @IsOptional()
-  @IsString()
-  numeroLote?: string;
-
-  @IsOptional()
-  @IsNumber({ maxDecimalPlaces: 2 })
-  @Min(0.01)
-  @Type(() => Number)
-  superficieM2?: number;
-
-  @IsOptional()
-  @IsNumber({ maxDecimalPlaces: 2 })
-  @Min(0.01)
-  @Type(() => Number)
-  precioBase?: number;
-
-  @IsOptional()
-  @IsEnum(EstadoInmueble)
-  estado?: EstadoInmueble;
-
-  @IsOptional()
-  @IsString()
-  descripcion?: string;
-
-  @IsOptional()
-  @IsString()
-  ubicacion?: string;
-
-  @IsOptional()
-  @IsNumber({ maxDecimalPlaces: 7 })
-  @Type(() => Number)
-  latitud?: number;
-
-  @IsOptional()
-  @IsNumber({ maxDecimalPlaces: 7 })
-  @Type(() => Number)
-  longitud?: number;
+  @IsBoolean()
+  @Type(() => Boolean)
+  esIndependiente: boolean;
 
   @IsOptional()
   @IsInt()

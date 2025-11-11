@@ -1,0 +1,131 @@
+<!-- src/app/modules/urbanizacion/components/urbanizacion-edit/urbanizacion-edit.html -->
+<div class="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-emerald-50 py-4 px-2 sm:px-4 lg:px-8">
+    <div class="max-w-8xl mx-auto">
+        <div class="bg-emerald-500 rounded-t-2xl shadow-lg p-4 sm:p-6">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <svg class="w-8 h-8 sm:w-10 sm:h-10 text-white" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                    <div>
+                        <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold text-white">Editar Urbanización</h1>
+                        <p class="text-emerald-100 text-xs sm:text-sm mt-1">Modifica los datos de la urbanización
+                            seleccionada</p>
+                    </div>
+                </div>
+                <button [routerLink]="['/urbanizaciones/lista']"
+                    class="bg-white text-emerald-500 font-semibold px-4 py-2 rounded-lg shadow-md hover:bg-emerald-50 transition-all text-sm sm:text-base w-full sm:w-auto">
+                    Volver al Listado
+                </button>
+            </div>
+        </div>
+        <div class="bg-white rounded-b-2xl shadow-xl p-4 sm:p-6 lg:p-8">
+            @if (cargando()) {
+            <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-8 text-center mb-8">
+                <div class="flex flex-col items-center gap-3">
+                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
+                    <p class="text-lg font-semibold text-gray-900">Cargando urbanización...</p>
+                    <p class="text-sm text-gray-500">Por favor espere</p>
+                </div>
+            </div>
+            }
+
+            @if (error() && !cargando()) {
+            <div class="bg-red-50 border border-red-200 rounded-2xl p-6 mb-8">
+                <div class="flex items-center gap-3">
+                    <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                        <h3 class="font-semibold text-red-800">Error al cargar la urbanización</h3>
+                        <p class="text-red-700 text-sm mt-1">{{ error() }}</p>
+                    </div>
+                </div>
+                <button (click)="obtenerUrbanizacion()"
+                    class="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                    Reintentar
+                </button>
+            </div>
+            }
+
+            <form [formGroup]="urbanizacionForm" (submit)="handleFormSubmit($event)"
+                *ngIf="urbanizacionData && !cargando()">
+                <div class="mb-8">
+                    <h2
+                        class="text-lg sm:text-xl font-semibold text-black mb-4 flex items-center gap-2 border-b-2 border-emerald-200 pb-2">
+                        <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 20 20">
+                            <path
+                                d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                        </svg>
+                        Editar Información de la Urbanización
+                    </h2>
+                    <div class="to-white border-2 border-emerald-200 rounded-xl p-4 sm:p-6">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div class="sm:col-span-2">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Nombre <span class="text-red-500">*</span>
+                                </label>
+                                <input type="text" formControlName="nombre"
+                                    class="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm sm:text-base"
+                                    placeholder="Nombre de la urbanización" />
+                                @if (urbanizacionForm.get('nombre')?.invalid && urbanizacionForm.get('nombre')?.touched)
+                                {
+                                <p class="mt-1 text-xs text-red-600">El nombre es requerido</p>
+                                }
+                            </div>
+                            <div class="sm:col-span-2">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Ubicación <span class="text-red-500">*</span>
+                                </label>
+                                <input type="text" formControlName="ubicacion"
+                                    class="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm sm:text-base"
+                                    placeholder="Ubicación de la urbanización" />
+                                @if (urbanizacionForm.get('ubicacion')?.invalid &&
+                                urbanizacionForm.get('ubicacion')?.touched) {
+                                <p class="mt-1 text-xs text-red-600">La ubicación es requerida</p>
+                                }
+                            </div>
+                            <div class="sm:col-span-2">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Ciudad <span class="text-red-500">*</span>
+                                </label>
+                                <input type="text" formControlName="ciudad"
+                                    class="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm sm:text-base"
+                                    placeholder="Ciudad de la urbanización" />
+                                @if (urbanizacionForm.get('ciudad')?.invalid && urbanizacionForm.get('ciudad')?.touched)
+                                {
+                                <p class="mt-1 text-xs text-red-600">La ciudad es requerida</p>
+                                }
+                            </div>
+                            <div class="sm:col-span-3">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Descripción
+                                </label>
+                                <textarea formControlName="descripcion" rows="3"
+                                    class="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm sm:text-base"
+                                    placeholder="Descripción de la urbanización..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                    <button type="submit" [disabled]="urbanizacionForm.invalid || enviando()"
+                        class="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded-lg font-semibold hover:from-emerald-700 hover:to-emerald-800 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl text-sm sm:text-base flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                        {{ enviando() ? 'Actualizando...' : 'Actualizar Urbanización' }}
+                    </button>
+                    <button type="button" (click)="router.navigate(['/urbanizaciones/lista'])"
+                        class="w-full sm:w-auto px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 transition-all duration-200 text-sm sm:text-base">
+                        Cancelar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

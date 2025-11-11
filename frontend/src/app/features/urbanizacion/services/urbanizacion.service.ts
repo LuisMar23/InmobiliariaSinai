@@ -1,33 +1,61 @@
+// src/app/modules/urbanizacion/services/urbanizacion.service.ts
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { UrbanizacionDto } from '../../../core/interfaces/urbanizacion.interface';
 import { environment } from '../../../../environments/environment';
 
+interface ApiResponse<T> {
+  success: boolean;
+  message?: string;
+  data: T;
+  pagination?: any;
+}
 
 @Injectable({ providedIn: 'root' })
 export class UrbanizacionService {
-  private apiUrl = environment.apiUrl+'/urbanizacion';
+  private apiUrl = `${environment.apiUrl}/urbanizaciones`;
 
   constructor(private http: HttpClient) {}
 
-  getAll(page: number, pageSize: number): Observable<{ data: UrbanizacionDto[]; total: number }> {
-    return this.http.get<{ data: UrbanizacionDto[]; total: number }>(`${this.apiUrl}?page=${page}&pageSize=${pageSize}`);
+  getAll(
+    page: number = 1,
+    limit: number = 10
+  ): Observable<{ data: UrbanizacionDto[]; pagination: any }> {
+    return this.http
+      .get<ApiResponse<UrbanizacionDto[]>>(`${this.apiUrl}?page=${page}&limit=${limit}`)
+      .pipe(
+        map((response) => ({
+          data: response.data,
+          pagination: response.pagination,
+        }))
+      );
   }
 
-  create(dto: UrbanizacionDto): Observable<UrbanizacionDto> {
-    return this.http.post<UrbanizacionDto>(this.apiUrl, dto);
+  getById(id: number): Observable<UrbanizacionDto> {
+    return this.http
+      .get<ApiResponse<UrbanizacionDto>>(`${this.apiUrl}/${id}`)
+      .pipe(map((response) => response.data));
   }
 
-  update(id: number, dto: UrbanizacionDto): Observable<UrbanizacionDto> {
-    return this.http.patch<UrbanizacionDto>(`${this.apiUrl}/${id}`, dto);
+  create(dto: any): Observable<any> {
+    return this.http.post<ApiResponse<any>>(this.apiUrl, dto).pipe(map((response) => response));
   }
 
-  delete(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/${id}`);
+  update(id: number, dto: any): Observable<any> {
+    return this.http
+      .patch<ApiResponse<any>>(`${this.apiUrl}/${id}`, dto)
+      .pipe(map((response) => response));
   }
 
-  getById(id:number):Observable<any>{
-    return this.http.get<any>(`${this.apiUrl}/${id}`)
+  delete(id: number): Observable<any> {
+    return this.http
+      .delete<ApiResponse<any>>(`${this.apiUrl}/${id}`)
+      .pipe(map((response) => response));
   }
+
+  // getById(id:number):Observable<any>{
+  //   return this.http.get<any>(`${this.apiUrl}/${id}`)
+  // }
 }

@@ -1,3 +1,4 @@
+// src/lote/lote.controller.ts
 import {
   Controller,
   Get,
@@ -10,39 +11,44 @@ import {
   ValidationPipe,
   Query,
 } from '@nestjs/common';
-import { LotesService } from './lote.service';
+import { LoteService } from './lote.service';
 import { CreateLoteDto } from './dto/create-lote.dto';
 import { UpdateLoteDto } from './dto/update-lote.dto';
 
 @Controller('lotes')
 @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
-export class LotesController {
-  constructor(private readonly lotesService: LotesService) {}
+export class LoteController {
+  constructor(private readonly loteService: LoteService) {}
 
   @Post()
   create(@Body() createLoteDto: CreateLoteDto) {
-    return this.lotesService.create(createLoteDto);
+    return this.loteService.create(createLoteDto);
   }
 
   @Get()
   findAll(@Query('urbanizacionId') urbanizacionId?: string) {
-    return this.lotesService.findAll(
+    return this.loteService.findAll(
       urbanizacionId ? +urbanizacionId : undefined,
     );
   }
 
+  @Get('para-cotizacion')
+  getLotesParaCotizacion() {
+    return this.loteService.getLotesParaCotizacion();
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.lotesService.findOne(+id);
+    return this.loteService.findOne(+id);
   }
 
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateLoteDto: UpdateLoteDto) {
-    return this.lotesService.update(+id, updateLoteDto);
+    return this.loteService.update(+id, updateLoteDto);
   }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.lotesService.remove(+id);
+    return this.loteService.remove(+id);
   }
 }

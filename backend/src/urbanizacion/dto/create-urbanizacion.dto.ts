@@ -10,6 +10,10 @@ export class CreateUrbanizacionDto {
   ubicacion: string;
 
   @IsString()
+  @IsNotEmpty()
+  ciudad: string;
+
+  @IsString()
   @IsOptional()
   descripcion?: string;
 }
