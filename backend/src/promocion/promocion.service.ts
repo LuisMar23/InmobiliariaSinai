@@ -1,4 +1,3 @@
-// src/promocion/promocion.service.ts
 import {
   Injectable,
   NotFoundException,
@@ -42,168 +41,170 @@ export class PromocionService {
     }
   }
 
-  private async aplicarPromocionALotesIndividuales(
+  private async verificarPromocionSuperpuesta(
+    loteId: number,
+    fechaInicio: Date,
+    fechaFin: Date,
+    promocionIdExcluir?: number,
+  ): Promise<boolean> {
+    const where: any = {
+      loteId,
+      promocion: {
+        isActive: true,
+        OR: [
+          { fechaInicio: { lte: fechaFin }, fechaFin: { gte: fechaInicio } },
+        ],
+      },
+    };
+    if (promocionIdExcluir) {
+      where.promocionId = { not: promocionIdExcluir };
+    }
+    const promocionExistente = await this.prisma.lotePromocion.findFirst({
+      where,
+    });
+    return !!promocionExistente;
+  }
+
+  private async actualizarPrecioLote(loteId: number, nuevoPrecio: number) {
+    await this.prisma.lote.update({
+      where: { id: loteId },
+      data: { precioBase: nuevoPrecio },
+    });
+  }
+
+  private async aplicarPromocionALote(
+    loteId: number,
     promocionId: number,
     descuento: number,
-    lotesIds: number[],
+    fechaInicio: Date,
+    fechaFin: Date,
   ) {
-    if (!lotesIds || lotesIds.length === 0) {
-      return;
+    const lote = await this.prisma.lote.findUnique({ where: { id: loteId } });
+    if (!lote) {
+      throw new BadRequestException(`Lote con ID ${loteId} no encontrado`);
     }
 
-    const lotesExistentes = await this.prisma.lote.findMany({
-      where: {
-        id: { in: lotesIds },
-        estado: 'DISPONIBLE',
-      },
-    });
-
-    if (lotesExistentes.length !== lotesIds.length) {
+    if (!['DISPONIBLE', 'CON_OFERTA'].includes(lote.estado)) {
       throw new BadRequestException(
-        'Uno o más lotes no existen o no están disponibles',
+        `El lote ${lote.numeroLote} no está disponible para promociones`,
       );
     }
 
-    for (const lote of lotesExistentes) {
-      const precioConDescuento =
-        Number(lote.precioBase) * (1 - descuento / 100);
+    const tienePromocionSuperpuesta = await this.verificarPromocionSuperpuesta(
+      loteId,
+      fechaInicio,
+      fechaFin,
+      promocionId,
+    );
 
-      await this.prisma.lotePromocion.upsert({
-        where: {
-          loteId_promocionId: {
-            loteId: lote.id,
-            promocionId: promocionId,
-          },
-        },
-        update: {
-          precioConDescuento,
-        },
-        create: {
-          loteId: lote.id,
-          promocionId: promocionId,
-          precioOriginal: lote.precioBase,
-          precioConDescuento,
-        },
-      });
+    if (tienePromocionSuperpuesta) {
+      throw new BadRequestException(
+        `El lote ${lote.numeroLote} ya tiene una promoción activa en las fechas seleccionadas`,
+      );
     }
-  }
 
-  private async aplicarPromocionAUrbanizacion(
-    promocionId: number,
-    descuento: number,
-    urbanizacionId: number,
-  ) {
-    const urbanizacion = await this.prisma.urbanizacion.findUnique({
-      where: { id: urbanizacionId },
-      include: {
-        lotes: {
-          where: { estado: 'DISPONIBLE' },
-        },
+    const precioConDescuento = Number(lote.precioBase) * (1 - descuento / 100);
+
+    const lotePromocion = await this.prisma.lotePromocion.upsert({
+      where: { loteId_promocionId: { loteId, promocionId } },
+      update: { precioConDescuento, precioOriginal: lote.precioBase },
+      create: {
+        loteId,
+        promocionId,
+        precioOriginal: lote.precioBase,
+        precioConDescuento,
       },
     });
 
-    if (!urbanizacion) {
-      throw new BadRequestException('Urbanización no encontrada');
-    }
+    await this.actualizarPrecioLote(loteId, precioConDescuento);
 
-    for (const lote of urbanizacion.lotes) {
-      const precioConDescuento =
-        Number(lote.precioBase) * (1 - descuento / 100);
-
-      await this.prisma.lotePromocion.upsert({
-        where: {
-          loteId_promocionId: {
-            loteId: lote.id,
-            promocionId: promocionId,
-          },
-        },
-        update: {
-          precioConDescuento,
-        },
-        create: {
-          loteId: lote.id,
-          promocionId: promocionId,
-          precioOriginal: lote.precioBase,
-          precioConDescuento,
-        },
-      });
-    }
+    return lotePromocion;
   }
 
-  private async aplicarPromocionATodosLotes(
-    promocionId: number,
-    descuento: number,
-  ) {
-    const todosLotes = await this.prisma.lote.findMany({
-      where: { estado: 'DISPONIBLE' },
+  private async removerPromocionDeLote(loteId: number, promocionId: number) {
+    const lotePromocion = await this.prisma.lotePromocion.findUnique({
+      where: { loteId_promocionId: { loteId, promocionId } },
     });
 
-    for (const lote of todosLotes) {
-      const precioConDescuento =
-        Number(lote.precioBase) * (1 - descuento / 100);
+    if (lotePromocion) {
+      const lote = await this.prisma.lote.findUnique({
+        where: { id: loteId },
+      });
 
-      await this.prisma.lotePromocion.upsert({
-        where: {
-          loteId_promocionId: {
-            loteId: lote.id,
-            promocionId: promocionId,
-          },
-        },
-        update: {
-          precioConDescuento,
-        },
-        create: {
-          loteId: lote.id,
-          promocionId: promocionId,
-          precioOriginal: lote.precioBase,
-          precioConDescuento,
-        },
+      if (lote && ['DISPONIBLE', 'CON_OFERTA'].includes(lote.estado)) {
+        await this.actualizarPrecioLote(
+          loteId,
+          Number(lotePromocion.precioOriginal),
+        );
+      }
+
+      await this.prisma.lotePromocion.delete({
+        where: { loteId_promocionId: { loteId, promocionId } },
       });
     }
   }
 
   private async removerPromocionDeLotes(promocionId: number) {
-    await this.prisma.lotePromocion.deleteMany({
+    const lotesPromocion = await this.prisma.lotePromocion.findMany({
       where: { promocionId },
     });
+
+    for (const lotePromocion of lotesPromocion) {
+      await this.removerPromocionDeLote(lotePromocion.loteId, promocionId);
+    }
   }
 
   async create(createPromocionDto: CreatePromocionDto) {
     return this.prisma.$transaction(async (prisma) => {
       const fechaInicio = new Date(createPromocionDto.fechaInicio);
       const fechaFin = new Date(createPromocionDto.fechaFin);
-
       this.validarFechasPromocion(fechaInicio, fechaFin);
+
+      const metodosAplicacion = [
+        createPromocionDto.lotesIds && createPromocionDto.lotesIds.length > 0,
+        createPromocionDto.urbanizacionId,
+        createPromocionDto.aplicarATodos,
+      ].filter(Boolean).length;
+
+      if (metodosAplicacion > 1) {
+        throw new BadRequestException(
+          'Solo se puede usar un método de aplicación: lotes específicos, urbanización o todos los lotes',
+        );
+      }
 
       const promocion = await prisma.promocion.create({
         data: {
           titulo: createPromocionDto.titulo,
           descripcion: createPromocionDto.descripcion,
           descuento: createPromocionDto.descuento,
-          fechaInicio: fechaInicio,
-          fechaFin: fechaFin,
+          fechaInicio,
+          fechaFin,
           urbanizacionId: createPromocionDto.urbanizacionId,
+          aplicadaATodos: createPromocionDto.aplicarATodos || false,
         },
       });
 
-      // Aplicar promoción según los parámetros proporcionados
-      if (
+      if (createPromocionDto.aplicarATodos) {
+        await this.asignarTodosLotesAPromocion(
+          promocion.id,
+          createPromocionDto.usuarioId,
+        );
+      } else if (createPromocionDto.urbanizacionId) {
+        await this.asignarUrbanizacionAPromocion(
+          promocion.id,
+          createPromocionDto.urbanizacionId,
+          createPromocionDto.usuarioId,
+        );
+      } else if (
         createPromocionDto.lotesIds &&
         createPromocionDto.lotesIds.length > 0
       ) {
-        await this.aplicarPromocionALotesIndividuales(
+        await this.asignarLotesAPromocion(
           promocion.id,
-          createPromocionDto.descuento,
           createPromocionDto.lotesIds,
-        );
-      } else if (createPromocionDto.urbanizacionId) {
-        await this.aplicarPromocionAUrbanizacion(
-          promocion.id,
-          createPromocionDto.descuento,
-          createPromocionDto.urbanizacionId,
+          createPromocionDto.usuarioId,
         );
       }
-      // Si no se especifica nada, la promoción se crea sin lotes asignados
 
       await this.crearAuditoria(
         createPromocionDto.usuarioId,
@@ -225,12 +226,7 @@ export class PromocionService {
   async findAll() {
     const promociones = await this.prisma.promocion.findMany({
       include: {
-        urbanizacion: {
-          select: {
-            id: true,
-            nombre: true,
-          },
-        },
+        urbanizacion: { select: { id: true, nombre: true } },
         lotesAfectados: {
           include: {
             lote: {
@@ -239,42 +235,24 @@ export class PromocionService {
                 numeroLote: true,
                 precioBase: true,
                 estado: true,
-                urbanizacion: {
-                  select: {
-                    nombre: true,
-                  },
-                },
+                urbanizacion: { select: { nombre: true } },
               },
             },
           },
         },
-        _count: {
-          select: {
-            lotesAfectados: true,
-          },
-        },
+        _count: { select: { lotesAfectados: true } },
       },
-      orderBy: {
-        createdAt: 'desc',
-      },
+      orderBy: { createdAt: 'desc' },
     });
 
-    return {
-      success: true,
-      data: promociones,
-    };
+    return { success: true, data: promociones };
   }
 
   async findOne(id: number) {
     const promocion = await this.prisma.promocion.findUnique({
       where: { id },
       include: {
-        urbanizacion: {
-          select: {
-            id: true,
-            nombre: true,
-          },
-        },
+        urbanizacion: { select: { id: true, nombre: true } },
         lotesAfectados: {
           include: {
             lote: {
@@ -283,11 +261,7 @@ export class PromocionService {
                 numeroLote: true,
                 precioBase: true,
                 estado: true,
-                urbanizacion: {
-                  select: {
-                    nombre: true,
-                  },
-                },
+                urbanizacion: { select: { nombre: true } },
               },
             },
           },
@@ -299,19 +273,14 @@ export class PromocionService {
       throw new NotFoundException(`Promoción con ID ${id} no encontrada`);
     }
 
-    return {
-      success: true,
-      data: promocion,
-    };
+    return { success: true, data: promocion };
   }
 
   async update(id: number, updatePromocionDto: UpdatePromocionDto) {
     return this.prisma.$transaction(async (prisma) => {
       const promocionExistente = await prisma.promocion.findUnique({
         where: { id },
-        include: {
-          lotesAfectados: true,
-        },
+        include: { lotesAfectados: true },
       });
 
       if (!promocionExistente) {
@@ -319,7 +288,6 @@ export class PromocionService {
       }
 
       const datosAntes = { ...promocionExistente };
-
       const dataToUpdate: any = {};
 
       if (updatePromocionDto.titulo !== undefined) {
@@ -328,10 +296,6 @@ export class PromocionService {
 
       if (updatePromocionDto.descripcion !== undefined) {
         dataToUpdate.descripcion = updatePromocionDto.descripcion;
-      }
-
-      if (updatePromocionDto.descuento !== undefined) {
-        dataToUpdate.descuento = updatePromocionDto.descuento;
       }
 
       let fechaInicio = promocionExistente.fechaInicio;
@@ -355,60 +319,42 @@ export class PromocionService {
         dataToUpdate.urbanizacionId = updatePromocionDto.urbanizacionId;
       }
 
+      if (updatePromocionDto.aplicarATodos !== undefined) {
+        dataToUpdate.aplicadaATodos = updatePromocionDto.aplicarATodos;
+      }
+
+      if (updatePromocionDto.descuento !== undefined) {
+        dataToUpdate.descuento = updatePromocionDto.descuento;
+
+        for (const lotePromocion of promocionExistente.lotesAfectados) {
+          const lote = await prisma.lote.findUnique({
+            where: { id: lotePromocion.loteId },
+          });
+
+          if (lote && ['DISPONIBLE', 'CON_OFERTA'].includes(lote.estado)) {
+            const nuevoPrecio =
+              Number(lotePromocion.precioOriginal) *
+              (1 - updatePromocionDto.descuento / 100);
+
+            await prisma.lotePromocion.update({
+              where: {
+                loteId_promocionId: {
+                  loteId: lotePromocion.loteId,
+                  promocionId: id,
+                },
+              },
+              data: { precioConDescuento: nuevoPrecio },
+            });
+
+            await this.actualizarPrecioLote(lotePromocion.loteId, nuevoPrecio);
+          }
+        }
+      }
+
       const promocionActualizada = await prisma.promocion.update({
         where: { id },
         data: dataToUpdate,
       });
-
-      // Re-aplicar promoción si cambió el descuento o los lotes/urbanización
-      const necesitaReaplicar =
-        updatePromocionDto.descuento !== undefined ||
-        updatePromocionDto.lotesIds !== undefined ||
-        updatePromocionDto.urbanizacionId !== undefined;
-
-      if (necesitaReaplicar) {
-        await this.removerPromocionDeLotes(id);
-
-        const descuento =
-          updatePromocionDto.descuento !== undefined
-            ? updatePromocionDto.descuento
-            : Number(promocionExistente.descuento);
-
-        // Aplicar según los nuevos parámetros
-        if (
-          updatePromocionDto.lotesIds &&
-          updatePromocionDto.lotesIds.length > 0
-        ) {
-          await this.aplicarPromocionALotesIndividuales(
-            id,
-            descuento,
-            updatePromocionDto.lotesIds,
-          );
-        } else if (updatePromocionDto.urbanizacionId !== undefined) {
-          await this.aplicarPromocionAUrbanizacion(
-            id,
-            descuento,
-            updatePromocionDto.urbanizacionId,
-          );
-        } else if (promocionExistente.urbanizacionId) {
-          // Mantener la urbanización existente si no se cambió
-          await this.aplicarPromocionAUrbanizacion(
-            id,
-            descuento,
-            promocionExistente.urbanizacionId,
-          );
-        } else if (promocionExistente.lotesAfectados.length > 0) {
-          // Mantener los lotes individuales existentes si no se cambió
-          const lotesIdsExistentes = promocionExistente.lotesAfectados.map(
-            (lp) => lp.loteId,
-          );
-          await this.aplicarPromocionALotesIndividuales(
-            id,
-            descuento,
-            lotesIdsExistentes,
-          );
-        }
-      }
 
       await this.crearAuditoria(
         updatePromocionDto.usuarioId,
@@ -431,6 +377,7 @@ export class PromocionService {
     return this.prisma.$transaction(async (prisma) => {
       const promocion = await prisma.promocion.findUnique({
         where: { id },
+        include: { lotesAfectados: true },
       });
 
       if (!promocion) {
@@ -439,11 +386,11 @@ export class PromocionService {
 
       const datosAntes = { ...promocion };
 
-      await this.removerPromocionDeLotes(id);
+      for (const lotePromocion of promocion.lotesAfectados) {
+        await this.removerPromocionDeLote(lotePromocion.loteId, id);
+      }
 
-      await prisma.promocion.delete({
-        where: { id },
-      });
+      await prisma.promocion.delete({ where: { id } });
 
       await this.crearAuditoria(
         undefined,
@@ -465,13 +412,15 @@ export class PromocionService {
     const lotes = await this.prisma.lote.findMany({
       where: { estado: 'DISPONIBLE' },
       include: {
-        urbanizacion: {
-          select: {
-            id: true,
-            nombre: true,
-          },
-        },
+        urbanizacion: { select: { id: true, nombre: true } },
         LotePromocion: {
+          where: {
+            promocion: {
+              isActive: true,
+              fechaInicio: { lte: new Date() },
+              fechaFin: { gte: new Date() },
+            },
+          },
           include: {
             promocion: {
               select: {
@@ -486,13 +435,15 @@ export class PromocionService {
       },
     });
 
-    return {
-      success: true,
-      data: lotes,
-    };
+    const lotesConInfoPromocion = lotes.map((lote) => ({
+      ...lote,
+      tienePromocionActiva: lote.LotePromocion.length > 0,
+      promocionActiva: lote.LotePromocion[0]?.promocion || null,
+    }));
+
+    return { success: true, data: lotesConInfoPromocion };
   }
 
-  // Nuevos métodos para asignar/remover lotes individualmente
   async asignarLotesAPromocion(
     promocionId: number,
     lotesIds: number[],
@@ -509,12 +460,10 @@ export class PromocionService {
         );
       }
 
-      // Verificar que los lotes existen y están disponibles
+      await this.removerPromocionDeLotes(promocionId);
+
       const lotesExistentes = await prisma.lote.findMany({
-        where: {
-          id: { in: lotesIds },
-          estado: 'DISPONIBLE',
-        },
+        where: { id: { in: lotesIds }, estado: 'DISPONIBLE' },
       });
 
       if (lotesExistentes.length !== lotesIds.length) {
@@ -523,29 +472,32 @@ export class PromocionService {
         );
       }
 
-      // Aplicar promoción a los lotes seleccionados
-      for (const lote of lotesExistentes) {
-        const precioConDescuento =
-          Number(lote.precioBase) * (1 - Number(promocion.descuento) / 100);
+      const lotesAsignados: any[] = [];
+      const errores: any[] = [];
 
-        await prisma.lotePromocion.upsert({
-          where: {
-            loteId_promocionId: {
-              loteId: lote.id,
-              promocionId: promocionId,
-            },
-          },
-          update: {
-            precioConDescuento,
-          },
-          create: {
+      for (const lote of lotesExistentes) {
+        try {
+          const lotePromocion = await this.aplicarPromocionALote(
+            lote.id,
+            promocionId,
+            Number(promocion.descuento),
+            promocion.fechaInicio,
+            promocion.fechaFin,
+          );
+          lotesAsignados.push(lotePromocion);
+        } catch (error: any) {
+          errores.push({
             loteId: lote.id,
-            promocionId: promocionId,
-            precioOriginal: lote.precioBase,
-            precioConDescuento,
-          },
-        });
+            numeroLote: lote.numeroLote,
+            error: error.message,
+          });
+        }
       }
+
+      await prisma.promocion.update({
+        where: { id: promocionId },
+        data: { urbanizacionId: null, aplicadaATodos: false },
+      });
 
       await this.crearAuditoria(
         usuarioId,
@@ -553,15 +505,21 @@ export class PromocionService {
         'Promocion',
         promocionId,
         null,
-        { promocionId, lotesIds },
+        {
+          promocionId,
+          lotesIds,
+          lotesAsignados: lotesAsignados.length,
+          errores,
+        },
       );
 
       return {
         success: true,
-        message: `Promoción asignada a ${lotesExistentes.length} lotes correctamente`,
+        message: `Promoción asignada a ${lotesAsignados.length} lotes correctamente`,
         data: {
           promocionId,
-          lotesAsignados: lotesExistentes.length,
+          lotesAsignados: lotesAsignados.length,
+          errores: errores.length > 0 ? errores : undefined,
         },
       };
     });
@@ -583,12 +541,9 @@ export class PromocionService {
         );
       }
 
-      await prisma.lotePromocion.deleteMany({
-        where: {
-          promocionId: promocionId,
-          loteId: { in: lotesIds },
-        },
-      });
+      for (const loteId of lotesIds) {
+        await this.removerPromocionDeLote(loteId, promocionId);
+      }
 
       await this.crearAuditoria(
         usuarioId,
@@ -602,10 +557,7 @@ export class PromocionService {
       return {
         success: true,
         message: `Lotes removidos de la promoción correctamente`,
-        data: {
-          promocionId,
-          lotesRemovidos: lotesIds.length,
-        },
+        data: { promocionId, lotesRemovidos: lotesIds.length },
       };
     });
   }
@@ -628,24 +580,41 @@ export class PromocionService {
 
       const urbanizacion = await prisma.urbanizacion.findUnique({
         where: { id: urbanizacionId },
+        include: { lotes: { where: { estado: 'DISPONIBLE' } } },
       });
 
       if (!urbanizacion) {
         throw new BadRequestException('Urbanización no encontrada');
       }
 
-      // Actualizar la promoción con la urbanización
+      await this.removerPromocionDeLotes(promocionId);
+
+      const lotesAsignados: any[] = [];
+      const errores: any[] = [];
+
+      for (const lote of urbanizacion.lotes) {
+        try {
+          const lotePromocion = await this.aplicarPromocionALote(
+            lote.id,
+            promocionId,
+            Number(promocion.descuento),
+            promocion.fechaInicio,
+            promocion.fechaFin,
+          );
+          lotesAsignados.push(lotePromocion);
+        } catch (error: any) {
+          errores.push({
+            loteId: lote.id,
+            numeroLote: lote.numeroLote,
+            error: error.message,
+          });
+        }
+      }
+
       await prisma.promocion.update({
         where: { id: promocionId },
-        data: { urbanizacionId },
+        data: { urbanizacionId, aplicadaATodos: false },
       });
-
-      // Aplicar promoción a todos los lotes de la urbanización
-      await this.aplicarPromocionAUrbanizacion(
-        promocionId,
-        Number(promocion.descuento),
-        urbanizacionId,
-      );
 
       await this.crearAuditoria(
         usuarioId,
@@ -653,15 +622,22 @@ export class PromocionService {
         'Promocion',
         promocionId,
         null,
-        { promocionId, urbanizacionId },
+        {
+          promocionId,
+          urbanizacionId,
+          lotesAsignados: lotesAsignados.length,
+          errores,
+        },
       );
 
       return {
         success: true,
-        message: 'Urbanización asignada a la promoción correctamente',
+        message: `Urbanización asignada a la promoción correctamente. ${lotesAsignados.length} lotes afectados.`,
         data: {
           promocionId,
           urbanizacionId,
+          lotesAsignados: lotesAsignados.length,
+          errores: errores.length > 0 ? errores : undefined,
         },
       };
     });
@@ -679,17 +655,38 @@ export class PromocionService {
         );
       }
 
-      // Limpiar cualquier urbanización asignada
-      await prisma.promocion.update({
-        where: { id: promocionId },
-        data: { urbanizacionId: null },
+      const todosLotes = await prisma.lote.findMany({
+        where: { estado: 'DISPONIBLE' },
       });
 
-      // Aplicar promoción a todos los lotes
-      await this.aplicarPromocionATodosLotes(
-        promocionId,
-        Number(promocion.descuento),
-      );
+      await this.removerPromocionDeLotes(promocionId);
+
+      const lotesAsignados: any[] = [];
+      const errores: any[] = [];
+
+      for (const lote of todosLotes) {
+        try {
+          const lotePromocion = await this.aplicarPromocionALote(
+            lote.id,
+            promocionId,
+            Number(promocion.descuento),
+            promocion.fechaInicio,
+            promocion.fechaFin,
+          );
+          lotesAsignados.push(lotePromocion);
+        } catch (error: any) {
+          errores.push({
+            loteId: lote.id,
+            numeroLote: lote.numeroLote,
+            error: error.message,
+          });
+        }
+      }
+
+      await prisma.promocion.update({
+        where: { id: promocionId },
+        data: { urbanizacionId: null, aplicadaATodos: true },
+      });
 
       await this.crearAuditoria(
         usuarioId,
@@ -697,14 +694,16 @@ export class PromocionService {
         'Promocion',
         promocionId,
         null,
-        { promocionId },
+        { promocionId, lotesAsignados: lotesAsignados.length, errores },
       );
 
       return {
         success: true,
-        message: 'Promoción aplicada a todos los lotes disponibles',
+        message: `Promoción aplicada a ${lotesAsignados.length} lotes disponibles`,
         data: {
           promocionId,
+          lotesAsignados: lotesAsignados.length,
+          errores: errores.length > 0 ? errores : undefined,
         },
       };
     });
@@ -714,39 +713,56 @@ export class PromocionService {
     const ahora = new Date();
 
     const promocionesExpiradas = await this.prisma.promocion.findMany({
-      where: {
-        fechaFin: { lt: ahora },
-        isActive: true,
-      },
+      where: { fechaFin: { lt: ahora }, isActive: true },
+      include: { lotesAfectados: true },
     });
+
+    let totalLotesActualizados = 0;
 
     for (const promocion of promocionesExpiradas) {
       await this.prisma.$transaction(async (prisma) => {
-        // Desactivar la promoción
+        for (const lotePromocion of promocion.lotesAfectados) {
+          const lote = await prisma.lote.findUnique({
+            where: { id: lotePromocion.loteId },
+          });
+
+          if (lote && ['DISPONIBLE', 'CON_OFERTA'].includes(lote.estado)) {
+            await this.actualizarPrecioLote(
+              lotePromocion.loteId,
+              Number(lotePromocion.precioOriginal),
+            );
+            totalLotesActualizados++;
+          }
+
+          await prisma.lotePromocion.delete({
+            where: {
+              loteId_promocionId: {
+                loteId: lotePromocion.loteId,
+                promocionId: promocion.id,
+              },
+            },
+          });
+        }
+
         await prisma.promocion.update({
           where: { id: promocion.id },
           data: { isActive: false },
         });
-
-        // Eliminar las relaciones de promoción con lotes
-        await prisma.lotePromocion.deleteMany({
-          where: { promocionId: promocion.id },
-        });
-
-        console.log(`Promoción ${promocion.titulo} expirada y desactivada`);
       });
     }
 
     return {
       success: true,
-      message: `Se procesaron ${promocionesExpiradas.length} promociones expiradas`,
-      data: promocionesExpiradas,
+      message: `Se procesaron ${promocionesExpiradas.length} promociones expiradas y se actualizaron ${totalLotesActualizados} lotes`,
+      data: {
+        promocionesProcesadas: promocionesExpiradas.length,
+        lotesActualizados: totalLotesActualizados,
+      },
     };
   }
 
   async getPromocionesActivas() {
     const ahora = new Date();
-
     const promocionesActivas = await this.prisma.promocion.findMany({
       where: {
         isActive: true,
@@ -754,12 +770,7 @@ export class PromocionService {
         fechaFin: { gte: ahora },
       },
       include: {
-        urbanizacion: {
-          select: {
-            id: true,
-            nombre: true,
-          },
-        },
+        urbanizacion: { select: { id: true, nombre: true } },
         lotesAfectados: {
           include: {
             lote: {
@@ -768,29 +779,39 @@ export class PromocionService {
                 numeroLote: true,
                 precioBase: true,
                 estado: true,
-                urbanizacion: {
-                  select: {
-                    nombre: true,
-                  },
-                },
+                urbanizacion: { select: { nombre: true } },
               },
             },
           },
         },
-        _count: {
-          select: {
-            lotesAfectados: true,
+        _count: { select: { lotesAfectados: true } },
+      },
+      orderBy: { fechaFin: 'asc' },
+    });
+
+    return { success: true, data: promocionesActivas };
+  }
+
+  async getLotesConPromocionActiva(promocionId: number) {
+    const promocion = await this.prisma.promocion.findUnique({
+      where: { id: promocionId },
+      include: {
+        lotesAfectados: {
+          include: {
+            lote: {
+              include: { urbanizacion: { select: { nombre: true } } },
+            },
           },
         },
       },
-      orderBy: {
-        fechaFin: 'asc',
-      },
     });
 
-    return {
-      success: true,
-      data: promocionesActivas,
-    };
+    if (!promocion) {
+      throw new NotFoundException(
+        `Promoción con ID ${promocionId} no encontrada`,
+      );
+    }
+
+    return { success: true, data: promocion.lotesAfectados };
   }
 }

@@ -24,8 +24,8 @@ export class VisitasController {
 
   @Post()
   create(@Body() createVisitaDto: CreateVisitaDto, @Request() req) {
-    const asesorId = req.user.id;
-    return this.visitasService.create(createVisitaDto, asesorId);
+    const usuarioId = req.user.id;
+    return this.visitasService.create(createVisitaDto, usuarioId);
   }
 
   @Get()

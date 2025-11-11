@@ -90,24 +90,26 @@ export class VisitasService {
         throw new BadRequestException('Lote no encontrado');
       }
     }
-    // Aquí puedes agregar validaciones para URBANIZACION si es necesario
   }
 
-  async create(createVisitaDto: CreateVisitaDto, asesorId: number) {
+  async create(createVisitaDto: CreateVisitaDto, usuarioId: number) {
     try {
       return await this.prisma.$transaction(async (prisma) => {
-        // Validar asesor
-        const asesor = await prisma.user.findFirst({
-          where: { id: asesorId, isActive: true, role: 'ASESOR' },
+        const usuario = await prisma.user.findFirst({
+          where: { id: usuarioId, isActive: true },
         });
 
-        if (!asesor) {
+        if (!usuario) {
+          throw new ForbiddenException('Usuario no encontrado o inactivo');
+        }
+
+        const rolesPermitidos = ['ASESOR', 'ADMINISTRADOR', 'SECRETARIA'];
+        if (!rolesPermitidos.includes(usuario.role)) {
           throw new ForbiddenException(
-            'No tienes permisos para crear visitas. Se requiere rol de ASESOR',
+            'No tienes permisos para crear visitas. Se requiere rol de ASESOR, ADMINISTRADOR o SECRETARIA',
           );
         }
 
-        // Validar cliente
         const cliente = await prisma.user.findFirst({
           where: {
             id: createVisitaDto.clienteId,
@@ -122,13 +124,11 @@ export class VisitasService {
           );
         }
 
-        // Validar inmueble
         await this.validateInmueble(
           createVisitaDto.inmuebleTipo,
           createVisitaDto.inmuebleId,
         );
 
-        // Validar fecha (no puede ser en el pasado)
         const fechaVisita = new Date(createVisitaDto.fechaVisita);
         const ahora = this.getCurrentTimeLaPaz();
 
@@ -138,11 +138,10 @@ export class VisitasService {
           );
         }
 
-        // Crear visita
         const visita = await prisma.visita.create({
           data: {
             clienteId: createVisitaDto.clienteId,
-            asesorId: asesorId,
+            asesorId: usuarioId,
             inmuebleTipo: createVisitaDto.inmuebleTipo,
             inmuebleId: createVisitaDto.inmuebleId,
             fechaVisita: fechaVisita,
@@ -173,9 +172,8 @@ export class VisitasService {
           },
         });
 
-        // Auditoría
         await this.crearAuditoria(
-          asesorId,
+          usuarioId,
           'CREAR_VISITA',
           'Visita',
           visita.id,
@@ -204,7 +202,6 @@ export class VisitasService {
       ) {
         throw error;
       }
-      console.error('Error en create visita:', error);
       throw new InternalServerErrorException('Error interno del servidor');
     }
   }
@@ -242,7 +239,6 @@ export class VisitasService {
         orderBy: { fechaVisita: 'desc' },
       });
 
-      // Enriquecer con información del lote
       const visitasConLotes = await Promise.all(
         visitas.map(async (visita) => {
           let loteInfo: any = null;
@@ -260,7 +256,6 @@ export class VisitasService {
 
       return { success: true, data: visitasConLotes };
     } catch (error) {
-      console.error('Error en findAll visitas:', error);
       throw new InternalServerErrorException('Error interno del servidor');
     }
   }
@@ -313,7 +308,6 @@ export class VisitasService {
       if (error instanceof NotFoundException) {
         throw error;
       }
-      console.error('Error en findOne visita:', error);
       throw new InternalServerErrorException('Error interno del servidor');
     }
   }
@@ -325,6 +319,21 @@ export class VisitasService {
   ) {
     try {
       return await this.prisma.$transaction(async (prisma) => {
+        const usuario = await prisma.user.findFirst({
+          where: { id: usuarioId, isActive: true },
+        });
+
+        if (!usuario) {
+          throw new ForbiddenException('Usuario no encontrado o inactivo');
+        }
+
+        const rolesPermitidos = ['ASESOR', 'ADMINISTRADOR', 'SECRETARIA'];
+        if (!rolesPermitidos.includes(usuario.role)) {
+          throw new ForbiddenException(
+            'No tienes permisos para actualizar visitas. Se requiere rol de ASESOR, ADMINISTRADOR o SECRETARIA',
+          );
+        }
+
         const visitaExistente = await prisma.visita.findUnique({
           where: { id },
         });
@@ -335,7 +344,6 @@ export class VisitasService {
 
         const datosAntes = { ...visitaExistente };
 
-        // Validar cliente si se está actualizando
         if (updateVisitaDto.clienteId) {
           const cliente = await prisma.user.findFirst({
             where: {
@@ -351,7 +359,6 @@ export class VisitasService {
           }
         }
 
-        // Validar inmueble si se está actualizando
         if (updateVisitaDto.inmuebleTipo && updateVisitaDto.inmuebleId) {
           await this.validateInmueble(
             updateVisitaDto.inmuebleTipo,
@@ -359,7 +366,6 @@ export class VisitasService {
           );
         }
 
-        // Validar fecha si se está actualizando
         if (updateVisitaDto.fechaVisita) {
           const fechaVisita = new Date(updateVisitaDto.fechaVisita);
           const ahora = this.getCurrentTimeLaPaz();
@@ -413,12 +419,12 @@ export class VisitasService {
       });
     } catch (error) {
       if (
+        error instanceof ForbiddenException ||
         error instanceof NotFoundException ||
         error instanceof BadRequestException
       ) {
         throw error;
       }
-      console.error('Error en update visita:', error);
       throw new InternalServerErrorException('Error interno del servidor');
     }
   }
@@ -426,6 +432,21 @@ export class VisitasService {
   async remove(id: number, usuarioId: number) {
     try {
       return await this.prisma.$transaction(async (prisma) => {
+        const usuario = await prisma.user.findFirst({
+          where: { id: usuarioId, isActive: true },
+        });
+
+        if (!usuario) {
+          throw new ForbiddenException('Usuario no encontrado o inactivo');
+        }
+
+        const rolesPermitidos = ['ASESOR', 'ADMINISTRADOR', 'SECRETARIA'];
+        if (!rolesPermitidos.includes(usuario.role)) {
+          throw new ForbiddenException(
+            'No tienes permisos para eliminar visitas. Se requiere rol de ASESOR, ADMINISTRADOR o SECRETARIA',
+          );
+        }
+
         const visita = await prisma.visita.findUnique({
           where: { id },
         });
@@ -450,10 +471,12 @@ export class VisitasService {
         return { success: true, message: 'Visita eliminada correctamente' };
       });
     } catch (error) {
-      if (error instanceof NotFoundException) {
+      if (
+        error instanceof ForbiddenException ||
+        error instanceof NotFoundException
+      ) {
         throw error;
       }
-      console.error('Error en remove visita:', error);
       throw new InternalServerErrorException('Error interno del servidor');
     }
   }
@@ -506,7 +529,6 @@ export class VisitasService {
       if (error instanceof NotFoundException) {
         throw error;
       }
-      console.error('Error en getVisitasPorCliente:', error);
       throw new InternalServerErrorException('Error interno del servidor');
     }
   }
@@ -560,7 +582,6 @@ export class VisitasService {
       if (error instanceof NotFoundException) {
         throw error;
       }
-      console.error('Error en getVisitasPorAsesor:', error);
       throw new InternalServerErrorException('Error interno del servidor');
     }
   }

@@ -32,13 +32,11 @@ export class AuthService {
 
   async register(registerDto: RegisterDto) {
     const { username, email, password, fullName, ci, telefono } = registerDto;
-
     try {
       const normalizedEmail = email.toLowerCase().trim();
       const normalizedUsername = username.toLowerCase().trim();
       const normalizedCi = ci.trim();
       const normalizedTelefono = telefono.trim();
-
       const existingUser = await this.prisma.user.findFirst({
         where: {
           OR: [
@@ -49,24 +47,17 @@ export class AuthService {
           ],
         },
       });
-
       if (existingUser) {
-        if (existingUser.email === normalizedEmail) {
+        if (existingUser.email === normalizedEmail)
           throw new ConflictException('El email ya está registrado');
-        }
-        if (existingUser.username === normalizedUsername) {
+        if (existingUser.username === normalizedUsername)
           throw new ConflictException('El nombre de usuario ya existe');
-        }
-        if (existingUser.ci === normalizedCi) {
+        if (existingUser.ci === normalizedCi)
           throw new ConflictException('El CI ya está registrado');
-        }
-        if (existingUser.telefono === normalizedTelefono) {
+        if (existingUser.telefono === normalizedTelefono)
           throw new ConflictException('El teléfono ya está registrado');
-        }
       }
-
       const hashedPassword = await bcrypt.hash(password, 12);
-
       const user = await this.prisma.user.create({
         data: {
           username: normalizedUsername,
@@ -89,10 +80,8 @@ export class AuthService {
           createdAt: true,
         },
       });
-
       const userEmail = user.email ? user.email : normalizedEmail;
       const tokens = await this.generateTokens(user.id, userEmail);
-
       await this.prisma.auditoria.create({
         data: {
           usuarioId: user.id,
@@ -109,63 +98,36 @@ export class AuthService {
           dispositivo: 'API',
         },
       });
-
       return {
         success: true,
         message: 'Usuario registrado correctamente',
-        data: {
-          user,
-          ...tokens,
-        },
+        data: { user, ...tokens },
       };
     } catch (error) {
-      console.error('Error completo en registro:', error);
-      if (error instanceof ConflictException) {
-        throw error;
-      }
+      if (error instanceof ConflictException) throw error;
       throw new InternalServerErrorException('Error interno del servidor');
     }
   }
 
   async login(loginDto: LoginDto) {
     const { identifier, password } = loginDto;
-
     try {
       const normalizedIdentifier = identifier.toLowerCase().trim();
-
       const user = await this.prisma.user.findFirst({
         where: {
           OR: [
-            {
-              email: {
-                equals: normalizedIdentifier,
-                mode: 'insensitive',
-              },
-            },
-            {
-              username: {
-                equals: normalizedIdentifier,
-                mode: 'insensitive',
-              },
-            },
+            { email: { equals: normalizedIdentifier, mode: 'insensitive' } },
+            { username: { equals: normalizedIdentifier, mode: 'insensitive' } },
           ],
           isActive: true,
-          role: {
-            not: UserRole.CLIENTE, // Los clientes no pueden iniciar sesión
-          },
+          role: { not: UserRole.CLIENTE },
         },
       });
-
-      if (!user) {
-        throw new UnauthorizedException('Credenciales inválidas');
-      }
-
-      if (!user.passwordHash) {
+      if (!user) throw new UnauthorizedException('Credenciales inválidas');
+      if (!user.passwordHash)
         throw new UnauthorizedException(
           'Este usuario no tiene credenciales de acceso',
         );
-      }
-
       const now = this.getCurrentTimeLaPaz();
       if (user.lockUntil && user.lockUntil > now) {
         const diffMs = user.lockUntil.getTime() - now.getTime();
@@ -174,41 +136,27 @@ export class AuthService {
           `Cuenta bloqueada. Intenta nuevamente en ${diffMin} minutos.`,
         );
       }
-
       const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
-
       if (!isPasswordValid) {
         const failedAttempts = (user.failedAttempts || 0) + 1;
         const lockUntil =
           failedAttempts >= 5 ? new Date(now.getTime() + 5 * 60 * 1000) : null;
-
         await this.prisma.user.update({
           where: { id: user.id },
-          data: {
-            failedAttempts,
-            lockUntil,
-          },
+          data: { failedAttempts, lockUntil },
         });
-
         const message =
           failedAttempts >= 5
             ? 'Demasiados intentos fallidos. Tu cuenta se bloqueó por 5 minutos.'
             : 'Credenciales inválidas';
-
         throw new UnauthorizedException(message);
       }
-
       if (user.failedAttempts > 0 || user.lockUntil) {
         await this.prisma.user.update({
           where: { id: user.id },
-          data: {
-            failedAttempts: 0,
-            lockUntil: null,
-            lastLogin: now,
-          },
+          data: { failedAttempts: 0, lockUntil: null, lastLogin: now },
         });
       }
-
       let tokens;
       if (user.email) {
         tokens = await this.generateTokens(user.id, user.email);
@@ -218,7 +166,6 @@ export class AuthService {
           `user${user.id}@inmobiliaria.com`,
         );
       }
-
       await this.prisma.auditoria.create({
         data: {
           usuarioId: user.id,
@@ -229,7 +176,6 @@ export class AuthService {
           dispositivo: 'API',
         },
       });
-
       return {
         success: true,
         message: 'Login exitoso',
@@ -247,20 +193,15 @@ export class AuthService {
         },
       };
     } catch (error) {
-      if (error instanceof UnauthorizedException) {
-        throw error;
-      }
+      if (error instanceof UnauthorizedException) throw error;
       throw new InternalServerErrorException('Error interno del servidor');
     }
   }
 
   async changePassword(changePasswordDto: ChangePasswordDto) {
     const { identifier, newPassword, confirmPassword } = changePasswordDto;
-
-    if (newPassword !== confirmPassword) {
+    if (newPassword !== confirmPassword)
       throw new BadRequestException('Las contraseñas no coinciden');
-    }
-
     const passwordRegex =
       /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/;
     if (!passwordRegex.test(newPassword)) {
@@ -268,39 +209,24 @@ export class AuthService {
         'La contraseña debe tener al menos 8 caracteres, una letra mayúscula, un número y un símbolo.',
       );
     }
-
     try {
       const normalizedIdentifier = identifier.toLowerCase().trim();
-
       const user = await this.prisma.user.findFirst({
         where: {
           OR: [
-            {
-              email: {
-                equals: normalizedIdentifier,
-                mode: 'insensitive',
-              },
-            },
-            {
-              username: {
-                equals: normalizedIdentifier,
-                mode: 'insensitive',
-              },
-            },
+            { email: { equals: normalizedIdentifier, mode: 'insensitive' } },
+            { username: { equals: normalizedIdentifier, mode: 'insensitive' } },
           ],
           isActive: true,
-          role: { not: UserRole.CLIENTE }, // Solo usuarios del sistema pueden cambiar contraseña
+          role: { not: UserRole.CLIENTE },
         },
       });
-
       if (!user) {
         throw new NotFoundException(
           'No se encontró ningún usuario con ese username o email',
         );
       }
-
       const hashedPassword = await bcrypt.hash(newPassword, 12);
-
       await this.prisma.user.update({
         where: { id: user.id },
         data: {
@@ -310,7 +236,6 @@ export class AuthService {
           updatedAt: new Date(),
         },
       });
-
       await this.prisma.auditoria.create({
         data: {
           usuarioId: user.id,
@@ -321,39 +246,27 @@ export class AuthService {
           dispositivo: 'API',
         },
       });
-
       return {
         success: true,
         message: 'Contraseña cambiada exitosamente',
         data: {
-          user: {
-            username: user.username,
-            email: user.email,
-            role: user.role,
-          },
+          user: { username: user.username, email: user.email, role: user.role },
         },
       };
     } catch (error) {
       if (
         error instanceof NotFoundException ||
         error instanceof BadRequestException
-      ) {
+      )
         throw error;
-      }
       throw new InternalServerErrorException('Error interno del servidor');
     }
   }
 
-  // ========== USERS CRUD METHODS (ADMINISTRADOR, ASESOR, SECRETARIA, USUARIO) ==========
   async getAllUsers() {
     try {
       const users = await this.prisma.user.findMany({
-        where: {
-          isActive: true,
-          role: {
-            not: UserRole.CLIENTE, // Excluir clientes
-          },
-        },
+        where: { isActive: true, role: { not: UserRole.CLIENTE } },
         select: {
           id: true,
           uuid: true,
@@ -371,11 +284,7 @@ export class AuthService {
         },
         orderBy: { createdAt: 'desc' },
       });
-
-      return {
-        success: true,
-        data: { users },
-      };
+      return { success: true, data: { users } };
     } catch (error) {
       throw new InternalServerErrorException('Error interno del servidor');
     }
@@ -384,10 +293,7 @@ export class AuthService {
   async getUserById(userId: number) {
     try {
       const user = await this.prisma.user.findUnique({
-        where: {
-          id: userId,
-          isActive: true,
-        },
+        where: { id: userId, isActive: true },
         select: {
           id: true,
           uuid: true,
@@ -405,19 +311,10 @@ export class AuthService {
           updatedAt: true,
         },
       });
-
-      if (!user) {
-        throw new NotFoundException('Usuario no encontrado');
-      }
-
-      return {
-        success: true,
-        data: { user },
-      };
+      if (!user) throw new NotFoundException('Usuario no encontrado');
+      return { success: true, data: { user } };
     } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
+      if (error instanceof NotFoundException) throw error;
       throw new InternalServerErrorException('Error interno del servidor');
     }
   }
@@ -425,18 +322,10 @@ export class AuthService {
   async updateUser(userId: number, updateUserDto: UpdateUserDto) {
     try {
       const user = await this.prisma.user.findUnique({
-        where: {
-          id: userId,
-          isActive: true,
-        },
+        where: { id: userId, isActive: true },
       });
-
-      if (!user) {
-        throw new NotFoundException('Usuario no encontrado');
-      }
-
+      if (!user) throw new NotFoundException('Usuario no encontrado');
       const updateData: any = {};
-
       if (updateUserDto.fullName !== undefined)
         updateData.fullName = updateUserDto.fullName;
       if (updateUserDto.username !== undefined)
@@ -453,7 +342,6 @@ export class AuthService {
         updateData.role = updateUserDto.role;
       if (updateUserDto.isActive !== undefined)
         updateData.isActive = updateUserDto.isActive;
-
       const updatedUser = await this.prisma.user.update({
         where: { id: userId },
         data: updateData,
@@ -474,7 +362,6 @@ export class AuthService {
           updatedAt: true,
         },
       });
-
       await this.prisma.auditoria.create({
         data: {
           usuarioId: userId,
@@ -487,16 +374,13 @@ export class AuthService {
           dispositivo: 'API',
         },
       });
-
       return {
         success: true,
         message: 'Usuario actualizado correctamente',
         data: { user: updatedUser },
       };
     } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
+      if (error instanceof NotFoundException) throw error;
       throw new InternalServerErrorException('Error interno del servidor');
     }
   }
@@ -504,21 +388,13 @@ export class AuthService {
   async deleteUser(userId: number) {
     try {
       const user = await this.prisma.user.findUnique({
-        where: {
-          id: userId,
-          isActive: true,
-        },
+        where: { id: userId, isActive: true },
       });
-
-      if (!user) {
-        throw new NotFoundException('Usuario no encontrado');
-      }
-
+      if (!user) throw new NotFoundException('Usuario no encontrado');
       await this.prisma.user.update({
         where: { id: userId },
         data: { isActive: false },
       });
-
       await this.prisma.auditoria.create({
         data: {
           usuarioId: userId,
@@ -530,28 +406,19 @@ export class AuthService {
           dispositivo: 'API',
         },
       });
-
-      return {
-        success: true,
-        message: 'Usuario eliminado correctamente',
-      };
+      return { success: true, message: 'Usuario eliminado correctamente' };
     } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
+      if (error instanceof NotFoundException) throw error;
       throw new InternalServerErrorException('Error interno del servidor');
     }
   }
 
-  // ========== CLIENTES CRUD METHODS (CLIENTES QUE NO INICIAN SESIÓN) ==========
   async createCliente(createClienteDto: CreateClienteDto) {
     const { fullName, ci, telefono, direccion, observaciones } =
       createClienteDto;
-
     try {
       const normalizedCi = ci.trim();
       const normalizedTelefono = telefono.trim();
-
       const existingCliente = await this.prisma.user.findFirst({
         where: {
           OR: [{ ci: normalizedCi }, { telefono: normalizedTelefono }],
@@ -559,16 +426,12 @@ export class AuthService {
           isActive: true,
         },
       });
-
       if (existingCliente) {
-        if (existingCliente.ci === normalizedCi) {
+        if (existingCliente.ci === normalizedCi)
           throw new ConflictException('Ya existe un cliente con este CI');
-        }
-        if (existingCliente.telefono === normalizedTelefono) {
+        if (existingCliente.telefono === normalizedTelefono)
           throw new ConflictException('Ya existe un cliente con este teléfono');
-        }
       }
-
       const cliente = await this.prisma.user.create({
         data: {
           fullName: fullName.trim(),
@@ -578,9 +441,9 @@ export class AuthService {
           observaciones: observaciones?.trim(),
           role: UserRole.CLIENTE,
           isActive: true,
-          passwordHash: null, // Clientes no tienen contraseña
-          username: null, // Clientes no tienen username
-          email: null, // Clientes no tienen email
+          passwordHash: null,
+          username: null,
+          email: null,
         },
         select: {
           id: true,
@@ -594,7 +457,6 @@ export class AuthService {
           createdAt: true,
         },
       });
-
       await this.prisma.auditoria.create({
         data: {
           usuarioId: cliente.id,
@@ -613,18 +475,13 @@ export class AuthService {
           dispositivo: 'API',
         },
       });
-
       return {
         success: true,
         message: 'Cliente registrado correctamente',
-        data: {
-          cliente,
-        },
+        data: { cliente },
       };
     } catch (error) {
-      if (error instanceof ConflictException) {
-        throw error;
-      }
+      if (error instanceof ConflictException) throw error;
       throw new InternalServerErrorException('Error interno del servidor');
     }
   }
@@ -632,10 +489,7 @@ export class AuthService {
   async getClientes() {
     try {
       const clientes = await this.prisma.user.findMany({
-        where: {
-          isActive: true,
-          role: UserRole.CLIENTE,
-        },
+        where: { isActive: true, role: UserRole.CLIENTE },
         select: {
           id: true,
           uuid: true,
@@ -649,11 +503,7 @@ export class AuthService {
         },
         orderBy: { createdAt: 'desc' },
       });
-
-      return {
-        success: true,
-        data: { clientes },
-      };
+      return { success: true, data: { clientes } };
     } catch (error) {
       throw new InternalServerErrorException('Error interno del servidor');
     }
@@ -662,11 +512,7 @@ export class AuthService {
   async getClienteById(clienteId: number) {
     try {
       const cliente = await this.prisma.user.findUnique({
-        where: {
-          id: clienteId,
-          role: UserRole.CLIENTE,
-          isActive: true,
-        },
+        where: { id: clienteId, role: UserRole.CLIENTE, isActive: true },
         select: {
           id: true,
           uuid: true,
@@ -680,19 +526,10 @@ export class AuthService {
           updatedAt: true,
         },
       });
-
-      if (!cliente) {
-        throw new NotFoundException('Cliente no encontrado');
-      }
-
-      return {
-        success: true,
-        data: { user: cliente },
-      };
+      if (!cliente) throw new NotFoundException('Cliente no encontrado');
+      return { success: true, data: { user: cliente } };
     } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
+      if (error instanceof NotFoundException) throw error;
       throw new InternalServerErrorException('Error interno del servidor');
     }
   }
@@ -700,22 +537,33 @@ export class AuthService {
   async updateCliente(clienteId: number, updateClienteDto: UpdateClienteDto) {
     try {
       const cliente = await this.prisma.user.findUnique({
+        where: { id: clienteId, role: UserRole.CLIENTE, isActive: true },
+      });
+      if (!cliente) throw new NotFoundException('Cliente no encontrado');
+      const normalizedCi = updateClienteDto.ci
+        ? updateClienteDto.ci.trim()
+        : cliente.ci;
+      const normalizedTelefono = updateClienteDto.telefono.trim();
+      const existingCliente = await this.prisma.user.findFirst({
         where: {
-          id: clienteId,
+          id: { not: clienteId },
+          OR: [{ ci: normalizedCi }, { telefono: normalizedTelefono }],
           role: UserRole.CLIENTE,
           isActive: true,
         },
       });
-
-      if (!cliente) {
-        throw new NotFoundException('Cliente no encontrado');
+      if (existingCliente) {
+        if (existingCliente.ci === normalizedCi)
+          throw new ConflictException('Ya existe un cliente con este CI');
+        if (existingCliente.telefono === normalizedTelefono)
+          throw new ConflictException('Ya existe un cliente con este teléfono');
       }
-
       const updatedCliente = await this.prisma.user.update({
         where: { id: clienteId },
         data: {
           fullName: updateClienteDto.fullName.trim(),
-          telefono: updateClienteDto.telefono.trim(),
+          ci: normalizedCi,
+          telefono: normalizedTelefono,
           direccion: updateClienteDto.direccion?.trim(),
           observaciones: updateClienteDto.observaciones?.trim(),
           updatedAt: new Date(),
@@ -733,7 +581,6 @@ export class AuthService {
           updatedAt: true,
         },
       });
-
       await this.prisma.auditoria.create({
         data: {
           usuarioId: clienteId,
@@ -746,16 +593,17 @@ export class AuthService {
           dispositivo: 'API',
         },
       });
-
       return {
         success: true,
         message: 'Cliente actualizado correctamente',
         data: { cliente: updatedCliente },
       };
     } catch (error) {
-      if (error instanceof NotFoundException) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof ConflictException
+      )
         throw error;
-      }
       throw new InternalServerErrorException('Error interno del servidor');
     }
   }
@@ -763,22 +611,13 @@ export class AuthService {
   async deleteCliente(clienteId: number) {
     try {
       const cliente = await this.prisma.user.findUnique({
-        where: {
-          id: clienteId,
-          role: UserRole.CLIENTE,
-          isActive: true,
-        },
+        where: { id: clienteId, role: UserRole.CLIENTE, isActive: true },
       });
-
-      if (!cliente) {
-        throw new NotFoundException('Cliente no encontrado');
-      }
-
+      if (!cliente) throw new NotFoundException('Cliente no encontrado');
       await this.prisma.user.update({
         where: { id: clienteId },
         data: { isActive: false },
       });
-
       await this.prisma.auditoria.create({
         data: {
           usuarioId: clienteId,
@@ -790,26 +629,18 @@ export class AuthService {
           dispositivo: 'API',
         },
       });
-
-      return {
-        success: true,
-        message: 'Cliente eliminado correctamente',
-      };
+      return { success: true, message: 'Cliente eliminado correctamente' };
     } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
+      if (error instanceof NotFoundException) throw error;
       throw new InternalServerErrorException('Error interno del servidor');
     }
   }
 
-  // ========== TOKEN METHODS ==========
   async refreshToken(refreshToken: string) {
     try {
       const payload = await this.jwtService.verifyAsync(refreshToken, {
         secret: process.env.JWT_REFRESH_SECRET || 'default-secret-key',
       });
-
       const user = await this.prisma.user.findUnique({
         where: {
           id: payload.sub,
@@ -817,11 +648,7 @@ export class AuthService {
           role: { not: UserRole.CLIENTE },
         },
       });
-
-      if (!user) {
-        throw new UnauthorizedException('Usuario no encontrado');
-      }
-
+      if (!user) throw new UnauthorizedException('Usuario no encontrado');
       let tokens;
       if (payload.email) {
         tokens = await this.generateTokens(payload.sub, payload.email);
@@ -831,7 +658,6 @@ export class AuthService {
           `user${payload.sub}@inmobiliaria.com`,
         );
       }
-
       return {
         success: true,
         message: 'Token refrescado correctamente',
@@ -844,11 +670,7 @@ export class AuthService {
 
   async validateUser(userId: number) {
     const user = await this.prisma.user.findUnique({
-      where: {
-        id: userId,
-        isActive: true,
-        role: { not: UserRole.CLIENTE },
-      },
+      where: { id: userId, isActive: true, role: { not: UserRole.CLIENTE } },
       select: {
         id: true,
         uuid: true,
@@ -860,20 +682,12 @@ export class AuthService {
         isActive: true,
       },
     });
-
-    if (!user) {
-      throw new UnauthorizedException('Usuario no encontrado');
-    }
-
+    if (!user) throw new UnauthorizedException('Usuario no encontrado');
     return user;
   }
 
   private async generateTokens(userId: number, email: string) {
-    const payload = {
-      sub: userId,
-      email: email.toLowerCase(),
-    };
-
+    const payload = { sub: userId, email: email.toLowerCase() };
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload, {
         expiresIn: process.env.JWT_EXPIRES_IN || '15m',
@@ -884,10 +698,6 @@ export class AuthService {
         secret: process.env.JWT_REFRESH_SECRET || 'default-secret-key',
       }),
     ]);
-
-    return {
-      accessToken,
-      refreshToken,
-    };
+    return { accessToken, refreshToken };
   }
 }

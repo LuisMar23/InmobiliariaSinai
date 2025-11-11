@@ -1,6 +1,6 @@
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
-import { CommonModule } from '@angular/common';
+import { CommonModule, DatePipe } from '@angular/common';
 import { RouterModule, Router, ActivatedRoute } from '@angular/router';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { UrbanizacionService } from '../../services/urbanizacion.service';
@@ -10,6 +10,7 @@ import { UrbanizacionService } from '../../services/urbanizacion.service';
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterModule],
   templateUrl: './urbanizacion-edit.html',
+  providers: [DatePipe],
 })
 export class UrbanizacionEdit implements OnInit {
   urbanizacionForm: FormGroup;
@@ -24,6 +25,7 @@ export class UrbanizacionEdit implements OnInit {
   private urbanizacionSvc = inject(UrbanizacionService);
   private route = inject(ActivatedRoute);
   private notificationService = inject(NotificationService);
+  private datePipe = inject(DatePipe);
 
   constructor() {
     this.urbanizacionForm = this.crearFormularioUrbanizacion();
@@ -97,7 +99,7 @@ export class UrbanizacionEdit implements OnInit {
     this.urbanizacionSvc.update(this.urbanizacionId, dataActualizada).subscribe({
       next: (response: any) => {
         this.enviando.set(false);
-        if (response.success === true) {
+        if (response.success) {
           this.notificationService.showSuccess('Urbanización actualizada exitosamente!');
           setTimeout(() => {
             this.router.navigate(['/urbanizaciones/lista']);
@@ -110,6 +112,7 @@ export class UrbanizacionEdit implements OnInit {
       },
       error: (err: any) => {
         this.enviando.set(false);
+        console.error('Error al actualizar urbanización:', err);
         let errorMessage = 'Error al actualizar la urbanización';
         if (err.error?.message) {
           errorMessage = err.error.message;
@@ -132,5 +135,14 @@ export class UrbanizacionEdit implements OnInit {
   handleFormSubmit(event: Event): void {
     event.preventDefault();
     this.onSubmit();
+  }
+
+  formatDate(date: any): string {
+    if (!date) return 'N/A';
+    try {
+      return this.datePipe.transform(date, 'dd/MM/yyyy HH:mm') || 'N/A';
+    } catch {
+      return 'N/A';
+    }
   }
 }

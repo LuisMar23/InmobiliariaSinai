@@ -1,4 +1,3 @@
-// src/app/core/interfaces/promocion.interface.ts
 export interface PromocionDto {
   id: number;
   uuid: string;
@@ -9,6 +8,7 @@ export interface PromocionDto {
   fechaFin: string;
   urbanizacionId?: number;
   isActive: boolean;
+  aplicadaATodos?: boolean;
   createdAt: string;
   updatedAt: string;
   urbanizacion?: {

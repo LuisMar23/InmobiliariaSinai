@@ -1,4 +1,3 @@
-// src/app/modules/promocion/components/promocion-list/promocion-list.ts
 import { Component, inject, signal, OnInit, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
@@ -6,6 +5,10 @@ import { FormsModule } from '@angular/forms';
 import { PromocionDto } from '../../../../core/interfaces/promocion.interface';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { PromocionService } from '../../service/promocion.service';
+import { LoteService } from '../../../lote/service/lote.service';
+import { LoteDto } from '../../../../core/interfaces/lote.interface';
+import { UrbanizacionService } from '../../../urbanizacion/services/urbanizacion.service';
+import { UrbanizacionDto } from '../../../../core/interfaces/urbanizacion.interface';
 
 interface ColumnConfig {
   key: keyof PromocionDto;
@@ -27,6 +30,17 @@ export class PromocionList implements OnInit {
   error = signal<string | null>(null);
   promocionSeleccionada = signal<PromocionDto | null>(null);
   mostrarModal = signal<boolean>(false);
+  mostrarModalAsignar = signal<boolean>(false);
+
+  lotesDisponibles = signal<LoteDto[]>([]);
+  urbanizaciones = signal<UrbanizacionDto[]>([]);
+  lotesSeleccionados = signal<number[]>([]);
+  urbanizacionSeleccionada = signal<number | null>(null);
+  asignarATodos = signal<boolean>(false);
+  asignando = signal<boolean>(false);
+  busquedaLotes = signal<string>('');
+  busquedaUrbanizaciones = signal<string>('');
+  modoRemover = signal<boolean>(false);
 
   sortColumn = signal<keyof PromocionDto>('id');
   sortDirection = signal<'asc' | 'desc'>('desc');
@@ -43,6 +57,8 @@ export class PromocionList implements OnInit {
   currentPage = signal(1);
 
   private promocionSvc = inject(PromocionService);
+  private loteSvc = inject(LoteService);
+  private urbanizacionSvc = inject(UrbanizacionService);
   private notificationService = inject(NotificationService);
 
   filteredPromociones = computed(() => {
@@ -91,8 +107,30 @@ export class PromocionList implements OnInit {
     });
   });
 
+  lotesFiltrados = computed(() => {
+    const busqueda = this.busquedaLotes().toLowerCase();
+    if (!busqueda) return this.lotesDisponibles();
+
+    return this.lotesDisponibles().filter(
+      (lote) =>
+        lote.numeroLote.toLowerCase().includes(busqueda) ||
+        lote.urbanizacion?.nombre.toLowerCase().includes(busqueda) ||
+        lote.ciudad.toLowerCase().includes(busqueda)
+    );
+  });
+
+  urbanizacionesFiltradas = computed(() => {
+    const busqueda = this.busquedaUrbanizaciones().toLowerCase();
+    if (!busqueda) return this.urbanizaciones();
+
+    return this.urbanizaciones().filter((urbanizacion) =>
+      urbanizacion.nombre.toLowerCase().includes(busqueda)
+    );
+  });
+
   ngOnInit(): void {
     this.obtenerPromociones();
+    this.cargarDatosAsignacion();
   }
 
   obtenerPromociones() {
@@ -109,6 +147,31 @@ export class PromocionList implements OnInit {
         console.error('Error al cargar promociones:', err);
         this.error.set('No se pudieron cargar las promociones');
         this.cargando.set(false);
+      },
+    });
+  }
+
+  cargarDatosAsignacion() {
+    this.promocionSvc.getLotesDisponibles().subscribe({
+      next: (lotes) => {
+        this.lotesDisponibles.set(lotes);
+      },
+      error: (err) => {
+        console.error('Error al cargar lotes:', err);
+        this.loteSvc.getAll().subscribe({
+          next: (lotes) => {
+            this.lotesDisponibles.set(lotes.filter((lote) => lote.estado === 'DISPONIBLE'));
+          },
+        });
+      },
+    });
+
+    this.urbanizacionSvc.getAll(1, 100).subscribe({
+      next: (response) => {
+        this.urbanizaciones.set(response.data);
+      },
+      error: (err) => {
+        console.error('Error al cargar urbanizaciones:', err);
       },
     });
   }
@@ -134,9 +197,246 @@ export class PromocionList implements OnInit {
     this.mostrarModal.set(true);
   }
 
+  abrirModalAsignar(promocion: PromocionDto) {
+    this.promocionSeleccionada.set(promocion);
+
+    const lotesActuales = promocion.lotesAfectados?.map((lp) => lp.loteId) || [];
+    this.lotesSeleccionados.set([...lotesActuales]);
+
+    this.urbanizacionSeleccionada.set(promocion.urbanizacionId || null);
+    this.asignarATodos.set(promocion.aplicadaATodos || false);
+    this.modoRemover.set(false);
+    this.busquedaLotes.set('');
+    this.busquedaUrbanizaciones.set('');
+    this.mostrarModalAsignar.set(true);
+  }
+
   cerrarModal() {
     this.mostrarModal.set(false);
     this.promocionSeleccionada.set(null);
+  }
+
+  cerrarModalAsignar() {
+    this.mostrarModalAsignar.set(false);
+    this.promocionSeleccionada.set(null);
+    this.lotesSeleccionados.set([]);
+    this.urbanizacionSeleccionada.set(null);
+    this.asignarATodos.set(false);
+    this.modoRemover.set(false);
+    this.busquedaLotes.set('');
+    this.busquedaUrbanizaciones.set('');
+  }
+
+  toggleLoteSeleccionado(loteId: number): void {
+    const seleccionados = this.lotesSeleccionados();
+    if (seleccionados.includes(loteId)) {
+      this.lotesSeleccionados.set(seleccionados.filter((id) => id !== loteId));
+    } else {
+      this.lotesSeleccionados.set([...seleccionados, loteId]);
+    }
+  }
+
+  estaLoteSeleccionado(loteId: number): boolean {
+    return this.lotesSeleccionados().includes(loteId);
+  }
+
+  onUrbanizacionChange(): void {
+    if (this.urbanizacionSeleccionada()) {
+      this.asignarATodos.set(false);
+      this.modoRemover.set(false);
+    }
+  }
+
+  onAsignarATodosChange(): void {
+    if (this.asignarATodos()) {
+      this.urbanizacionSeleccionada.set(null);
+      this.modoRemover.set(false);
+    }
+  }
+
+  onLotesEspecificosChange(): void {
+    this.asignarATodos.set(false);
+    this.urbanizacionSeleccionada.set(null);
+    this.modoRemover.set(false);
+  }
+
+  activarModoRemover(): void {
+    this.modoRemover.set(true);
+    this.asignarATodos.set(false);
+    this.urbanizacionSeleccionada.set(null);
+
+    const promocion = this.promocionSeleccionada();
+    if (promocion?.lotesAfectados) {
+      this.lotesSeleccionados.set(promocion.lotesAfectados.map((lp) => lp.loteId));
+    }
+  }
+
+  seleccionarTodosLotes(): void {
+    const todosLotesIds = this.lotesFiltrados().map((lote) => lote.id);
+    const seleccionadosActuales = this.lotesSeleccionados();
+    const nuevosSeleccionados = [...new Set([...seleccionadosActuales, ...todosLotesIds])];
+    this.lotesSeleccionados.set(nuevosSeleccionados);
+  }
+
+  deseleccionarTodosLotes(): void {
+    const lotesFiltradosIds = this.lotesFiltrados().map((lote) => lote.id);
+    const seleccionadosActuales = this.lotesSeleccionados();
+    const nuevosSeleccionados = seleccionadosActuales.filter(
+      (id) => !lotesFiltradosIds.includes(id)
+    );
+    this.lotesSeleccionados.set(nuevosSeleccionados);
+  }
+
+  removerAsignacion(): void {
+    const promocion = this.promocionSeleccionada();
+    if (!promocion || this.lotesSeleccionados().length === 0) return;
+
+    this.asignando.set(true);
+    this.promocionSvc.removerLotes(promocion.id, this.lotesSeleccionados()).subscribe({
+      next: (response: any) => {
+        this.asignando.set(false);
+        if (response.success) {
+          this.notificationService.showSuccess('Lotes removidos de la promoción correctamente');
+          this.cerrarModalAsignar();
+          this.obtenerPromociones();
+        } else {
+          this.notificationService.showError(response.message || 'Error al remover los lotes');
+        }
+      },
+      error: (err) => {
+        this.asignando.set(false);
+        this.notificationService.showError('Error al remover los lotes de la promoción');
+      },
+    });
+  }
+
+  removerUrbanizacion(): void {
+    const promocion = this.promocionSeleccionada();
+    if (!promocion || !this.urbanizacionSeleccionada()) return;
+
+    this.asignando.set(true);
+    this.promocionSvc.removerLotes(promocion.id, []).subscribe({
+      next: (response: any) => {
+        this.asignando.set(false);
+        if (response.success) {
+          this.notificationService.showSuccess(
+            'Urbanización removida de la promoción correctamente'
+          );
+          this.cerrarModalAsignar();
+          this.obtenerPromociones();
+        } else {
+          this.notificationService.showError(
+            response.message || 'Error al remover la urbanización'
+          );
+        }
+      },
+      error: (err) => {
+        this.asignando.set(false);
+        this.notificationService.showError('Error al remover la urbanización de la promoción');
+      },
+    });
+  }
+
+  removerTodosLotes(): void {
+    const promocion = this.promocionSeleccionada();
+    if (!promocion) return;
+
+    this.asignando.set(true);
+    this.promocionSvc.removerLotes(promocion.id, []).subscribe({
+      next: (response: any) => {
+        this.asignando.set(false);
+        if (response.success) {
+          this.notificationService.showSuccess(
+            'Todos los lotes removidos de la promoción correctamente'
+          );
+          this.cerrarModalAsignar();
+          this.obtenerPromociones();
+        } else {
+          this.notificationService.showError(
+            response.message || 'Error al remover todos los lotes'
+          );
+        }
+      },
+      error: (err) => {
+        this.asignando.set(false);
+        this.notificationService.showError('Error al remover todos los lotes de la promoción');
+      },
+    });
+  }
+
+  asignarPromocion(): void {
+    const promocion = this.promocionSeleccionada();
+    if (!promocion) return;
+
+    this.asignando.set(true);
+
+    if (this.asignarATodos()) {
+      this.promocionSvc.asignarTodosLotes(promocion.id).subscribe({
+        next: (response: any) => {
+          this.asignando.set(false);
+          if (response.success) {
+            this.notificationService.showSuccess(
+              'Promoción asignada a todos los lotes correctamente'
+            );
+            this.cerrarModalAsignar();
+            this.obtenerPromociones();
+          } else {
+            this.notificationService.showError(response.message || 'Error al asignar la promoción');
+          }
+        },
+        error: (err) => {
+          this.asignando.set(false);
+          this.notificationService.showError('Error al asignar la promoción a todos los lotes');
+        },
+      });
+    } else if (this.urbanizacionSeleccionada()) {
+      this.promocionSvc
+        .asignarUrbanizacion(promocion.id, this.urbanizacionSeleccionada()!)
+        .subscribe({
+          next: (response: any) => {
+            this.asignando.set(false);
+            if (response.success) {
+              this.notificationService.showSuccess(
+                'Promoción asignada a la urbanización correctamente'
+              );
+              this.cerrarModalAsignar();
+              this.obtenerPromociones();
+            } else {
+              this.notificationService.showError(
+                response.message || 'Error al asignar la promoción'
+              );
+            }
+          },
+          error: (err) => {
+            this.asignando.set(false);
+            this.notificationService.showError('Error al asignar la promoción a la urbanización');
+          },
+        });
+    } else if (this.lotesSeleccionados().length > 0) {
+      this.promocionSvc.asignarLotes(promocion.id, this.lotesSeleccionados()).subscribe({
+        next: (response: any) => {
+          this.asignando.set(false);
+          if (response.success) {
+            this.notificationService.showSuccess(
+              'Promoción asignada a los lotes seleccionados correctamente'
+            );
+            this.cerrarModalAsignar();
+            this.obtenerPromociones();
+          } else {
+            this.notificationService.showError(response.message || 'Error al asignar la promoción');
+          }
+        },
+        error: (err) => {
+          this.asignando.set(false);
+          this.notificationService.showError(
+            'Error al asignar la promoción a los lotes seleccionados'
+          );
+        },
+      });
+    } else {
+      this.notificationService.showError('Seleccione al menos una opción de asignación');
+      this.asignando.set(false);
+    }
   }
 
   eliminarPromocion(id: number) {
@@ -170,17 +470,21 @@ export class PromocionList implements OnInit {
   }
 
   getAplicaAText(promocion: PromocionDto): string {
-    if (promocion.urbanizacionId) {
+    if (promocion.aplicadaATodos) {
+      return 'Todos los lotes';
+    } else if (promocion.urbanizacionId) {
       return `Urbanización: ${promocion.urbanizacion?.nombre}`;
     } else if (promocion.lotesAfectados && promocion.lotesAfectados.length > 0) {
-      return `${promocion.lotesAfectados.length} lote(s) individual(es)`;
+      return `${promocion.lotesAfectados.length} lote(s)`;
     } else {
       return 'Sin asignar';
     }
   }
 
   getAplicaABadgeClass(promocion: PromocionDto): string {
-    if (promocion.urbanizacionId) {
+    if (promocion.aplicadaATodos) {
+      return 'px-3 py-1 rounded-full text-xs font-bold bg-orange-100 text-orange-700';
+    } else if (promocion.urbanizacionId) {
       return 'px-3 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-700';
     } else if (promocion.lotesAfectados && promocion.lotesAfectados.length > 0) {
       return 'px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700';

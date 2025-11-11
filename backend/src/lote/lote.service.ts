@@ -170,9 +170,7 @@ export class LoteService {
 
     const lotesConPrecioActual = lotes.map((lote) => {
       const promocionActiva = lote.LotePromocion[0];
-      const precioActual = promocionActiva
-        ? promocionActiva.precioConDescuento
-        : lote.precioBase;
+      const precioActual = lote.precioBase;
 
       return {
         ...lote,
@@ -266,9 +264,7 @@ export class LoteService {
     }
 
     const promocionActiva = lote.LotePromocion[0];
-    const precioActual = promocionActiva
-      ? promocionActiva.precioConDescuento
-      : lote.precioBase;
+    const precioActual = lote.precioBase;
 
     const loteConPrecio = {
       ...lote,
@@ -493,9 +489,7 @@ export class LoteService {
 
     const lotesParaCotizacion = lotes.map((lote) => {
       const promocionActiva = lote.LotePromocion[0];
-      const precioActual = promocionActiva
-        ? promocionActiva.precioConDescuento
-        : lote.precioBase;
+      const precioActual = lote.precioBase;
 
       return {
         id: lote.id,
@@ -583,7 +577,7 @@ export class LoteService {
 
     const lotesConPromocion = lotes.map((lote) => ({
       ...lote,
-      precioPromocional: lote.LotePromocion[0]?.precioConDescuento || null,
+      precioPromocional: lote.precioBase,
       promocion: lote.LotePromocion[0]?.promocion || null,
     }));
 

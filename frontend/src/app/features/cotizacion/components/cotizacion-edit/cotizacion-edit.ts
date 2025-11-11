@@ -1,4 +1,3 @@
-// src/app/modules/cotizacion/components/cotizacion-edit/cotizacion-edit.ts
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule, DatePipe } from '@angular/common';
@@ -65,8 +64,6 @@ export class CotizacionEdit implements OnInit {
   cargarClientes(): void {
     this.authService.getClientes().subscribe({
       next: (response: any) => {
-        console.log('Respuesta completa de clientes:', response);
-
         let clientes: any[] = [];
 
         if (response.data && Array.isArray(response.data)) {
@@ -80,7 +77,6 @@ export class CotizacionEdit implements OnInit {
         } else if (Array.isArray(response)) {
           clientes = response;
         } else {
-          console.error('Estructura de respuesta no reconocida:', response);
           this.notificationService.showWarning('No se pudieron cargar los clientes');
           return;
         }
@@ -89,7 +85,6 @@ export class CotizacionEdit implements OnInit {
           (cliente) => cliente.role === 'CLIENTE' && cliente.isActive !== false
         );
 
-        console.log('Clientes cargados:', clientesFiltrados);
         this.clientes.set(clientesFiltrados);
 
         if (clientesFiltrados.length === 0) {
@@ -99,7 +94,6 @@ export class CotizacionEdit implements OnInit {
         }
       },
       error: (err: any) => {
-        console.error('Error al cargar clientes:', err);
         this.notificationService.showError('No se pudieron cargar los clientes');
       },
     });
@@ -107,12 +101,29 @@ export class CotizacionEdit implements OnInit {
 
   cargarLotes(): void {
     this.loteSvc.getAll().subscribe({
-      next: (lotes: LoteDto[]) => {
-        console.log('Lotes cargados:', lotes);
-        this.lotes.set(lotes);
+      next: (response: any) => {
+        let lotes: any[] = [];
+
+        if (response.data && Array.isArray(response.data)) {
+          lotes = response.data;
+        } else if (Array.isArray(response)) {
+          lotes = response;
+        } else {
+          this.notificationService.showWarning('No se pudieron cargar los lotes');
+          return;
+        }
+
+        const lotesDisponibles = lotes.filter(
+          (lote) => lote.estado === 'DISPONIBLE' || lote.estado === 'CON_OFERTA'
+        );
+
+        this.lotes.set(lotesDisponibles);
+
+        if (lotesDisponibles.length === 0) {
+          this.notificationService.showWarning('No hay lotes disponibles para cotización');
+        }
       },
       error: (err: any) => {
-        console.error('Error al cargar lotes:', err);
         this.notificationService.showError('No se pudieron cargar los lotes');
       },
     });
@@ -138,7 +149,7 @@ export class CotizacionEdit implements OnInit {
       (lote) =>
         lote.numeroLote?.toLowerCase().includes(search) ||
         lote.urbanizacion?.nombre?.toLowerCase().includes(search) ||
-        lote.precioBase?.toString().includes(search)
+        this.formatMonto(lote.precioBase)?.toLowerCase().includes(search)
     );
   }
 
@@ -155,7 +166,7 @@ export class CotizacionEdit implements OnInit {
       inmuebleId: lote.id.toString(),
     });
     this.searchLote.set(
-      `Lote ${lote.numeroLote} - ${lote.urbanizacion?.nombre} - $${lote.precioBase}`
+      `${lote.numeroLote} - ${lote.urbanizacion?.nombre} - $${this.formatMonto(lote.precioBase)}`
     );
     this.showLotesDropdown.set(false);
   }
@@ -206,7 +217,6 @@ export class CotizacionEdit implements OnInit {
         this.cargando.set(false);
       },
       error: (err: any) => {
-        console.error('Error al cargar cotización:', err);
         this.error.set('No se pudo cargar la cotización');
         this.cargando.set(false);
       },
@@ -230,7 +240,9 @@ export class CotizacionEdit implements OnInit {
     }
     if (loteSeleccionado) {
       this.searchLote.set(
-        `Lote ${loteSeleccionado.numeroLote} - ${loteSeleccionado.urbanizacion?.nombre} - $${loteSeleccionado.precioBase}`
+        `${loteSeleccionado.numeroLote} - ${
+          loteSeleccionado.urbanizacion?.nombre
+        } - $${this.formatMonto(loteSeleccionado.precioBase)}`
       );
     }
   }
@@ -251,6 +263,16 @@ export class CotizacionEdit implements OnInit {
       return;
     }
 
+    const currentUser = this.authService.getCurrentUser();
+    const rolesPermitidos = ['ASESOR', 'ADMINISTRADOR', 'SECRETARIA'];
+
+    if (!currentUser || !rolesPermitidos.includes(currentUser.role)) {
+      this.notificationService.showError(
+        'Solo los asesores, administradores y secretarias pueden editar cotizaciones'
+      );
+      return;
+    }
+
     if (!this.cotizacionId) {
       this.notificationService.showError('ID de cotización no válido.');
       return;
@@ -266,12 +288,9 @@ export class CotizacionEdit implements OnInit {
       inmuebleTipo: 'LOTE',
     };
 
-    console.log('Datos a actualizar:', dataActualizada);
-
     this.cotizacionSvc.update(this.cotizacionId, dataActualizada).subscribe({
       next: (response: any) => {
         this.enviando.set(false);
-        console.log('Respuesta del servidor:', response);
 
         if (response.success) {
           this.notificationService.showSuccess('Cotización actualizada exitosamente!');
@@ -286,12 +305,14 @@ export class CotizacionEdit implements OnInit {
       },
       error: (err: any) => {
         this.enviando.set(false);
-        console.error('Error al actualizar:', err);
 
         let errorMessage = 'Error al actualizar la cotización';
         if (err.status === 400) {
           errorMessage =
             err.error?.message || 'Datos inválidos. Verifique la información ingresada.';
+        } else if (err.status === 403) {
+          errorMessage =
+            'No tienes permisos para editar cotizaciones. Se requiere rol de ASESOR, ADMINISTRADOR o SECRETARIA';
         } else if (err.status === 404) {
           errorMessage = 'Cotización no encontrada.';
         }
@@ -310,23 +331,6 @@ export class CotizacionEdit implements OnInit {
     this.onSubmit();
   }
 
-  // CORREGIDO: Método getClienteNombre agregado
-  getClienteNombre(): string {
-    const clienteId = this.cotizacionForm.get('clienteId')?.value;
-    if (!clienteId) return 'Sin cliente';
-
-    const cliente = this.clientes().find((c) => c.id === Number(clienteId));
-    return cliente ? cliente.fullName : 'No encontrado';
-  }
-
-  getLoteInfo(): string {
-    const loteId = this.cotizacionForm.get('inmuebleId')?.value;
-    if (!loteId) return 'Sin lote';
-
-    const lote = this.lotes().find((l) => l.id === Number(loteId));
-    return lote ? `Lote ${lote.numeroLote} - ${lote.urbanizacion?.nombre}` : 'No encontrado';
-  }
-
   getEstadoBadgeClass(estado: string): string {
     const classes: { [key: string]: string } = {
       DISPONIBLE: 'px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700',
@@ -335,5 +339,29 @@ export class CotizacionEdit implements OnInit {
       CON_OFERTA: 'px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700',
     };
     return classes[estado] || classes['DISPONIBLE'];
+  }
+
+  formatMonto(monto: number | string | undefined | null): string {
+    if (monto === undefined || monto === null) return '0';
+
+    let numero: number;
+    if (typeof monto === 'string') {
+      numero = parseFloat(monto);
+      if (isNaN(numero)) return '0';
+    } else {
+      numero = monto;
+    }
+
+    if (Number.isInteger(numero)) {
+      return numero.toString();
+    }
+
+    const formatted = numero.toFixed(2);
+
+    if (formatted.endsWith('.00')) {
+      return formatted.slice(0, -3);
+    }
+
+    return formatted;
   }
 }

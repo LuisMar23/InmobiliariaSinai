@@ -1,4 +1,3 @@
-// src/app/core/interfaces/lote.interface.ts
 export interface LoteDto {
   id: number;
   uuid: string;
@@ -48,16 +47,31 @@ export interface LoteDto {
   };
 }
 
-export interface UrbanizacionDto {
-  id?: number;
-  uuid?: string;
-  nombre: string;
-  ubicacion: string;
-  ciudad: string;
+export interface CreateLoteDto {
+  urbanizacionId?: number;
+  numeroLote: string;
+  superficieM2: number;
+  precioBase: number;
   descripcion?: string;
-  createdAt?: Date;
-  updatedAt?: Date;
-  _count?: {
-    lotes: number;
-  };
+  ubicacion?: string;
+  ciudad: string;
+  latitud?: number;
+  longitud?: number;
+  esIndependiente: boolean;
+  estado: string;
 }
+
+export interface UpdateLoteDto {
+  urbanizacionId?: number;
+  numeroLote?: string;
+  superficieM2?: number;
+  precioBase?: number;
+  descripcion?: string;
+  ubicacion?: string;
+  ciudad?: string;
+  latitud?: number;
+  longitud?: number;
+  esIndependiente?: boolean;
+  estado?: string;
+}
+

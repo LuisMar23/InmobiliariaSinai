@@ -292,6 +292,7 @@ model Promocion {
   fechaFin       DateTime @map("fecha_fin")
   urbanizacionId Int?     @map("urbanizacion_id")
   isActive       Boolean  @default(true) @map("is_active")
+  aplicadaATodos Boolean  @default(false) @map("aplicada_a_todos")
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 

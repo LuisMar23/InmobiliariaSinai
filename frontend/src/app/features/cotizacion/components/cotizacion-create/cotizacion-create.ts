@@ -1,4 +1,3 @@
-// src/app/modules/cotizacion/components/cotizacion-create/cotizacion-create.ts
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
@@ -59,8 +58,6 @@ export class CotizacionCreate implements OnInit {
   cargarClientes(): void {
     this.authService.getClientes().subscribe({
       next: (response: any) => {
-        console.log('Respuesta completa de clientes:', response);
-
         let clientes: any[] = [];
 
         if (response.data && Array.isArray(response.data)) {
@@ -74,7 +71,6 @@ export class CotizacionCreate implements OnInit {
         } else if (Array.isArray(response)) {
           clientes = response;
         } else {
-          console.error('Estructura de respuesta no reconocida:', response);
           this.notificationService.showWarning('No se pudieron cargar los clientes');
           return;
         }
@@ -83,7 +79,6 @@ export class CotizacionCreate implements OnInit {
           (cliente) => cliente.role === 'CLIENTE' && cliente.isActive !== false
         );
 
-        console.log('Clientes cargados:', clientesFiltrados);
         this.clientes.set(clientesFiltrados);
 
         if (clientesFiltrados.length === 0) {
@@ -93,24 +88,36 @@ export class CotizacionCreate implements OnInit {
         }
       },
       error: (err: any) => {
-        console.error('Error al cargar clientes:', err);
         this.notificationService.showError('No se pudieron cargar los clientes');
       },
     });
   }
 
   cargarLotes(): void {
-    this.loteSvc.getLotesParaCotizacion().subscribe({
-      next: (lotes: LoteDto[]) => {
-        console.log('Lotes para cotización:', lotes);
-        this.lotes.set(lotes);
+    this.loteSvc.getAll().subscribe({
+      next: (response: any) => {
+        let lotes: any[] = [];
 
-        if (lotes.length === 0) {
+        if (response.data && Array.isArray(response.data)) {
+          lotes = response.data;
+        } else if (Array.isArray(response)) {
+          lotes = response;
+        } else {
+          this.notificationService.showWarning('No se pudieron cargar los lotes');
+          return;
+        }
+
+        const lotesDisponibles = lotes.filter(
+          (lote) => lote.estado === 'DISPONIBLE' || lote.estado === 'CON_OFERTA'
+        );
+
+        this.lotes.set(lotesDisponibles);
+
+        if (lotesDisponibles.length === 0) {
           this.notificationService.showWarning('No hay lotes disponibles para cotización');
         }
       },
       error: (err: any) => {
-        console.error('Error al cargar lotes:', err);
         this.notificationService.showError('No se pudieron cargar los lotes disponibles');
       },
     });
@@ -136,7 +143,7 @@ export class CotizacionCreate implements OnInit {
       (lote) =>
         lote.numeroLote?.toLowerCase().includes(search) ||
         lote.urbanizacion?.nombre?.toLowerCase().includes(search) ||
-        lote.precioBase?.toString().includes(search)
+        this.formatMonto(lote.precioBase)?.toLowerCase().includes(search)
     );
   }
 
@@ -153,7 +160,7 @@ export class CotizacionCreate implements OnInit {
       inmuebleId: lote.id.toString(),
     });
     this.searchLote.set(
-      `Lote ${lote.numeroLote} - ${lote.urbanizacion?.nombre} - $${lote.precioBase}`
+      `${lote.numeroLote} - ${lote.urbanizacion?.nombre} - $${this.formatMonto(lote.precioBase)}`
     );
     this.showLotesDropdown.set(false);
   }
@@ -192,8 +199,12 @@ export class CotizacionCreate implements OnInit {
     }
 
     const currentUser = this.authService.getCurrentUser();
-    if (!currentUser || currentUser.role !== 'ASESOR') {
-      this.notificationService.showError('Solo los asesores pueden crear cotizaciones');
+    const rolesPermitidos = ['ASESOR', 'ADMINISTRADOR', 'SECRETARIA'];
+
+    if (!currentUser || !rolesPermitidos.includes(currentUser.role)) {
+      this.notificationService.showError(
+        'Solo los asesores, administradores y secretarias pueden crear cotizaciones'
+      );
       return;
     }
 
@@ -207,12 +218,9 @@ export class CotizacionCreate implements OnInit {
       inmuebleTipo: 'LOTE',
     };
 
-    console.log('Datos a enviar:', cotizacionData);
-
     this.cotizacionSvc.create(cotizacionData).subscribe({
       next: (response: any) => {
         this.enviando.set(false);
-        console.log('Respuesta del servidor:', response);
 
         if (response.success) {
           this.notificationService.showSuccess('Cotización creada exitosamente!');
@@ -225,14 +233,14 @@ export class CotizacionCreate implements OnInit {
       },
       error: (err: any) => {
         this.enviando.set(false);
-        console.error('Error completo:', err);
 
         let errorMessage = 'Error al crear la cotización';
         if (err.status === 400) {
           errorMessage =
             err.error?.message || 'Datos inválidos. Verifique la información ingresada.';
         } else if (err.status === 403) {
-          errorMessage = 'No tienes permisos para crear cotizaciones. Se requiere rol de ASESOR';
+          errorMessage =
+            'No tienes permisos para crear cotizaciones. Se requiere rol de ASESOR, ADMINISTRADOR o SECRETARIA';
         } else if (err.status === 404) {
           errorMessage = 'Cliente o lote no encontrado';
         }
@@ -247,23 +255,6 @@ export class CotizacionCreate implements OnInit {
     this.onSubmit();
   }
 
-  getClienteNombre(): string {
-    const clienteId = this.cotizacionForm.get('clienteId')?.value;
-    if (!clienteId) return 'Sin cliente';
-
-    const cliente = this.clientes().find((c) => c.id === Number(clienteId));
-    return cliente ? cliente.fullName : 'No encontrado';
-  }
-
-  getLoteInfo(): string {
-    const loteId = this.cotizacionForm.get('inmuebleId')?.value;
-    if (!loteId) return 'Sin lote';
-
-    const lote = this.lotes().find((l) => l.id === Number(loteId));
-    return lote ? `Lote ${lote.numeroLote} - ${lote.urbanizacion?.nombre}` : 'No encontrado';
-  }
-
-  // CORREGIDO: Método getEstadoBadgeClass agregado
   getEstadoBadgeClass(estado: string): string {
     const classes: { [key: string]: string } = {
       DISPONIBLE: 'px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700',
@@ -272,5 +263,29 @@ export class CotizacionCreate implements OnInit {
       CON_OFERTA: 'px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700',
     };
     return classes[estado] || classes['DISPONIBLE'];
+  }
+
+  formatMonto(monto: number | string | undefined | null): string {
+    if (monto === undefined || monto === null) return '0';
+
+    let numero: number;
+    if (typeof monto === 'string') {
+      numero = parseFloat(monto);
+      if (isNaN(numero)) return '0';
+    } else {
+      numero = monto;
+    }
+
+    if (Number.isInteger(numero)) {
+      return numero.toString();
+    }
+
+    const formatted = numero.toFixed(2);
+
+    if (formatted.endsWith('.00')) {
+      return formatted.slice(0, -3);
+    }
+
+    return formatted;
   }
 }

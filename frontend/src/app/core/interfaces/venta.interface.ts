@@ -1,29 +1,27 @@
 export interface VentaDto {
-  fecha_creacion: any;
-  observaciones: string;
   id: number;
-  uuid: string;
+  uuid?: string;
   clienteId: number;
   asesorId: number;
   inmuebleTipo: string;
   inmuebleId: number;
   precioFinal: number;
   estado: string;
-  createdAt: string;
-  updatedAt: string;
+  observaciones?: string;
+  createdAt?: string;
+  updatedAt?: string;
   cliente?: {
     id: number;
     fullName: string;
-    email: string;
-    telefono: string;
-    ci: string;
-    role: string;
+    ci?: string;
+    email?: string;
+    telefono?: string;
   };
   asesor?: {
     id: number;
     fullName: string;
-    email: string;
-    role: string;
+    email?: string;
+    telefono?: string;
   };
   lote?: {
     id: number;
@@ -37,63 +35,49 @@ export interface VentaDto {
       ubicacion: string;
     };
   };
-  planPago?: PlanPagoDto;
-  _count?: {
-    pagos: number;
-    documentos: number;
+  planPago?: {
+    id_plan_pago: number;
+    ventaId: number;
+    total: number;
+    monto_inicial: number;
+    plazo: number;
+    periodicidad: string;
+    fecha_inicio: string;
+    fecha_vencimiento: string;
+    estado: string;
+    creado_en?: string;
+    actualizado_en?: string;
+    pagos: PagoPlanPago[];
+    saldo_pendiente?: number;
+    total_pagado?: number;
+    porcentaje_pagado?: number;
+    monto_cuota?: number;
+    dias_restantes?: number;
   };
   archivos?: any[];
   ingresos?: any[];
-}
-
-export interface PlanPagoDto {
-  fecha_creacion: any;
-  id_plan_pago?: number;
-  uuid?: string;
-  ventaId?: number;
-  total: number;
-  monto_inicial: number;
-  plazo: number;
-  periodicidad: string;
-  fecha_inicio: string;
-  fecha_vencimiento: string;
-  estado: string;
-  pagos?: PagoPlanDto[];
-  saldo_pendiente?: number;
-  total_pagado?: number;
-  porcentaje_pagado?: number;
-  monto_cuota?: number;
-  dias_restantes?: number;
-  actualizado_en?: string;
-}
-
-export interface PagoPlanDto {
-  id_pago_plan?: number;
-  uuid?: string;
-  plan_pago_id: number;
-  monto: number;
-  fecha_pago?: string;
-  observacion?: string;
-  metodoPago?: string;
-  created_at?: string;
-  updated_at?: string;
+  cajaId?: number;
+  caja?: {
+    id: number;
+    nombre: string;
+    saldoActual: number;
+  };
 }
 
 export interface CreateVentaDto {
-  clienteId: number;
+  clienteId: string;
   inmuebleTipo: string;
-  inmuebleId: number;
+  inmuebleId: string;
   precioFinal: number;
+  cajaId: string;
   estado?: string;
   observaciones?: string;
-  plan_pago: CreatePlanPagoDto;
-}
-
-export interface CreatePlanPagoDto {
-  monto_inicial: number;
-  plazo: number;
-  periodicidad: string;
-  fecha_inicio: string;
+  plan_pago: {
+    monto_inicial: number;
+    plazo: number;
+    periodicidad: string;
+    fecha_inicio: string;
+  };
 }
 
 export interface UpdateVentaDto {
@@ -111,4 +95,15 @@ export interface RegistrarPagoDto {
   fecha_pago?: string;
   observacion?: string;
   metodoPago?: string;
+  cajaId: string;
+}
+
+export interface PagoPlanPago {
+  id_pago_plan: number;
+  plan_pago_id: number;
+  monto: number;
+  fecha_pago: string;
+  observacion?: string;
+  metodoPago?: string;
+  creado_en?: string;
 }

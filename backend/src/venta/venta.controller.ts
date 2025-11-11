@@ -11,6 +11,7 @@ import {
   Query,
   UseGuards,
   Request,
+  BadRequestException,
 } from '@nestjs/common';
 import {
   CreateVentaDto,
@@ -82,7 +83,14 @@ export class VentasController {
     const usuarioId = req.user.id;
     const ip = req.ip;
     const userAgent = req.headers['user-agent'];
-    return this.ventasService.remove(+id, usuarioId, ip, userAgent);
+    // Para eliminar, necesitamos recibir la cajaId en el body
+    const { cajaId } = req.body;
+    if (!cajaId) {
+      throw new BadRequestException(
+        'Se requiere el ID de la caja para eliminar la venta',
+      );
+    }
+    return this.ventasService.remove(+id, cajaId, usuarioId, ip, userAgent);
   }
 
   @Post('pagos/registrar')
@@ -131,8 +139,16 @@ export class VentasController {
     const usuarioId = req.user.id;
     const ip = req.ip;
     const userAgent = req.headers['user-agent'];
+    // Para eliminar pago, necesitamos recibir la cajaId en el body
+    const { cajaId } = req.body;
+    if (!cajaId) {
+      throw new BadRequestException(
+        'Se requiere el ID de la caja para eliminar el pago',
+      );
+    }
     return this.ventasService.eliminarPagoPlan(
       +pagoId,
+      cajaId,
       usuarioId,
       ip,
       userAgent,
@@ -182,5 +198,29 @@ export class VentasController {
   obtenerVentasCliente(@Request() req) {
     const clienteId = req.user.id;
     return this.ventasService.obtenerVentasPorCliente(clienteId);
+  }
+
+  // Nuevo endpoint para obtener cajas activas
+  @Get('cajas/activas')
+  obtenerCajasActivas() {
+    return this.ventasService.obtenerCajasActivas();
+  }
+  @Patch('plan-pago/:ventaId/monto-inicial')
+  actualizarMontoInicial(
+    @Param('ventaId') ventaId: string,
+    @Body() body: { nuevoMontoInicial: number; cajaId: number },
+    @Request() req,
+  ) {
+    const usuarioId = req.user.id;
+    const ip = req.ip;
+    const userAgent = req.headers['user-agent'];
+    return this.ventasService.actualizarMontoInicialPlanPago(
+      +ventaId,
+      body.nuevoMontoInicial,
+      body.cajaId,
+      usuarioId,
+      ip,
+      userAgent,
+    );
   }
 }

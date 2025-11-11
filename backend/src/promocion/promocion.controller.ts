@@ -1,4 +1,3 @@
-// src/promocion/promocion.controller.ts
 import {
   Controller,
   Get,
@@ -45,6 +44,11 @@ export class PromocionController {
     return this.promocionService.findOne(+id);
   }
 
+  @Get(':id/lotes-afectados')
+  getLotesConPromocionActiva(@Param('id') id: string) {
+    return this.promocionService.getLotesConPromocionActiva(+id);
+  }
+
   @Patch(':id')
   update(
     @Param('id') id: string,
@@ -58,7 +62,6 @@ export class PromocionController {
     return this.promocionService.remove(+id);
   }
 
-  // Nuevos endpoints para asignación flexible
   @Post(':id/asignar-lotes')
   asignarLotes(@Param('id') id: string, @Body() body: { lotesIds: number[] }) {
     return this.promocionService.asignarLotesAPromocion(+id, body.lotesIds);

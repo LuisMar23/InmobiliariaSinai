@@ -1,4 +1,3 @@
-// src/app/core/interfaces/reserva.interface.ts
 export interface ReservaDto {
   id: number;
   uuid: string;

@@ -6,6 +6,10 @@ export class UpdateClienteDto {
   fullName: string;
 
   @IsString()
+  @IsNotEmpty({ message: 'El CI es requerido' })
+  ci: string;
+
+  @IsString()
   @IsNotEmpty({ message: 'El teléfono es requerido' })
   telefono: string;
 

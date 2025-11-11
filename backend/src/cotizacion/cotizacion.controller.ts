@@ -1,4 +1,3 @@
-// src/cotizacion/cotizacion.controller.ts (sin cambios)
 import {
   Controller,
   Get,
@@ -26,8 +25,8 @@ export class CotizacionController {
 
   @Post()
   create(@Body() createCotizacionDto: CreateCotizacionDto, @Request() req) {
-    const asesorId = req.user.id;
-    return this.cotizacionService.create(createCotizacionDto, asesorId);
+    const usuarioId = req.user.id;
+    return this.cotizacionService.create(createCotizacionDto, usuarioId);
   }
 
   @Get()
@@ -60,5 +59,10 @@ export class CotizacionController {
   remove(@Param('id') id: string, @Request() req) {
     const usuarioId = req.user.id;
     return this.cotizacionService.remove(+id, usuarioId);
+  }
+
+  @Get('lotes-disponibles')
+  getLotesDisponibles() {
+    return this.cotizacionService.getLotesDisponiblesParaCotizacion();
   }
 }

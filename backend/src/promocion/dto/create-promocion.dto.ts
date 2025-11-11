@@ -1,4 +1,3 @@
-// src/promocion/dto/create-promocion.dto.ts
 import {
   IsString,
   IsNumber,
@@ -8,8 +7,11 @@ import {
   Max,
   IsInt,
   IsArray,
+  IsBoolean,
+  Validate,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { IsDateRangeValid } from './date-range.validator';
 
 export class CreatePromocionDto {
   @IsString()
@@ -29,6 +31,7 @@ export class CreatePromocionDto {
   fechaInicio: string;
 
   @IsDateString()
+  @Validate(IsDateRangeValid, ['fechaInicio'])
   fechaFin: string;
 
   @IsOptional()
@@ -41,6 +44,11 @@ export class CreatePromocionDto {
   @IsInt()
   @Type(() => Number)
   urbanizacionId?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  @Type(() => Boolean)
+  aplicarATodos?: boolean;
 
   @IsOptional()
   @IsInt()

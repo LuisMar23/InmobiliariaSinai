@@ -1,3 +1,4 @@
+// reserva-edit.component.ts
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule, DatePipe } from '@angular/common';
@@ -26,6 +27,10 @@ export class ReservaEdit implements OnInit {
   reservaData: any = null;
   clientes = signal<UserDto[]>([]);
   lotes = signal<LoteDto[]>([]);
+  searchCliente = signal<string>('');
+  searchLote = signal<string>('');
+  showClientesDropdown = signal<boolean>(false);
+  showLotesDropdown = signal<boolean>(false);
 
   router = inject(Router);
   private fb = inject(FormBuilder);
@@ -60,8 +65,6 @@ export class ReservaEdit implements OnInit {
   cargarClientes(): void {
     this.authService.getClientes().subscribe({
       next: (response: any) => {
-        console.log('Respuesta completa de clientes:', response);
-
         let clientes: any[] = [];
 
         if (response.data && Array.isArray(response.data.clientes)) {
@@ -71,11 +74,9 @@ export class ReservaEdit implements OnInit {
         } else if (Array.isArray(response)) {
           clientes = response;
         } else {
-          console.error('Estructura de respuesta no reconocida:', response);
           return;
         }
 
-        console.log('Clientes cargados:', clientes);
         this.clientes.set(clientes);
 
         if (clientes.length === 0) {
@@ -83,7 +84,6 @@ export class ReservaEdit implements OnInit {
         }
       },
       error: (err: any) => {
-        console.error('Error al cargar clientes:', err);
         this.notificationService.showError('No se pudieron cargar los clientes');
       },
     });
@@ -92,17 +92,13 @@ export class ReservaEdit implements OnInit {
   cargarLotes(loteActualId?: number): void {
     this.loteSvc.getAll().subscribe({
       next: (lotes: LoteDto[]) => {
-        // Filtra lotes DISPONIBLES y también incluye el lote actual de la reserva
         const lotesFiltrados = lotes.filter(
           (lote) => lote.estado === 'DISPONIBLE' || lote.id === loteActualId
         );
 
-        console.log('Lotes disponibles para edición:', lotesFiltrados);
-        console.log('Lote actual ID:', loteActualId);
         this.lotes.set(lotesFiltrados);
       },
       error: (err: any) => {
-        console.error('Error al cargar lotes:', err);
         this.notificationService.showError('No se pudieron cargar los lotes');
       },
     });
@@ -121,12 +117,6 @@ export class ReservaEdit implements OnInit {
       next: (reserva: any) => {
         if (reserva) {
           this.reservaData = reserva;
-          console.log('Datos de la reserva cargados:', reserva);
-
-          // Primero cargar los datos del formulario
-          this.cargarDatosFormulario(reserva);
-
-          // Luego cargar los datos adicionales (clientes, lotes)
           this.cargarDatosAdicionales(reserva);
         } else {
           this.error.set('No se encontró la reserva');
@@ -134,7 +124,6 @@ export class ReservaEdit implements OnInit {
         }
       },
       error: (err: any) => {
-        console.error('Error al cargar reserva:', err);
         this.error.set('No se pudo cargar la reserva');
         this.cargando.set(false);
       },
@@ -142,29 +131,20 @@ export class ReservaEdit implements OnInit {
   }
 
   cargarDatosAdicionales(reserva: any): void {
-    // Obtener el ID del lote actual
     const loteActualId = reserva.lote?.id || reserva.inmuebleId;
-    console.log('Lote actual ID para filtro:', loteActualId);
 
-    // Cargar todos los datos en paralelo
     this.cargarClientes();
     this.cargarLotes(loteActualId);
 
-    // Marcar como cargado
-    this.cargando.set(false);
+    setTimeout(() => {
+      this.cargarDatosFormulario(reserva);
+      this.cargando.set(false);
+    }, 500);
   }
 
   cargarDatosFormulario(reserva: any): void {
     const clienteId = reserva.cliente?.id || reserva.clienteId;
     const inmuebleId = reserva.lote?.id || reserva.inmuebleId;
-
-    console.log('Cargando datos en formulario:', {
-      clienteId,
-      inmuebleId,
-      montoReserva: reserva.montoReserva,
-      fechaInicio: reserva.fechaInicio,
-      fechaVencimiento: reserva.fechaVencimiento,
-    });
 
     this.reservaForm.patchValue({
       clienteId: clienteId?.toString() || '',
@@ -178,16 +158,93 @@ export class ReservaEdit implements OnInit {
       estado: reserva.estado || 'ACTIVA',
     });
 
-    // Forzar la detección de cambios después de un breve delay
-    setTimeout(() => {
-      console.log('Formulario después del patch:', this.reservaForm.value);
-    }, 100);
+    const clienteSeleccionado = this.clientes().find((c) => c.id === clienteId);
+    const loteSeleccionado = this.lotes().find((l) => l.id === inmuebleId);
+
+    if (clienteSeleccionado) {
+      this.searchCliente.set(clienteSeleccionado.fullName || '');
+    }
+    if (loteSeleccionado) {
+      this.searchLote.set(
+        `${loteSeleccionado.numeroLote} - ${
+          loteSeleccionado.urbanizacion?.nombre
+        } - $${this.formatMonto(loteSeleccionado.precioBase)}`
+      );
+    }
   }
 
   private formatDateForInput(date: string | Date): string {
     if (!date) return '';
     const dateObj = new Date(date);
     return dateObj.toISOString().split('T')[0];
+  }
+
+  filteredClientes() {
+    const search = this.searchCliente().toLowerCase();
+    if (!search) return this.clientes();
+
+    return this.clientes().filter(
+      (cliente) =>
+        cliente.fullName?.toLowerCase().includes(search) ||
+        cliente.ci?.toLowerCase().includes(search) ||
+        cliente.email?.toLowerCase().includes(search)
+    );
+  }
+
+  filteredLotes() {
+    const search = this.searchLote().toLowerCase();
+    if (!search) return this.lotes();
+
+    return this.lotes().filter(
+      (lote) =>
+        lote.numeroLote?.toLowerCase().includes(search) ||
+        lote.urbanizacion?.nombre?.toLowerCase().includes(search) ||
+        this.formatMonto(lote.precioBase)?.toLowerCase().includes(search)
+    );
+  }
+
+  selectCliente(cliente: UserDto) {
+    this.reservaForm.patchValue({
+      clienteId: cliente.id.toString(),
+    });
+    this.searchCliente.set(cliente.fullName || '');
+    this.showClientesDropdown.set(false);
+  }
+
+  selectLote(lote: LoteDto) {
+    this.reservaForm.patchValue({
+      inmuebleId: lote.id.toString(),
+    });
+    this.searchLote.set(
+      `${lote.numeroLote} - ${lote.urbanizacion?.nombre} - $${this.formatMonto(lote.precioBase)}`
+    );
+    this.showLotesDropdown.set(false);
+  }
+
+  toggleClientesDropdown() {
+    this.showClientesDropdown.set(!this.showClientesDropdown());
+    if (this.showClientesDropdown()) {
+      this.showLotesDropdown.set(false);
+    }
+  }
+
+  toggleLotesDropdown() {
+    this.showLotesDropdown.set(!this.showLotesDropdown());
+    if (this.showLotesDropdown()) {
+      this.showClientesDropdown.set(false);
+    }
+  }
+
+  onClienteBlur() {
+    setTimeout(() => {
+      this.showClientesDropdown.set(false);
+    }, 200);
+  }
+
+  onLoteBlur() {
+    setTimeout(() => {
+      this.showLotesDropdown.set(false);
+    }, 200);
   }
 
   formatDate(date: any): string {
@@ -211,7 +268,6 @@ export class ReservaEdit implements OnInit {
       return;
     }
 
-    // Validar fechas
     const fechaInicio = new Date(this.reservaForm.value.fechaInicio);
     const fechaVencimiento = new Date(this.reservaForm.value.fechaVencimiento);
 
@@ -287,18 +343,37 @@ export class ReservaEdit implements OnInit {
     this.onSubmit();
   }
 
-  getClienteNombre(): string {
-    const clienteId = this.reservaForm.get('clienteId')?.value;
-    if (!clienteId) return 'Sin cliente';
-
-    const cliente = this.clientes().find((c) => c.id === Number(clienteId));
-    return cliente ? cliente.fullName : 'No encontrado';
+  getEstadoBadgeClass(estado: string): string {
+    const classes: { [key: string]: string } = {
+      DISPONIBLE: 'px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700',
+      RESERVADO: 'px-3 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-700',
+      VENDIDO: 'px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700',
+      CON_OFERTA: 'px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700',
+    };
+    return classes[estado] || classes['DISPONIBLE'];
   }
 
-  // Método seguro para formatear montos
-  formatMonto(monto: any): string {
-    if (!monto) return '0.00';
-    const montoNum = Number(monto);
-    return isNaN(montoNum) ? '0.00' : montoNum.toFixed(2);
+  formatMonto(monto: number | string | undefined | null): string {
+    if (monto === undefined || monto === null) return '0';
+
+    let numero: number;
+    if (typeof monto === 'string') {
+      numero = parseFloat(monto);
+      if (isNaN(numero)) return '0';
+    } else {
+      numero = monto;
+    }
+
+    if (Number.isInteger(numero)) {
+      return numero.toString();
+    }
+
+    const formatted = numero.toFixed(2);
+
+    if (formatted.endsWith('.00')) {
+      return formatted.slice(0, -3);
+    }
+
+    return formatted;
   }
 }

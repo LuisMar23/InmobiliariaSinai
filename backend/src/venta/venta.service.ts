@@ -85,86 +85,93 @@ export class VentasService {
     return Number(total) > 0 ? (totalPagado / Number(total)) * 100 : 0;
   }
 
+  private async verificarCajaActiva(cajaId: number, prisma: any) {
+    const caja = await prisma.caja.findUnique({
+      where: { id: cajaId },
+    });
+    if (!caja) {
+      throw new BadRequestException(`Caja con ID ${cajaId} no encontrada`);
+    }
+    if (caja.estado !== 'ABIERTA') {
+      throw new BadRequestException(`La caja con ID ${cajaId} no está abierta`);
+    }
+    return caja;
+  }
+
   private async registrarMovimientoCaja(
+    cajaId: number,
     pagoData: any,
     venta: any,
     usuarioId: number,
     ip?: string,
     userAgent?: string,
   ) {
-    const caja = await this.prisma.caja.findFirst({
-      where: { estado: 'ABIERTA' },
-    });
-    if (!caja)
-      throw new BadRequestException(
-        'No hay caja abierta para registrar el movimiento',
-      );
-    const movimiento = await this.prisma.movimientoCaja.create({
-      data: {
-        cajaId: caja.id,
+    return this.prisma.$transaction(async (prisma) => {
+      const caja = await this.verificarCajaActiva(cajaId, prisma);
+      const movimiento = await prisma.movimientoCaja.create({
+        data: {
+          cajaId: cajaId,
+          usuarioId,
+          tipo: 'INGRESO',
+          monto: pagoData.monto,
+          descripcion: `Pago de venta #${venta.id} - Cliente ID: ${venta.clienteId}`,
+          metodoPago: pagoData.metodoPago || 'EFECTIVO',
+          referencia: `Venta-${venta.id}-Pago-${pagoData.pagoId || 'Inicial'}`,
+        },
+      });
+      const nuevoSaldo = Number(caja.saldoActual) + Number(pagoData.monto);
+      await prisma.caja.update({
+        where: { id: cajaId },
+        data: { saldoActual: nuevoSaldo },
+      });
+      await this.crearAuditoria(
         usuarioId,
-        tipo: 'INGRESO',
-        monto: pagoData.monto,
-        descripcion: `Pago de venta #${venta.id} - Cliente ID: ${venta.clienteId}`,
-        metodoPago: pagoData.metodoPago || 'EFECTIVO',
-        referencia: `Venta-${venta.id}-Pago-${pagoData.pagoId || 'Inicial'}`,
-      },
+        'CREAR_MOVIMIENTO_CAJA',
+        'MovimientoCaja',
+        movimiento.id,
+        ip,
+        userAgent,
+      );
+      return movimiento;
     });
-    const nuevoSaldo = Number(caja.saldoActual) + Number(pagoData.monto);
-    await this.prisma.caja.update({
-      where: { id: caja.id },
-      data: { saldoActual: nuevoSaldo },
-    });
-    await this.crearAuditoria(
-      usuarioId,
-      'CREAR_MOVIMIENTO_CAJA',
-      'MovimientoCaja',
-      movimiento.id,
-      ip,
-      userAgent,
-    );
-    return movimiento;
   }
 
   private async revertirMovimientoCaja(
+    cajaId: number,
     pagoData: any,
     venta: any,
     usuarioId: number,
     ip?: string,
     userAgent?: string,
   ) {
-    const caja = await this.prisma.caja.findFirst({
-      where: { estado: 'ABIERTA' },
-    });
-    if (!caja)
-      throw new BadRequestException(
-        'No hay caja abierta para revertir el movimiento',
-      );
-    const movimiento = await this.prisma.movimientoCaja.create({
-      data: {
-        cajaId: caja.id,
+    return this.prisma.$transaction(async (prisma) => {
+      const caja = await this.verificarCajaActiva(cajaId, prisma);
+      const movimiento = await prisma.movimientoCaja.create({
+        data: {
+          cajaId: cajaId,
+          usuarioId,
+          tipo: 'EGRESO',
+          monto: pagoData.monto,
+          descripcion: `Reversión de pago - Venta #${venta.id} - Pago ID: ${pagoData.pagoId}`,
+          metodoPago: pagoData.metodoPago || 'EFECTIVO',
+          referencia: `Venta-${venta.id}-Reversion-${pagoData.pagoId}`,
+        },
+      });
+      const nuevoSaldo = Number(caja.saldoActual) - Number(pagoData.monto);
+      await prisma.caja.update({
+        where: { id: cajaId },
+        data: { saldoActual: nuevoSaldo },
+      });
+      await this.crearAuditoria(
         usuarioId,
-        tipo: 'EGRESO',
-        monto: pagoData.monto,
-        descripcion: `Reversión de pago - Venta #${venta.id} - Pago ID: ${pagoData.pagoId}`,
-        metodoPago: pagoData.metodoPago || 'EFECTIVO',
-        referencia: `Venta-${venta.id}-Reversion-${pagoData.pagoId}`,
-      },
+        'REVERTIR_MOVIMIENTO_CAJA',
+        'MovimientoCaja',
+        movimiento.id,
+        ip,
+        userAgent,
+      );
+      return movimiento;
     });
-    const nuevoSaldo = Number(caja.saldoActual) - Number(pagoData.monto);
-    await this.prisma.caja.update({
-      where: { id: caja.id },
-      data: { saldoActual: nuevoSaldo },
-    });
-    await this.crearAuditoria(
-      usuarioId,
-      'REVERTIR_MOVIMIENTO_CAJA',
-      'MovimientoCaja',
-      movimiento.id,
-      ip,
-      userAgent,
-    );
-    return movimiento;
   }
 
   private async verificarDisponibilidadInmueble(
@@ -295,6 +302,7 @@ export class VentasService {
           throw new BadRequestException(
             'Cliente no encontrado o no tiene rol de CLIENTE',
           );
+        await this.verificarCajaActiva(createVentaDto.cajaId, prisma);
         await this.verificarDisponibilidadInmueble(
           createVentaDto.inmuebleTipo,
           createVentaDto.inmuebleId,
@@ -337,6 +345,7 @@ export class VentasService {
             },
           });
           await this.registrarMovimientoCaja(
+            createVentaDto.cajaId,
             {
               monto: createVentaDto.plan_pago.monto_inicial,
               metodoPago: 'EFECTIVO',
@@ -585,7 +594,6 @@ export class VentasService {
           updateData.estado = updateVentaDto.estado;
         if (updateVentaDto.observaciones !== undefined)
           updateData.observaciones = updateVentaDto.observaciones;
-
         const ventaActualizada = await prisma.venta.update({
           where: { id },
           data: updateData,
@@ -622,179 +630,169 @@ export class VentasService {
     }
   }
 
-  async actualizarPlanPagoCompleto(
-    id: number,
-    planPagoData: any,
+  async actualizarMontoInicialPlanPago(
+    ventaId: number,
+    nuevoMontoInicial: number,
+    cajaId: number,
     usuarioId: number,
     ip?: string,
     userAgent?: string,
   ) {
     try {
       return await this.prisma.$transaction(async (prisma) => {
-        const ventaExistente = await prisma.venta.findUnique({
-          where: { id },
+        const venta = await prisma.venta.findUnique({
+          where: { id: ventaId },
           include: {
             planPago: {
               include: {
                 pagos: {
-                  orderBy: {
-                    fecha_pago: 'asc',
-                  },
+                  orderBy: { fecha_pago: 'asc' },
                 },
               },
             },
           },
         });
-        if (!ventaExistente)
-          throw new NotFoundException(`Venta con ID ${id} no encontrada`);
-        const usuario = await this.verificarPermisosUsuario(usuarioId, prisma);
-        if (usuario.role === 'ASESOR' && ventaExistente.asesorId !== usuarioId)
-          throw new ForbiddenException(
-            'Solo puedes actualizar tus propias ventas',
-          );
-
-        if (!ventaExistente.planPago) {
+        if (!venta) {
+          throw new NotFoundException(`Venta con ID ${ventaId} no encontrada`);
+        }
+        if (!venta.planPago) {
           throw new BadRequestException(
             'La venta no tiene un plan de pago asociado',
           );
         }
-
-        const montoInicialAnterior = Number(
-          ventaExistente.planPago.monto_inicial,
-        );
-        const montoInicialNuevo = Number(planPagoData.monto_inicial);
-        const diferenciaMontoInicial = montoInicialNuevo - montoInicialAnterior;
-
-        // Actualizar precio final de la venta
-        await prisma.venta.update({
-          where: { id },
-          data: { precioFinal: Number(planPagoData.precioFinal) },
-        });
-
-        // Actualizar plan de pago
-        const fechaVencimiento = this.calcularFechaVencimiento(
-          new Date(planPagoData.fecha_inicio),
-          Number(planPagoData.plazo),
-          planPagoData.periodicidad as PeriodicidadPago,
-        );
-
-        await prisma.planPago.update({
-          where: { id_plan_pago: ventaExistente.planPago.id_plan_pago },
-          data: {
-            total: Number(planPagoData.precioFinal),
-            monto_inicial: montoInicialNuevo,
-            plazo: Number(planPagoData.plazo),
-            periodicidad: planPagoData.periodicidad,
-            fecha_inicio: new Date(planPagoData.fecha_inicio),
-            fecha_vencimiento: fechaVencimiento,
-          },
-        });
-
-        // Buscar el pago inicial
-        const pagoInicial = await prisma.pagoPlanPago.findFirst({
+        const usuario = await this.verificarPermisosUsuario(usuarioId, prisma);
+        if (usuario.role === 'ASESOR' && venta.asesorId !== usuarioId) {
+          throw new ForbiddenException(
+            'Solo puedes actualizar tus propias ventas',
+          );
+        }
+        await this.verificarCajaActiva(cajaId, prisma);
+        const montoInicialActual = Number(venta.planPago.monto_inicial);
+        const diferencia = nuevoMontoInicial - montoInicialActual;
+        const pagoInicialExistente = await prisma.pagoPlanPago.findFirst({
           where: {
-            plan_pago_id: ventaExistente.planPago.id_plan_pago,
+            plan_pago_id: venta.planPago.id_plan_pago,
             observacion: 'Pago inicial',
           },
         });
-
-        if (pagoInicial) {
-          // Si existe el pago inicial, actualizarlo
-          if (diferenciaMontoInicial !== 0) {
-            // Revertir movimiento de caja anterior
-            await this.revertirMovimientoCaja(
-              { monto: montoInicialAnterior, pagoId: pagoInicial.id_pago_plan },
-              ventaExistente,
+        if (diferencia > 0) {
+          if (pagoInicialExistente) {
+            await prisma.pagoPlanPago.update({
+              where: { id_pago_plan: pagoInicialExistente.id_pago_plan },
+              data: { monto: nuevoMontoInicial },
+            });
+            await this.registrarMovimientoCaja(
+              cajaId,
+              {
+                monto: diferencia,
+                metodoPago: 'EFECTIVO',
+                pagoId: pagoInicialExistente.id_pago_plan,
+              },
+              venta,
               usuarioId,
               ip,
               userAgent,
             );
-
-            // Actualizar el pago inicial
-            await prisma.pagoPlanPago.update({
-              where: { id_pago_plan: pagoInicial.id_pago_plan },
-              data: { monto: montoInicialNuevo },
+          } else {
+            const nuevoPagoInicial = await prisma.pagoPlanPago.create({
+              data: {
+                plan_pago_id: venta.planPago.id_plan_pago,
+                monto: nuevoMontoInicial,
+                fecha_pago: new Date(),
+                observacion: 'Pago inicial',
+              },
             });
-
-            // Registrar nuevo movimiento de caja
             await this.registrarMovimientoCaja(
-              { monto: montoInicialNuevo, pagoId: pagoInicial.id_pago_plan },
-              ventaExistente,
+              cajaId,
+              {
+                monto: nuevoMontoInicial,
+                metodoPago: 'EFECTIVO',
+                pagoId: nuevoPagoInicial.id_pago_plan,
+              },
+              venta,
               usuarioId,
               ip,
               userAgent,
             );
           }
-        } else if (montoInicialNuevo > 0) {
-          // Si no existe pago inicial pero se estableció un monto inicial, crearlo
-          const nuevoPagoInicial = await prisma.pagoPlanPago.create({
-            data: {
-              plan_pago_id: ventaExistente.planPago.id_plan_pago,
-              monto: montoInicialNuevo,
-              fecha_pago: new Date(),
-              observacion: 'Pago inicial',
-            },
-          });
-
-          await this.registrarMovimientoCaja(
-            {
-              monto: montoInicialNuevo,
-              metodoPago: 'EFECTIVO',
-              pagoId: nuevoPagoInicial.id_pago_plan,
-            },
-            ventaExistente,
-            usuarioId,
-            ip,
-            userAgent,
-          );
+        } else if (diferencia < 0) {
+          if (pagoInicialExistente) {
+            const totalOtrosPagos = this.calcularTotalPagado(
+              venta.planPago.pagos.filter(
+                (p) => p.id_pago_plan !== pagoInicialExistente.id_pago_plan,
+              ),
+            );
+            if (nuevoMontoInicial < totalOtrosPagos) {
+              throw new BadRequestException(
+                `El nuevo monto inicial no puede ser menor al total de pagos adicionales realizados (Bs. ${totalOtrosPagos})`,
+              );
+            }
+            await prisma.pagoPlanPago.update({
+              where: { id_pago_plan: pagoInicialExistente.id_pago_plan },
+              data: { monto: nuevoMontoInicial },
+            });
+            await this.revertirMovimientoCaja(
+              cajaId,
+              {
+                monto: Math.abs(diferencia),
+                pagoId: pagoInicialExistente.id_pago_plan,
+              },
+              venta,
+              usuarioId,
+              ip,
+              userAgent,
+            );
+          }
         }
-
-        // Actualizar estados según el nuevo total pagado
-        await this.actualizarEstadoPlan(ventaExistente.planPago.id_plan_pago);
-
+        await prisma.planPago.update({
+          where: { id_plan_pago: venta.planPago.id_plan_pago },
+          data: {
+            monto_inicial: nuevoMontoInicial,
+            actualizado_en: new Date(),
+          },
+        });
+        await this.actualizarEstadoPlan(venta.planPago.id_plan_pago);
         await this.crearAuditoria(
           usuarioId,
-          'ACTUALIZAR_PLAN_PAGO',
+          'ACTUALIZAR_MONTO_INICIAL_PLAN_PAGO',
           'PlanPago',
-          ventaExistente.planPago.id_plan_pago,
+          venta.planPago.id_plan_pago,
           ip,
           userAgent,
         );
-
         const ventaActualizada = await prisma.venta.findUnique({
-          where: { id },
+          where: { id: ventaId },
           include: {
-            cliente: true,
-            asesor: true,
-            lote: { include: { urbanizacion: true } },
             planPago: {
               include: { pagos: { orderBy: { fecha_pago: 'asc' } } },
             },
-            archivos: true,
           },
         });
-
         return {
           success: true,
-          message: 'Plan de pago actualizado correctamente',
+          message: 'Monto inicial actualizado correctamente',
           data: { venta: this.agregarCalculosVenta(ventaActualizada) },
         };
       });
     } catch (error) {
-      console.error('Error en actualizarPlanPagoCompleto:', error);
       if (
         error instanceof NotFoundException ||
         error instanceof BadRequestException ||
         error instanceof ForbiddenException
-      )
+      ) {
         throw error;
-      throw new InternalServerErrorException(
-        'Error interno del servidor al actualizar el plan de pago',
-      );
+      }
+      throw new InternalServerErrorException('Error interno del servidor');
     }
   }
 
-  async remove(id: number, usuarioId: number, ip?: string, userAgent?: string) {
+  async remove(
+    id: number,
+    cajaId: number,
+    usuarioId: number,
+    ip?: string,
+    userAgent?: string,
+  ) {
     try {
       return await this.prisma.$transaction(async (prisma) => {
         const venta = await prisma.venta.findUnique({
@@ -816,30 +814,18 @@ export class VentasService {
           throw new BadRequestException(
             'No se puede eliminar la venta porque tiene archivos o ingresos asociados',
           );
+        await this.verificarCajaActiva(cajaId, prisma);
         if (venta.planPago && venta.planPago.pagos.length > 0) {
           const totalPagado = this.calcularTotalPagado(venta.planPago.pagos);
           if (totalPagado > 0) {
-            const caja = await prisma.caja.findFirst({
-              where: { estado: 'ABIERTA' },
-            });
-            if (caja) {
-              await prisma.movimientoCaja.create({
-                data: {
-                  cajaId: caja.id,
-                  usuarioId,
-                  tipo: 'EGRESO',
-                  monto: totalPagado,
-                  descripcion: `Reversión por eliminación de venta #${venta.id}`,
-                  metodoPago: 'EFECTIVO',
-                  referencia: `Venta-${venta.id}-Eliminacion`,
-                },
-              });
-              const nuevoSaldo = Number(caja.saldoActual) - totalPagado;
-              await prisma.caja.update({
-                where: { id: caja.id },
-                data: { saldoActual: nuevoSaldo },
-              });
-            }
+            await this.revertirMovimientoCaja(
+              cajaId,
+              { monto: totalPagado, pagoId: 0 },
+              venta,
+              usuarioId,
+              ip,
+              userAgent,
+            );
           }
           await prisma.pagoPlanPago.deleteMany({
             where: { plan_pago_id: venta.planPago.id_plan_pago },
@@ -904,6 +890,7 @@ export class VentasService {
           throw new BadRequestException(
             `El plan de pago no está activo. Estado actual: ${planPago.estado}`,
           );
+        await this.verificarCajaActiva(registrarPagoDto.cajaId, prisma);
         const totalPagado = this.calcularTotalPagado(planPago.pagos);
         const saldoPendiente = this.calcularSaldoPendiente(
           Number(planPago.total),
@@ -929,6 +916,7 @@ export class VentasService {
           pagoData.metodoPago = registrarPagoDto.metodoPago;
         const pago = await prisma.pagoPlanPago.create({ data: pagoData });
         await this.registrarMovimientoCaja(
+          registrarPagoDto.cajaId,
           {
             monto: registrarPagoDto.monto,
             metodoPago: registrarPagoDto.metodoPago || 'EFECTIVO',
@@ -981,7 +969,6 @@ export class VentasService {
         };
       });
     } catch (error) {
-      console.error('Error en crearPagoPlan:', error);
       if (
         error instanceof NotFoundException ||
         error instanceof BadRequestException ||
@@ -1110,14 +1097,16 @@ export class VentasService {
             );
           diferenciaMonto = Number(updatePagoPlanDto.monto) - montoAnterior;
         }
-        if (diferenciaMonto !== 0)
+        if (diferenciaMonto !== 0 && updatePagoPlanDto.cajaId) {
           await this.revertirMovimientoCaja(
+            updatePagoPlanDto.cajaId,
             { monto: montoAnterior, pagoId: pagoId },
             pagoExistente.planPago.venta,
             usuarioId,
             ip,
             userAgent,
           );
+        }
         const updateData: any = {};
         if (updatePagoPlanDto.monto !== undefined)
           updateData.monto = updatePagoPlanDto.monto;
@@ -1131,8 +1120,9 @@ export class VentasService {
           where: { id_pago_plan: pagoId },
           data: updateData,
         });
-        if (diferenciaMonto !== 0)
+        if (diferenciaMonto !== 0 && updatePagoPlanDto.cajaId) {
           await this.registrarMovimientoCaja(
+            updatePagoPlanDto.cajaId,
             {
               monto: Number(updatePagoPlanDto.monto),
               pagoId: pagoId,
@@ -1143,6 +1133,7 @@ export class VentasService {
             ip,
             userAgent,
           );
+        }
         await this.actualizarEstadoPlan(pagoExistente.planPago.id_plan_pago);
         await this.crearAuditoria(
           usuarioId,
@@ -1170,6 +1161,7 @@ export class VentasService {
 
   async eliminarPagoPlan(
     pagoId: number,
+    cajaId: number,
     usuarioId: number,
     ip?: string,
     userAgent?: string,
@@ -1201,17 +1193,15 @@ export class VentasService {
           throw new BadRequestException(
             'No se puede eliminar un pago de un plan ya pagado',
           );
-        const caja = await prisma.caja.findFirst({
-          where: { estado: 'ABIERTA' },
-        });
-        if (caja)
-          await this.revertirMovimientoCaja(
-            { monto: pago.monto, pagoId: pagoId },
-            pago.planPago.venta,
-            usuarioId,
-            ip,
-            userAgent,
-          );
+        await this.verificarCajaActiva(cajaId, prisma);
+        await this.revertirMovimientoCaja(
+          cajaId,
+          { monto: pago.monto, pagoId: pagoId },
+          pago.planPago.venta,
+          usuarioId,
+          ip,
+          userAgent,
+        );
         await prisma.pagoPlanPago.delete({ where: { id_pago_plan: pagoId } });
         await this.actualizarEstadoPlanConMorosidad(pago.planPago.id_plan_pago);
         await this.crearAuditoria(
@@ -1532,6 +1522,31 @@ export class VentasService {
         this.agregarCalculosVenta(venta),
       );
       return { success: true, data: { ventas: ventasConCalculos } };
+    } catch (error) {
+      throw new InternalServerErrorException('Error interno del servidor');
+    }
+  }
+
+  async obtenerCajasActivas() {
+    try {
+      const cajas = await this.prisma.caja.findMany({
+        where: { estado: 'ABIERTA' },
+        include: {
+          usuarioApertura: {
+            select: {
+              id: true,
+              fullName: true,
+              username: true,
+              role: true,
+            },
+          },
+        },
+        orderBy: { nombre: 'asc' },
+      });
+      return {
+        success: true,
+        data: { cajas },
+      };
     } catch (error) {
       throw new InternalServerErrorException('Error interno del servidor');
     }

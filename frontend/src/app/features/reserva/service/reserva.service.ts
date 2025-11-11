@@ -1,9 +1,11 @@
+// reserva.service.ts
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { environment } from '../../../../environments/environment';
 import { ReservaDto } from '../../../core/interfaces/reserva.interface';
+import { AuthService } from '../../../components/services/auth.service';
 
 interface ApiResponse<T> {
   success: boolean;
@@ -17,7 +19,7 @@ interface ApiResponse<T> {
 export class ReservaService {
   apiUrl = `${environment.apiUrl}/reservas`;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient, private authService: AuthService) {}
 
   getAll(clienteId?: number, estado?: string): Observable<ReservaDto[]> {
     let url = this.apiUrl;
@@ -28,7 +30,6 @@ export class ReservaService {
 
     return this.http.get<ApiResponse<ReservaDto[]>>(url).pipe(
       map((response) => {
-        console.log('Respuesta de la API:', response);
         return response.data;
       })
     );

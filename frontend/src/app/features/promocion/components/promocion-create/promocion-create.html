@@ -1,4 +1,3 @@
-<!-- src/app/modules/promocion/components/promocion-create/promocion-create.html -->
 <div class="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-emerald-50 py-4 px-2 sm:px-4 lg:px-8">
     <div class="max-w-full mx-auto">
         <div class="bg-emerald-500 rounded-t-2xl shadow-lg p-4 sm:p-6">
@@ -10,8 +9,8 @@
                     </svg>
                     <div>
                         <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold text-white">Nueva Promoción</h1>
-                        <p class="text-emerald-100 text-xs sm:text-sm mt-1">Complete los datos para registrar una nueva
-                            promoción</p>
+                        <p class="text-emerald-100 text-xs sm:text-sm mt-1">Complete los datos básicos de la promoción.
+                            Podrá asignar lotes después de crearla.</p>
                     </div>
                 </div>
                 <button [routerLink]="['/promociones/lista']"
@@ -33,7 +32,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
-                        Información de la Promoción
+                        Información Básica de la Promoción
                     </h2>
                     <div class="bg-white border-2 border-gray-200 rounded-xl p-4 sm:p-6">
                         <div class="space-y-4">
@@ -51,40 +50,24 @@
                                 }
                             </div>
 
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <!-- Descuento -->
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                                        Descuento (%) <span class="text-red-500">*</span>
-                                    </label>
-                                    <div class="relative">
-                                        <span
-                                            class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">%</span>
-                                        <input type="number" step="0.01" formControlName="descuento"
-                                            class="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-base"
-                                            placeholder="0.00" min="0.01" max="100"
-                                            [class.border-red-500]="promocionForm.get('descuento')?.invalid && promocionForm.get('descuento')?.touched" />
-                                    </div>
-                                    @if (promocionForm.get('descuento')?.invalid &&
-                                    promocionForm.get('descuento')?.touched)
-                                    {
-                                    <p class="mt-1 text-xs text-red-600">El descuento debe estar entre 0.01 y 100</p>
-                                    }
+                            <!-- Descuento -->
+                            <div class="max-w-xs">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Descuento (%) <span class="text-red-500">*</span>
+                                </label>
+                                <div class="relative">
+                                    <span
+                                        class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">%</span>
+                                    <input type="number" step="0.01" formControlName="descuento"
+                                        class="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-base"
+                                        placeholder="0.00" min="0.01" max="100"
+                                        [class.border-red-500]="promocionForm.get('descuento')?.invalid && promocionForm.get('descuento')?.touched" />
                                 </div>
-
-                                <!-- Urbanización -->
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                                        Urbanización
-                                    </label>
-                                    <select formControlName="urbanizacionId"
-                                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-base">
-                                        <option value="">Seleccione urbanización...</option>
-                                        @for (urbanizacion of urbanizaciones(); track urbanizacion.id) {
-                                        <option [value]="urbanizacion.id">{{ urbanizacion.nombre }}</option>
-                                        }
-                                    </select>
-                                </div>
+                                @if (promocionForm.get('descuento')?.invalid &&
+                                promocionForm.get('descuento')?.touched)
+                                {
+                                <p class="mt-1 text-xs text-red-600">El descuento debe estar entre 0.01 y 100</p>
+                                }
                             </div>
 
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -129,73 +112,6 @@
                         </div>
                     </div>
                 </div>
-
-                <!-- Selección de Lotes -->
-                <div class="mb-8">
-                    <h2 class="text-lg sm:text-xl font-semibold text-gray-900 mb-6 flex items-center gap-2">
-                        <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                        </svg>
-                        Selección de Lotes
-                    </h2>
-                    <div class="bg-white border-2 border-gray-200 rounded-xl p-4 sm:p-6">
-                        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
-                            <h3 class="text-lg font-semibold text-gray-900">Lotes Disponibles</h3>
-                            <div class="flex flex-col xs:flex-row gap-2">
-                                <button type="button" (click)="seleccionarTodosLotes()"
-                                    class="px-4 py-2 bg-emerald-500 text-white rounded-lg text-sm font-medium hover:bg-emerald-600 transition-colors text-center">
-                                    Seleccionar Todos
-                                </button>
-                                <button type="button" (click)="deseleccionarTodosLotes()"
-                                    class="px-4 py-2 bg-gray-500 text-white rounded-lg text-sm font-medium hover:bg-gray-600 transition-colors text-center">
-                                    Deseleccionar Todos
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-96 overflow-y-auto p-2">
-                            @for (lote of lotesDisponibles(); track lote.id) {
-                            <div class="border border-gray-200 rounded-lg p-3 hover:bg-gray-50 transition-colors cursor-pointer"
-                                [class.bg-emerald-50]="estaLoteSeleccionado(lote.id)"
-                                [class.border-emerald-500]="estaLoteSeleccionado(lote.id)"
-                                (click)="toggleLoteSeleccionado(lote.id)">
-                                <div class="flex items-start gap-3">
-                                    <div class="flex-shrink-0 mt-1">
-                                        <input type="checkbox" [checked]="estaLoteSeleccionado(lote.id)"
-                                            class="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500" />
-                                    </div>
-                                    <div class="flex-1 min-w-0">
-                                        <h4 class="font-medium text-gray-900 truncate">{{ lote.numeroLote }}</h4>
-                                        <p class="text-sm text-gray-600 truncate">{{ lote.urbanizacion?.nombre }}</p>
-                                        <div class="flex justify-between items-center mt-1">
-                                            <p class="text-sm font-semibold text-emerald-600">${{ lote.precioBase |
-                                                number:'1.2-2' }}</p>
-                                            <p class="text-xs text-gray-500">{{ lote.superficieM2 }} m²</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            }
-                            @if (lotesDisponibles().length === 0) {
-                            <div class="col-span-full text-center py-8 text-gray-500">
-                                No hay lotes disponibles
-                            </div>
-                            }
-                        </div>
-
-                        <div class="mt-4 p-3 bg-blue-50 rounded-lg">
-                            <p class="text-sm text-blue-700 font-medium">
-                                <strong>{{ lotesSeleccionados().length }}</strong> lotes seleccionados
-                            </p>
-                            <p class="text-xs text-blue-600 mt-1">
-                                Puede seleccionar lotes individuales, asignar una urbanización completa o dejar vacío
-                                para crear la promoción sin asignar
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
                 <div class="flex flex-col-reverse sm:flex-row gap-3 sm:gap-4 justify-end pt-6 border-t border-gray-200">
                     <button type="button" (click)="router.navigate(['/promociones/lista'])"
                         class="flex items-center justify-center gap-2 bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg shadow-md transition-all duration-200 font-semibold w-full sm:w-auto text-center">
