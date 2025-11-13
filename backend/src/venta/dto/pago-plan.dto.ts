@@ -34,9 +34,4 @@ export class UpdatePagoPlanDto {
   @IsOptional()
   @IsEnum(MetodoPago)
   metodoPago?: MetodoPago;
-
-  @IsOptional()
-  @IsInt()
-  @IsPositive()
-  cajaId?: number;
 }

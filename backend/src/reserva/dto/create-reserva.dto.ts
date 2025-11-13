@@ -29,6 +29,12 @@ export enum UserRole {
   USUARIO = 'USUARIO',
 }
 
+export enum MetodoPago {
+  EFECTIVO = 'EFECTIVO',
+  TRANSFERENCIA = 'TRANSFERENCIA',
+  TARJETA = 'TARJETA',
+}
+
 export class CreateReservaDto {
   @IsInt()
   @Min(1)
@@ -51,6 +57,14 @@ export class CreateReservaDto {
 
   @IsDateString()
   fechaVencimiento: string;
+
+  @IsInt()
+  @Min(1)
+  cajaId: number;
+
+  @IsOptional()
+  @IsEnum(MetodoPago)
+  metodoPago?: MetodoPago;
 
   @IsOptional()
   @IsEnum(EstadoReserva)

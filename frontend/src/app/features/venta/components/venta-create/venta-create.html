@@ -27,7 +27,6 @@
         <div class="bg-white rounded-b-2xl shadow-xl p-4 sm:p-6 lg:p-8">
             <form [formGroup]="ventaForm" (submit)="handleFormSubmit($event)">
 
-                <!-- Información de la Venta -->
                 <div class="mb-8">
                     <h2 class="text-lg sm:text-xl font-semibold text-gray-900 mb-6 flex items-center gap-2">
                         <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -38,7 +37,6 @@
                     </h2>
                     <div class="bg-white border-2 border-gray-200 rounded-xl p-4 sm:p-6">
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                            <!-- Cliente con buscador -->
                             <div class="relative">
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     Cliente <span class="text-red-500">*</span>
@@ -59,7 +57,6 @@
                                     </div>
                                 </div>
 
-                                <!-- Dropdown de clientes -->
                                 @if (showClientesDropdown()) {
                                 <div
                                     class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
@@ -73,9 +70,7 @@
                                     </div>
                                     }
                                     @if (filteredClientes().length === 0) {
-                                    <div class="px-4 py-3 text-gray-500 text-center">
-                                        No se encontraron clientes
-                                    </div>
+                                    <div class="px-4 py-3 text-gray-500 text-center">No se encontraron clientes</div>
                                     }
                                 </div>
                                 }
@@ -85,7 +80,6 @@
                                 }
                             </div>
 
-                            <!-- Lote con buscador -->
                             <div class="relative">
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     Lote <span class="text-red-500">*</span>
@@ -106,7 +100,6 @@
                                     </div>
                                 </div>
 
-                                <!-- Dropdown de lotes -->
                                 @if (showLotesDropdown()) {
                                 <div
                                     class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
@@ -120,9 +113,7 @@
                                     </div>
                                     }
                                     @if (filteredLotes().length === 0) {
-                                    <div class="px-4 py-3 text-gray-500 text-center">
-                                        No se encontraron lotes
-                                    </div>
+                                    <div class="px-4 py-3 text-gray-500 text-center">No se encontraron lotes</div>
                                     }
                                 </div>
                                 }
@@ -132,7 +123,6 @@
                                 }
                             </div>
 
-                            <!-- Caja con buscador -->
                             <div class="relative">
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     Caja <span class="text-red-500">*</span>
@@ -153,7 +143,6 @@
                                     </div>
                                 </div>
 
-                                <!-- Dropdown de cajas -->
                                 @if (showCajasDropdown()) {
                                 <div
                                     class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
@@ -161,14 +150,12 @@
                                     <div (click)="selectCaja(caja)"
                                         class="px-4 py-3 hover:bg-emerald-50 cursor-pointer border-b border-gray-100 last:border-b-0">
                                         <div class="font-medium text-gray-900">{{ caja.nombre }}</div>
-                                        <div class="text-sm text-gray-600">{{ caja.usuarioApertura?.fullName }} - ${{
-                                            caja.saldoActual | number:'1.2-2' }}</div>
+                                        <div class="text-sm text-gray-600">Saldo: ${{ formatNumber(caja.saldoActual) }}
+                                            - {{ caja.usuarioApertura?.fullName }}</div>
                                     </div>
                                     }
                                     @if (filteredCajas().length === 0) {
-                                    <div class="px-4 py-3 text-gray-500 text-center">
-                                        No se encontraron cajas activas
-                                    </div>
+                                    <div class="px-4 py-3 text-gray-500 text-center">No se encontraron cajas</div>
                                     }
                                 </div>
                                 }
@@ -207,26 +194,15 @@
                     </div>
                 </div>
 
-                <!-- Resto del código del plan de pago se mantiene igual -->
-                <!-- Plan de Pagos -->
                 <div class="mb-8">
-                    <div class="flex items-center justify-between mb-6">
-                        <h2 class="text-lg sm:text-xl font-semibold text-gray-900 flex items-center gap-2">
-                            <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                            </svg>
-                            Plan de Pagos
-                        </h2>
-                        <button type="button" (click)="togglePlanPago()"
-                            [class]="mostrarPlanPago() ? 
-                'flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-colors' :
-                'flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg transition-colors'">
-                            {{ mostrarPlanPago() ? 'Quitar Plan de Pago' : 'Agregar Plan de Pago' }}
-                        </button>
-                    </div>
+                    <h2 class="text-lg sm:text-xl font-semibold text-gray-900 mb-6 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                        </svg>
+                        Plan de Pagos
+                    </h2>
 
-                    @if (mostrarPlanPago()) {
                     <div class="bg-white border-2 border-gray-200 rounded-xl p-4 sm:p-6">
                         <form [formGroup]="planPagoForm">
                             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
@@ -301,7 +277,6 @@
                             </div>
                         </form>
 
-                        <!-- Resumen del Plan de Pago -->
                         <div class="mt-6 p-4 bg-emerald-50 rounded-lg border border-emerald-200">
                             <h4 class="text-md font-semibold text-emerald-800 mb-3">Resumen del Plan de Pago</h4>
                             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
@@ -323,17 +298,14 @@
                             </div>
                             @if (planPagoForm.get('plazo')?.value && planPagoForm.get('periodicidad')?.value) {
                             <div class="mt-3 text-center">
-                                <p class="text-sm text-gray-600">
-                                    Plazo: {{ planPagoForm.get('plazo')?.value }} {{ getPeriodicidadTexto() }}
-                                </p>
+                                <p class="text-sm text-gray-600">Plazo: {{ planPagoForm.get('plazo')?.value }} {{
+                                    getPeriodicidadTexto() }}</p>
                             </div>
                             }
                         </div>
                     </div>
-                    }
                 </div>
 
-                <!-- Botones -->
                 <div class="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 pt-6 border-t border-gray-200">
                     <button type="button" (click)="router.navigate(['/ventas/lista'])"
                         class="flex items-center justify-center gap-2 bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg shadow-md transition-all duration-200 font-semibold w-full sm:w-auto">
@@ -343,8 +315,7 @@
                         </svg>
                         Cancelar
                     </button>
-                    <button type="submit"
-                        [disabled]="ventaForm.invalid || (mostrarPlanPago() && planPagoForm.invalid) || enviando()"
+                    <button type="submit" [disabled]="ventaForm.invalid || planPagoForm.invalid || enviando()"
                         class="flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white px-8 py-3 rounded-lg shadow-md transition-all duration-200 font-semibold w-full sm:w-auto disabled:bg-gray-400 disabled:cursor-not-allowed">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />

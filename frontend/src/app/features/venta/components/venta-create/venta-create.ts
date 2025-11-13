@@ -23,7 +23,6 @@ export class VentaCreate implements OnInit {
   clientes = signal<UserDto[]>([]);
   lotes = signal<LoteDto[]>([]);
   cajas = signal<Caja[]>([]);
-  mostrarPlanPago = signal<boolean>(true);
   fechaVencimientoCalculada = signal<string>('');
 
   searchCliente = signal<string>('');
@@ -66,14 +65,12 @@ export class VentaCreate implements OnInit {
   crearPlanPagoForm(): FormGroup {
     const hoy = new Date();
     const fechaHoy = hoy.toISOString().split('T')[0];
-    const fechaInicio = new Date();
-    fechaInicio.setDate(fechaInicio.getDate() + 1);
 
     return this.fb.group({
       monto_inicial: [0, [Validators.required, Validators.min(0)]],
       plazo: ['', [Validators.required, Validators.min(1)]],
       periodicidad: ['', Validators.required],
-      fecha_inicio: [fechaInicio.toISOString().split('T')[0], Validators.required],
+      fecha_inicio: [fechaHoy, Validators.required],
     });
   }
 
@@ -110,11 +107,9 @@ export class VentaCreate implements OnInit {
           clientes = response.data.clientes || response.data.users || response.data || [];
         }
 
-        console.log('Clientes cargados:', clientes);
         this.clientes.set(clientes);
       },
       error: (err: any) => {
-        console.error('Error cargando clientes:', err);
         this.notificationService.showError('No se pudieron cargar los clientes');
       },
     });
@@ -123,14 +118,12 @@ export class VentaCreate implements OnInit {
   cargarLotes(): void {
     this.loteSvc.getAll().subscribe({
       next: (lotes: LoteDto[]) => {
-        console.log('Lotes cargados:', lotes);
         const lotesDisponibles = lotes.filter(
           (lote) => lote.estado === 'DISPONIBLE' || lote.estado === 'CON_OFERTA'
         );
         this.lotes.set(lotesDisponibles);
       },
       error: (err: any) => {
-        console.error('Error cargando lotes:', err);
         this.notificationService.showError('No se pudieron cargar los lotes');
       },
     });
@@ -139,11 +132,9 @@ export class VentaCreate implements OnInit {
   cargarCajasActivas(): void {
     this.ventaSvc.obtenerCajasActivas().subscribe({
       next: (cajas: Caja[]) => {
-        console.log('Cajas activas cargadas:', cajas);
         this.cajas.set(cajas);
       },
       error: (err: any) => {
-        console.error('Error cargando cajas activas:', err);
         this.notificationService.showError('No se pudieron cargar las cajas activas');
       },
     });
@@ -185,7 +176,6 @@ export class VentaCreate implements OnInit {
   }
 
   selectCliente(cliente: UserDto) {
-    console.log('Cliente seleccionado:', cliente);
     this.ventaForm.patchValue({
       clienteId: cliente.id.toString(),
     });
@@ -194,7 +184,6 @@ export class VentaCreate implements OnInit {
   }
 
   selectLote(lote: LoteDto) {
-    console.log('Lote seleccionado:', lote);
     this.ventaForm.patchValue({
       inmuebleId: lote.id.toString(),
       precioFinal: lote.precioBase,
@@ -204,7 +193,6 @@ export class VentaCreate implements OnInit {
   }
 
   selectCaja(caja: Caja) {
-    console.log('Caja seleccionada:', caja);
     this.ventaForm.patchValue({
       cajaId: caja.id.toString(),
     });
@@ -270,27 +258,15 @@ export class VentaCreate implements OnInit {
     }, 200);
   }
 
-  togglePlanPago(): void {
-    this.mostrarPlanPago.set(!this.mostrarPlanPago());
-    if (this.mostrarPlanPago()) {
-      this.onPrecioFinalChange();
-      this.calcularFechaVencimiento();
-    }
-  }
-
   onPrecioFinalChange(): void {
-    if (this.mostrarPlanPago()) {
-      const precioFinal = this.ventaForm.get('precioFinal')?.value || 0;
-      const montoInicial = this.planPagoForm.get('monto_inicial')?.value || 0;
-      if (montoInicial > precioFinal) {
-        this.planPagoForm.get('monto_inicial')?.setValue(precioFinal);
-      }
+    const precioFinal = this.ventaForm.get('precioFinal')?.value || 0;
+    const montoInicial = this.planPagoForm.get('monto_inicial')?.value || 0;
+    if (montoInicial > precioFinal) {
+      this.planPagoForm.get('monto_inicial')?.setValue(precioFinal);
     }
   }
 
   calcularFechaVencimiento(): void {
-    if (!this.mostrarPlanPago()) return;
-
     const fechaInicio = this.planPagoForm.get('fecha_inicio')?.value;
     const plazo = this.planPagoForm.get('plazo')?.value;
     const periodicidad = this.planPagoForm.get('periodicidad')?.value;
@@ -319,7 +295,6 @@ export class VentaCreate implements OnInit {
   }
 
   getSaldoFinanciar(): number {
-    if (!this.mostrarPlanPago()) return 0;
     const precioFinal = this.ventaForm.get('precioFinal')?.value || 0;
     const montoInicial = this.planPagoForm.get('monto_inicial')?.value || 0;
     return Math.max(0, precioFinal - montoInicial);
@@ -332,7 +307,7 @@ export class VentaCreate implements OnInit {
       return;
     }
 
-    if (this.mostrarPlanPago() && this.planPagoForm.invalid) {
+    if (this.planPagoForm.invalid) {
       this.planPagoForm.markAllAsTouched();
       this.notificationService.showError(
         'Complete todos los campos del plan de pago correctamente.'
@@ -359,45 +334,17 @@ export class VentaCreate implements OnInit {
       cajaId: Number(cajaId),
       estado: this.ventaForm.value.estado,
       observaciones: this.ventaForm.value.observaciones,
-    };
-
-    if (this.mostrarPlanPago()) {
-      const precioFinal = this.ventaForm.get('precioFinal')?.value;
-      const montoInicial = this.planPagoForm.get('monto_inicial')?.value;
-
-      if (montoInicial > precioFinal) {
-        this.notificationService.showError(
-          'El monto inicial no puede ser mayor al precio final de la venta'
-        );
-        this.enviando.set(false);
-        return;
-      }
-
-      ventaData.plan_pago = {
+      plan_pago: {
         monto_inicial: Number(this.planPagoForm.value.monto_inicial),
         plazo: Number(this.planPagoForm.value.plazo),
         periodicidad: this.planPagoForm.value.periodicidad,
         fecha_inicio: this.planPagoForm.value.fecha_inicio,
-      };
-    } else {
-      const hoy = new Date();
-      const fechaHoy = hoy.toISOString().split('T')[0];
-
-      ventaData.plan_pago = {
-        monto_inicial: 0,
-        plazo: 1,
-        periodicidad: 'MESES',
-        fecha_inicio: fechaHoy,
-      };
-    }
-
-    console.log('Enviando datos de venta:', ventaData);
+      },
+    };
 
     this.ventaSvc.create(ventaData).subscribe({
       next: (response: any) => {
         this.enviando.set(false);
-        console.log('Respuesta del servidor:', response);
-
         if (response.success) {
           this.notificationService.showSuccess('Venta creada exitosamente!');
           setTimeout(() => {
@@ -409,8 +356,6 @@ export class VentaCreate implements OnInit {
       },
       error: (err: any) => {
         this.enviando.set(false);
-        console.error('Error completo:', err);
-
         let errorMessage = 'Error al crear la venta';
         if (err.error?.message) {
           errorMessage = err.error.message;
@@ -421,7 +366,6 @@ export class VentaCreate implements OnInit {
         } else if (err.status === 404) {
           errorMessage = 'Cliente, lote o caja no encontrado';
         }
-
         this.notificationService.showError(errorMessage);
       },
     });
@@ -444,13 +388,5 @@ export class VentaCreate implements OnInit {
       default:
         return '';
     }
-  }
-
-  debugForm(): void {
-    console.log('Venta Form:', this.ventaForm.value);
-    console.log('Plan Pago Form:', this.planPagoForm.value);
-    console.log('Clientes:', this.clientes());
-    console.log('Lotes:', this.lotes());
-    console.log('Cajas:', this.cajas());
   }
 }

@@ -1,4 +1,3 @@
-// reserva-create.component.ts
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
@@ -11,6 +10,13 @@ import { ReservaService } from '../../service/reserva.service';
 import { UserService } from '../../../users/services/users.service';
 import { AuthService } from '../../../../components/services/auth.service';
 
+interface CajaDto {
+  id: number;
+  nombre: string;
+  saldoActual: number;
+  estado: string;
+}
+
 @Component({
   selector: 'app-reserva-create',
   standalone: true,
@@ -22,6 +28,7 @@ export class ReservaCreate implements OnInit {
   enviando = signal<boolean>(false);
   clientes = signal<UserDto[]>([]);
   lotes = signal<LoteDto[]>([]);
+  cajas = signal<CajaDto[]>([]);
   searchCliente = signal<string>('');
   searchLote = signal<string>('');
   showClientesDropdown = signal<boolean>(false);
@@ -42,6 +49,7 @@ export class ReservaCreate implements OnInit {
   ngOnInit(): void {
     this.cargarClientes();
     this.cargarLotes();
+    this.cargarCajasActivas();
     this.establecerFechasPorDefecto();
   }
 
@@ -53,6 +61,8 @@ export class ReservaCreate implements OnInit {
       montoReserva: [0, [Validators.required, Validators.min(0.01)]],
       fechaInicio: ['', Validators.required],
       fechaVencimiento: ['', Validators.required],
+      cajaId: ['', Validators.required],
+      metodoPago: ['EFECTIVO'],
       estado: ['ACTIVA'],
     });
   }
@@ -111,6 +121,22 @@ export class ReservaCreate implements OnInit {
       },
       error: (err: any) => {
         this.notificationService.showError('No se pudieron cargar los lotes');
+      },
+    });
+  }
+
+  cargarCajasActivas(): void {
+    this.reservaSvc.getCajasActivas().subscribe({
+      next: (response: any) => {
+        // CORREGIDO: Acceder correctamente a los datos de cajas
+        if (response.success && response.data) {
+          this.cajas.set(response.data);
+        } else {
+          this.notificationService.showWarning('No se encontraron cajas activas');
+        }
+      },
+      error: (err: any) => {
+        this.notificationService.showError('No se pudieron cargar las cajas activas');
       },
     });
   }
@@ -222,6 +248,7 @@ export class ReservaCreate implements OnInit {
       clienteId: Number(this.reservaForm.value.clienteId),
       inmuebleId: Number(this.reservaForm.value.inmuebleId),
       montoReserva: Number(this.reservaForm.value.montoReserva),
+      cajaId: Number(this.reservaForm.value.cajaId),
       fechaInicio: fechaInicio.toISOString(),
       fechaVencimiento: fechaVencimiento.toISOString(),
     };

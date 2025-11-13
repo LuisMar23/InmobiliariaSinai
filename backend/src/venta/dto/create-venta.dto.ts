@@ -124,10 +124,6 @@ export class RegistrarPagoDto {
   @IsOptional()
   @IsEnum(MetodoPago)
   metodoPago?: MetodoPago;
-
-  @IsInt()
-  @IsPositive()
-  cajaId: number;
 }
 
 export class UpdatePlanPagoDto {

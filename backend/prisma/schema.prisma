@@ -90,6 +90,27 @@ enum EstadoPlanPago {
   CANCELADO
 }
 
+enum TipoOperacion {
+  VENTA
+  RESERVA
+  PAGO_PLAN
+}
+
+enum EstadoCaja {
+  ABIERTA
+  CERRADA
+}
+
+enum TipoMovimiento {
+  INGRESO
+  EGRESO
+}
+
+enum TipoCierre {
+  PARCIAL
+  TOTAL
+}
+
 model User {
   id            Int       @id @default(autoincrement())
   uuid          String    @unique @default(uuid())
@@ -132,6 +153,7 @@ model User {
   cajasApertura           Caja[]           @relation("UsuarioApertura")
   movimientosCaja         MovimientoCaja[]
   cierresCaja             CierreCaja[]
+  recibosCreados          Recibo[]
 }
 
 model Urbanizacion {
@@ -175,23 +197,6 @@ model Lote {
   LotePromocion LotePromocion[]
 }
 
-// model Imagen {
-//   id           Int          @id @default(autoincrement())
-//   uuid         String       @unique @default(uuid())
-//   inmuebleTipo TipoInmueble
-//   inmuebleId   Int
-//   urlImagen    String       @map("url_imagen")
-//   descripcion  String?
-//   orden        Int          @default(0)
-//   subidoPor    Int
-//   createdAt    DateTime     @default(now()) @map("created_at")
-//   updatedAt    DateTime     @updatedAt @map("updated_at")
-
-//   usuario      User          @relation(fields: [subidoPor], references: [id])
-//   urbanizacion Urbanizacion? @relation("ImagenesUrbanizacion", fields: [inmuebleId], references: [id], map: "fk_imagen_urbanizacion")
-//   lote         Lote?         @relation("ImagenesLote", fields: [inmuebleId], references: [id], map: "fk_imagen_lote")
-// }
-
 model Cotizacion {
   id             Int              @id @default(autoincrement())
   uuid           String           @unique @default(uuid())
@@ -210,16 +215,17 @@ model Cotizacion {
 }
 
 model Venta {
-  id           Int          @id @default(autoincrement())
-  uuid         String       @unique @default(uuid())
-  clienteId    Int
-  asesorId     Int
-  inmuebleTipo TipoInmueble @default(LOTE)
-  inmuebleId   Int
-  precioFinal  Decimal      @map("precio_final") @db.Decimal(12, 2)
-  estado       EstadoVenta  @default(PENDIENTE)
-  createdAt    DateTime     @default(now()) @map("created_at")
-  updatedAt    DateTime     @updatedAt @map("updated_at")
+  id            Int          @id @default(autoincrement())
+  uuid          String       @unique @default(uuid())
+  clienteId     Int
+  asesorId      Int
+  inmuebleTipo  TipoInmueble @default(LOTE)
+  inmuebleId    Int
+  precioFinal   Decimal      @map("precio_final") @db.Decimal(12, 2)
+  estado        EstadoVenta  @default(PENDIENTE)
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+  observaciones String?
 
   cliente  User      @relation("VentasCliente", fields: [clienteId], references: [id])
   asesor   User      @relation("VentasAsesor", fields: [asesorId], references: [id])
@@ -227,6 +233,7 @@ model Venta {
   archivos Archivo[]
   ingresos Ingreso[]
   planPago PlanPago?
+  recibos  Recibo[]
 }
 
 model Reserva {
@@ -243,10 +250,11 @@ model Reserva {
   createdAt        DateTime      @default(now()) @map("created_at")
   updatedAt        DateTime      @updatedAt @map("updated_at")
 
-  cliente   User      @relation("ReservasCliente", fields: [clienteId], references: [id])
-  asesor    User      @relation("ReservasAsesor", fields: [asesorId], references: [id])
-  lote      Lote?     @relation("ReservasLote", fields: [inmuebleId], references: [id], map: "fk_reserva_lote")
-  archivios Archivo[]
+  cliente  User      @relation("ReservasCliente", fields: [clienteId], references: [id])
+  asesor   User      @relation("ReservasAsesor", fields: [asesorId], references: [id])
+  lote     Lote?     @relation("ReservasLote", fields: [inmuebleId], references: [id], map: "fk_reserva_lote")
+  archivos Archivo[]
+  recibos  Recibo[]
 }
 
 model Visita {
@@ -335,7 +343,6 @@ model Auditoria {
   usuario User? @relation(fields: [usuarioId], references: [id])
 }
 
-///pendiente a revisar o cambiar
 model CategoriaContable {
   id        Int      @id @default(autoincrement())
   uuid      String   @unique @default(uuid())
@@ -406,39 +413,26 @@ model PlanPago {
   creado_en         DateTime         @default(now())
   actualizado_en    DateTime         @updatedAt
 
-  venta Venta          @relation(fields: [ventaId], references: [id], onDelete: Cascade)
-  pagos PagoPlanPago[]
+  venta   Venta          @relation(fields: [ventaId], references: [id], onDelete: Cascade)
+  pagos   PagoPlanPago[]
+  recibos Recibo[]
 
   @@map("planes_pago")
 }
 
 model PagoPlanPago {
-  id_pago_plan Int      @id @default(autoincrement())
-  uuid         String   @unique @default(uuid())
+  id_pago_plan Int         @id @default(autoincrement())
+  uuid         String      @unique @default(uuid())
   plan_pago_id Int
-  monto        Decimal  @db.Decimal(12, 2)
-  fecha_pago   DateTime @default(now())
+  monto        Decimal     @db.Decimal(12, 2)
+  fecha_pago   DateTime    @default(now())
   observacion  String?
-  creado_en    DateTime @default(now())
+  creado_en    DateTime    @default(now())
+  metodoPago   MetodoPago?
 
   planPago PlanPago @relation(fields: [plan_pago_id], references: [id_plan_pago], onDelete: Cascade)
 
   @@map("pagos_plan_pago")
-}
-
-enum EstadoCaja {
-  ABIERTA
-  CERRADA
-}
-
-enum TipoMovimiento {
-  INGRESO
-  EGRESO
-}
-
-enum TipoCierre {
-  PARCIAL
-  TOTAL
 }
 
 model Caja {
@@ -509,4 +503,26 @@ model Archivo {
   lote           Lote?         @relation(fields: [loteId], references: [id])
   reserva        Reserva?      @relation(fields: [reservaId], references: [id])
   urbanizacion   Urbanizacion? @relation(fields: [urbanizacionId], references: [id])
+}
+
+model Recibo {
+  id                Int           @id @default(autoincrement())
+  uuid              String        @unique @default(uuid())
+  tipoOperacion     TipoOperacion
+  ventaId           Int?
+  reservaId         Int?
+  pagoPlanPagoId    Int?
+  urlArchivo        String
+  tipoArchivo       String?
+  nombreArchivo     String?
+  creado_en         DateTime      @default(now())
+  usuarioRegistroId Int
+  observaciones     String?
+
+  venta           Venta?    @relation(fields: [ventaId], references: [id])
+  reserva         Reserva?  @relation(fields: [reservaId], references: [id])
+  pagoPlanPago    PlanPago? @relation(fields: [pagoPlanPagoId], references: [id_plan_pago])
+  usuarioRegistro User      @relation(fields: [usuarioRegistroId], references: [id])
+
+  @@map("recibos")
 }

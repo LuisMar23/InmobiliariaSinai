@@ -220,7 +220,6 @@ export class VentaService {
       fecha_pago: pagoData.fecha_pago,
       observacion: pagoData.observacion,
       metodoPago: pagoData.metodoPago || 'EFECTIVO',
-      cajaId: Number(pagoData.cajaId),
     };
 
     return this.http

@@ -72,9 +72,8 @@ export class VentaList implements OnInit {
     return this.fb.group({
       monto: [0, [Validators.required, Validators.min(0.01)]],
       fecha_pago: [fechaHoy, Validators.required],
-      observacion: ['Pago registrado desde el sistema'],
+      observacion: [''],
       metodoPago: ['EFECTIVO', Validators.required],
-      cajaId: ['', Validators.required], // CORREGIDO: Agregado campo requerido
     });
   }
 
@@ -154,21 +153,6 @@ export class VentaList implements OnInit {
     return (this.getTotalPagado(venta) / total) * 100;
   }
 
-  obtenerUltimoPago(pagos: any[]): Date | null {
-    if (!pagos || !Array.isArray(pagos) || pagos.length === 0) {
-      return null;
-    }
-
-    const pagosOrdenados = [...pagos].sort((a, b) => {
-      const fechaA = new Date(a.fecha_pago || a.createdAt).getTime();
-      const fechaB = new Date(b.fecha_pago || b.createdAt).getTime();
-      return fechaB - fechaA;
-    });
-
-    const ultimoPago = pagosOrdenados[0];
-    return new Date(ultimoPago.fecha_pago || ultimoPago.createdAt);
-  }
-
   totalPages() {
     return Math.ceil(this.filteredVentas().length / this.pageSize());
   }
@@ -229,8 +213,7 @@ export class VentaList implements OnInit {
       fecha_pago: fechaHoy,
       metodoPago: 'EFECTIVO',
       monto: 0,
-      observacion: 'Pago registrado desde el sistema',
-      cajaId: '', // CORREGIDO: Reset correcto
+      observacion: '',
     });
   }
 
@@ -281,22 +264,12 @@ export class VentaList implements OnInit {
 
     const fechaPago = new Date(this.pagoForm.value.fecha_pago);
     const hoy = new Date();
-    hoy.setHours(0, 0, 0, 0);
-    fechaPago.setHours(0, 0, 0, 0);
+    const maxFechaPermitida = new Date(hoy);
+    maxFechaPermitida.setDate(maxFechaPermitida.getDate() + 90);
 
-    if (fechaPago > hoy) {
-      this.notificationService.showError('La fecha de pago no puede ser futura.');
-      return;
-    }
-
-    const pagosExistentes = venta.planPago.pagos || [];
-    const ultimoPago = this.obtenerUltimoPago(pagosExistentes);
-
-    if (ultimoPago && fechaPago < ultimoPago) {
+    if (fechaPago > maxFechaPermitida) {
       this.notificationService.showError(
-        `La fecha de pago no puede ser anterior al último pago registrado (${this.formatDate(
-          ultimoPago
-        )})`
+        'La fecha de pago no puede ser más de 90 días en el futuro'
       );
       return;
     }
@@ -307,9 +280,8 @@ export class VentaList implements OnInit {
       plan_pago_id: venta.planPago.id_plan_pago!,
       monto: monto,
       fecha_pago: this.pagoForm.value.fecha_pago,
-      observacion: this.pagoForm.value.observacion || 'Pago registrado desde el sistema',
+      observacion: this.pagoForm.value.observacion || '',
       metodoPago: this.pagoForm.value.metodoPago,
-      cajaId: this.pagoForm.value.cajaId, // CORREGIDO: Agregado cajaId
     };
 
     this.ventaSvc.crearPagoPlan(pagoData).subscribe({
@@ -339,8 +311,7 @@ export class VentaList implements OnInit {
             fecha_pago: fechaHoy,
             metodoPago: 'EFECTIVO',
             monto: 0,
-            observacion: 'Pago registrado desde el sistema',
-            cajaId: '', // CORREGIDO: Reset correcto
+            observacion: '',
           });
         } else {
           this.notificationService.showError(response.message || 'Error al registrar el pago');
@@ -360,15 +331,14 @@ export class VentaList implements OnInit {
   }
 
   eliminarVenta(id: number) {
-    this.notificationService
-      .confirmDelete('¿Está seguro que desea eliminar esta venta?')
-      .then((result) => {
-        if (result.isConfirmed) {
-          // CORREGIDO: Se necesita cajaId para eliminar
-          this.ventaSvc.obtenerCajasActivas().subscribe({
-            next: (cajas) => {
-              if (cajas.length > 0) {
-                const cajaId = cajas[0].id;
+    this.ventaSvc.obtenerCajasActivas().subscribe({
+      next: (cajas) => {
+        if (cajas.length > 0) {
+          const cajaId = cajas[0].id;
+          this.notificationService
+            .confirmDelete('¿Está seguro que desea eliminar esta venta?')
+            .then((result) => {
+              if (result.isConfirmed) {
                 this.ventaSvc.delete(id, cajaId).subscribe({
                   next: (response: any) => {
                     if (response.success) {
@@ -400,18 +370,16 @@ export class VentaList implements OnInit {
                     this.notificationService.showError(errorMessage);
                   },
                 });
-              } else {
-                this.notificationService.showError(
-                  'No hay cajas activas para realizar la operación'
-                );
               }
-            },
-            error: (err) => {
-              this.notificationService.showError('Error al obtener cajas activas');
-            },
-          });
+            });
+        } else {
+          this.notificationService.showError('No hay cajas activas para realizar la operación');
         }
-      });
+      },
+      error: (err) => {
+        this.notificationService.showError('Error al obtener cajas activas');
+      },
+    });
   }
 
   getEstadoBadgeClass(estado: string): string {

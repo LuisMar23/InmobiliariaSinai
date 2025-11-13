@@ -83,7 +83,6 @@ export class VentasController {
     const usuarioId = req.user.id;
     const ip = req.ip;
     const userAgent = req.headers['user-agent'];
-    // Para eliminar, necesitamos recibir la cajaId en el body
     const { cajaId } = req.body;
     if (!cajaId) {
       throw new BadRequestException(
@@ -139,7 +138,6 @@ export class VentasController {
     const usuarioId = req.user.id;
     const ip = req.ip;
     const userAgent = req.headers['user-agent'];
-    // Para eliminar pago, necesitamos recibir la cajaId en el body
     const { cajaId } = req.body;
     if (!cajaId) {
       throw new BadRequestException(
@@ -200,11 +198,11 @@ export class VentasController {
     return this.ventasService.obtenerVentasPorCliente(clienteId);
   }
 
-  // Nuevo endpoint para obtener cajas activas
   @Get('cajas/activas')
   obtenerCajasActivas() {
     return this.ventasService.obtenerCajasActivas();
   }
+
   @Patch('plan-pago/:ventaId/monto-inicial')
   actualizarMontoInicial(
     @Param('ventaId') ventaId: string,
