@@ -6,7 +6,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { environment } from '../../../../../environments/environment';
 import { UploadArchivosService } from '../../../../components/services/archivos.service';
-import { Galeria } from "../../../../components/galeria/galeria";
+import { Galeria } from '../../../../components/galeria/galeria';
 
 @Component({
   selector: 'app-lote-detail',
@@ -34,7 +34,7 @@ export class LoteDetail {
   private cargarLote(id: number): void {
     this.loteSvc.getById(id).subscribe({
       next: (resp) => {
-        console.log(resp)
+        console.log(resp);
         this.loteSeleccionado.set(resp);
       },
       error: (err) => {
@@ -54,7 +54,7 @@ export class LoteDetail {
     return classes[estado as keyof typeof classes] || classes['DISPONIBLE'];
   }
 
-  eliminarImagen(id: number| undefined) {
+  eliminarImagen(id: number | undefined) {
     console.log(id);
     if (!id) return;
 

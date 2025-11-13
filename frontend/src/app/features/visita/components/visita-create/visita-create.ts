@@ -188,7 +188,8 @@ export class VisitaCreate implements OnInit {
           errorMessage =
             err.error?.message || 'Datos inválidos. Verifique la información ingresada.';
         } else if (err.status === 403) {
-          errorMessage = 'No tienes permisos para crear visitas. Se requiere rol de ASESOR';
+          errorMessage =
+            'No tienes permisos para crear visitas. Se requiere rol de ASESOR, ADMINISTRADOR o SECRETARIA';
         } else if (err.status === 404) {
           errorMessage = 'Cliente o lote no encontrado';
         }

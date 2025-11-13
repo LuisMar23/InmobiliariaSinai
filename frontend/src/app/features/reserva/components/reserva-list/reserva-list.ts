@@ -1,3 +1,4 @@
+// reserva-list.component.ts
 import { Component, inject, signal, OnInit, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
@@ -108,9 +109,6 @@ export class ReservaList implements OnInit {
 
     this.reservaSvc.getAll().subscribe({
       next: (reservas) => {
-        console.log('Reservas cargadas:', reservas);
-
-        // Convertir montoReserva a número si viene como string
         const reservasConvertidas = reservas.map((reserva) => ({
           ...reserva,
           montoReserva: this.convertirANumero(reserva.montoReserva),
@@ -122,7 +120,6 @@ export class ReservaList implements OnInit {
         this.cargando.set(false);
       },
       error: (err) => {
-        console.error('Error al cargar reservas:', err);
         this.error.set('No se pudieron cargar las reservas');
         this.cargando.set(false);
       },
@@ -177,7 +174,6 @@ export class ReservaList implements OnInit {
               }
             },
             error: (err) => {
-              console.error('Error al eliminar reserva:', err);
               this.notificationService.showError('No se pudo eliminar la reserva');
             },
           });
@@ -243,7 +239,18 @@ export class ReservaList implements OnInit {
 
   formatMonto(monto: any): string {
     const montoNumerico = this.convertirANumero(monto);
-    return montoNumerico.toFixed(2);
+
+    if (Number.isInteger(montoNumerico)) {
+      return montoNumerico.toString();
+    }
+
+    const formatted = montoNumerico.toFixed(2);
+
+    if (formatted.endsWith('.00')) {
+      return formatted.slice(0, -3);
+    }
+
+    return formatted;
   }
 
   formatFecha(fecha: string | Date): string {

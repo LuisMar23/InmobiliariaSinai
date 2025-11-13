@@ -125,6 +125,14 @@ export class LoteService {
     const lotes = await this.prisma.lote.findMany({
       where,
       include: {
+        archivos: {
+          select: {
+            id: true,
+            urlArchivo: true,
+            tipoArchivo: true,
+            nombreArchivo: true,
+          },
+        },
         urbanizacion: {
           select: {
             id: true,
@@ -285,7 +293,98 @@ export class LoteService {
       data: loteConPrecio,
     };
   }
+  async findOneUUID(uuid: string) {
+    const lote = await this.prisma.lote.findUnique({
+      where: { uuid },
+      include: {
+        urbanizacion: {
+          select: {
+            id: true,
+            nombre: true,
+            ubicacion: true,
+            ciudad: true,
+            descripcion: true,
+          },
+        },
+        archivos: {
+          select: {
+            id: true,
+            urlArchivo: true,
+            tipoArchivo: true,
+            nombreArchivo: true,
+          },
+        },
+        LotePromocion: {
+          where: {
+            promocion: {
+              isActive: true,
+              fechaInicio: { lte: new Date() },
+              fechaFin: { gte: new Date() },
+            },
+          },
+          include: {
+            promocion: {
+              select: {
+                id: true,
+                titulo: true,
+                descuento: true,
+                fechaInicio: true,
+                fechaFin: true,
+              },
+            },
+          },
+        },
+        cotizaciones: {
+          include: {
+            cliente: {
+              select: {
+                id: true,
+                fullName: true,
+                email: true,
+              },
+            },
+          },
+        },
+        visitas: {
+          include: {
+            cliente: {
+              select: {
+                id: true,
+                fullName: true,
+                email: true,
+              },
+            },
+          },
+        },
+      },
+    });
 
+    if (!lote) {
+      throw new NotFoundException(`Lote con UUID ${uuid} no encontrado`);
+    }
+
+    const promocionActiva = lote.LotePromocion[0];
+    const precioActual = lote.precioBase;
+
+    const loteConPrecio = {
+      ...lote,
+      precioActual,
+      tienePromocionActiva: !!promocionActiva,
+      promocionActiva: promocionActiva
+        ? {
+            id: promocionActiva.promocion.id,
+            titulo: promocionActiva.promocion.titulo,
+            descuento: promocionActiva.promocion.descuento,
+            fechaFin: promocionActiva.promocion.fechaFin,
+          }
+        : null,
+    };
+
+    return {
+      success: true,
+      data: loteConPrecio,
+    };
+  }
   async update(id: number, updateLoteDto: UpdateLoteDto) {
     return this.prisma.$transaction(async (prisma) => {
       const loteExistente = await prisma.lote.findUnique({

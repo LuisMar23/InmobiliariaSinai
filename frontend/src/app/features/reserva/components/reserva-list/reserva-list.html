@@ -1,3 +1,4 @@
+<!-- reserva-list.html -->
 <div class="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-emerald-50 py-4 px-2 sm:px-4 lg:px-8">
     <div class="max-w-full mx-auto">
         <!-- Header -->
@@ -94,7 +95,7 @@
                                         </div>
                                         <div>
                                             <p class="font-medium text-gray-900 text-sm">#{{ reserva.id }}</p>
-                                            <p class="text-xs text-gray-500">Lote: {{ reserva.lote?.numeroLote }}</p>
+                                            <p class="text-xs text-gray-500">{{ reserva.lote?.numeroLote }}</p>
                                         </div>
                                     </div>
                                 </td>
@@ -221,7 +222,7 @@
                             </div>
                             <div>
                                 <p class="text-gray-500 text-xs">Lote:</p>
-                                <p class="text-emerald-600 font-medium">Lote {{ reserva.lote?.numeroLote }}</p>
+                                <p class="text-emerald-600 font-medium">{{ reserva.lote?.numeroLote }}</p>
                             </div>
                         </div>
 
@@ -308,6 +309,7 @@
         </div>
     </div>
 </div>
+
 <!-- Modal de Detalles para Reservas -->
 @if (mostrarModal() && reservaSeleccionada()) {
 <div class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
@@ -381,7 +383,7 @@
                     <div class="space-y-3">
                         <div class="flex justify-between items-center py-2 border-b border-gray-100">
                             <span class="text-sm font-medium text-gray-500">Número:</span>
-                            <span class="text-sm font-semibold text-gray-900">Lote {{
+                            <span class="text-sm font-semibold text-gray-900">{{
                                 reservaSeleccionada()!.lote?.numeroLote }}</span>
                         </div>
                         <div class="flex justify-between items-center py-2 border-b border-gray-100">

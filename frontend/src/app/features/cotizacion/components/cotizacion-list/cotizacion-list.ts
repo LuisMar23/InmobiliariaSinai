@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { CotizacionDto } from '../../../../core/interfaces/cotizacion.interface';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { CotizacionService } from '../../service/cotizacion.service';
+import { AuthService } from '../../../../components/services/auth.service';
 
 interface ColumnConfig {
   key: keyof CotizacionDto;
@@ -45,6 +46,7 @@ export class CotizacionList implements OnInit {
 
   private cotizacionSvc = inject(CotizacionService);
   private notificationService = inject(NotificationService);
+  private authService = inject(AuthService);
 
   filteredCotizaciones = computed(() => {
     const term = this.searchTerm().toLowerCase();
@@ -109,13 +111,14 @@ export class CotizacionList implements OnInit {
     this.error.set(null);
     this.cotizacionSvc.getAll().subscribe({
       next: (cotizaciones) => {
-        console.log('Cotizaciones recibidas:', cotizaciones);
+        console.log('Cotizaciones cargadas:', cotizaciones); // Debug
         this.cotizaciones.set(cotizaciones);
         this.allCotizaciones.set(cotizaciones);
         this.total.set(cotizaciones.length);
         this.cargando.set(false);
       },
       error: (err) => {
+        console.error('Error al cargar cotizaciones:', err); // Debug
         this.error.set('No se pudieron cargar las cotizaciones');
         this.cargando.set(false);
       },
@@ -149,6 +152,16 @@ export class CotizacionList implements OnInit {
   }
 
   eliminarCotizacion(id: number) {
+    const currentUser = this.authService.getCurrentUser();
+    const rolesPermitidos = ['ASESOR', 'ADMINISTRADOR', 'SECRETARIA'];
+
+    if (!currentUser || !rolesPermitidos.includes(currentUser.role)) {
+      this.notificationService.showError(
+        'Solo los asesores, administradores y secretarias pueden eliminar cotizaciones'
+      );
+      return;
+    }
+
     this.notificationService
       .confirmDelete('¿Está seguro que desea eliminar esta cotización?')
       .then((result) => {
@@ -164,7 +177,12 @@ export class CotizacionList implements OnInit {
               }
             },
             error: (err) => {
-              this.notificationService.showError('No se pudo eliminar la cotización');
+              let errorMessage = 'No se pudo eliminar la cotización';
+              if (err.status === 403) {
+                errorMessage =
+                  'No tienes permisos para eliminar cotizaciones. Se requiere rol de ASESOR, ADMINISTRADOR o SECRETARIA';
+              }
+              this.notificationService.showError(errorMessage);
             },
           });
         }
@@ -224,5 +242,29 @@ export class CotizacionList implements OnInit {
   onSearchChange(event: Event): void {
     const value = (event.target as HTMLInputElement).value;
     this.searchTerm.set(value);
+  }
+
+  formatMonto(monto: number | string | undefined | null): string {
+    if (monto === undefined || monto === null) return '0';
+
+    let numero: number;
+    if (typeof monto === 'string') {
+      numero = parseFloat(monto);
+      if (isNaN(numero)) return '0';
+    } else {
+      numero = monto;
+    }
+
+    if (Number.isInteger(numero)) {
+      return numero.toString();
+    }
+
+    const formatted = numero.toFixed(2);
+
+    if (formatted.endsWith('.00')) {
+      return formatted.slice(0, -3);
+    }
+
+    return formatted;
   }
 }

@@ -11,14 +11,19 @@ import {
 import { VentaDto, RegistrarPagoDto } from '../../../../core/interfaces/venta.interface';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { VentaService } from '../../service/venta.service';
+import { ArchivosComponent } from '../../../../components/archivos/archivos/archivos';
+import { environment } from '../../../../../environments/environment';
+import { UploadArchivosService } from '../../../../components/services/archivos.service';
+import { Galeria } from '../../../../components/galeria/galeria';
 
 @Component({
   selector: 'app-venta-list',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, ReactiveFormsModule],
+  imports: [CommonModule, RouterModule, FormsModule, ReactiveFormsModule,ArchivosComponent,Galeria],
   templateUrl: './venta-list.html',
 })
 export class VentaList implements OnInit {
+    urlServer = environment.fileServer;
   ventas = signal<VentaDto[]>([]);
   allVentas = signal<VentaDto[]>([]);
   searchTerm = signal('');
@@ -74,6 +79,7 @@ export class VentaList implements OnInit {
       fecha_pago: [fechaHoy, Validators.required],
       observacion: ['Pago registrado desde el sistema'],
       metodoPago: ['EFECTIVO', Validators.required],
+      cajaId: ['', Validators.required], 
     });
   }
 
@@ -229,6 +235,7 @@ export class VentaList implements OnInit {
       metodoPago: 'EFECTIVO',
       monto: 0,
       observacion: 'Pago registrado desde el sistema',
+      cajaId: '', 
     });
   }
 
@@ -290,7 +297,6 @@ export class VentaList implements OnInit {
     const pagosExistentes = venta.planPago.pagos || [];
     const ultimoPago = this.obtenerUltimoPago(pagosExistentes);
 
-    // CORRECCIÓN: Solo validar si hay pagos existentes y la fecha es anterior
     if (ultimoPago && fechaPago < ultimoPago) {
       this.notificationService.showError(
         `La fecha de pago no puede ser anterior al último pago registrado (${this.formatDate(
@@ -308,6 +314,7 @@ export class VentaList implements OnInit {
       fecha_pago: this.pagoForm.value.fecha_pago,
       observacion: this.pagoForm.value.observacion || 'Pago registrado desde el sistema',
       metodoPago: this.pagoForm.value.metodoPago,
+      cajaId: this.pagoForm.value.cajaId, 
     };
 
     this.ventaSvc.crearPagoPlan(pagoData).subscribe({
@@ -338,6 +345,7 @@ export class VentaList implements OnInit {
             metodoPago: 'EFECTIVO',
             monto: 0,
             observacion: 'Pago registrado desde el sistema',
+            cajaId: '', 
           });
         } else {
           this.notificationService.showError(response.message || 'Error al registrar el pago');
@@ -361,35 +369,50 @@ export class VentaList implements OnInit {
       .confirmDelete('¿Está seguro que desea eliminar esta venta?')
       .then((result) => {
         if (result.isConfirmed) {
-          this.ventaSvc.delete(id).subscribe({
-            next: (response: any) => {
-              if (response.success) {
-                this.ventas.update((list) => list.filter((v) => v.id !== id));
-                this.allVentas.update((list) => list.filter((v) => v.id !== id));
-                this.total.update((total) => total - 1);
-                this.notificationService.showSuccess('Venta eliminada correctamente');
-                if (this.ventaSeleccionada()?.id === id) {
-                  this.cerrarModal();
-                }
+          // CORREGIDO: Se necesita cajaId para eliminar
+          this.ventaSvc.obtenerCajasActivas().subscribe({
+            next: (cajas) => {
+              if (cajas.length > 0) {
+                const cajaId = cajas[0].id;
+                this.ventaSvc.delete(id, cajaId).subscribe({
+                  next: (response: any) => {
+                    if (response.success) {
+                      this.ventas.update((list) => list.filter((v) => v.id !== id));
+                      this.allVentas.update((list) => list.filter((v) => v.id !== id));
+                      this.total.update((total) => total - 1);
+                      this.notificationService.showSuccess('Venta eliminada correctamente');
+                      if (this.ventaSeleccionada()?.id === id) {
+                        this.cerrarModal();
+                      }
+                    } else {
+                      this.notificationService.showError(
+                        response.message || 'Error al eliminar la venta'
+                      );
+                    }
+                  },
+                  error: (err) => {
+                    console.error('Error al eliminar venta:', err);
+                    let errorMessage = 'No se pudo eliminar la venta';
+                    if (err.status === 400) {
+                      errorMessage =
+                        err.error?.message ||
+                        'No se puede eliminar la venta porque tiene documentos asociados';
+                    } else if (err.status === 404) {
+                      errorMessage = 'Venta no encontrada';
+                    } else if (err.error?.message) {
+                      errorMessage = err.error.message;
+                    }
+                    this.notificationService.showError(errorMessage);
+                  },
+                });
               } else {
                 this.notificationService.showError(
-                  response.message || 'Error al eliminar la venta'
+                  'No hay cajas activas para realizar la operación'
                 );
               }
             },
             error: (err) => {
-              console.error('Error al eliminar venta:', err);
-              let errorMessage = 'No se pudo eliminar la venta';
-              if (err.status === 400) {
-                errorMessage =
-                  err.error?.message ||
-                  'No se puede eliminar la venta porque tiene documentos asociados';
-              } else if (err.status === 404) {
-                errorMessage = 'Venta no encontrada';
-              } else if (err.error?.message) {
-                errorMessage = err.error.message;
-              }
-              this.notificationService.showError(errorMessage);
+              this.notificationService.showError('Error al obtener cajas activas');
             },
           });
         }
@@ -435,5 +458,40 @@ export class VentaList implements OnInit {
     } catch {
       return 'N/A';
     }
+  }
+  mostrarUploader = signal(false);
+  abrirModalSubirArchivos(venta:VentaDto) {
+      this.ventaSeleccionada.set(venta);
+    this.mostrarUploader.set(true);
+  }
+
+  cerrarModalUploader() {
+    this.mostrarUploader.set(false);
+   this.ventaSeleccionada.set(null);
+  }
+  onSubidaCompleta() {
+    this.cerrarModalUploader();
+    this.notificationService.showSuccess('Archivos subidos correctamente');
+  }
+  private archivoService = inject(UploadArchivosService);
+  eliminarImagen(id: number | undefined) {
+    console.log(id);
+    if (!id) return;
+
+    this.notificationService
+      .confirmDelete(`¿Está seguro de eliminar esta imagen?`)
+      .then((result) => {
+        if (result.isConfirmed) {
+          this.archivoService.eliminarArchivo(id).subscribe({
+            next: (resp) => {
+              this.notificationService.showSuccess(`Se ha eliminado correctamente el archivo`);
+
+            },
+            error: (err) => {
+              this.notificationService.showError(err);
+            },
+          });
+        }
+      });
   }
 }

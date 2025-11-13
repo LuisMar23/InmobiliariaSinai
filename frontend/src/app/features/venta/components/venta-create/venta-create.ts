@@ -5,6 +5,7 @@ import { RouterModule, Router } from '@angular/router';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { UserDto } from '../../../../core/interfaces/user.interface';
 import { LoteDto } from '../../../../core/interfaces/lote.interface';
+import { Caja } from '../../../../core/interfaces/caja.interface';
 import { LoteService } from '../../../lote/service/lote.service';
 import { AuthService } from '../../../../components/services/auth.service';
 import { VentaService } from '../../service/venta.service';
@@ -21,13 +22,16 @@ export class VentaCreate implements OnInit {
   enviando = signal<boolean>(false);
   clientes = signal<UserDto[]>([]);
   lotes = signal<LoteDto[]>([]);
+  cajas = signal<Caja[]>([]);
   mostrarPlanPago = signal<boolean>(true);
   fechaVencimientoCalculada = signal<string>('');
 
   searchCliente = signal<string>('');
   searchLote = signal<string>('');
+  searchCaja = signal<string>('');
   showClientesDropdown = signal<boolean>(false);
   showLotesDropdown = signal<boolean>(false);
+  showCajasDropdown = signal<boolean>(false);
 
   authService = inject(AuthService);
   router = inject(Router);
@@ -44,6 +48,7 @@ export class VentaCreate implements OnInit {
   ngOnInit(): void {
     this.cargarClientes();
     this.cargarLotes();
+    this.cargarCajasActivas();
     this.setupFormListeners();
   }
 
@@ -52,6 +57,7 @@ export class VentaCreate implements OnInit {
       clienteId: ['', Validators.required],
       inmuebleId: ['', Validators.required],
       precioFinal: [0, [Validators.required, Validators.min(0.01)]],
+      cajaId: ['', Validators.required],
       estado: ['PENDIENTE'],
       observaciones: [''],
     });
@@ -65,8 +71,8 @@ export class VentaCreate implements OnInit {
 
     return this.fb.group({
       monto_inicial: [0, [Validators.required, Validators.min(0)]],
-      plazo: ['', [Validators.required, Validators.min(1)]], // Sin valor predeterminado
-      periodicidad: ['', Validators.required], // Sin valor predeterminado
+      plazo: ['', [Validators.required, Validators.min(1)]],
+      periodicidad: ['', Validators.required],
       fecha_inicio: [fechaInicio.toISOString().split('T')[0], Validators.required],
     });
   }
@@ -130,6 +136,19 @@ export class VentaCreate implements OnInit {
     });
   }
 
+  cargarCajasActivas(): void {
+    this.ventaSvc.obtenerCajasActivas().subscribe({
+      next: (cajas: Caja[]) => {
+        console.log('Cajas activas cargadas:', cajas);
+        this.cajas.set(cajas);
+      },
+      error: (err: any) => {
+        console.error('Error cargando cajas activas:', err);
+        this.notificationService.showError('No se pudieron cargar las cajas activas');
+      },
+    });
+  }
+
   filteredClientes() {
     const search = this.searchCliente().toLowerCase();
     if (!search) return this.clientes();
@@ -154,6 +173,17 @@ export class VentaCreate implements OnInit {
     );
   }
 
+  filteredCajas() {
+    const search = this.searchCaja().toLowerCase();
+    if (!search) return this.cajas();
+
+    return this.cajas().filter(
+      (caja) =>
+        caja.nombre?.toLowerCase().includes(search) ||
+        caja.usuarioApertura?.fullName?.toLowerCase().includes(search)
+    );
+  }
+
   selectCliente(cliente: UserDto) {
     console.log('Cliente seleccionado:', cliente);
     this.ventaForm.patchValue({
@@ -173,9 +203,24 @@ export class VentaCreate implements OnInit {
     this.showLotesDropdown.set(false);
   }
 
+  selectCaja(caja: Caja) {
+    console.log('Caja seleccionada:', caja);
+    this.ventaForm.patchValue({
+      cajaId: caja.id.toString(),
+    });
+    this.searchCaja.set(this.getCajaDisplayText(caja));
+    this.showCajasDropdown.set(false);
+  }
+
   getLoteDisplayText(lote: LoteDto): string {
     return `${lote.numeroLote} - ${lote.urbanizacion?.nombre} - $${this.formatNumber(
       lote.precioBase
+    )}`;
+  }
+
+  getCajaDisplayText(caja: Caja): string {
+    return `${caja.nombre} - ${caja.usuarioApertura?.fullName} - $${this.formatNumber(
+      caja.saldoActual
     )}`;
   }
 
@@ -187,6 +232,7 @@ export class VentaCreate implements OnInit {
     this.showClientesDropdown.set(!this.showClientesDropdown());
     if (this.showClientesDropdown()) {
       this.showLotesDropdown.set(false);
+      this.showCajasDropdown.set(false);
     }
   }
 
@@ -194,6 +240,15 @@ export class VentaCreate implements OnInit {
     this.showLotesDropdown.set(!this.showLotesDropdown());
     if (this.showLotesDropdown()) {
       this.showClientesDropdown.set(false);
+      this.showCajasDropdown.set(false);
+    }
+  }
+
+  toggleCajasDropdown() {
+    this.showCajasDropdown.set(!this.showCajasDropdown());
+    if (this.showCajasDropdown()) {
+      this.showClientesDropdown.set(false);
+      this.showLotesDropdown.set(false);
     }
   }
 
@@ -206,6 +261,12 @@ export class VentaCreate implements OnInit {
   onLoteBlur() {
     setTimeout(() => {
       this.showLotesDropdown.set(false);
+    }, 200);
+  }
+
+  onCajaBlur() {
+    setTimeout(() => {
+      this.showCajasDropdown.set(false);
     }, 200);
   }
 
@@ -234,7 +295,6 @@ export class VentaCreate implements OnInit {
     const plazo = this.planPagoForm.get('plazo')?.value;
     const periodicidad = this.planPagoForm.get('periodicidad')?.value;
 
-    // Solo calcular si todos los campos están completos
     if (fechaInicio && plazo && periodicidad) {
       const fecha = new Date(fechaInicio);
       switch (periodicidad) {
@@ -282,9 +342,10 @@ export class VentaCreate implements OnInit {
 
     const clienteId = this.ventaForm.get('clienteId')?.value;
     const inmuebleId = this.ventaForm.get('inmuebleId')?.value;
+    const cajaId = this.ventaForm.get('cajaId')?.value;
 
-    if (!clienteId || !inmuebleId) {
-      this.notificationService.showError('Debe seleccionar un cliente y un lote');
+    if (!clienteId || !inmuebleId || !cajaId) {
+      this.notificationService.showError('Debe seleccionar un cliente, un lote y una caja');
       return;
     }
 
@@ -295,6 +356,7 @@ export class VentaCreate implements OnInit {
       inmuebleTipo: 'LOTE',
       inmuebleId: Number(inmuebleId),
       precioFinal: Number(this.ventaForm.value.precioFinal),
+      cajaId: Number(cajaId),
       estado: this.ventaForm.value.estado,
       observaciones: this.ventaForm.value.observaciones,
     };
@@ -357,7 +419,7 @@ export class VentaCreate implements OnInit {
         } else if (err.status === 403) {
           errorMessage = 'No tienes permisos para crear ventas';
         } else if (err.status === 404) {
-          errorMessage = 'Cliente o lote no encontrado';
+          errorMessage = 'Cliente, lote o caja no encontrado';
         }
 
         this.notificationService.showError(errorMessage);
@@ -389,5 +451,6 @@ export class VentaCreate implements OnInit {
     console.log('Plan Pago Form:', this.planPagoForm.value);
     console.log('Clientes:', this.clientes());
     console.log('Lotes:', this.lotes());
+    console.log('Cajas:', this.cajas());
   }
 }

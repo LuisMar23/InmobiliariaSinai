@@ -75,6 +75,7 @@ export class UrbanizacionList {
         this.cargando.set(false);
       },
       error: (err) => {
+        console.error('Error al cargar urbanizaciones:', err);
         this.notificationService.showError('Error al cargar urbanizaciones');
         this.cargando.set(false);
       },
@@ -132,7 +133,7 @@ export class UrbanizacionList {
     const data = this.form.value;
     this.urbanizacionService.create(data).subscribe({
       next: (response: any) => {
-        if (response.success === true) {
+        if (response.success) {
           this.notificationService.showSuccess('Urbanización creada correctamente');
           this.loadUrbanizaciones();
           this.cancelEdit();
@@ -141,7 +142,12 @@ export class UrbanizacionList {
         }
       },
       error: (err) => {
-        this.notificationService.showError('Error al crear urbanización');
+        console.error('Error al crear urbanización:', err);
+        let errorMessage = 'Error al crear urbanización';
+        if (err.error?.message) {
+          errorMessage = err.error.message;
+        }
+        this.notificationService.showError(errorMessage);
       },
     });
   }
@@ -173,7 +179,7 @@ export class UrbanizacionList {
         if (result.isConfirmed) {
           this.urbanizacionService.delete(data.id!).subscribe({
             next: (response: any) => {
-              if (response.success === true) {
+              if (response.success) {
                 this.notificationService.showSuccess('Urbanización eliminada correctamente');
                 this.loadUrbanizaciones();
               } else {
@@ -183,7 +189,12 @@ export class UrbanizacionList {
               }
             },
             error: (err) => {
-              this.notificationService.showError('Error al eliminar urbanización');
+              console.error('Error al eliminar urbanización:', err);
+              let errorMessage = 'Error al eliminar urbanización';
+              if (err.error?.message) {
+                errorMessage = err.error.message;
+              }
+              this.notificationService.showError(errorMessage);
             },
           });
         }

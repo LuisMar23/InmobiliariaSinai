@@ -1,8 +1,9 @@
 import {
-  IsString,
+  IsNotEmpty,
   IsNumber,
-  IsEnum,
+  IsString,
   IsOptional,
+  IsEnum,
   IsInt,
   Min,
   IsDate,
@@ -92,6 +93,10 @@ export class CreateVentaDto {
   @IsString()
   observaciones?: string;
 
+  @IsInt()
+  @IsPositive()
+  cajaId: number;
+
   @ValidateNested()
   @Type(() => CreatePlanPagoDto)
   plan_pago: CreatePlanPagoDto;
@@ -119,6 +124,10 @@ export class RegistrarPagoDto {
   @IsOptional()
   @IsEnum(MetodoPago)
   metodoPago?: MetodoPago;
+
+  @IsInt()
+  @IsPositive()
+  cajaId: number;
 }
 
 export class UpdatePlanPagoDto {
@@ -131,4 +140,34 @@ export class UpdatePlanPagoDto {
   @IsOptional()
   @IsEnum(PeriodicidadPago)
   periodicidad?: PeriodicidadPago;
+}
+
+export class UpdateVentaDto {
+  @IsOptional()
+  @IsInt()
+  @IsPositive()
+  clienteId?: number;
+
+  @IsOptional()
+  @IsEnum(TipoInmueble)
+  inmuebleTipo?: TipoInmueble;
+
+  @IsOptional()
+  @IsInt()
+  @IsPositive()
+  inmuebleId?: number;
+
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0.01)
+  @Type(() => Number)
+  precioFinal?: number;
+
+  @IsOptional()
+  @IsEnum(EstadoVenta)
+  estado?: EstadoVenta;
+
+  @IsOptional()
+  @IsString()
+  observaciones?: string;
 }

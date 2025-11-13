@@ -6,6 +6,7 @@ import { FormsModule } from '@angular/forms';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { UserDto } from '../../../../core/interfaces/user.interface';
 import { LoteDto } from '../../../../core/interfaces/lote.interface';
+import { Caja } from '../../../../core/interfaces/caja.interface';
 import { LoteService } from '../../../lote/service/lote.service';
 import { AuthService } from '../../../../components/services/auth.service';
 import { VentaService } from '../../service/venta.service';
@@ -36,6 +37,7 @@ export class VentaEdit implements OnInit {
 
   clientes = signal<UserDto[]>([]);
   lotes = signal<LoteDto[]>([]);
+  cajas = signal<Caja[]>([]);
 
   mostrarFormPago = signal<boolean>(false);
   mostrarFormEditarPago = signal<boolean>(false);
@@ -128,6 +130,7 @@ export class VentaEdit implements OnInit {
 
   ngOnInit(): void {
     this.obtenerVenta();
+    this.cargarCajasActivas();
   }
 
   crearFormularioVenta(): FormGroup {
@@ -148,6 +151,7 @@ export class VentaEdit implements OnInit {
       fecha_pago: [fechaHoy, Validators.required],
       observacion: [''],
       metodoPago: ['EFECTIVO', Validators.required],
+      cajaId: ['', Validators.required], // CORREGIDO: Campo requerido agregado
     });
   }
 
@@ -189,6 +193,19 @@ export class VentaEdit implements OnInit {
       error: (err: any) => {
         console.error('Error cargando lotes:', err);
         this.notificationService.showError('No se pudieron cargar los lotes');
+      },
+    });
+  }
+
+  cargarCajasActivas(): void {
+    this.ventaSvc.obtenerCajasActivas().subscribe({
+      next: (cajas: Caja[]) => {
+        console.log('Cajas activas cargadas:', cajas);
+        this.cajas.set(cajas);
+      },
+      error: (err: any) => {
+        console.error('Error cargando cajas activas:', err);
+        this.notificationService.showError('No se pudieron cargar las cajas activas');
       },
     });
   }
@@ -348,6 +365,7 @@ export class VentaEdit implements OnInit {
       fecha_pago: fechaFormateada,
       observacion: pago.observacion || '',
       metodoPago: pago.metodoPago || 'EFECTIVO',
+      cajaId: '', // CORREGIDO: Reset correcto
     });
   }
 
@@ -370,6 +388,7 @@ export class VentaEdit implements OnInit {
       fecha_pago: this.pagoForm.value.fecha_pago,
       observacion: this.pagoForm.value.observacion,
       metodoPago: this.pagoForm.value.metodoPago,
+      cajaId: Number(this.pagoForm.value.cajaId), // CORREGIDO: Convertido a número
     };
 
     this.ventaSvc.actualizarPagoPlan(pagoId, updateData).subscribe({
@@ -398,11 +417,18 @@ export class VentaEdit implements OnInit {
   }
 
   eliminarPago(pago: any): void {
+    if (this.cajas().length === 0) {
+      this.notificationService.showError('No hay cajas disponibles para realizar la operación');
+      return;
+    }
+
+    const cajaId = this.cajas()[0].id;
+
     this.notificationService
       .confirmDelete('¿Está seguro que desea eliminar este pago?')
       .then((result) => {
         if (result.isConfirmed) {
-          this.ventaSvc.eliminarPagoPlan(pago.id_pago_plan).subscribe({
+          this.ventaSvc.eliminarPagoPlan(pago.id_pago_plan, cajaId).subscribe({
             next: (response: any) => {
               if (response.success) {
                 this.notificationService.showSuccess('Pago eliminado exitosamente!');
@@ -461,7 +487,6 @@ export class VentaEdit implements OnInit {
     const pagosExistentes = venta.planPago.pagos || [];
     const ultimoPago = this.obtenerUltimoPago(pagosExistentes);
 
-    // CORRECCIÓN: Solo validar si hay pagos existentes y la fecha es anterior
     if (ultimoPago && fechaPago < ultimoPago) {
       this.notificationService.showError(
         `La fecha de pago no puede ser anterior al último pago registrado (${this.formatDate(
@@ -478,6 +503,7 @@ export class VentaEdit implements OnInit {
       fecha_pago: this.pagoForm.value.fecha_pago,
       observacion: this.pagoForm.value.observacion,
       metodoPago: this.pagoForm.value.metodoPago,
+      cajaId: this.pagoForm.value.cajaId, // CORREGIDO: Usando el valor del formulario
     };
 
     this.ventaSvc.crearPagoPlan(pagoData).subscribe({
@@ -516,6 +542,7 @@ export class VentaEdit implements OnInit {
       metodoPago: 'EFECTIVO',
       monto: 0,
       observacion: '',
+      cajaId: this.cajas().length > 0 ? this.cajas()[0].id.toString() : '', // CORREGIDO: Set inicial
     });
   }
 
@@ -532,6 +559,7 @@ export class VentaEdit implements OnInit {
         metodoPago: 'EFECTIVO',
         monto: 0,
         observacion: '',
+        cajaId: this.cajas().length > 0 ? this.cajas()[0].id.toString() : '', // CORREGIDO: Set inicial
       });
     }
   }
@@ -603,6 +631,51 @@ export class VentaEdit implements OnInit {
         this.notificationService.showError(errorMessage);
       },
     });
+  }
+
+  eliminarVenta(): void {
+    const id = this.ventaId();
+    if (!id) return;
+
+    if (this.cajas().length === 0) {
+      this.notificationService.showError('No hay cajas disponibles para realizar la operación');
+      return;
+    }
+
+    const cajaId = this.cajas()[0].id;
+
+    this.notificationService
+      .confirmDelete('¿Está seguro que desea eliminar esta venta?')
+      .then((result) => {
+        if (result.isConfirmed) {
+          this.ventaSvc.delete(id, cajaId).subscribe({
+            next: (response: any) => {
+              if (response.success) {
+                this.notificationService.showSuccess('Venta eliminada correctamente');
+                this.router.navigate(['/ventas/lista']);
+              } else {
+                this.notificationService.showError(
+                  response.message || 'Error al eliminar la venta'
+                );
+              }
+            },
+            error: (err) => {
+              console.error('Error al eliminar venta:', err);
+              let errorMessage = 'No se pudo eliminar la venta';
+              if (err.status === 400) {
+                errorMessage =
+                  err.error?.message ||
+                  'No se puede eliminar la venta porque tiene documentos asociados';
+              } else if (err.status === 404) {
+                errorMessage = 'Venta no encontrada';
+              } else if (err.error?.message) {
+                errorMessage = err.error.message;
+              }
+              this.notificationService.showError(errorMessage);
+            },
+          });
+        }
+      });
   }
 
   volverAlListado(): void {

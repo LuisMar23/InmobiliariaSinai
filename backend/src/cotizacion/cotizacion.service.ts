@@ -1,17 +1,17 @@
-// src/cotizacion/cotizacion.service.ts
 import {
   Injectable,
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { PrismaService } from '../config/prisma.service';
 import {
   CreateCotizacionDto,
   EstadoCotizacion,
   TipoInmueble,
+  UpdateCotizacionDto,
 } from './dto/create-cotizacion.dto';
-import { UpdateCotizacionDto } from './dto/update-cotizacion.dto';
 
 @Injectable()
 export class CotizacionService {
@@ -43,53 +43,170 @@ export class CotizacionService {
     }
   }
 
-  async create(createCotizacionDto: CreateCotizacionDto, asesorId: number) {
-    return await this.prisma.$transaction(async (prisma) => {
-      const asesor = await prisma.user.findFirst({
-        where: { id: asesorId, isActive: true, role: 'ASESOR' },
-      });
+  async create(createCotizacionDto: CreateCotizacionDto, usuarioId: number) {
+    try {
+      return await this.prisma.$transaction(async (prisma) => {
+        const usuario = await prisma.user.findFirst({
+          where: { id: usuarioId, isActive: true },
+        });
 
-      if (!asesor) {
-        throw new ForbiddenException(
-          'No tienes permisos para crear cotizaciones. Se requiere rol de ASESOR',
-        );
-      }
+        if (!usuario) {
+          throw new ForbiddenException('Usuario no encontrado o inactivo');
+        }
 
-      const cliente = await prisma.user.findFirst({
-        where: {
-          id: createCotizacionDto.clienteId,
-          isActive: true,
-          role: 'CLIENTE',
-        },
-      });
+        const rolesPermitidos = ['ASESOR', 'ADMINISTRADOR', 'SECRETARIA'];
+        if (!rolesPermitidos.includes(usuario.role)) {
+          throw new ForbiddenException(
+            'No tienes permisos para crear cotizaciones. Se requiere rol de ASESOR, ADMINISTRADOR o SECRETARIA',
+          );
+        }
 
-      if (!cliente) {
-        throw new BadRequestException(
-          'Cliente no encontrado o no tiene rol de CLIENTE',
-        );
-      }
+        const cliente = await prisma.user.findFirst({
+          where: {
+            id: createCotizacionDto.clienteId,
+            isActive: true,
+            role: 'CLIENTE',
+          },
+        });
 
-      let loteInfo: any = null;
-      let precioReferencia: number = 0;
+        if (!cliente) {
+          throw new BadRequestException(
+            'Cliente no encontrado o no tiene rol de CLIENTE',
+          );
+        }
 
-      if (createCotizacionDto.inmuebleTipo === TipoInmueble.LOTE) {
-        const lote = await prisma.lote.findUnique({
-          where: { id: createCotizacionDto.inmuebleId },
-          include: {
-            LotePromocion: {
-              where: {
-                promocion: {
-                  isActive: true,
-                  fechaInicio: { lte: new Date() },
-                  fechaFin: { gte: new Date() },
+        let loteInfo: any = null;
+        let precioReferencia: number = 0;
+
+        if (createCotizacionDto.inmuebleTipo === TipoInmueble.LOTE) {
+          const lote = await prisma.lote.findUnique({
+            where: { id: createCotizacionDto.inmuebleId },
+            include: {
+              urbanizacion: {
+                select: {
+                  id: true,
+                  nombre: true,
+                  ubicacion: true,
+                  ciudad: true,
                 },
               },
+              LotePromocion: {
+                where: {
+                  promocion: {
+                    isActive: true,
+                    fechaInicio: { lte: new Date() },
+                    fechaFin: { gte: new Date() },
+                  },
+                },
+                include: {
+                  promocion: {
+                    select: {
+                      id: true,
+                      titulo: true,
+                      descuento: true,
+                    },
+                  },
+                },
+              },
+            },
+          });
+
+          if (!lote) {
+            throw new BadRequestException('Lote no encontrado');
+          }
+
+          if (lote.estado !== 'DISPONIBLE' && lote.estado !== 'CON_OFERTA') {
+            throw new BadRequestException(
+              'El lote no está disponible para cotización',
+            );
+          }
+
+          const promocionActiva = lote.LotePromocion[0];
+          precioReferencia = promocionActiva
+            ? Number(promocionActiva.precioConDescuento)
+            : Number(lote.precioBase);
+
+          loteInfo = {
+            id: lote.id,
+            numeroLote: lote.numeroLote,
+            superficieM2: Number(lote.superficieM2),
+            precioBase: lote.precioBase,
+            precioConPromocion: promocionActiva
+              ? promocionActiva.precioConDescuento
+              : null,
+            tienePromocion: !!promocionActiva,
+            promocion: promocionActiva
+              ? {
+                  id: promocionActiva.promocion.id,
+                  titulo: promocionActiva.promocion.titulo,
+                  descuento: promocionActiva.promocion.descuento,
+                }
+              : null,
+            urbanizacion: lote.urbanizacion,
+          };
+
+          if (createCotizacionDto.precioOfertado > precioReferencia) {
+            throw new BadRequestException(
+              `El precio ofertado no puede ser mayor al precio actual del lote (${precioReferencia})`,
+            );
+          }
+        }
+
+        const cotizacion = await prisma.cotizacion.create({
+          data: {
+            clienteId: createCotizacionDto.clienteId,
+            asesorId: usuarioId,
+            inmuebleTipo: createCotizacionDto.inmuebleTipo,
+            inmuebleId: createCotizacionDto.inmuebleId,
+            precioOfertado: createCotizacionDto.precioOfertado,
+            estado: createCotizacionDto.estado || EstadoCotizacion.PENDIENTE,
+          },
+          include: {
+            cliente: {
+              select: {
+                id: true,
+                fullName: true,
+                ci: true,
+                telefono: true,
+                direccion: true,
+                role: true,
+              },
+            },
+            asesor: {
+              select: {
+                id: true,
+                username: true,
+                email: true,
+                fullName: true,
+                role: true,
+              },
+            },
+            lote: {
               include: {
-                promocion: {
+                urbanizacion: {
                   select: {
                     id: true,
-                    titulo: true,
-                    descuento: true,
+                    nombre: true,
+                    ubicacion: true,
+                    ciudad: true,
+                  },
+                },
+                LotePromocion: {
+                  where: {
+                    promocion: {
+                      isActive: true,
+                      fechaInicio: { lte: new Date() },
+                      fechaFin: { gte: new Date() },
+                    },
+                  },
+                  include: {
+                    promocion: {
+                      select: {
+                        id: true,
+                        titulo: true,
+                        descuento: true,
+                      },
+                    },
                   },
                 },
               },
@@ -97,54 +214,59 @@ export class CotizacionService {
           },
         });
 
-        if (!lote) {
-          throw new BadRequestException('Lote no encontrado');
+        if (createCotizacionDto.inmuebleTipo === TipoInmueble.LOTE) {
+          await prisma.lote.update({
+            where: { id: createCotizacionDto.inmuebleId },
+            data: { estado: 'CON_OFERTA' },
+          });
         }
 
-        if (lote.estado !== 'DISPONIBLE' && lote.estado !== 'CON_OFERTA') {
-          throw new BadRequestException(
-            'El lote no está disponible para cotización',
-          );
-        }
-
-        const promocionActiva = lote.LotePromocion[0];
-        precioReferencia = promocionActiva
-          ? Number(promocionActiva.precioConDescuento)
-          : Number(lote.precioBase);
-
-        loteInfo = {
-          id: lote.id,
-          numeroLote: lote.numeroLote,
-          precioBase: lote.precioBase,
-          precioConPromocion: promocionActiva
-            ? promocionActiva.precioConDescuento
-            : null,
-          tienePromocion: !!promocionActiva,
-          promocion: promocionActiva
-            ? {
-                id: promocionActiva.promocion.id,
-                titulo: promocionActiva.promocion.titulo,
-                descuento: promocionActiva.promocion.descuento,
-              }
-            : null,
+        const datosAuditoria = {
+          ...cotizacion,
+          loteInfo,
+          precioReferencia,
         };
 
-        if (createCotizacionDto.precioOfertado > precioReferencia) {
-          throw new BadRequestException(
-            `El precio ofertado no puede ser mayor al precio actual del lote (${precioReferencia})`,
-          );
-        }
-      }
+        await this.crearAuditoria(
+          usuarioId,
+          'CREAR_COTIZACION',
+          'Cotizacion',
+          cotizacion.id,
+          null,
+          datosAuditoria,
+        );
 
-      const cotizacion = await prisma.cotizacion.create({
-        data: {
-          clienteId: createCotizacionDto.clienteId,
-          asesorId: asesorId,
-          inmuebleTipo: createCotizacionDto.inmuebleTipo,
-          inmuebleId: createCotizacionDto.inmuebleId,
-          precioOfertado: createCotizacionDto.precioOfertado,
-          estado: createCotizacionDto.estado || EstadoCotizacion.PENDIENTE,
-        },
+        return {
+          success: true,
+          message: 'Cotización creada correctamente',
+          data: {
+            ...cotizacion,
+            loteInfo,
+            precioReferencia,
+          },
+        };
+      });
+    } catch (error) {
+      if (
+        error instanceof ForbiddenException ||
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException
+      ) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Error interno del servidor');
+    }
+  }
+
+  async findAll(clienteId?: number, estado?: string) {
+    try {
+      const where: any = {};
+
+      if (clienteId) where.clienteId = clienteId;
+      if (estado) where.estado = estado;
+
+      const cotizaciones = await this.prisma.cotizacion.findMany({
+        where,
         include: {
           cliente: {
             select: {
@@ -165,253 +287,16 @@ export class CotizacionService {
               role: true,
             },
           },
-        },
-      });
-
-      if (createCotizacionDto.inmuebleTipo === TipoInmueble.LOTE) {
-        await prisma.lote.update({
-          where: { id: createCotizacionDto.inmuebleId },
-          data: { estado: 'CON_OFERTA' },
-        });
-      }
-
-      const datosAuditoria = {
-        ...cotizacion,
-        loteInfo,
-        precioReferencia,
-      };
-
-      await this.crearAuditoria(
-        asesorId,
-        'CREAR_COTIZACION',
-        'Cotizacion',
-        cotizacion.id,
-        null,
-        datosAuditoria,
-      );
-
-      return {
-        success: true,
-        message: 'Cotización creada correctamente',
-        data: {
-          ...cotizacion,
-          loteInfo,
-          precioReferencia,
-        },
-      };
-    });
-  }
-
-  async findAll(clienteId?: number, estado?: string) {
-    const where: any = {};
-
-    if (clienteId) where.clienteId = clienteId;
-    if (estado) where.estado = estado;
-
-    const cotizaciones = await this.prisma.cotizacion.findMany({
-      where,
-      include: {
-        cliente: {
-          select: {
-            id: true,
-            fullName: true,
-            ci: true,
-            telefono: true,
-            direccion: true,
-            role: true,
-          },
-        },
-        asesor: {
-          select: {
-            id: true,
-            username: true,
-            email: true,
-            fullName: true,
-            role: true,
-          },
-        },
-        lote: {
-          include: {
-            urbanizacion: {
-              select: {
-                id: true,
-                nombre: true,
-              },
-            },
-            LotePromocion: {
-              where: {
-                promocion: {
-                  isActive: true,
-                  fechaInicio: { lte: new Date() },
-                  fechaFin: { gte: new Date() },
-                },
-              },
-              include: {
-                promocion: {
-                  select: {
-                    id: true,
-                    titulo: true,
-                    descuento: true,
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    const cotizacionesEnriquecidas = cotizaciones.map((cotizacion) => {
-      let precioReferencia = 0;
-      let tienePromocion = false;
-      let promocionInfo: any = null;
-
-      if (cotizacion.lote) {
-        const promocionActiva = cotizacion.lote.LotePromocion[0];
-        precioReferencia = promocionActiva
-          ? Number(promocionActiva.precioConDescuento)
-          : Number(cotizacion.lote.precioBase);
-        tienePromocion = !!promocionActiva;
-        promocionInfo = promocionActiva
-          ? {
-              id: promocionActiva.promocion.id,
-              titulo: promocionActiva.promocion.titulo,
-              descuento: promocionActiva.promocion.descuento,
-            }
-          : null;
-      }
-
-      return {
-        ...cotizacion,
-        precioReferencia,
-        tienePromocion,
-        promocionInfo,
-        diferenciaPrecio: precioReferencia - Number(cotizacion.precioOfertado),
-        porcentajeDescuento:
-          precioReferencia > 0
-            ? ((precioReferencia - Number(cotizacion.precioOfertado)) /
-                precioReferencia) *
-              100
-            : 0,
-      };
-    });
-
-    return { success: true, data: cotizacionesEnriquecidas };
-  }
-
-  async findOne(id: number) {
-    const cotizacion = await this.prisma.cotizacion.findUnique({
-      where: { id },
-      include: {
-        cliente: {
-          select: {
-            id: true,
-            fullName: true,
-            ci: true,
-            telefono: true,
-            direccion: true,
-            observaciones: true,
-            role: true,
-          },
-        },
-        asesor: {
-          select: {
-            id: true,
-            username: true,
-            email: true,
-            fullName: true,
-            telefono: true,
-            role: true,
-          },
-        },
-        lote: {
-          include: {
-            urbanizacion: {
-              select: {
-                id: true,
-                nombre: true,
-                ubicacion: true,
-              },
-            },
-            LotePromocion: {
-              where: {
-                promocion: {
-                  isActive: true,
-                  fechaInicio: { lte: new Date() },
-                  fechaFin: { gte: new Date() },
-                },
-              },
-              include: {
-                promocion: {
-                  select: {
-                    id: true,
-                    titulo: true,
-                    descuento: true,
-                    fechaInicio: true,
-                    fechaFin: true,
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    });
-
-    if (!cotizacion) {
-      throw new NotFoundException(`Cotización con ID ${id} no encontrada`);
-    }
-
-    let precioReferencia = 0;
-    let tienePromocion = false;
-    let promocionInfo: any = null;
-
-    if (cotizacion.lote) {
-      const promocionActiva = cotizacion.lote.LotePromocion[0];
-      precioReferencia = promocionActiva
-        ? Number(promocionActiva.precioConDescuento)
-        : Number(cotizacion.lote.precioBase);
-      tienePromocion = !!promocionActiva;
-      promocionInfo = promocionActiva
-        ? {
-            id: promocionActiva.promocion.id,
-            titulo: promocionActiva.promocion.titulo,
-            descuento: promocionActiva.promocion.descuento,
-            fechaInicio: promocionActiva.promocion.fechaInicio,
-            fechaFin: promocionActiva.promocion.fechaFin,
-          }
-        : null;
-    }
-
-    const cotizacionEnriquecida = {
-      ...cotizacion,
-      precioReferencia,
-      tienePromocion,
-      promocionInfo,
-      diferenciaPrecio: precioReferencia - Number(cotizacion.precioOfertado),
-      porcentajeDescuento:
-        precioReferencia > 0
-          ? ((precioReferencia - Number(cotizacion.precioOfertado)) /
-              precioReferencia) *
-            100
-          : 0,
-    };
-
-    return { success: true, data: cotizacionEnriquecida };
-  }
-
-  async update(
-    id: number,
-    updateCotizacionDto: UpdateCotizacionDto,
-    usuarioId: number,
-  ) {
-    return await this.prisma.$transaction(async (prisma) => {
-      const cotizacionExistente = await prisma.cotizacion.findUnique({
-        where: { id },
-        include: {
           lote: {
             include: {
+              urbanizacion: {
+                select: {
+                  id: true,
+                  nombre: true,
+                  ubicacion: true,
+                  ciudad: true,
+                },
+              },
               LotePromocion: {
                 where: {
                   promocion: {
@@ -433,49 +318,71 @@ export class CotizacionService {
             },
           },
         },
+        orderBy: { createdAt: 'desc' },
       });
 
-      if (!cotizacionExistente) {
-        throw new NotFoundException(`Cotización con ID ${id} no encontrada`);
-      }
+      const cotizacionesEnriquecidas = cotizaciones.map((cotizacion) => {
+        let precioReferencia = 0;
+        let tienePromocion = false;
+        let promocionInfo: any = null;
+        let loteInfo: any = null;
 
-      const datosAntes = { ...cotizacionExistente };
+        if (cotizacion.lote) {
+          loteInfo = {
+            id: cotizacion.lote.id,
+            numeroLote: cotizacion.lote.numeroLote,
+            superficieM2: Number(cotizacion.lote.superficieM2),
+            precioBase: Number(cotizacion.lote.precioBase),
+            estado: cotizacion.lote.estado,
+            ubicacion: cotizacion.lote.ubicacion,
+            ciudad: cotizacion.lote.ciudad,
+            urbanizacion: cotizacion.lote.urbanizacion,
+          };
 
-      if (updateCotizacionDto.clienteId) {
-        const cliente = await prisma.user.findFirst({
-          where: {
-            id: updateCotizacionDto.clienteId,
-            isActive: true,
-            role: 'CLIENTE',
-          },
-        });
-        if (!cliente) {
-          throw new BadRequestException(
-            'Cliente no encontrado o no tiene rol de CLIENTE',
-          );
+          const promocionActiva = cotizacion.lote.LotePromocion[0];
+          precioReferencia = promocionActiva
+            ? Number(promocionActiva.precioConDescuento)
+            : Number(cotizacion.lote.precioBase);
+          tienePromocion = !!promocionActiva;
+          promocionInfo = promocionActiva
+            ? {
+                id: promocionActiva.promocion.id,
+                titulo: promocionActiva.promocion.titulo,
+                descuento: promocionActiva.promocion.descuento,
+              }
+            : null;
         }
-      }
 
-      if (
-        updateCotizacionDto.precioOfertado !== undefined &&
-        cotizacionExistente.inmuebleTipo === TipoInmueble.LOTE &&
-        cotizacionExistente.lote
-      ) {
-        const promocionActiva = cotizacionExistente.lote.LotePromocion[0];
-        const precioReferencia = promocionActiva
-          ? Number(promocionActiva.precioConDescuento)
-          : Number(cotizacionExistente.lote.precioBase);
+        return {
+          ...cotizacion,
+          lote: loteInfo,
+          precioReferencia,
+          tienePromocion,
+          promocionInfo,
+          diferenciaPrecio:
+            precioReferencia - Number(cotizacion.precioOfertado),
+          porcentajeDescuento:
+            precioReferencia > 0
+              ? ((precioReferencia - Number(cotizacion.precioOfertado)) /
+                  precioReferencia) *
+                100
+              : 0,
+        };
+      });
 
-        if (updateCotizacionDto.precioOfertado > precioReferencia) {
-          throw new BadRequestException(
-            `El precio ofertado no puede ser mayor al precio actual del lote (${precioReferencia})`,
-          );
-        }
-      }
+      return {
+        success: true,
+        data: { cotizaciones: cotizacionesEnriquecidas },
+      };
+    } catch (error) {
+      throw new InternalServerErrorException('Error interno del servidor');
+    }
+  }
 
-      const cotizacionActualizada = await prisma.cotizacion.update({
+  async findOne(id: number) {
+    try {
+      const cotizacion = await this.prisma.cotizacion.findUnique({
         where: { id },
-        data: updateCotizacionDto,
         include: {
           cliente: {
             select: {
@@ -483,6 +390,8 @@ export class CotizacionService {
               fullName: true,
               ci: true,
               telefono: true,
+              direccion: true,
+              observaciones: true,
               role: true,
             },
           },
@@ -492,71 +401,421 @@ export class CotizacionService {
               username: true,
               email: true,
               fullName: true,
+              telefono: true,
               role: true,
             },
           },
+          lote: {
+            include: {
+              urbanizacion: {
+                select: {
+                  id: true,
+                  nombre: true,
+                  ubicacion: true,
+                  ciudad: true,
+                },
+              },
+              LotePromocion: {
+                where: {
+                  promocion: {
+                    isActive: true,
+                    fechaInicio: { lte: new Date() },
+                    fechaFin: { gte: new Date() },
+                  },
+                },
+                include: {
+                  promocion: {
+                    select: {
+                      id: true,
+                      titulo: true,
+                      descuento: true,
+                      fechaInicio: true,
+                      fechaFin: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
         },
-      });
-
-      await this.crearAuditoria(
-        usuarioId,
-        'ACTUALIZAR_COTIZACION',
-        'Cotizacion',
-        id,
-        datosAntes,
-        cotizacionActualizada,
-      );
-
-      return {
-        success: true,
-        message: 'Cotización actualizada correctamente',
-        data: cotizacionActualizada,
-      };
-    });
-  }
-
-  async remove(id: number, usuarioId: number) {
-    return await this.prisma.$transaction(async (prisma) => {
-      const cotizacion = await prisma.cotizacion.findUnique({
-        where: { id },
       });
 
       if (!cotizacion) {
         throw new NotFoundException(`Cotización con ID ${id} no encontrada`);
       }
 
-      const datosAntes = { ...cotizacion };
+      let precioReferencia = 0;
+      let tienePromocion = false;
+      let promocionInfo: any = null;
+      let loteInfo: any = null;
 
-      await prisma.cotizacion.delete({ where: { id } });
+      if (cotizacion.lote) {
+        loteInfo = {
+          id: cotizacion.lote.id,
+          numeroLote: cotizacion.lote.numeroLote,
+          superficieM2: Number(cotizacion.lote.superficieM2),
+          precioBase: Number(cotizacion.lote.precioBase),
+          estado: cotizacion.lote.estado,
+          ubicacion: cotizacion.lote.ubicacion,
+          ciudad: cotizacion.lote.ciudad,
+          urbanizacion: cotizacion.lote.urbanizacion,
+        };
 
-      if (cotizacion.inmuebleTipo === TipoInmueble.LOTE) {
-        const otrasCotizaciones = await prisma.cotizacion.count({
-          where: {
-            inmuebleId: cotizacion.inmuebleId,
-            inmuebleTipo: TipoInmueble.LOTE,
-            id: { not: id },
-            estado: 'PENDIENTE',
+        const promocionActiva = cotizacion.lote.LotePromocion[0];
+        precioReferencia = promocionActiva
+          ? Number(promocionActiva.precioConDescuento)
+          : Number(cotizacion.lote.precioBase);
+        tienePromocion = !!promocionActiva;
+        promocionInfo = promocionActiva
+          ? {
+              id: promocionActiva.promocion.id,
+              titulo: promocionActiva.promocion.titulo,
+              descuento: promocionActiva.promocion.descuento,
+              fechaInicio: promocionActiva.promocion.fechaInicio,
+              fechaFin: promocionActiva.promocion.fechaFin,
+            }
+          : null;
+      }
+
+      const cotizacionEnriquecida = {
+        ...cotizacion,
+        lote: loteInfo,
+        precioReferencia,
+        tienePromocion,
+        promocionInfo,
+        diferenciaPrecio: precioReferencia - Number(cotizacion.precioOfertado),
+        porcentajeDescuento:
+          precioReferencia > 0
+            ? ((precioReferencia - Number(cotizacion.precioOfertado)) /
+                precioReferencia) *
+              100
+            : 0,
+      };
+
+      return { success: true, data: { cotizacion: cotizacionEnriquecida } };
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      throw new InternalServerErrorException('Error interno del servidor');
+    }
+  }
+
+  async update(
+    id: number,
+    updateCotizacionDto: UpdateCotizacionDto,
+    usuarioId: number,
+  ) {
+    try {
+      return await this.prisma.$transaction(async (prisma) => {
+        const usuario = await prisma.user.findFirst({
+          where: { id: usuarioId, isActive: true },
+        });
+
+        if (!usuario) {
+          throw new ForbiddenException('Usuario no encontrado o inactivo');
+        }
+
+        const rolesPermitidos = ['ASESOR', 'ADMINISTRADOR', 'SECRETARIA'];
+        if (!rolesPermitidos.includes(usuario.role)) {
+          throw new ForbiddenException(
+            'No tienes permisos para actualizar cotizaciones. Se requiere rol de ASESOR, ADMINISTRADOR o SECRETARIA',
+          );
+        }
+
+        const cotizacionExistente = await prisma.cotizacion.findUnique({
+          where: { id },
+          include: {
+            lote: {
+              include: {
+                LotePromocion: {
+                  where: {
+                    promocion: {
+                      isActive: true,
+                      fechaInicio: { lte: new Date() },
+                      fechaFin: { gte: new Date() },
+                    },
+                  },
+                  include: {
+                    promocion: {
+                      select: {
+                        id: true,
+                        titulo: true,
+                        descuento: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
           },
         });
 
-        if (otrasCotizaciones === 0) {
-          await prisma.lote.update({
-            where: { id: cotizacion.inmuebleId },
-            data: { estado: 'DISPONIBLE' },
-          });
+        if (!cotizacionExistente) {
+          throw new NotFoundException(`Cotización con ID ${id} no encontrada`);
         }
+
+        const datosAntes = { ...cotizacionExistente };
+
+        if (updateCotizacionDto.clienteId) {
+          const cliente = await prisma.user.findFirst({
+            where: {
+              id: updateCotizacionDto.clienteId,
+              isActive: true,
+              role: 'CLIENTE',
+            },
+          });
+          if (!cliente) {
+            throw new BadRequestException(
+              'Cliente no encontrado o no tiene rol de CLIENTE',
+            );
+          }
+        }
+
+        if (
+          updateCotizacionDto.precioOfertado !== undefined &&
+          cotizacionExistente.inmuebleTipo === TipoInmueble.LOTE &&
+          cotizacionExistente.lote
+        ) {
+          const promocionActiva = cotizacionExistente.lote.LotePromocion[0];
+          const precioReferencia = promocionActiva
+            ? Number(promocionActiva.precioConDescuento)
+            : Number(cotizacionExistente.lote.precioBase);
+
+          if (updateCotizacionDto.precioOfertado > precioReferencia) {
+            throw new BadRequestException(
+              `El precio ofertado no puede ser mayor al precio actual del lote (${precioReferencia})`,
+            );
+          }
+        }
+
+        const cotizacionActualizada = await prisma.cotizacion.update({
+          where: { id },
+          data: updateCotizacionDto,
+          include: {
+            cliente: {
+              select: {
+                id: true,
+                fullName: true,
+                ci: true,
+                telefono: true,
+                role: true,
+              },
+            },
+            asesor: {
+              select: {
+                id: true,
+                username: true,
+                email: true,
+                fullName: true,
+                role: true,
+              },
+            },
+            lote: {
+              include: {
+                urbanizacion: {
+                  select: {
+                    id: true,
+                    nombre: true,
+                    ubicacion: true,
+                    ciudad: true,
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        await this.crearAuditoria(
+          usuarioId,
+          'ACTUALIZAR_COTIZACION',
+          'Cotizacion',
+          id,
+          datosAntes,
+          cotizacionActualizada,
+        );
+
+        return {
+          success: true,
+          message: 'Cotización actualizada correctamente',
+          data: cotizacionActualizada,
+        };
+      });
+    } catch (error) {
+      if (
+        error instanceof ForbiddenException ||
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+      ) {
+        throw error;
       }
+      throw new InternalServerErrorException('Error interno del servidor');
+    }
+  }
 
-      await this.crearAuditoria(
-        usuarioId,
-        'ELIMINAR_COTIZACION',
-        'Cotizacion',
-        id,
-        datosAntes,
-        null,
-      );
+  async remove(id: number, usuarioId: number) {
+    try {
+      return await this.prisma.$transaction(async (prisma) => {
+        const usuario = await prisma.user.findFirst({
+          where: { id: usuarioId, isActive: true },
+        });
 
-      return { success: true, message: 'Cotización eliminada correctamente' };
-    });
+        if (!usuario) {
+          throw new ForbiddenException('Usuario no encontrado o inactivo');
+        }
+
+        const rolesPermitidos = ['ASESOR', 'ADMINISTRADOR', 'SECRETARIA'];
+        if (!rolesPermitidos.includes(usuario.role)) {
+          throw new ForbiddenException(
+            'No tienes permisos para eliminar cotizaciones. Se requiere rol de ASESOR, ADMINISTRADOR o SECRETARIA',
+          );
+        }
+
+        const cotizacion = await prisma.cotizacion.findUnique({
+          where: { id },
+        });
+
+        if (!cotizacion) {
+          throw new NotFoundException(`Cotización con ID ${id} no encontrada`);
+        }
+
+        const datosAntes = { ...cotizacion };
+
+        await prisma.cotizacion.delete({ where: { id } });
+
+        if (cotizacion.inmuebleTipo === TipoInmueble.LOTE) {
+          const otrasCotizaciones = await prisma.cotizacion.count({
+            where: {
+              inmuebleId: cotizacion.inmuebleId,
+              inmuebleTipo: TipoInmueble.LOTE,
+              id: { not: id },
+              estado: 'PENDIENTE',
+            },
+          });
+
+          if (otrasCotizaciones === 0) {
+            await prisma.lote.update({
+              where: { id: cotizacion.inmuebleId },
+              data: { estado: 'DISPONIBLE' },
+            });
+          }
+        }
+
+        await this.crearAuditoria(
+          usuarioId,
+          'ELIMINAR_COTIZACION',
+          'Cotizacion',
+          id,
+          datosAntes,
+          null,
+        );
+
+        return { success: true, message: 'Cotización eliminada correctamente' };
+      });
+    } catch (error) {
+      if (
+        error instanceof ForbiddenException ||
+        error instanceof NotFoundException
+      ) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Error interno del servidor');
+    }
+  }
+
+  async getLotesDisponiblesParaCotizacion() {
+    try {
+      const lotes = await this.prisma.lote.findMany({
+        where: {
+          estado: { in: ['DISPONIBLE', 'CON_OFERTA'] },
+        },
+        include: {
+          urbanizacion: {
+            select: {
+              id: true,
+              nombre: true,
+              ubicacion: true,
+              ciudad: true,
+            },
+          },
+          LotePromocion: {
+            where: {
+              promocion: {
+                isActive: true,
+                fechaInicio: { lte: new Date() },
+                fechaFin: { gte: new Date() },
+              },
+            },
+            include: {
+              promocion: {
+                select: {
+                  id: true,
+                  titulo: true,
+                  descuento: true,
+                  fechaInicio: true,
+                  fechaFin: true,
+                },
+              },
+            },
+          },
+          _count: {
+            select: {
+              cotizaciones: {
+                where: {
+                  estado: 'PENDIENTE',
+                },
+              },
+            },
+          },
+        },
+        orderBy: {
+          urbanizacionId: 'asc',
+          numeroLote: 'asc',
+        },
+      });
+
+      const lotesParaCotizacion = lotes.map((lote) => {
+        const promocionActiva = lote.LotePromocion[0];
+        const precioActual = promocionActiva
+          ? promocionActiva.precioConDescuento
+          : lote.precioBase;
+
+        return {
+          id: lote.id,
+          uuid: lote.uuid,
+          numeroLote: lote.numeroLote,
+          superficieM2: lote.superficieM2,
+          precioBase: lote.precioBase,
+          precioActual,
+          estado: lote.estado,
+          descripcion: lote.descripcion,
+          ubicacion: lote.ubicacion,
+          ciudad: lote.ciudad,
+          esIndependiente: lote.esIndependiente,
+          tienePromocionActiva: !!promocionActiva,
+          promocionActiva: promocionActiva
+            ? {
+                id: promocionActiva.promocion.id,
+                titulo: promocionActiva.promocion.titulo,
+                descuento: promocionActiva.promocion.descuento,
+                fechaFin: promocionActiva.promocion.fechaFin,
+              }
+            : null,
+          urbanizacion: lote.urbanizacion,
+          cotizacionesPendientes: lote._count.cotizaciones,
+          ahorro: promocionActiva
+            ? Number(lote.precioBase) - Number(precioActual)
+            : 0,
+          porcentajeAhorro: promocionActiva
+            ? Number(promocionActiva.promocion.descuento)
+            : 0,
+        };
+      });
+
+      return {
+        success: true,
+        data: lotesParaCotizacion,
+      };
+    } catch (error) {
+      throw new InternalServerErrorException('Error interno del servidor');
+    }
   }
 }

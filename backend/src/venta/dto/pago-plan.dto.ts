@@ -5,6 +5,8 @@ import {
   IsDate,
   Min,
   IsEnum,
+  IsInt,
+  IsPositive,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -32,4 +34,9 @@ export class UpdatePagoPlanDto {
   @IsOptional()
   @IsEnum(MetodoPago)
   metodoPago?: MetodoPago;
+
+  @IsOptional()
+  @IsInt()
+  @IsPositive()
+  cajaId?: number;
 }

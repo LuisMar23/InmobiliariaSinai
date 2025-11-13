@@ -8,10 +8,13 @@ async function bootstrap() {
     const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   // Configurar CORS
+  // app.enableCors({
+  //       origin: ['http://localhost:4300', ],
+  //   credentials: true,
+  // });
   app.enableCors({
-        origin: ['http://localhost:4300', ],
-    credentials: true,
-  });
+  origin: '*', // cualquier dominio
+});
 
   // Global prefix para todas las rutas
   app.setGlobalPrefix('apisinai');

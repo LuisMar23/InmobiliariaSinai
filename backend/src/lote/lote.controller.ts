@@ -41,7 +41,10 @@ export class LoteController {
   findOne(@Param('id') id: string) {
     return this.loteService.findOne(+id);
   }
-
+  @Get('uuid/:id')
+  findOneUUID(@Param('id') id: string) {
+    return this.loteService.findOneUUID(id);
+  }
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateLoteDto: UpdateLoteDto) {
     return this.loteService.update(+id, updateLoteDto);

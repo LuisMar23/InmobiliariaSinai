@@ -27,7 +27,7 @@ export class LoginComponent {
   faEyeSlash = faEyeSlash;
   faCheck = faCheck;
   faSignInAlt = faSignInAlt;
-
+  
   loginForm: FormGroup;
   showPassword: boolean = false;
   isLoading: boolean = false;

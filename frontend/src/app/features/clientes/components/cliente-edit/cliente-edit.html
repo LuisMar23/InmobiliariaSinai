@@ -59,6 +59,20 @@
                                 }
                             </div>
 
+                            <!-- C.I. -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    <fa-icon [icon]="faIdCard" class="text-emerald-500 mr-2"></fa-icon>
+                                    C.I. <span class="text-red-500">*</span>
+                                </label>
+                                <input type="text" formControlName="ci"
+                                    class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm sm:text-base"
+                                    placeholder="Ej: 1234567" [class.border-red-500]="isFieldValid('ci')" />
+                                @if (isFieldValid('ci')) {
+                                <p class="mt-1 text-xs text-red-600">{{ getFieldError('ci') }}</p>
+                                }
+                            </div>
+
                             <!-- Teléfono -->
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -74,7 +88,7 @@
                             </div>
 
                             <!-- Dirección -->
-                            <div>
+                            <div class="md:col-span-2">
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     <fa-icon [icon]="faMapMarkerAlt" class="text-emerald-500 mr-2"></fa-icon>
                                     Dirección
@@ -93,33 +107,6 @@
                                 <textarea formControlName="observaciones" rows="3"
                                     class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm sm:text-base resize-none"
                                     placeholder="Observaciones adicionales..."></textarea>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Información adicional (solo lectura) -->
-                <div class="mb-8">
-                    <h2 class="text-lg sm:text-xl font-semibold text-gray-900 mb-6 flex items-center gap-2">
-                        <fa-icon [icon]="faIdCard" class="text-emerald-500"></fa-icon>
-                        Información Adicional
-                    </h2>
-                    <div class="bg-gray-50 border-2 border-gray-200 rounded-xl p-4 sm:p-6">
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">C.I.</label>
-                                <input type="text" [value]="clienteData().ci" readonly
-                                    class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg bg-gray-100 text-gray-600 text-sm sm:text-base" />
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Fecha de Registro</label>
-                                <input type="text" [value]="formatDate(clienteData().createdAt)" readonly
-                                    class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg bg-gray-100 text-gray-600 text-sm sm:text-base" />
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Rol</label>
-                                <input type="text" value="CLIENTE" readonly
-                                    class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg bg-gray-100 text-gray-600 text-sm sm:text-base" />
                             </div>
                         </div>
                     </div>

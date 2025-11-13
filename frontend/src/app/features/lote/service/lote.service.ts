@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { environment } from '../../../../environments/environment.prod';
-import { LoteDto } from '../../../core/interfaces/lote.interface';
+import { LoteDto, CreateLoteDto, UpdateLoteDto } from '../../../core/interfaces/lote.interface';
 
 interface ApiResponse<T> {
   success: boolean;
@@ -64,13 +64,15 @@ export class LoteService {
     );
   }
 
-  create(lote: any): Observable<any> {
+  create(lote: CreateLoteDto): Observable<any> {
     const loteData = {
       ...lote,
       urbanizacionId: lote.esIndependiente ? null : Number(lote.urbanizacionId),
       superficieM2: Number(lote.superficieM2),
       precioBase: Number(lote.precioBase),
       esIndependiente: Boolean(lote.esIndependiente),
+      latitud: lote.latitud ? Number(lote.latitud) : null,
+      longitud: lote.longitud ? Number(lote.longitud) : null,
     };
 
     return this.http.post<ApiResponse<any>>(this.apiUrl, loteData).pipe(
@@ -83,11 +85,12 @@ export class LoteService {
     );
   }
 
-  update(id: number, lote: any): Observable<any> {
+  update(id: number, lote: UpdateLoteDto): Observable<any> {
     const loteData: any = {};
 
-    if (lote.urbanizacionId !== undefined)
+    if (lote.urbanizacionId !== undefined) {
       loteData.urbanizacionId = lote.esIndependiente ? null : Number(lote.urbanizacionId);
+    }
     if (lote.numeroLote !== undefined) loteData.numeroLote = lote.numeroLote;
     if (lote.superficieM2 !== undefined) loteData.superficieM2 = Number(lote.superficieM2);
     if (lote.precioBase !== undefined) loteData.precioBase = Number(lote.precioBase);
@@ -97,6 +100,9 @@ export class LoteService {
     if (lote.ciudad !== undefined) loteData.ciudad = lote.ciudad;
     if (lote.esIndependiente !== undefined)
       loteData.esIndependiente = Boolean(lote.esIndependiente);
+    if (lote.latitud !== undefined) loteData.latitud = lote.latitud ? Number(lote.latitud) : null;
+    if (lote.longitud !== undefined)
+      loteData.longitud = lote.longitud ? Number(lote.longitud) : null;
 
     return this.http.patch<ApiResponse<any>>(`${this.apiUrl}/${id}`, loteData).pipe(
       map((response) => {

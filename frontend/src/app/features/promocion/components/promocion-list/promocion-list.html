@@ -1,7 +1,5 @@
-<!-- src/app/modules/promocion/components/promocion-list/promocion-list.html -->
 <div class="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-emerald-50 py-4 px-2 sm:px-4 lg:px-8">
     <div class="max-w-full mx-auto">
-        <!-- Header -->
         <div class="bg-emerald-500 rounded-t-2xl shadow-lg p-4 sm:p-6">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div class="flex items-center gap-3">
@@ -26,9 +24,7 @@
             </div>
         </div>
 
-        <!-- Contenido -->
         <div class="bg-white rounded-b-2xl shadow-xl p-4 sm:p-6 lg:p-8">
-            <!-- Barra de búsqueda -->
             <div class="flex flex-col lg:flex-row justify-between items-center gap-4 mb-6">
                 <div class="w-full lg:w-1/3">
                     <div class="relative">
@@ -45,14 +41,12 @@
                 </div>
             </div>
 
-            <!-- Estado de carga -->
             @if (cargando()) {
             <div class="text-center py-12">
                 <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mx-auto"></div>
                 <p class="text-gray-600 mt-4">Cargando promociones...</p>
             </div>
             } @else {
-            <!-- Vista Desktop/Tablet - Tabla -->
             <div class="hidden xl:block">
                 <div class="overflow-x-auto rounded-lg border border-gray-200">
                     <table class="w-full">
@@ -126,6 +120,15 @@
                                 <td class="px-6 py-4 whitespace-nowrap text-center">
                                     <div class="flex justify-center gap-2">
                                         <button
+                                            class="p-2 rounded-lg bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+                                            (click)="abrirModalAsignar(promocion)" title="Asignar Lotes">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                            </svg>
+                                        </button>
+                                        <div class="w-px bg-gray-300 mx-1"></div>
+                                        <button
                                             class="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
                                             [routerLink]="['/promociones/editar', promocion.id]" title="Editar">
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -156,7 +159,6 @@
                             </tr>
                             }
 
-                            <!-- Estado vacío -->
                             @if (filteredPromociones().length === 0 && !cargando()) {
                             <tr>
                                 <td colspan="7" class="px-6 py-16 text-center text-gray-500">
@@ -177,7 +179,6 @@
                 </div>
             </div>
 
-            <!-- Vista Mobile/Tablet - Cards -->
             <div class="xl:hidden space-y-4">
                 @for (promocion of getPromocionesPaginadas(); track promocion.id) {
                 <div
@@ -214,8 +215,17 @@
                             <p class="text-sm text-gray-700 line-clamp-2">{{ promocion.descripcion }}</p>
                         </div>
                         }
-                        <!-- Botones de acción para móvil -->
-                        <div class="flex justify-center gap-1 pt-3">
+                        <div class="flex justify-center gap-2 pt-3">
+                            <button
+                                class="flex items-center justify-center gap-1 bg-gradient-to-r from-green-500 to-green-600 text-white px-3 py-1.5 rounded text-xs font-medium shadow-lg hover:shadow-xl transition transform hover:scale-105 min-w-[70px]"
+                                (click)="abrirModalAsignar(promocion)">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                </svg>
+                                Asignar
+                            </button>
+                            <div class="w-px bg-gray-300"></div>
                             <button
                                 class="flex items-center justify-center gap-1 bg-blue-500 hover:bg-blue-600 text-white px-2 py-1.5 rounded text-xs font-medium shadow-sm transition transform hover:scale-105 min-w-[60px]"
                                 [routerLink]="['/promociones/editar', promocion.id]">
@@ -262,7 +272,6 @@
                 }
             </div>
 
-            <!-- Paginación -->
             <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mt-6 gap-4 px-2">
                 <div class="text-sm text-gray-600 text-center sm:text-left">
                     Mostrando {{ rangeStart() }} a {{ rangeEnd() }} de {{ total() }} promociones
@@ -295,4 +304,271 @@
             }
         </div>
     </div>
+
+    @if (mostrarModalAsignar() && promocionSeleccionada()) {
+    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            <div class="bg-gradient-to-r from-emerald-500 to-emerald-600 p-6">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h2 class="text-xl font-bold text-white">
+                            {{ modoRemover() ? 'Remover Lotes de Promoción' : 'Asignar Promoción' }}
+                        </h2>
+                        <p class="text-emerald-100 mt-1">{{ promocionSeleccionada()?.titulo }} - {{
+                            promocionSeleccionada()?.descuento }}% OFF</p>
+                    </div>
+                    <button (click)="cerrarModalAsignar()" class="text-white hover:text-emerald-200 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="p-6 overflow-y-auto max-h-[60vh]">
+                <!-- Botón para cambiar modo -->
+                <div class="mb-6 flex justify-between items-center">
+                    <div></div>
+                    @if (!modoRemover() && promocionSeleccionada()?.lotesAfectados &&
+                    promocionSeleccionada()!.lotesAfectados!.length > 0) {
+                    <button (click)="activarModoRemover()"
+                        class="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors font-medium">
+                        <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        Remover Lotes
+                    </button>
+                    }
+                </div>
+
+                @if (modoRemover()) {
+                <!-- MODO REMOVER -->
+                <div class="space-y-6">
+                    <div class="bg-red-50 border border-red-200 rounded-xl p-4">
+                        <div class="flex items-center gap-3">
+                            <svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                            </svg>
+                            <div>
+                                <h3 class="font-semibold text-red-800">Modo Remoción</h3>
+                                <p class="text-red-700 text-sm mt-1">Seleccione los lotes que desea remover de esta
+                                    promoción</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between items-center mb-3">
+                            <h4 class="font-semibold text-gray-900">Lotes con Promoción Activa</h4>
+                            <div class="flex gap-2">
+                                <button type="button" (click)="seleccionarTodosLotes()"
+                                    class="px-3 py-2 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600">
+                                    Seleccionar Todos
+                                </button>
+                                <button type="button" (click)="deseleccionarTodosLotes()"
+                                    class="px-3 py-2 bg-gray-500 text-white rounded-lg text-sm hover:bg-gray-600">
+                                    Deseleccionar Todos
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="border border-gray-200 rounded-lg max-h-48 overflow-y-auto">
+                            @for (lote of promocionSeleccionada()?.lotesAfectados; track lote.loteId) {
+                            <label
+                                class="flex items-center gap-3 p-3 hover:bg-red-50 border-b border-gray-100 last:border-b-0 cursor-pointer">
+                                <input type="checkbox" [checked]="estaLoteSeleccionado(lote.loteId)"
+                                    (change)="toggleLoteSeleccionado(lote.loteId)"
+                                    class="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500">
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex justify-between items-start">
+                                        <div>
+                                            <p class="font-medium text-gray-900">{{ lote.lote.numeroLote }}</p>
+                                            @if (lote.lote.urbanizacion) {
+                                            <p class="text-sm text-gray-500">{{ lote.lote.urbanizacion.nombre }}</p>
+                                            }
+                                        </div>
+                                        <div class="text-right">
+                                            <p class="text-sm font-semibold text-red-600">
+                                                Precio original: ${{ lote.precioOriginal | number:'1.2-2' }}
+                                            </p>
+                                            <p class="text-xs text-gray-500">
+                                                Con descuento: ${{ lote.precioConDescuento | number:'1.2-2' }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </label>
+                            }
+                            @if (!promocionSeleccionada()?.lotesAfectados ||
+                            promocionSeleccionada()!.lotesAfectados!.length === 0) {
+                            <p class="text-center text-gray-500 py-4">No hay lotes asignados a esta promoción</p>
+                            }
+                        </div>
+                        <p class="text-sm text-gray-600 mt-2">
+                            {{ lotesSeleccionados().length }} lote(s) seleccionado(s) para remover
+                        </p>
+                    </div>
+                </div>
+                } @else {
+                <!-- MODO ASIGNAR -->
+                <div class="space-y-6">
+                    <div class="flex items-center gap-3 cursor-pointer"
+                        (click)="asignarATodos.set(true); onAsignarATodosChange()">
+                        <input type="radio" name="asignacion" [checked]="asignarATodos()"
+                            class="w-4 h-4 text-emerald-600 focus:ring-emerald-500">
+                        <div class="flex-1">
+                            <span class="font-semibold text-gray-900">Asignar a todos los lotes disponibles</span>
+                            <p class="text-sm text-gray-600 mt-1">Aplicar esta promoción a todos los lotes del sistema
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-3 cursor-pointer"
+                        (click)="urbanizacionSeleccionada.set(urbanizaciones()[0]?.id || null); onUrbanizacionChange()">
+                        <input type="radio" name="asignacion" [checked]="!!urbanizacionSeleccionada()"
+                            class="w-4 h-4 text-emerald-600 focus:ring-emerald-500">
+                        <div class="flex-1">
+                            <span class="font-semibold text-gray-900">Asignar a urbanización completa</span>
+                            <p class="text-sm text-gray-600 mt-1">Aplicar esta promoción a todos los lotes de una
+                                urbanización específica</p>
+
+                            @if (urbanizacionSeleccionada()) {
+                            <div class="mt-3">
+                                <div class="relative">
+                                    <input type="text" [ngModel]="busquedaUrbanizaciones()"
+                                        (ngModelChange)="busquedaUrbanizaciones.set($event)"
+                                        placeholder="Buscar urbanización..."
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 mb-2">
+                                </div>
+                                <select [ngModel]="urbanizacionSeleccionada()"
+                                    (ngModelChange)="urbanizacionSeleccionada.set($event)"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                                    <option value="">Seleccione urbanización...</option>
+                                    @for (urbanizacion of urbanizacionesFiltradas(); track urbanizacion.id) {
+                                    <option [value]="urbanizacion.id">{{ urbanizacion.nombre }}</option>
+                                    }
+                                </select>
+                            </div>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="flex items-start gap-3 cursor-pointer"
+                        (click)="lotesSeleccionados.set(lotesSeleccionados())">
+                        <input type="radio" name="asignacion"
+                            [checked]="lotesSeleccionados().length > 0 && !asignarATodos() && !urbanizacionSeleccionada()"
+                            class="w-4 h-4 text-emerald-600 focus:ring-emerald-500 mt-1">
+                        <div class="flex-1">
+                            <span class="font-semibold text-gray-900">Seleccionar lotes específicos</span>
+                            <p class="text-sm text-gray-600 mt-1">Seleccione individualmente los lotes a los que desea
+                                aplicar esta promoción</p>
+
+                            <div class="mt-3">
+                                <div class="flex justify-between items-center mb-3">
+                                    <div class="relative flex-1 mr-2">
+                                        <input type="text" [ngModel]="busquedaLotes()"
+                                            (ngModelChange)="busquedaLotes.set($event)"
+                                            placeholder="Buscar lote por número o urbanización..."
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                                    </div>
+                                    <div class="flex gap-2">
+                                        <button type="button" (click)="seleccionarTodosLotes()"
+                                            class="px-3 py-2 bg-emerald-500 text-white rounded-lg text-sm hover:bg-emerald-600">
+                                            Todos
+                                        </button>
+                                        <button type="button" (click)="deseleccionarTodosLotes()"
+                                            class="px-3 py-2 bg-gray-500 text-white rounded-lg text-sm hover:bg-gray-600">
+                                            Ninguno
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="border border-gray-200 rounded-lg max-h-48 overflow-y-auto">
+                                    @for (lote of lotesFiltrados(); track lote.id) {
+                                    <label
+                                        class="flex items-center gap-3 p-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 cursor-pointer">
+                                        <input type="checkbox" [checked]="estaLoteSeleccionado(lote.id)"
+                                            (change)="toggleLoteSeleccionado(lote.id)"
+                                            class="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500">
+                                        <div class="flex-1 min-w-0">
+                                            <div class="flex justify-between items-start">
+                                                <div>
+                                                    <p class="font-medium text-gray-900">{{ lote.numeroLote }}</p>
+                                                    @if (lote.esIndependiente) {
+                                                    <p class="text-sm text-gray-500">Independiente - {{ lote.ciudad }}
+                                                    </p>
+                                                    } @else {
+                                                    <p class="text-sm text-gray-500">{{ lote.urbanizacion?.nombre }} -
+                                                        {{ lote.ciudad }}</p>
+                                                    }
+                                                </div>
+                                                <div class="text-right">
+                                                    <p class="text-sm font-semibold text-emerald-600">${{
+                                                        lote.precioBase | number:'1.2-2' }}</p>
+                                                    <p class="text-xs text-gray-500">{{ lote.superficieM2 }} m²</p>
+                                                    @if (lote.tienePromocionActiva) {
+                                                    <p class="text-xs text-orange-600">Ya tiene promoción activa</p>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </label>
+                                    }
+                                    @if (lotesFiltrados().length === 0) {
+                                    <p class="text-center text-gray-500 py-4">No hay lotes disponibles</p>
+                                    }
+                                </div>
+                                <p class="text-sm text-gray-600 mt-2">
+                                    {{ lotesSeleccionados().length }} lote(s) seleccionado(s)
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                }
+            </div>
+
+            <div class="bg-gray-50 px-6 py-4 border-t border-gray-200">
+                <div class="flex justify-between items-center">
+                    @if (modoRemover()) {
+                    <button (click)="modoRemover.set(false)"
+                        class="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium">
+                        Volver a Asignar
+                    </button>
+                    } @else {
+                    <div></div>
+                    }
+                    <div class="flex gap-3">
+                        <button (click)="cerrarModalAsignar()"
+                            class="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium">
+                            Cancelar
+                        </button>
+                        @if (modoRemover()) {
+                        <button (click)="removerAsignacion()"
+                            [disabled]="asignando() || lotesSeleccionados().length === 0"
+                            class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-medium flex items-center gap-2">
+                            @if (asignando()) {
+                            <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            }
+                            {{ asignando() ? 'Removiendo...' : 'Remover Lotes Seleccionados' }}
+                        </button>
+                        } @else {
+                        <button (click)="asignarPromocion()"
+                            [disabled]="asignando() || (!asignarATodos() && !urbanizacionSeleccionada() && lotesSeleccionados().length === 0)"
+                            class="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-medium flex items-center gap-2">
+                            @if (asignando()) {
+                            <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            }
+                            {{ asignando() ? 'Asignando...' : 'Asignar Promoción' }}
+                        </button>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    }
 </div>

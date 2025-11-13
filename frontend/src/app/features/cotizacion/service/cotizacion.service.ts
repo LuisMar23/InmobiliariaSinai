@@ -26,10 +26,11 @@ export class CotizacionService {
     if (estado) params.push(`estado=${estado}`);
     if (params.length > 0) url += `?${params.join('&')}`;
 
-    return this.http.get<ApiResponse<CotizacionDto[]>>(url).pipe(
+    return this.http.get<ApiResponse<{ cotizaciones: CotizacionDto[] }>>(url).pipe(
       map((response) => {
         if (response.success && response.data) {
-          return Array.isArray(response.data) ? response.data : [response.data];
+          const cotizaciones = (response.data as any).cotizaciones || response.data;
+          return Array.isArray(cotizaciones) ? cotizaciones : [cotizaciones];
         }
         return [];
       })
@@ -37,10 +38,10 @@ export class CotizacionService {
   }
 
   getById(id: number): Observable<CotizacionDto> {
-    return this.http.get<ApiResponse<CotizacionDto>>(`${this.apiUrl}/${id}`).pipe(
+    return this.http.get<ApiResponse<{ cotizacion: CotizacionDto }>>(`${this.apiUrl}/${id}`).pipe(
       map((response) => {
         if (response.success) {
-          return response.data;
+          return (response.data as any).cotizacion || response.data;
         }
         throw new Error(response.message || 'Error al obtener la cotización');
       })
@@ -80,15 +81,14 @@ export class CotizacionService {
     );
   }
 
-  // CORREGIDO: Este endpoint no existe en el backend, lo removemos o ajustamos
-  // getByCliente(clienteId: number): Observable<any> {
-  //   return this.http.get<ApiResponse<any>>(`${this.apiUrl}/cliente/${clienteId}`).pipe(
-  //     map((response) => {
-  //       if (response.success) {
-  //         return response;
-  //       }
-  //       throw new Error(response.message || 'Error al obtener cotizaciones del cliente');
-  //     })
-  //   );
-  // }
+  getLotesDisponibles(): Observable<any> {
+    return this.http.get<ApiResponse<any>>(`${this.apiUrl}/lotes-disponibles`).pipe(
+      map((response) => {
+        if (response.success) {
+          return response.data;
+        }
+        throw new Error(response.message || 'Error al obtener lotes disponibles');
+      })
+    );
+  }
 }

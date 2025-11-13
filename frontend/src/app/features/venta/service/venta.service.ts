@@ -9,6 +9,7 @@ import {
   UpdateVentaDto,
   RegistrarPagoDto,
 } from '../../../core/interfaces/venta.interface';
+import { Caja } from '../../../core/interfaces/caja.interface';
 
 interface ApiResponse<T> {
   success: boolean;
@@ -97,6 +98,7 @@ export class VentaService {
       precioFinal: Number(venta.precioFinal),
       estado: venta.estado || 'PENDIENTE',
       observaciones: venta.observaciones,
+      cajaId: Number(venta.cajaId),
       plan_pago: {
         monto_inicial: Number(venta.plan_pago.monto_inicial),
         plazo: Number(venta.plan_pago.plazo),
@@ -168,19 +170,47 @@ export class VentaService {
     );
   }
 
-  delete(id: number): Observable<any> {
-    return this.http.delete<ApiResponse<any>>(`${this.apiUrl}/${id}`).pipe(
-      map((response) => {
-        if (!response.success) {
-          throw new Error(response.message || 'Error al eliminar venta');
-        }
-        return response;
-      }),
-      catchError((error) => {
-        console.error('Error deleting sale:', error);
-        return throwError(() => error);
+  actualizarMontoInicialPlanPago(
+    ventaId: number,
+    nuevoMontoInicial: number,
+    cajaId: number
+  ): Observable<any> {
+    return this.http
+      .patch<ApiResponse<any>>(`${this.apiUrl}/plan-pago/${ventaId}/monto-inicial`, {
+        nuevoMontoInicial,
+        cajaId,
       })
-    );
+      .pipe(
+        map((response) => {
+          if (!response.success) {
+            throw new Error(response.message || 'Error al actualizar monto inicial');
+          }
+          return response;
+        }),
+        catchError((error) => {
+          console.error('Error updating initial amount:', error);
+          return throwError(() => error);
+        })
+      );
+  }
+
+  delete(id: number, cajaId: number): Observable<any> {
+    return this.http
+      .delete<ApiResponse<any>>(`${this.apiUrl}/${id}`, {
+        body: { cajaId },
+      })
+      .pipe(
+        map((response) => {
+          if (!response.success) {
+            throw new Error(response.message || 'Error al eliminar venta');
+          }
+          return response;
+        }),
+        catchError((error) => {
+          console.error('Error deleting sale:', error);
+          return throwError(() => error);
+        })
+      );
   }
 
   crearPagoPlan(pagoData: RegistrarPagoDto): Observable<any> {
@@ -190,6 +220,7 @@ export class VentaService {
       fecha_pago: pagoData.fecha_pago,
       observacion: pagoData.observacion,
       metodoPago: pagoData.metodoPago || 'EFECTIVO',
+      cajaId: Number(pagoData.cajaId),
     };
 
     return this.http
@@ -223,19 +254,23 @@ export class VentaService {
     );
   }
 
-  eliminarPagoPlan(pagoId: number): Observable<any> {
-    return this.http.delete<ApiResponse<any>>(`${this.apiUrl}/pagos/${pagoId}`).pipe(
-      map((response) => {
-        if (!response.success) {
-          throw new Error(response.message || 'Error al eliminar pago');
-        }
-        return response;
-      }),
-      catchError((error) => {
-        console.error('Error deleting payment:', error);
-        return throwError(() => error);
+  eliminarPagoPlan(pagoId: number, cajaId: number): Observable<any> {
+    return this.http
+      .delete<ApiResponse<any>>(`${this.apiUrl}/pagos/${pagoId}`, {
+        body: { cajaId },
       })
-    );
+      .pipe(
+        map((response) => {
+          if (!response.success) {
+            throw new Error(response.message || 'Error al eliminar pago');
+          }
+          return response;
+        }),
+        catchError((error) => {
+          console.error('Error deleting payment:', error);
+          return throwError(() => error);
+        })
+      );
   }
 
   obtenerPagosPlan(planPagoId: number): Observable<any> {
@@ -317,6 +352,21 @@ export class VentaService {
           return throwError(() => error);
         })
       );
+  }
+
+  obtenerCajasActivas(): Observable<Caja[]> {
+    return this.http.get<ApiResponse<{ cajas: Caja[] }>>(`${this.apiUrl}/cajas/activas`).pipe(
+      map((response) => {
+        if (response.success && response.data.cajas) {
+          return response.data.cajas;
+        }
+        return [];
+      }),
+      catchError((error) => {
+        console.error('Error loading active boxes:', error);
+        return throwError(() => error);
+      })
+    );
   }
 
   private parseVenta(venta: any): VentaDto {

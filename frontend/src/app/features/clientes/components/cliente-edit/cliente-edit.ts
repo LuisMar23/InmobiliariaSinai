@@ -12,8 +12,6 @@ import {
   faPhone,
   faMapMarkerAlt,
   faStickyNote,
-  faCalendar,
-  faUsers,
 } from '@fortawesome/free-solid-svg-icons';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { ClientesService } from '../../service/cliente.service';
@@ -34,8 +32,6 @@ export class ClientesEditComponent implements OnInit {
   faPhone = faPhone;
   faMapMarkerAlt = faMapMarkerAlt;
   faStickyNote = faStickyNote;
-  faCalendar = faCalendar;
-  faUsers = faUsers;
 
   clienteForm: FormGroup;
   clienteId = signal<number | null>(null);
@@ -62,6 +58,7 @@ export class ClientesEditComponent implements OnInit {
   crearFormularioCliente(): FormGroup {
     return this.fb.group({
       fullName: ['', [Validators.required, Validators.minLength(3)]],
+      ci: ['', [Validators.required, Validators.pattern(/^\d+$/)]],
       telefono: ['', [Validators.required]],
       direccion: [''],
       observaciones: [''],
@@ -84,7 +81,6 @@ export class ClientesEditComponent implements OnInit {
         if (response.success && response.data) {
           const cliente = response.data.user || response.data;
 
-          // Validar que sea un cliente
           if (cliente && cliente.role !== 'CLIENTE') {
             this.notificationService.showError('El usuario no es un cliente');
             this.router.navigate(['/clientes']);
@@ -110,6 +106,7 @@ export class ClientesEditComponent implements OnInit {
   cargarDatosFormulario(cliente: any): void {
     this.clienteForm.patchValue({
       fullName: cliente.fullName || '',
+      ci: cliente.ci || '',
       telefono: cliente.telefono || '',
       direccion: cliente.direccion || '',
       observaciones: cliente.observaciones || '',
@@ -160,6 +157,9 @@ export class ClientesEditComponent implements OnInit {
     if (control?.errors && control.touched) {
       if (control.errors['required']) return 'Este campo es requerido';
       if (control.errors['minlength']) return 'Mínimo 3 caracteres';
+      if (control.errors['pattern']) {
+        if (fieldName === 'ci') return 'El C.I. debe contener solo números';
+      }
     }
     return '';
   }
@@ -167,10 +167,6 @@ export class ClientesEditComponent implements OnInit {
   isFieldValid(fieldName: string): boolean {
     const control = this.clienteForm.get(fieldName);
     return !!(control?.invalid && control.touched);
-  }
-
-  formatDate(date: string): string {
-    return this.datePipe.transform(date, 'dd/MM/yyyy') || 'N/A';
   }
 
   goBack(): void {

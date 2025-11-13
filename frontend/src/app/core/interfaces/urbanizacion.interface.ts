@@ -8,8 +8,7 @@ export interface UrbanizacionDto {
   descripcion?: string;
   createdAt?: Date;
   updatedAt?: Date;
-   archivos?:any;
-
+  archivos?:any;
   _count?: {
     lotes: number;
   };

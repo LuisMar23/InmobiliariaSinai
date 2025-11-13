@@ -250,6 +250,9 @@ export class VisitaEdit implements OnInit {
         if (err.status === 400) {
           errorMessage =
             err.error?.message || 'Datos inválidos. Verifique la información ingresada.';
+        } else if (err.status === 403) {
+          errorMessage =
+            'No tienes permisos para actualizar visitas. Se requiere rol de ASESOR, ADMINISTRADOR o SECRETARIA';
         } else if (err.status === 404) {
           errorMessage = 'Visita no encontrada.';
         }

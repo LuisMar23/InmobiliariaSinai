@@ -45,6 +45,18 @@
                 </div>
                 <p class="text-gray-600 mt-3 sm:mt-4 text-sm sm:text-base">Cargando cotizaciones...</p>
             </div>
+            } @else if (error()) {
+            <div class="text-center py-8 sm:py-12 text-red-500">
+                <svg class="w-12 h-12 text-red-300 mb-3 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p class="text-base font-semibold mb-2">{{ error() }}</p>
+                <button (click)="obtenerCotizaciones()"
+                    class="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors text-sm">
+                    Reintentar
+                </button>
+            </div>
             } @else {
             <div class="hidden lg:block">
                 <div class="overflow-x-auto rounded-lg border border-gray-200">
@@ -94,33 +106,37 @@
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap">
                                     <div>
-                                        <p class="text-gray-900 font-medium text-sm">{{ cotizacion.cliente?.fullName }}
+                                        <p class="text-gray-900 font-medium text-sm">{{ cotizacion.cliente?.fullName ||
+                                            'N/A' }}
                                         </p>
                                     </div>
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap">
                                     <div>
-                                        <p class="text-gray-900 font-medium text-sm">{{ cotizacion.asesor?.fullName }}
+                                        <p class="text-gray-900 font-medium text-sm">{{ cotizacion.asesor?.fullName ||
+                                            'N/A' }}
                                         </p>
                                     </div>
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap">
                                     @if (cotizacion.lote) {
                                     <div>
-                                        <p class="text-gray-900 font-medium text-sm">Lote {{ cotizacion.lote.numeroLote
+                                        <p class="text-gray-900 font-medium text-sm">{{ cotizacion.lote.numeroLote ||
+                                            'N/A'
                                             }}</p>
-                                        <p class="text-xs text-gray-500">{{ cotizacion.lote.urbanizacion?.nombre }}</p>
+                                        <p class="text-xs text-gray-500">{{ cotizacion.lote.urbanizacion?.nombre || ''
+                                            }}</p>
                                     </div>
                                     } @else {
                                     <span class="text-gray-400 text-sm">-</span>
                                     }
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap text-gray-600 font-semibold text-sm">
-                                    $ {{ cotizacion.precioOfertado | number:'1.2-2' }}
+                                    $ {{ formatMonto(cotizacion.precioOfertado) }}
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap">
                                     <span [class]="getEstadoBadgeClass(cotizacion.estado)" class="text-xs">
-                                        {{ cotizacion.estado }}
+                                        {{ cotizacion.estado || 'PENDIENTE' }}
                                     </span>
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap text-center">
@@ -185,11 +201,12 @@
                         <div class="flex justify-between items-start">
                             <div class="flex-1 min-w-0">
                                 <h3 class="font-bold text-white text-base truncate">Cotización #{{ cotizacion.id }}</h3>
-                                <p class="text-emerald-100 text-xs truncate">Cliente: {{ cotizacion.cliente?.fullName }}
+                                <p class="text-emerald-100 text-xs truncate">Cliente: {{ cotizacion.cliente?.fullName ||
+                                    'N/A' }}
                                 </p>
                             </div>
                             <span [class]="getEstadoBadgeClass(cotizacion.estado)" class="text-xs flex-shrink-0 ml-2">
-                                {{ cotizacion.estado }}
+                                {{ cotizacion.estado || 'PENDIENTE' }}
                             </span>
                         </div>
                     </div>
@@ -204,7 +221,7 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                 </svg>
-                                <span class="text-gray-900">Asesor: {{ cotizacion.asesor?.fullName }}</span>
+                                <span class="text-gray-900">Asesor: {{ cotizacion.asesor?.fullName || 'N/A' }}</span>
                             </div>
                             <div class="flex items-center gap-1">
                                 <svg class="w-3 h-3 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor"
@@ -212,7 +229,7 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
                                 </svg>
-                                <span class="text-gray-900 font-medium">$ {{ cotizacion.precioOfertado | number:'1.2-2'
+                                <span class="text-gray-900 font-medium">$ {{ formatMonto(cotizacion.precioOfertado)
                                     }}</span>
                             </div>
                         </div>
@@ -220,8 +237,9 @@
                         @if (cotizacion.lote) {
                         <div class="pt-1 border-t border-gray-100">
                             <p class="text-gray-500 text-xs mb-1">Lote</p>
-                            <p class="text-emerald-600 font-medium text-sm">Lote {{ cotizacion.lote.numeroLote }}</p>
-                            <p class="text-gray-500 text-xs">{{ cotizacion.lote.urbanizacion?.nombre }}</p>
+                            <p class="text-emerald-600 font-medium text-sm">{{ cotizacion.lote.numeroLote || 'N/A'
+                                }}</p>
+                            <p class="text-gray-500 text-xs">{{ cotizacion.lote.urbanizacion?.nombre || '' }}</p>
                         </div>
                         } @else {
                         <div class="pt-1 border-t border-gray-100">
@@ -357,7 +375,7 @@
                         <div class="flex justify-between items-center py-2 border-b border-gray-100">
                             <span class="text-sm font-medium text-gray-500">Precio Ofertado:</span>
                             <span class="text-sm font-bold text-emerald-600">$ {{
-                                cotizacionSeleccionada()!.precioOfertado | number:'1.2-2' }}</span>
+                                formatMonto(cotizacionSeleccionada()!.precioOfertado) }}</span>
                         </div>
                         <div class="flex justify-between items-center py-2 border-b border-gray-100">
                             <span class="text-sm font-medium text-gray-500">Tipo de Inmueble:</span>
@@ -380,7 +398,7 @@
                     <div class="space-y-3">
                         <div class="flex justify-between items-center py-2 border-b border-gray-100">
                             <span class="text-sm font-medium text-gray-500">Número:</span>
-                            <span class="text-sm font-semibold text-gray-900">Lote {{
+                            <span class="text-sm font-semibold text-gray-900">{{
                                 cotizacionSeleccionada()!.lote?.numeroLote }}</span>
                         </div>
                         <div class="flex justify-between items-center py-2 border-b border-gray-100">
@@ -390,8 +408,9 @@
                         </div>
                         <div class="flex justify-between items-center py-2 border-b border-gray-100">
                             <span class="text-sm font-medium text-gray-500">Precio Base:</span>
-                            <span class="text-sm text-gray-900">$ {{ cotizacionSeleccionada()!.lote?.precioBase |
-                                number:'1.2-2' }}</span>
+                            <span class="text-sm text-gray-900">$ {{
+                                formatMonto(cotizacionSeleccionada()!.lote?.precioBase)
+                                }}</span>
                         </div>
                         <div class="flex justify-between items-center py-2 border-b border-gray-100">
                             <span class="text-sm font-medium text-gray-500">Estado:</span>

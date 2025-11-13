@@ -1,4 +1,3 @@
-// src/app/modules/lote/components/lote-list/lote-list.ts
 import { Component, inject, signal, OnInit, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';

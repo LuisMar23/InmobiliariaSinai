@@ -1,3 +1,4 @@
+// reserva-create.component.ts
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
@@ -21,6 +22,10 @@ export class ReservaCreate implements OnInit {
   enviando = signal<boolean>(false);
   clientes = signal<UserDto[]>([]);
   lotes = signal<LoteDto[]>([]);
+  searchCliente = signal<string>('');
+  searchLote = signal<string>('');
+  showClientesDropdown = signal<boolean>(false);
+  showLotesDropdown = signal<boolean>(false);
 
   router = inject(Router);
   private fb = inject(FormBuilder);
@@ -37,6 +42,7 @@ export class ReservaCreate implements OnInit {
   ngOnInit(): void {
     this.cargarClientes();
     this.cargarLotes();
+    this.establecerFechasPorDefecto();
   }
 
   crearFormularioReserva(): FormGroup {
@@ -51,11 +57,23 @@ export class ReservaCreate implements OnInit {
     });
   }
 
+  establecerFechasPorDefecto(): void {
+    const hoy = new Date();
+    const vencimiento = new Date();
+    vencimiento.setDate(hoy.getDate() + 30);
+
+    const hoyFormateado = hoy.toISOString().split('T')[0];
+    const vencimientoFormateado = vencimiento.toISOString().split('T')[0];
+
+    this.reservaForm.patchValue({
+      fechaInicio: hoyFormateado,
+      fechaVencimiento: vencimientoFormateado,
+    });
+  }
+
   cargarClientes(): void {
     this.authService.getClientes().subscribe({
       next: (response: any) => {
-        console.log('Respuesta completa de clientes:', response);
-
         let clientes: any[] = [];
 
         if (response.data && Array.isArray(response.data.clientes)) {
@@ -65,12 +83,10 @@ export class ReservaCreate implements OnInit {
         } else if (Array.isArray(response)) {
           clientes = response;
         } else {
-          console.error('Estructura de respuesta no reconocida:', response);
           this.notificationService.showWarning('No se pudieron cargar los clientes');
           return;
         }
 
-        console.log('Clientes cargados:', clientes);
         this.clientes.set(clientes);
 
         if (clientes.length === 0) {
@@ -78,7 +94,6 @@ export class ReservaCreate implements OnInit {
         }
       },
       error: (err: any) => {
-        console.error('Error al cargar clientes:', err);
         this.notificationService.showError('No se pudieron cargar los clientes');
       },
     });
@@ -87,10 +102,7 @@ export class ReservaCreate implements OnInit {
   cargarLotes(): void {
     this.loteSvc.getAll().subscribe({
       next: (lotes: LoteDto[]) => {
-        // Filtra solo lotes DISPONIBLES
         const lotesDisponibles = lotes.filter((lote) => lote.estado === 'DISPONIBLE');
-
-        console.log('Lotes disponibles:', lotesDisponibles);
         this.lotes.set(lotesDisponibles);
 
         if (lotesDisponibles.length === 0) {
@@ -98,10 +110,77 @@ export class ReservaCreate implements OnInit {
         }
       },
       error: (err: any) => {
-        console.error('Error al cargar lotes:', err);
         this.notificationService.showError('No se pudieron cargar los lotes');
       },
     });
+  }
+
+  filteredClientes() {
+    const search = this.searchCliente().toLowerCase();
+    if (!search) return this.clientes();
+
+    return this.clientes().filter(
+      (cliente) =>
+        cliente.fullName?.toLowerCase().includes(search) ||
+        cliente.ci?.toLowerCase().includes(search) ||
+        cliente.email?.toLowerCase().includes(search)
+    );
+  }
+
+  filteredLotes() {
+    const search = this.searchLote().toLowerCase();
+    if (!search) return this.lotes();
+
+    return this.lotes().filter(
+      (lote) =>
+        lote.numeroLote?.toLowerCase().includes(search) ||
+        lote.urbanizacion?.nombre?.toLowerCase().includes(search) ||
+        this.formatMonto(lote.precioBase)?.toLowerCase().includes(search)
+    );
+  }
+
+  selectCliente(cliente: UserDto) {
+    this.reservaForm.patchValue({
+      clienteId: cliente.id.toString(),
+    });
+    this.searchCliente.set(cliente.fullName || '');
+    this.showClientesDropdown.set(false);
+  }
+
+  selectLote(lote: LoteDto) {
+    this.reservaForm.patchValue({
+      inmuebleId: lote.id.toString(),
+    });
+    this.searchLote.set(
+      `${lote.numeroLote} - ${lote.urbanizacion?.nombre} - $${this.formatMonto(lote.precioBase)}`
+    );
+    this.showLotesDropdown.set(false);
+  }
+
+  toggleClientesDropdown() {
+    this.showClientesDropdown.set(!this.showClientesDropdown());
+    if (this.showClientesDropdown()) {
+      this.showLotesDropdown.set(false);
+    }
+  }
+
+  toggleLotesDropdown() {
+    this.showLotesDropdown.set(!this.showLotesDropdown());
+    if (this.showLotesDropdown()) {
+      this.showClientesDropdown.set(false);
+    }
+  }
+
+  onClienteBlur() {
+    setTimeout(() => {
+      this.showClientesDropdown.set(false);
+    }, 200);
+  }
+
+  onLoteBlur() {
+    setTimeout(() => {
+      this.showLotesDropdown.set(false);
+    }, 200);
   }
 
   onSubmit(): void {
@@ -111,7 +190,6 @@ export class ReservaCreate implements OnInit {
       return;
     }
 
-    // Validar fechas - CORREGIDO
     const fechaInicioStr = this.reservaForm.value.fechaInicio;
     const fechaVencimientoStr = this.reservaForm.value.fechaVencimiento;
 
@@ -120,21 +198,11 @@ export class ReservaCreate implements OnInit {
       return;
     }
 
-    // Crear objetos Date correctamente
     const fechaInicio = new Date(fechaInicioStr + 'T00:00:00');
     const fechaVencimiento = new Date(fechaVencimientoStr + 'T00:00:00');
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
 
-    console.log('Fechas validadas:', {
-      fechaInicio,
-      fechaVencimiento,
-      hoy,
-      fechaInicioStr,
-      fechaVencimientoStr,
-    });
-
-    // Validación corregida
     if (fechaInicio < hoy) {
       this.notificationService.showError('La fecha de inicio no puede ser anterior a hoy');
       return;
@@ -158,12 +226,9 @@ export class ReservaCreate implements OnInit {
       fechaVencimiento: fechaVencimiento.toISOString(),
     };
 
-    console.log('Datos a enviar:', reservaData);
-
     this.reservaSvc.create(reservaData).subscribe({
       next: (response: any) => {
         this.enviando.set(false);
-        console.log('Respuesta del servidor:', response);
 
         if (response.success) {
           this.notificationService.showSuccess('Reserva creada exitosamente!');
@@ -176,7 +241,6 @@ export class ReservaCreate implements OnInit {
       },
       error: (err: any) => {
         this.enviando.set(false);
-        console.error('Error completo:', err);
 
         let errorMessage = 'Error al crear la reserva';
         if (err.status === 400) {
@@ -200,18 +264,37 @@ export class ReservaCreate implements OnInit {
     this.onSubmit();
   }
 
-  getClienteNombre(): string {
-    const clienteId = this.reservaForm.get('clienteId')?.value;
-    if (!clienteId) return 'Sin cliente';
-
-    const cliente = this.clientes().find((c) => c.id === Number(clienteId));
-    return cliente ? cliente.fullName : 'No encontrado';
+  getEstadoBadgeClass(estado: string): string {
+    const classes: { [key: string]: string } = {
+      DISPONIBLE: 'px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700',
+      RESERVADO: 'px-3 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-700',
+      VENDIDO: 'px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700',
+      CON_OFERTA: 'px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700',
+    };
+    return classes[estado] || classes['DISPONIBLE'];
   }
 
-  // Método seguro para formatear montos
-  formatMonto(monto: any): string {
-    if (!monto) return '0.00';
-    const montoNum = Number(monto);
-    return isNaN(montoNum) ? '0.00' : montoNum.toFixed(2);
+  formatMonto(monto: number | string | undefined | null): string {
+    if (monto === undefined || monto === null) return '0';
+
+    let numero: number;
+    if (typeof monto === 'string') {
+      numero = parseFloat(monto);
+      if (isNaN(numero)) return '0';
+    } else {
+      numero = monto;
+    }
+
+    if (Number.isInteger(numero)) {
+      return numero.toString();
+    }
+
+    const formatted = numero.toFixed(2);
+
+    if (formatted.endsWith('.00')) {
+      return formatted.slice(0, -3);
+    }
+
+    return formatted;
   }
 }

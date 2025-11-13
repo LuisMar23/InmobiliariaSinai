@@ -56,15 +56,18 @@ export class ReservasService {
     fechaInicio: Date,
     fechaVencimiento: Date,
   ): void {
+    const ahora = this.getCurrentTimeLaPaz();
+    const inicioMinimo = new Date(ahora);
+    inicioMinimo.setHours(0, 0, 0, 0);
+
+    if (fechaInicio < inicioMinimo) {
+      throw new BadRequestException('La fecha de inicio debe ser hoy o futura');
+    }
+
     if (fechaInicio >= fechaVencimiento) {
       throw new BadRequestException(
         'La fecha de inicio debe ser anterior a la fecha de vencimiento',
       );
-    }
-
-    const ahora = new Date();
-    if (fechaInicio < ahora) {
-      throw new BadRequestException('La fecha de inicio debe ser futura');
     }
   }
 
@@ -74,21 +77,22 @@ export class ReservasService {
         const fechaInicio = new Date(createReservaDto.fechaInicio);
         const fechaVencimiento = new Date(createReservaDto.fechaVencimiento);
 
-        // Validar fechas
         this.validarFechasReserva(fechaInicio, fechaVencimiento);
 
-        // Verificar que el asesor existe y tiene rol ASESOR
         const asesor = await prisma.user.findFirst({
-          where: { id: asesorId, isActive: true, role: 'ASESOR' },
+          where: {
+            id: asesorId,
+            isActive: true,
+            role: { in: ['ASESOR', 'ADMINISTRADOR', 'SECRETARIA'] },
+          },
         });
 
         if (!asesor) {
           throw new ForbiddenException(
-            'No tienes permisos para crear reservas. Se requiere rol de ASESOR',
+            'No tienes permisos para crear reservas',
           );
         }
 
-        // Verificar que cliente existe y tiene rol CLIENTE
         const cliente = await prisma.user.findFirst({
           where: {
             id: createReservaDto.clienteId,
@@ -103,7 +107,6 @@ export class ReservasService {
           );
         }
 
-        // Verificar que el inmueble existe y está disponible
         if (createReservaDto.inmuebleTipo === TipoInmueble.LOTE) {
           const lote = await prisma.lote.findUnique({
             where: { id: createReservaDto.inmuebleId },
@@ -120,7 +123,6 @@ export class ReservasService {
           }
         }
 
-        // Crear la reserva con el asesorId obtenido del usuario autenticado
         const reserva = await prisma.reserva.create({
           data: {
             clienteId: createReservaDto.clienteId,
@@ -156,7 +158,6 @@ export class ReservasService {
           },
         });
 
-        // Actualizar estado del inmueble
         if (createReservaDto.inmuebleTipo === TipoInmueble.LOTE) {
           await prisma.lote.update({
             where: { id: createReservaDto.inmuebleId },
@@ -232,8 +233,37 @@ export class ReservasService {
         orderBy: { createdAt: 'desc' },
       });
 
-      const reservasConLotes = await Promise.all(
+      const ahora = this.getCurrentTimeLaPaz();
+      const reservasActualizadas = await Promise.all(
         reservas.map(async (reserva) => {
+          if (
+            reserva.estado === EstadoReserva.ACTIVA &&
+            reserva.fechaVencimiento < ahora
+          ) {
+            const reservaActualizada = await this.prisma.reserva.update({
+              where: { id: reserva.id },
+              data: { estado: EstadoReserva.VENCIDA },
+            });
+
+            if (reservaActualizada.inmuebleTipo === TipoInmueble.LOTE) {
+              await this.prisma.lote.update({
+                where: { id: reservaActualizada.inmuebleId },
+                data: { estado: 'DISPONIBLE' },
+              });
+            }
+
+            return {
+              ...reservaActualizada,
+              cliente: reserva.cliente,
+              asesor: reserva.asesor,
+            };
+          }
+          return reserva;
+        }),
+      );
+
+      const reservasConLotes = await Promise.all(
+        reservasActualizadas.map(async (reserva) => {
           let loteInfo: any = null;
 
           if (reserva.inmuebleTipo === TipoInmueble.LOTE) {
@@ -308,6 +338,24 @@ export class ReservasService {
         throw new NotFoundException(`Reserva con ID ${id} no encontrada`);
       }
 
+      const ahora = this.getCurrentTimeLaPaz();
+      if (
+        reserva.estado === EstadoReserva.ACTIVA &&
+        reserva.fechaVencimiento < ahora
+      ) {
+        const reservaActualizada = await this.prisma.reserva.update({
+          where: { id: reserva.id },
+          data: { estado: EstadoReserva.VENCIDA },
+        });
+
+        if (reservaActualizada.inmuebleTipo === TipoInmueble.LOTE) {
+          await this.prisma.lote.update({
+            where: { id: reservaActualizada.inmuebleId },
+            data: { estado: 'DISPONIBLE' },
+          });
+        }
+      }
+
       let loteInfo: any = null;
       if (reserva.inmuebleTipo === TipoInmueble.LOTE) {
         const lote = await this.prisma.lote.findUnique({
@@ -335,8 +383,35 @@ export class ReservasService {
         }
       }
 
+      const reservaActual = await this.prisma.reserva.findUnique({
+        where: { id },
+        include: {
+          cliente: {
+            select: {
+              id: true,
+              fullName: true,
+              ci: true,
+              telefono: true,
+              direccion: true,
+              observaciones: true,
+              role: true,
+            },
+          },
+          asesor: {
+            select: {
+              id: true,
+              username: true,
+              email: true,
+              fullName: true,
+              telefono: true,
+              role: true,
+            },
+          },
+        },
+      });
+
       const reservaConLote = {
-        ...reserva,
+        ...reservaActual,
         lote: loteInfo,
       };
 
@@ -356,6 +431,20 @@ export class ReservasService {
   ) {
     try {
       return await this.prisma.$transaction(async (prisma) => {
+        const usuario = await prisma.user.findFirst({
+          where: {
+            id: usuarioId,
+            isActive: true,
+            role: { in: ['ASESOR', 'ADMINISTRADOR', 'SECRETARIA'] },
+          },
+        });
+
+        if (!usuario) {
+          throw new ForbiddenException(
+            'No tienes permisos para actualizar reservas',
+          );
+        }
+
         const reservaExistente = await prisma.reserva.findUnique({
           where: { id },
         });
@@ -366,7 +455,6 @@ export class ReservasService {
 
         const datosAntes = { ...reservaExistente };
 
-        // Validar fechas si se están actualizando
         let fechaInicio = reservaExistente.fechaInicio;
         let fechaVencimiento = reservaExistente.fechaVencimiento;
 
@@ -381,7 +469,6 @@ export class ReservasService {
           this.validarFechasReserva(fechaInicio, fechaVencimiento);
         }
 
-        // Verificar relaciones si se están actualizando
         if (updateReservaDto.clienteId) {
           const cliente = await prisma.user.findFirst({
             where: {
@@ -444,7 +531,8 @@ export class ReservasService {
     } catch (error) {
       if (
         error instanceof NotFoundException ||
-        error instanceof BadRequestException
+        error instanceof BadRequestException ||
+        error instanceof ForbiddenException
       ) {
         throw error;
       }
@@ -455,6 +543,20 @@ export class ReservasService {
   async remove(id: number, usuarioId: number) {
     try {
       return await this.prisma.$transaction(async (prisma) => {
+        const usuario = await prisma.user.findFirst({
+          where: {
+            id: usuarioId,
+            isActive: true,
+            role: { in: ['ASESOR', 'ADMINISTRADOR', 'SECRETARIA'] },
+          },
+        });
+
+        if (!usuario) {
+          throw new ForbiddenException(
+            'No tienes permisos para eliminar reservas',
+          );
+        }
+
         const reserva = await prisma.reserva.findUnique({
           where: { id },
         });
@@ -467,7 +569,6 @@ export class ReservasService {
 
         await prisma.reserva.delete({ where: { id } });
 
-        // Restaurar estado del inmueble
         if (reserva.inmuebleTipo === TipoInmueble.LOTE) {
           await prisma.lote.update({
             where: { id: reserva.inmuebleId },
@@ -487,7 +588,10 @@ export class ReservasService {
         return { success: true, message: 'Reserva eliminada correctamente' };
       });
     } catch (error) {
-      if (error instanceof NotFoundException) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof ForbiddenException
+      ) {
         throw error;
       }
       throw new InternalServerErrorException('Error interno del servidor');
@@ -519,8 +623,36 @@ export class ReservasService {
         orderBy: { createdAt: 'desc' },
       });
 
-      const reservasConLotes = await Promise.all(
+      const ahora = this.getCurrentTimeLaPaz();
+      const reservasActualizadas = await Promise.all(
         reservas.map(async (reserva) => {
+          if (
+            reserva.estado === EstadoReserva.ACTIVA &&
+            reserva.fechaVencimiento < ahora
+          ) {
+            const reservaActualizada = await this.prisma.reserva.update({
+              where: { id: reserva.id },
+              data: { estado: EstadoReserva.VENCIDA },
+            });
+
+            if (reservaActualizada.inmuebleTipo === TipoInmueble.LOTE) {
+              await this.prisma.lote.update({
+                where: { id: reservaActualizada.inmuebleId },
+                data: { estado: 'DISPONIBLE' },
+              });
+            }
+
+            return {
+              ...reservaActualizada,
+              asesor: reserva.asesor,
+            };
+          }
+          return reserva;
+        }),
+      );
+
+      const reservasConLotes = await Promise.all(
+        reservasActualizadas.map(async (reserva) => {
           let loteInfo: any = null;
 
           if (reserva.inmuebleTipo === TipoInmueble.LOTE) {

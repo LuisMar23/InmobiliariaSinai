@@ -1,6 +1,5 @@
 <div class="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-emerald-50 py-4 px-2 sm:px-4 lg:px-8">
     <div class="max-w-full mx-auto">
-        <!-- Header -->
         <div class="bg-emerald-500 rounded-t-2xl shadow-lg p-4 sm:p-6">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div class="flex items-center gap-3">
@@ -25,36 +24,8 @@
             </div>
         </div>
 
-        <!-- Formulario -->
         <div class="bg-white rounded-b-2xl shadow-xl p-4 sm:p-6 lg:p-8">
             <form [formGroup]="loteForm" (submit)="handleFormSubmit($event)">
-                <!-- Tipo de Lote -->
-                <div class="mb-8">
-                    <h2 class="text-lg sm:text-xl font-semibold text-gray-900 mb-6 flex items-center gap-2">
-                        <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        Tipo de Lote
-                    </h2>
-                    <div class="bg-white border-2 border-gray-200 rounded-xl p-4 sm:p-6">
-                        <div class="flex items-center gap-4">
-                            <label class="flex items-center gap-2 cursor-pointer">
-                                <input type="checkbox" formControlName="esIndependiente"
-                                    (change)="onEsIndependienteChange()"
-                                    class="w-4 h-4 text-emerald-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500">
-                                <span class="text-sm font-medium text-gray-700">Lote Independiente</span>
-                            </label>
-                            <span class="text-xs text-gray-500">(Sin urbanización)</span>
-                        </div>
-                        <p class="text-xs text-gray-500 mt-2">
-                            {{ loteForm.get('esIndependiente')?.value ?
-                            'Este lote será independiente y no pertenecerá a ninguna urbanización.' :
-                            'Este lote pertenecerá a una urbanización existente.' }}
-                        </p>
-                    </div>
-                </div>
-
                 <div class="mb-8">
                     <h2 class="text-lg sm:text-xl font-semibold text-gray-900 mb-6 flex items-center gap-2">
                         <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -64,8 +35,24 @@
                         Información del Lote
                     </h2>
                     <div class="bg-white border-2 border-gray-200 rounded-xl p-4 sm:p-6">
+                        <div class="mb-6 pb-6 border-b border-gray-200">
+                            <h3 class="text-md font-semibold text-gray-800 mb-4">Lote Independiente</h3>
+                            <div class="flex items-center gap-4">
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" formControlName="esIndependiente"
+                                        class="w-4 h-4 text-emerald-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500">
+                                    <span class="text-sm font-medium text-gray-700">Lote Independiente</span>
+                                </label>
+                                <span class="text-xs text-gray-500">(Sin urbanización)</span>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-2">
+                                {{ loteForm.get('esIndependiente')?.value ? 'Este lote será independiente y no
+                                pertenecerá a ninguna urbanización.' : 'Este lote pertenecerá a una urbanización
+                                existente.' }}
+                            </p>
+                        </div>
+
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                            <!-- Urbanización con buscador (solo si no es independiente) -->
                             @if (!loteForm.get('esIndependiente')?.value) {
                             <div class="relative sm:col-span-2 lg:col-span-1">
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -87,7 +74,6 @@
                                     </div>
                                 </div>
 
-                                <!-- Dropdown de urbanizaciones -->
                                 @if (showUrbanizacionDropdown()) {
                                 <div
                                     class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
@@ -100,8 +86,7 @@
                                     </div>
                                     }
                                     @if (filteredUrbanizaciones().length === 0) {
-                                    <div class="px-4 py-3 text-gray-500 text-center">
-                                        No se encontraron urbanizaciones
+                                    <div class="px-4 py-3 text-gray-500 text-center">No se encontraron urbanizaciones
                                     </div>
                                     }
                                 </div>
@@ -114,7 +99,6 @@
                             </div>
                             }
 
-                            <!-- Ciudad (solo si es independiente) -->
                             @if (loteForm.get('esIndependiente')?.value) {
                             <div class="sm:col-span-2 lg:col-span-1">
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -122,7 +106,7 @@
                                 </label>
                                 <input type="text" formControlName="ciudad"
                                     class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm sm:text-base"
-                                    placeholder="Ej: Quito, Guayaquil"
+                                    placeholder="Ej: Tarija - Cercado"
                                     [class.border-red-500]="loteForm.get('ciudad')?.invalid && loteForm.get('ciudad')?.touched" />
                                 @if (loteForm.get('ciudad')?.invalid && loteForm.get('ciudad')?.touched) {
                                 <p class="mt-1 text-xs text-red-600">La ciudad es requerida para lotes independientes
@@ -131,7 +115,6 @@
                             </div>
                             }
 
-                            <!-- Número de Lote -->
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     Número de Lote <span class="text-red-500">*</span>
@@ -145,7 +128,6 @@
                                 }
                             </div>
 
-                            <!-- Superficie -->
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     Superficie (m²) <span class="text-red-500">*</span>
@@ -159,7 +141,6 @@
                                 }
                             </div>
 
-                            <!-- Precio Base -->
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     Precio Base ($) <span class="text-red-500">*</span>
@@ -177,7 +158,6 @@
                                 }
                             </div>
 
-                            <!-- Estado -->
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     Estado
@@ -194,7 +174,6 @@
                     </div>
                 </div>
 
-                <!-- Información Adicional -->
                 <div class="mb-8">
                     <h2 class="text-lg sm:text-xl font-semibold text-gray-900 mb-6 flex items-center gap-2">
                         <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -205,7 +184,6 @@
                     </h2>
                     <div class="bg-white border-2 border-gray-200 rounded-xl p-4 sm:p-6">
                         <div class="grid grid-cols-1 gap-4 sm:gap-6">
-                            <!-- Descripción -->
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     Descripción
@@ -215,7 +193,6 @@
                                     placeholder="Ingrese una descripción detallada del lote..."></textarea>
                             </div>
 
-                            <!-- Ubicación -->
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     URL de Google Maps
@@ -230,52 +207,6 @@
                     </div>
                 </div>
 
-                <!-- Resumen -->
-                <div class="border-2 border-gray-300 rounded-xl p-4 sm:p-6 mb-6 bg-blue-50">
-                    <h3 class="text-base sm:text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                        <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                        </svg>
-                        Resumen del Lote
-                    </h3>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div class="bg-white rounded-lg p-4 shadow">
-                            <p class="text-xs sm:text-sm text-gray-600 mb-1">Tipo de Lote</p>
-                            <p class="text-lg sm:text-xl font-bold text-blue-700">
-                                {{ getTipoLote() }}
-                            </p>
-                        </div>
-                        <div class="bg-white rounded-lg p-4 shadow">
-                            <p class="text-xs sm:text-sm text-gray-600 mb-1">Número de Lote</p>
-                            <p class="text-lg sm:text-xl font-bold text-blue-700">
-                                {{ loteForm.get('numeroLote')?.value || 'Sin número' }}
-                            </p>
-                        </div>
-                        <div class="bg-white rounded-lg p-4 shadow">
-                            <p class="text-xs sm:text-sm text-gray-600 mb-1">Urbanización/Ciudad</p>
-                            <p class="text-lg sm:text-xl font-bold text-emerald-700">
-                                {{ loteForm.get('esIndependiente')?.value ?
-                                (loteForm.get('ciudad')?.value || 'Sin ciudad') :
-                                getUrbanizacionNombre() }}
-                            </p>
-                        </div>
-                        <div class="bg-white rounded-lg p-4 shadow">
-                            <p class="text-xs sm:text-sm text-gray-600 mb-1">Superficie</p>
-                            <p class="text-lg sm:text-xl font-bold text-gray-700">
-                                {{ (loteForm.get('superficieM2')?.value || 0).toFixed(2) }} m²
-                            </p>
-                        </div>
-                        <div class="bg-white rounded-lg p-4 shadow">
-                            <p class="text-xs sm:text-sm text-gray-600 mb-1">Precio Base</p>
-                            <p class="text-lg sm:text-xl font-bold text-gray-700">
-                                $ {{ (loteForm.get('precioBase')?.value || 0).toFixed(2) }}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Botones de acción -->
                 <div class="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 pt-6 border-t border-gray-200">
                     <button type="button" (click)="router.navigate(['/lotes/lista'])"
                         class="flex items-center justify-center gap-2 bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg shadow-md transition-all duration-200 font-semibold w-full sm:w-auto">

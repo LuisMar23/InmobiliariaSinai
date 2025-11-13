@@ -17,10 +17,8 @@ export class LoteCreate implements OnInit {
   loteForm: FormGroup;
   enviando = signal<boolean>(false);
   urbanizaciones = signal<UrbanizacionDto[]>([]);
-
   searchUrbanizacion = signal<string>('');
   showUrbanizacionDropdown = signal<boolean>(false);
-
   router = inject(Router);
   private fb = inject(FormBuilder);
   private loteSvc = inject(LoteService);
@@ -33,6 +31,7 @@ export class LoteCreate implements OnInit {
 
   ngOnInit(): void {
     this.cargarUrbanizaciones();
+    this.setupFormListeners();
   }
 
   crearFormularioLote(): FormGroup {
@@ -49,6 +48,16 @@ export class LoteCreate implements OnInit {
     });
   }
 
+  setupFormListeners(): void {
+    this.loteForm.get('esIndependiente')?.valueChanges.subscribe((esIndependiente) => {
+      this.onEsIndependienteChange(esIndependiente);
+    });
+    this.loteForm.get('urbanizacionId')?.valueChanges.subscribe(() => {
+      this.generarNumeroLoteAutomatico();
+    });
+    this.onEsIndependienteChange(this.loteForm.get('esIndependiente')?.value);
+  }
+
   cargarUrbanizaciones(): void {
     this.urbanizacionSvc.getAll(1, 100).subscribe({
       next: (response) => {
@@ -61,35 +70,61 @@ export class LoteCreate implements OnInit {
     });
   }
 
-  onEsIndependienteChange(): void {
+  generarNumeroLoteAutomatico(): void {
     const esIndependiente = this.loteForm.get('esIndependiente')?.value;
+    const urbanizacionId = this.loteForm.get('urbanizacionId')?.value;
+
+    if (esIndependiente) {
+      this.loteSvc.getAll().subscribe({
+        next: (lotes) => {
+          const lotesIndependientes = lotes.filter((lote) => lote.esIndependiente);
+          const siguienteNumero = lotesIndependientes.length + 1;
+          const numeroFormateado = `Lote-${siguienteNumero.toString().padStart(3, '0')}`;
+          this.loteForm.patchValue({ numeroLote: numeroFormateado }, { emitEvent: false });
+        },
+        error: (err) => {
+          console.error('Error al cargar lotes:', err);
+          this.loteForm.patchValue({ numeroLote: 'Lote-001' }, { emitEvent: false });
+        },
+      });
+    } else if (urbanizacionId) {
+      this.loteSvc.getAll(Number(urbanizacionId)).subscribe({
+        next: (lotes) => {
+          const siguienteNumero = lotes.length + 1;
+          const numeroFormateado = `Lote-${siguienteNumero.toString().padStart(3, '0')}`;
+          this.loteForm.patchValue({ numeroLote: numeroFormateado }, { emitEvent: false });
+        },
+        error: (err) => {
+          console.error('Error al cargar lotes:', err);
+          this.loteForm.patchValue({ numeroLote: 'Lote-001' }, { emitEvent: false });
+        },
+      });
+    }
+  }
+
+  onEsIndependienteChange(esIndependiente: boolean): void {
     const urbanizacionIdControl = this.loteForm.get('urbanizacionId');
     const ciudadControl = this.loteForm.get('ciudad');
 
     if (esIndependiente) {
       urbanizacionIdControl?.clearValidators();
+      urbanizacionIdControl?.setValue('');
       ciudadControl?.setValidators([Validators.required]);
     } else {
       urbanizacionIdControl?.setValidators([Validators.required]);
       ciudadControl?.clearValidators();
+      ciudadControl?.setValue('');
     }
 
     urbanizacionIdControl?.updateValueAndValidity();
     ciudadControl?.updateValueAndValidity();
 
-    // Limpiar campos cuando cambia el tipo
-    if (esIndependiente) {
-      this.loteForm.patchValue({ urbanizacionId: '' });
-      this.searchUrbanizacion.set('');
-    } else {
-      this.loteForm.patchValue({ ciudad: '' });
-    }
+    this.generarNumeroLoteAutomatico();
   }
 
   filteredUrbanizaciones() {
     const search = this.searchUrbanizacion().toLowerCase();
     if (!search) return this.urbanizaciones();
-
     return this.urbanizaciones().filter((urbanizacion) =>
       urbanizacion.nombre?.toLowerCase().includes(search)
     );
@@ -103,6 +138,7 @@ export class LoteCreate implements OnInit {
       });
       this.searchUrbanizacion.set(urbanizacion.nombre || '');
       this.showUrbanizacionDropdown.set(false);
+      this.generarNumeroLoteAutomatico();
     }
   }
 
@@ -124,21 +160,18 @@ export class LoteCreate implements OnInit {
     }
 
     this.enviando.set(true);
-
+    const formValue = this.loteForm.value;
     const loteData = {
-      ...this.loteForm.value,
-      urbanizacionId: this.loteForm.value.esIndependiente
-        ? null
-        : Number(this.loteForm.value.urbanizacionId),
-      superficieM2: Number(this.loteForm.value.superficieM2),
-      precioBase: Number(this.loteForm.value.precioBase),
-      esIndependiente: Boolean(this.loteForm.value.esIndependiente),
+      ...formValue,
+      urbanizacionId: formValue.esIndependiente ? null : Number(formValue.urbanizacionId),
+      superficieM2: Number(formValue.superficieM2),
+      precioBase: Number(formValue.precioBase),
+      esIndependiente: Boolean(formValue.esIndependiente),
     };
 
     this.loteSvc.create(loteData).subscribe({
       next: (response: any) => {
         this.enviando.set(false);
-
         if (response.success) {
           this.notificationService.showSuccess('Lote creado exitosamente!');
           setTimeout(() => {
@@ -150,7 +183,6 @@ export class LoteCreate implements OnInit {
       },
       error: (err: any) => {
         this.enviando.set(false);
-
         let errorMessage = 'Error al crear el lote';
         if (err.status === 400) {
           errorMessage =
@@ -158,7 +190,6 @@ export class LoteCreate implements OnInit {
         } else if (err.status === 404) {
           errorMessage = 'Recurso no encontrado. Verifique los datos ingresados.';
         }
-
         this.notificationService.showError(errorMessage);
       },
     });
@@ -172,7 +203,6 @@ export class LoteCreate implements OnInit {
   getUrbanizacionNombre(): string {
     const urbanizacionId = this.loteForm.get('urbanizacionId')?.value;
     if (!urbanizacionId) return 'Lote Independiente';
-
     const urbanizacion = this.urbanizaciones().find((u) => u.id === Number(urbanizacionId));
     return urbanizacion ? urbanizacion.nombre : 'No encontrada';
   }
@@ -181,5 +211,10 @@ export class LoteCreate implements OnInit {
     return this.loteForm.get('esIndependiente')?.value
       ? 'Lote Independiente'
       : 'Lote en Urbanización';
+  }
+
+  limpiarBusquedaUrbanizacion(): void {
+    this.searchUrbanizacion.set('');
+    this.loteForm.patchValue({ urbanizacionId: '' });
   }
 }

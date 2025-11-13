@@ -40,3 +40,29 @@ export class CreateCotizacionDto {
   @IsEnum(EstadoCotizacion)
   estado?: EstadoCotizacion;
 }
+
+export class UpdateCotizacionDto {
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  clienteId?: number;
+
+  @IsOptional()
+  @IsEnum(TipoInmueble)
+  inmuebleTipo?: TipoInmueble;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  inmuebleId?: number;
+
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0.01)
+  @Type(() => Number)
+  precioOfertado?: number;
+
+  @IsOptional()
+  @IsEnum(EstadoCotizacion)
+  estado?: EstadoCotizacion;
+}
