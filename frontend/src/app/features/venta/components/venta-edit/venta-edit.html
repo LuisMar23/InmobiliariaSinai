@@ -49,7 +49,6 @@
 
             @if (ventaData() && !cargando()) {
             <form [formGroup]="ventaForm" (submit)="handleFormSubmit($event)">
-                <!-- Información de la Venta -->
                 <div class="mb-8">
                     <h2
                         class="text-lg sm:text-xl font-semibold text-gray-900 mb-6 flex items-center gap-2 border-b-2 border-gray-200 pb-2">
@@ -61,7 +60,6 @@
                     </h2>
                     <div class="bg-white border-2 border-gray-200 rounded-xl p-4 sm:p-6">
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                            <!-- Campos del formulario de venta -->
                             <div class="relative">
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     Cliente <span class="text-red-500">*</span>
@@ -162,7 +160,6 @@
                     </div>
                 </div>
 
-                <!-- Plan de Pago (solo visual como en el detalle) -->
                 @if (tienePlanPago()) {
                 <div class="mb-8">
                     <h2
@@ -175,7 +172,6 @@
                     </h2>
 
                     <div class="bg-gray-50 rounded-xl p-4 sm:p-6 border border-gray-200">
-                        <!-- Resumen del Plan -->
                         <div class="bg-white rounded-lg p-4 sm:p-6 mb-4 shadow-sm">
                             <div class="grid grid-cols-2 gap-4 mb-4">
                                 <div class="text-center">
@@ -204,7 +200,6 @@
                             </div>
                         </div>
 
-                        <!-- Detalles del Plan -->
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                             <div class="bg-white rounded-lg p-3 sm:p-4 shadow-sm">
                                 <p class="text-xs text-gray-500 mb-1">Monto Inicial</p>
@@ -233,7 +228,6 @@
                 </div>
                 }
 
-                <!-- Gestión de Pagos -->
                 @if (tienePlanPago()) {
                 <div class="mb-8">
                     <h2
@@ -245,7 +239,6 @@
                         Gestión de Pagos
                     </h2>
 
-                    <!-- Botón para agregar pago -->
                     @if (saldoPendiente() > 0) {
                     <div class="flex justify-end mb-6">
                         <button type="button" (click)="toggleFormPago()"
@@ -259,14 +252,12 @@
                     </div>
                     }
 
-                    <!-- Formulario de pago -->
                     @if (mostrarFormPago() || mostrarFormEditarPago()) {
                     <div class="bg-white border-2 border-emerald-200 rounded-xl p-4 sm:p-6 mb-6">
                         <h3 class="text-lg font-semibold text-gray-900 mb-4">
                             {{ mostrarFormEditarPago() ? 'Editar Pago' : 'Registrar Nuevo Pago' }}
                         </h3>
 
-                        <!-- FORMULARIO DE PAGO SEPARADO -->
                         <form [formGroup]="pagoForm" class="space-y-4">
                             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                 <div>
@@ -304,11 +295,11 @@
                                     </select>
                                 </div>
 
-                                <div class="sm:col-span-2 lg:col-span-1">
+                                <div class="sm:col-span-2 lg:col-span-4">
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Observación</label>
                                     <input type="text" formControlName="observacion"
                                         class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm sm:text-base"
-                                        placeholder="Observación del pago..." />
+                                        placeholder="Ingrese observación del pago..." />
                                 </div>
                             </div>
 
@@ -332,7 +323,6 @@
                     </div>
                     }
 
-                    <!-- Lista de pagos existentes -->
                     @if (ventaData()?.planPago?.pagos && ventaData()!.planPago!.pagos!.length > 0) {
                     <div class="bg-white border-2 border-gray-200 rounded-xl p-4 sm:p-6">
                         <h3 class="text-lg font-semibold text-gray-900 mb-4">Pagos Registrados</h3>
@@ -356,6 +346,9 @@
                                                 <p class="text-sm text-gray-500">{{ formatDate(pago.fecha_pago) }}</p>
                                                 @if (pago.observacion) {
                                                 <p class="text-sm text-gray-600 mt-1">{{ pago.observacion }}</p>
+                                                }
+                                                @if (pago.metodoPago) {
+                                                <p class="text-xs text-gray-500 mt-1">Método: {{ pago.metodoPago }}</p>
                                                 }
                                             </div>
                                         </div>
@@ -387,7 +380,6 @@
                 </div>
                 }
 
-                <!-- Botones de acción -->
                 <div class="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 pt-6 border-t border-gray-200">
                     <button type="button" (click)="volverAlListado()"
                         class="flex items-center justify-center gap-2 bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg shadow-md transition-all duration-200 font-semibold w-full sm:w-auto">

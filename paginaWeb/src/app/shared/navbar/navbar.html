@@ -1,0 +1,170 @@
+<nav class="bg-white/95 backdrop-blur-md shadow-lg sticky top-0 z-50 border-b border-gray-100">
+  <div class="container mx-auto px-6 py-4">
+    <div class="flex items-center justify-between">
+      <!-- Logo -->
+      <a routerLink="/" class="group flex items-center gap-3 transition-transform hover:scale-105">
+        <div class="relative">
+          <img src="assets/logoSinai.jpg" alt="Sinai Inmobiliaria" class="h-12 w-auto rounded-lg shadow-sm" />
+          <div class="absolute inset-0 rounded-lg bg-gradient-to-tr from-emerald-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+        </div>
+        <div class="hidden lg:block">
+          <h1 class="text-xl font-bold bg-gradient-to-r from-emerald-600 to-teal-700 bg-clip-text text-transparent">
+            Sinai
+          </h1>
+          <p class="text-xs text-gray-500 font-medium">Inmobiliaria</p>
+        </div>
+      </a>
+
+      <!-- Menú Desktop -->
+      <ul class="hidden md:flex items-center gap-1">
+        <li>
+          <a routerLink="/" 
+             routerLinkActive="active"
+             [routerLinkActiveOptions]="{exact: true}"
+             class="nav-link px-5 py-2.5 text-gray-700 font-medium rounded-lg hover:text-emerald-600 hover:bg-emerald-50 transition-all">
+            Inicio
+          </a>
+        </li>
+        <li>
+          <a routerLink="/lotes" 
+             routerLinkActive="active"
+             class="nav-link px-5 py-2.5 text-gray-700 font-medium rounded-lg hover:text-emerald-600 hover:bg-emerald-50 transition-all">
+            Lotes
+          </a>
+        </li>
+        <li>
+          <a routerLink="/urbanizaciones" 
+             routerLinkActive="active"
+             class="nav-link px-5 py-2.5 text-gray-700 font-medium rounded-lg hover:text-emerald-600 hover:bg-emerald-50 transition-all">
+            Urbanizaciones
+          </a>
+        </li>
+        <li>
+          <a routerLink="/promociones" 
+             routerLinkActive="active"
+             class="nav-link px-5 py-2.5 text-gray-700 font-medium rounded-lg hover:text-emerald-600 hover:bg-emerald-50 transition-all">
+            Promociones
+          </a>
+        </li>
+        <li>
+          <a routerLink="/contacto" 
+             routerLinkActive="active"
+             class="nav-link px-5 py-2.5 text-gray-700 font-medium rounded-lg hover:text-emerald-600 hover:bg-emerald-50 transition-all">
+            Contacto
+          </a>
+        </li>
+      </ul>
+
+      <!-- Botón Mobile -->
+      <button
+        class="md:hidden relative w-10 h-10 text-gray-700 hover:text-emerald-600 focus:outline-none rounded-lg hover:bg-emerald-50 transition-all flex items-center justify-center"
+        (click)="toggleMenu()"
+      >
+        <svg
+          *ngIf="!menuOpen()"
+          class="w-6 h-6 transition-transform"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M4 6h16M4 12h16M4 18h16"
+          ></path>
+        </svg>
+
+        <svg 
+          *ngIf="menuOpen()" 
+          class="w-6 h-6 transition-transform rotate-90" 
+          fill="none" 
+          stroke="currentColor" 
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M6 18L18 6M6 6l12 12"
+          ></path>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Menú Mobile con animación -->
+  <div 
+    *ngIf="menuOpen()" 
+    class="md:hidden bg-gradient-to-br from-emerald-50 to-teal-100 border-t border-emerald-100 animate-slideDown"
+  >
+    <ul class="flex flex-col gap-1 px-4 py-4">
+      <li>
+        <a routerLink="/" 
+           routerLinkActive="bg-white text-emerald-600 shadow-sm"
+           [routerLinkActiveOptions]="{exact: true}"
+           (click)="toggleMenu()"
+           class="block px-4 py-3 text-gray-700 font-medium rounded-lg hover:bg-white hover:text-emerald-600 hover:shadow-sm transition-all">
+          <span class="flex items-center gap-3">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+            </svg>
+            Inicio
+          </span>
+        </a>
+      </li>
+      <li>
+        <a routerLink="/lotes" 
+           routerLinkActive="bg-white text-emerald-600 shadow-sm"
+           (click)="toggleMenu()"
+           class="block px-4 py-3 text-gray-700 font-medium rounded-lg hover:bg-white hover:text-emerald-600 hover:shadow-sm transition-all">
+          <span class="flex items-center gap-3">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path>
+            </svg>
+            Lotes
+          </span>
+        </a>
+      </li>
+      <li>
+        <a routerLink="/urbanizaciones" 
+           routerLinkActive="bg-white text-emerald-600 shadow-sm"
+           (click)="toggleMenu()"
+           class="block px-4 py-3 text-gray-700 font-medium rounded-lg hover:bg-white hover:text-emerald-600 hover:shadow-sm transition-all">
+          <span class="flex items-center gap-3">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+            </svg>
+            Urbanizaciones
+          </span>
+        </a>
+      </li>
+      <li>
+        <a routerLink="/promociones" 
+           routerLinkActive="bg-white text-emerald-600 shadow-sm"
+           (click)="toggleMenu()"
+           class="block px-4 py-3 text-gray-700 font-medium rounded-lg hover:bg-white hover:text-emerald-600 hover:shadow-sm transition-all">
+          <span class="flex items-center gap-3">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"></path>
+            </svg>
+            Promociones
+          </span>
+        </a>
+      </li>
+      <li>
+        <a routerLink="/contacto" 
+           routerLinkActive="bg-white text-emerald-600 shadow-sm"
+           (click)="toggleMenu()"
+           class="block px-4 py-3 text-gray-700 font-medium rounded-lg hover:bg-white hover:text-emerald-600 hover:shadow-sm transition-all">
+          <span class="flex items-center gap-3">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+            </svg>
+            Contacto
+          </span>
+        </a>
+      </li>
+    </ul>
+  </div>
+</nav>

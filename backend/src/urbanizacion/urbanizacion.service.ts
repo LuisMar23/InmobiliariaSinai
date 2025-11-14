@@ -164,6 +164,14 @@ export class UrbanizacionService {
         },
         lotes: {
           include: {
+                   archivos: {
+          select: {
+            id: true,
+            urlArchivo: true,
+            tipoArchivo: true,
+            nombreArchivo: true,
+          },
+        },
             _count: {
               select: {
                 cotizaciones: true,

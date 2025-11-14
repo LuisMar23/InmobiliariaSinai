@@ -130,7 +130,6 @@ export class VentaEdit implements OnInit {
 
   ngOnInit(): void {
     this.obtenerVenta();
-    this.cargarCajasActivas();
   }
 
   crearFormularioVenta(): FormGroup {
@@ -151,7 +150,6 @@ export class VentaEdit implements OnInit {
       fecha_pago: [fechaHoy, Validators.required],
       observacion: [''],
       metodoPago: ['EFECTIVO', Validators.required],
-      cajaId: ['', Validators.required], // CORREGIDO: Campo requerido agregado
     });
   }
 
@@ -193,19 +191,6 @@ export class VentaEdit implements OnInit {
       error: (err: any) => {
         console.error('Error cargando lotes:', err);
         this.notificationService.showError('No se pudieron cargar los lotes');
-      },
-    });
-  }
-
-  cargarCajasActivas(): void {
-    this.ventaSvc.obtenerCajasActivas().subscribe({
-      next: (cajas: Caja[]) => {
-        console.log('Cajas activas cargadas:', cajas);
-        this.cajas.set(cajas);
-      },
-      error: (err: any) => {
-        console.error('Error cargando cajas activas:', err);
-        this.notificationService.showError('No se pudieron cargar las cajas activas');
       },
     });
   }
@@ -322,36 +307,6 @@ export class VentaEdit implements OnInit {
     }
   }
 
-  obtenerPrimerPago(pagos: any[]): Date | null {
-    if (!pagos || !Array.isArray(pagos) || pagos.length === 0) {
-      return null;
-    }
-
-    const pagosOrdenados = [...pagos].sort((a, b) => {
-      const fechaA = new Date(a.fecha_pago || a.createdAt).getTime();
-      const fechaB = new Date(b.fecha_pago || b.createdAt).getTime();
-      return fechaA - fechaB;
-    });
-
-    const primerPago = pagosOrdenados[0];
-    return new Date(primerPago.fecha_pago || primerPago.createdAt);
-  }
-
-  obtenerUltimoPago(pagos: any[]): Date | null {
-    if (!pagos || !Array.isArray(pagos) || pagos.length === 0) {
-      return null;
-    }
-
-    const pagosOrdenados = [...pagos].sort((a, b) => {
-      const fechaA = new Date(a.fecha_pago || a.createdAt).getTime();
-      const fechaB = new Date(b.fecha_pago || b.createdAt).getTime();
-      return fechaB - fechaA;
-    });
-
-    const ultimoPago = pagosOrdenados[0];
-    return new Date(ultimoPago.fecha_pago || ultimoPago.createdAt);
-  }
-
   editarPago(pago: any): void {
     this.pagoSeleccionado.set(pago);
     this.mostrarFormEditarPago.set(true);
@@ -365,7 +320,6 @@ export class VentaEdit implements OnInit {
       fecha_pago: fechaFormateada,
       observacion: pago.observacion || '',
       metodoPago: pago.metodoPago || 'EFECTIVO',
-      cajaId: '', // CORREGIDO: Reset correcto
     });
   }
 
@@ -388,7 +342,6 @@ export class VentaEdit implements OnInit {
       fecha_pago: this.pagoForm.value.fecha_pago,
       observacion: this.pagoForm.value.observacion,
       metodoPago: this.pagoForm.value.metodoPago,
-      cajaId: Number(this.pagoForm.value.cajaId), // CORREGIDO: Convertido a número
     };
 
     this.ventaSvc.actualizarPagoPlan(pagoId, updateData).subscribe({
@@ -417,33 +370,42 @@ export class VentaEdit implements OnInit {
   }
 
   eliminarPago(pago: any): void {
-    if (this.cajas().length === 0) {
-      this.notificationService.showError('No hay cajas disponibles para realizar la operación');
-      return;
-    }
-
-    const cajaId = this.cajas()[0].id;
-
-    this.notificationService
-      .confirmDelete('¿Está seguro que desea eliminar este pago?')
-      .then((result) => {
-        if (result.isConfirmed) {
-          this.ventaSvc.eliminarPagoPlan(pago.id_pago_plan, cajaId).subscribe({
-            next: (response: any) => {
-              if (response.success) {
-                this.notificationService.showSuccess('Pago eliminado exitosamente!');
-                this.obtenerVenta();
-              } else {
-                this.notificationService.showError(response.message || 'Error al eliminar el pago');
-              }
-            },
-            error: (err: any) => {
-              console.error('Error al eliminar pago:', err);
-              this.notificationService.showError('Error al eliminar el pago');
-            },
-          });
+    this.ventaSvc.obtenerCajasActivas().subscribe({
+      next: (cajas) => {
+        if (cajas.length === 0) {
+          this.notificationService.showError('No hay cajas disponibles para realizar la operación');
+          return;
         }
-      });
+
+        const cajaId = cajas[0].id;
+
+        this.notificationService
+          .confirmDelete('¿Está seguro que desea eliminar este pago?')
+          .then((result) => {
+            if (result.isConfirmed) {
+              this.ventaSvc.eliminarPagoPlan(pago.id_pago_plan, cajaId).subscribe({
+                next: (response: any) => {
+                  if (response.success) {
+                    this.notificationService.showSuccess('Pago eliminado exitosamente!');
+                    this.obtenerVenta();
+                  } else {
+                    this.notificationService.showError(
+                      response.message || 'Error al eliminar el pago'
+                    );
+                  }
+                },
+                error: (err: any) => {
+                  console.error('Error al eliminar pago:', err);
+                  this.notificationService.showError('Error al eliminar el pago');
+                },
+              });
+            }
+          });
+      },
+      error: (err) => {
+        this.notificationService.showError('Error al obtener cajas activas');
+      },
+    });
   }
 
   registrarPago(): void {
@@ -476,22 +438,12 @@ export class VentaEdit implements OnInit {
 
     const fechaPago = new Date(this.pagoForm.value.fecha_pago);
     const hoy = new Date();
-    hoy.setHours(0, 0, 0, 0);
-    fechaPago.setHours(0, 0, 0, 0);
+    const maxFechaPermitida = new Date(hoy);
+    maxFechaPermitida.setDate(maxFechaPermitida.getDate() + 90);
 
-    if (fechaPago > hoy) {
-      this.notificationService.showError('La fecha de pago no puede ser futura.');
-      return;
-    }
-
-    const pagosExistentes = venta.planPago.pagos || [];
-    const ultimoPago = this.obtenerUltimoPago(pagosExistentes);
-
-    if (ultimoPago && fechaPago < ultimoPago) {
+    if (fechaPago > maxFechaPermitida) {
       this.notificationService.showError(
-        `La fecha de pago no puede ser anterior al último pago registrado (${this.formatDate(
-          ultimoPago
-        )})`
+        'La fecha de pago no puede ser más de 90 días en el futuro'
       );
       return;
     }
@@ -501,9 +453,8 @@ export class VentaEdit implements OnInit {
       plan_pago_id: venta.planPago.id_plan_pago!,
       monto: monto,
       fecha_pago: this.pagoForm.value.fecha_pago,
-      observacion: this.pagoForm.value.observacion,
+      observacion: this.pagoForm.value.observacion || '',
       metodoPago: this.pagoForm.value.metodoPago,
-      cajaId: this.pagoForm.value.cajaId, // CORREGIDO: Usando el valor del formulario
     };
 
     this.ventaSvc.crearPagoPlan(pagoData).subscribe({
@@ -542,7 +493,6 @@ export class VentaEdit implements OnInit {
       metodoPago: 'EFECTIVO',
       monto: 0,
       observacion: '',
-      cajaId: this.cajas().length > 0 ? this.cajas()[0].id.toString() : '', // CORREGIDO: Set inicial
     });
   }
 
@@ -559,7 +509,6 @@ export class VentaEdit implements OnInit {
         metodoPago: 'EFECTIVO',
         monto: 0,
         observacion: '',
-        cajaId: this.cajas().length > 0 ? this.cajas()[0].id.toString() : '', // CORREGIDO: Set inicial
       });
     }
   }
@@ -637,45 +586,52 @@ export class VentaEdit implements OnInit {
     const id = this.ventaId();
     if (!id) return;
 
-    if (this.cajas().length === 0) {
-      this.notificationService.showError('No hay cajas disponibles para realizar la operación');
-      return;
-    }
-
-    const cajaId = this.cajas()[0].id;
-
-    this.notificationService
-      .confirmDelete('¿Está seguro que desea eliminar esta venta?')
-      .then((result) => {
-        if (result.isConfirmed) {
-          this.ventaSvc.delete(id, cajaId).subscribe({
-            next: (response: any) => {
-              if (response.success) {
-                this.notificationService.showSuccess('Venta eliminada correctamente');
-                this.router.navigate(['/ventas/lista']);
-              } else {
-                this.notificationService.showError(
-                  response.message || 'Error al eliminar la venta'
-                );
-              }
-            },
-            error: (err) => {
-              console.error('Error al eliminar venta:', err);
-              let errorMessage = 'No se pudo eliminar la venta';
-              if (err.status === 400) {
-                errorMessage =
-                  err.error?.message ||
-                  'No se puede eliminar la venta porque tiene documentos asociados';
-              } else if (err.status === 404) {
-                errorMessage = 'Venta no encontrada';
-              } else if (err.error?.message) {
-                errorMessage = err.error.message;
-              }
-              this.notificationService.showError(errorMessage);
-            },
-          });
+    this.ventaSvc.obtenerCajasActivas().subscribe({
+      next: (cajas) => {
+        if (cajas.length === 0) {
+          this.notificationService.showError('No hay cajas disponibles para realizar la operación');
+          return;
         }
-      });
+
+        const cajaId = cajas[0].id;
+
+        this.notificationService
+          .confirmDelete('¿Está seguro que desea eliminar esta venta?')
+          .then((result) => {
+            if (result.isConfirmed) {
+              this.ventaSvc.delete(id, cajaId).subscribe({
+                next: (response: any) => {
+                  if (response.success) {
+                    this.notificationService.showSuccess('Venta eliminada correctamente');
+                    this.router.navigate(['/ventas/lista']);
+                  } else {
+                    this.notificationService.showError(
+                      response.message || 'Error al eliminar la venta'
+                    );
+                  }
+                },
+                error: (err) => {
+                  console.error('Error al eliminar venta:', err);
+                  let errorMessage = 'No se pudo eliminar la venta';
+                  if (err.status === 400) {
+                    errorMessage =
+                      err.error?.message ||
+                      'No se puede eliminar la venta porque tiene documentos asociados';
+                  } else if (err.status === 404) {
+                    errorMessage = 'Venta no encontrada';
+                  } else if (err.error?.message) {
+                    errorMessage = err.error.message;
+                  }
+                  this.notificationService.showError(errorMessage);
+                },
+              });
+            }
+          });
+      },
+      error: (err) => {
+        this.notificationService.showError('Error al obtener cajas activas');
+      },
+    });
   }
 
   volverAlListado(): void {

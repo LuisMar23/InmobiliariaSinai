@@ -43,7 +43,7 @@ export class VentasService {
         },
       });
     } catch (error) {
-      throw new InternalServerErrorException('Error interno del servidor');
+      console.error('Error creando auditoría:', error);
     }
   }
 
@@ -96,6 +96,25 @@ export class VentasService {
       throw new BadRequestException(`La caja con ID ${cajaId} no está abierta`);
     }
     return caja;
+  }
+
+  private async obtenerCajaOriginalVenta(ventaId: number): Promise<number> {
+    const movimientoCaja = await this.prisma.movimientoCaja.findFirst({
+      where: {
+        referencia: {
+          contains: `Venta-${ventaId}`,
+        },
+      },
+      orderBy: { fecha: 'asc' },
+    });
+
+    if (!movimientoCaja) {
+      throw new BadRequestException(
+        'No se encontró caja asociada a esta venta',
+      );
+    }
+
+    return movimientoCaja.cajaId;
   }
 
   private async registrarMovimientoCaja(
@@ -218,10 +237,18 @@ export class VentasService {
         Number(venta.planPago.total) - Number(venta.planPago.monto_inicial);
       const montoCuota =
         venta.planPago.plazo > 0 ? montoRestante / venta.planPago.plazo : 0;
-      venta.planPago.saldo_pendiente = saldoPendiente;
-      venta.planPago.total_pagado = totalPagado;
-      venta.planPago.porcentaje_pagado = Number(porcentajePagado.toFixed(2));
-      venta.planPago.monto_cuota = Number(montoCuota.toFixed(2));
+
+      venta.planPago.saldo_pendiente = isNaN(saldoPendiente)
+        ? 0
+        : saldoPendiente;
+      venta.planPago.total_pagado = isNaN(totalPagado) ? 0 : totalPagado;
+      venta.planPago.porcentaje_pagado = isNaN(porcentajePagado)
+        ? 0
+        : Number(porcentajePagado.toFixed(2));
+      venta.planPago.monto_cuota = isNaN(montoCuota)
+        ? 0
+        : Number(montoCuota.toFixed(2));
+
       const hoy = new Date();
       const vencimiento = new Date(venta.planPago.fecha_vencimiento);
       const diasRestantes = Math.ceil(
@@ -230,35 +257,6 @@ export class VentasService {
       venta.planPago.dias_restantes = Math.max(0, diasRestantes);
     }
     return venta;
-  }
-
-  private validarFechaPago(fechaPago: Date): void {
-    const hoy = new Date();
-    hoy.setHours(0, 0, 0, 0);
-    const fechaPagoNormalizada = new Date(fechaPago);
-    fechaPagoNormalizada.setHours(0, 0, 0, 0);
-    if (fechaPagoNormalizada > hoy)
-      throw new BadRequestException('La fecha de pago no puede ser futura');
-  }
-
-  private validarSecuenciaPagos(pagos: any[], nuevaFecha: Date): void {
-    if (pagos && pagos.length > 0) {
-      const fechasPagos = pagos.map((p) => {
-        const fecha = new Date(p.fecha_pago);
-        fecha.setHours(0, 0, 0, 0);
-        return fecha;
-      });
-      const fechaUltimoPago = new Date(
-        Math.max(...fechasPagos.map((d) => d.getTime())),
-      );
-      const nuevaFechaNormalizada = new Date(nuevaFecha);
-      nuevaFechaNormalizada.setHours(0, 0, 0, 0);
-      if (nuevaFechaNormalizada < fechaUltimoPago) {
-        throw new BadRequestException(
-          `La fecha de pago no puede ser anterior al último pago registrado (${fechaUltimoPago.toLocaleDateString()})`,
-        );
-      }
-    }
   }
 
   private async verificarPermisosUsuario(usuarioId: number, prisma: any) {
@@ -291,6 +289,7 @@ export class VentasService {
           throw new ForbiddenException(
             'Solo los asesores y administradores pueden crear ventas',
           );
+
         const cliente = await prisma.user.findFirst({
           where: {
             id: createVentaDto.clienteId,
@@ -302,12 +301,31 @@ export class VentasService {
           throw new BadRequestException(
             'Cliente no encontrado o no tiene rol de CLIENTE',
           );
+
         await this.verificarCajaActiva(createVentaDto.cajaId, prisma);
+
         await this.verificarDisponibilidadInmueble(
           createVentaDto.inmuebleTipo,
           createVentaDto.inmuebleId,
           prisma,
         );
+
+        if (
+          createVentaDto.plan_pago.monto_inicial > createVentaDto.precioFinal
+        ) {
+          throw new BadRequestException(
+            'El monto inicial no puede ser mayor al precio final de la venta',
+          );
+        }
+
+        if (
+          !Object.values(PeriodicidadPago).includes(
+            createVentaDto.plan_pago.periodicidad,
+          )
+        ) {
+          throw new BadRequestException('Periodicidad de pago inválida');
+        }
+
         const venta = await prisma.venta.create({
           data: {
             clienteId: createVentaDto.clienteId,
@@ -316,13 +334,16 @@ export class VentasService {
             inmuebleId: createVentaDto.inmuebleId,
             precioFinal: createVentaDto.precioFinal,
             estado: createVentaDto.estado || EstadoVenta.PENDIENTE,
+            observaciones: createVentaDto.observaciones || null,
           },
         });
+
         const fechaVencimiento = this.calcularFechaVencimiento(
           createVentaDto.plan_pago.fecha_inicio,
           createVentaDto.plan_pago.plazo,
           createVentaDto.plan_pago.periodicidad,
         );
+
         const planPago = await prisma.planPago.create({
           data: {
             ventaId: venta.id,
@@ -335,6 +356,7 @@ export class VentasService {
             estado: EstadoPlanPago.ACTIVO,
           },
         });
+
         if (createVentaDto.plan_pago.monto_inicial > 0) {
           const pagoInicial = await prisma.pagoPlanPago.create({
             data: {
@@ -342,8 +364,10 @@ export class VentasService {
               monto: createVentaDto.plan_pago.monto_inicial,
               fecha_pago: new Date(),
               observacion: 'Pago inicial',
+              metodoPago: 'EFECTIVO',
             },
           });
+
           await this.registrarMovimientoCaja(
             createVentaDto.cajaId,
             {
@@ -356,6 +380,7 @@ export class VentasService {
             ip,
             userAgent,
           );
+
           if (
             createVentaDto.plan_pago.monto_inicial >= createVentaDto.precioFinal
           ) {
@@ -369,12 +394,14 @@ export class VentasService {
             });
           }
         }
+
         if (createVentaDto.inmuebleTipo === TipoInmueble.LOTE) {
           await prisma.lote.update({
             where: { id: createVentaDto.inmuebleId },
             data: { estado: 'VENDIDO' },
           });
         }
+
         await this.crearAuditoria(
           asesorId,
           'CREAR_VENTA',
@@ -383,6 +410,7 @@ export class VentasService {
           ip,
           userAgent,
         );
+
         const ventaCompleta = await prisma.venta.findUnique({
           where: { id: venta.id },
           include: {
@@ -406,6 +434,7 @@ export class VentasService {
             archivos: true,
           },
         });
+
         return {
           success: true,
           message: 'Venta creada correctamente',
@@ -416,8 +445,10 @@ export class VentasService {
       if (
         error instanceof BadRequestException ||
         error instanceof ForbiddenException
-      )
+      ) {
         throw error;
+      }
+      console.error('Error en create venta:', error);
       throw new InternalServerErrorException('Error interno del servidor');
     }
   }
@@ -475,6 +506,7 @@ export class VentasService {
         },
       };
     } catch (error) {
+      console.error('Error en findAll ventas:', error);
       throw new InternalServerErrorException('Error interno del servidor');
     }
   }
@@ -520,6 +552,7 @@ export class VentasService {
       };
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
+      console.error('Error en findOne venta:', error);
       throw new InternalServerErrorException('Error interno del servidor');
     }
   }
@@ -626,6 +659,7 @@ export class VentasService {
         error instanceof ForbiddenException
       )
         throw error;
+      console.error('Error en update venta:', error);
       throw new InternalServerErrorException('Error interno del servidor');
     }
   }
@@ -666,7 +700,8 @@ export class VentasService {
             'Solo puedes actualizar tus propias ventas',
           );
         }
-        await this.verificarCajaActiva(cajaId, prisma);
+        const cajaOriginalId = await this.obtenerCajaOriginalVenta(ventaId);
+        await this.verificarCajaActiva(cajaOriginalId, prisma);
         const montoInicialActual = Number(venta.planPago.monto_inicial);
         const diferencia = nuevoMontoInicial - montoInicialActual;
         const pagoInicialExistente = await prisma.pagoPlanPago.findFirst({
@@ -682,7 +717,7 @@ export class VentasService {
               data: { monto: nuevoMontoInicial },
             });
             await this.registrarMovimientoCaja(
-              cajaId,
+              cajaOriginalId,
               {
                 monto: diferencia,
                 metodoPago: 'EFECTIVO',
@@ -700,10 +735,11 @@ export class VentasService {
                 monto: nuevoMontoInicial,
                 fecha_pago: new Date(),
                 observacion: 'Pago inicial',
+                metodoPago: 'EFECTIVO',
               },
             });
             await this.registrarMovimientoCaja(
-              cajaId,
+              cajaOriginalId,
               {
                 monto: nuevoMontoInicial,
                 metodoPago: 'EFECTIVO',
@@ -732,7 +768,7 @@ export class VentasService {
               data: { monto: nuevoMontoInicial },
             });
             await this.revertirMovimientoCaja(
-              cajaId,
+              cajaOriginalId,
               {
                 monto: Math.abs(diferencia),
                 pagoId: pagoInicialExistente.id_pago_plan,
@@ -782,6 +818,7 @@ export class VentasService {
       ) {
         throw error;
       }
+      console.error('Error en actualizarMontoInicialPlanPago:', error);
       throw new InternalServerErrorException('Error interno del servidor');
     }
   }
@@ -858,6 +895,7 @@ export class VentasService {
         error instanceof ForbiddenException
       )
         throw error;
+      console.error('Error en remove venta:', error);
       throw new InternalServerErrorException('Error interno del servidor');
     }
   }
@@ -871,52 +909,91 @@ export class VentasService {
     try {
       return await this.prisma.$transaction(async (prisma) => {
         const usuario = await this.verificarPermisosUsuario(usuarioId, prisma);
+
         const planPago = await prisma.planPago.findUnique({
           where: { id_plan_pago: registrarPagoDto.plan_pago_id },
           include: {
-            venta: { include: { cliente: true, asesor: true } },
-            pagos: { orderBy: { fecha_pago: 'asc' } },
+            venta: {
+              include: {
+                cliente: true,
+                asesor: true,
+              },
+            },
+            pagos: {
+              orderBy: { fecha_pago: 'asc' },
+            },
           },
         });
-        if (!planPago)
+
+        if (!planPago) {
           throw new NotFoundException(
             `Plan de pago con ID ${registrarPagoDto.plan_pago_id} no encontrado`,
           );
-        if (usuario.role === 'ASESOR' && planPago.venta.asesorId !== usuarioId)
+        }
+
+        if (
+          usuario.role === 'ASESOR' &&
+          planPago.venta.asesorId !== usuarioId
+        ) {
           throw new ForbiddenException(
             'Solo puedes registrar pagos en tus propias ventas',
           );
-        if (planPago.estado !== EstadoPlanPago.ACTIVO)
+        }
+
+        if (planPago.estado !== EstadoPlanPago.ACTIVO) {
           throw new BadRequestException(
             `El plan de pago no está activo. Estado actual: ${planPago.estado}`,
           );
-        await this.verificarCajaActiva(registrarPagoDto.cajaId, prisma);
+        }
+
+        const cajaId = await this.obtenerCajaOriginalVenta(planPago.ventaId);
+        await this.verificarCajaActiva(cajaId, prisma);
+
         const totalPagado = this.calcularTotalPagado(planPago.pagos);
         const saldoPendiente = this.calcularSaldoPendiente(
           Number(planPago.total),
           totalPagado,
         );
-        if (registrarPagoDto.monto <= 0)
+
+        if (registrarPagoDto.monto <= 0) {
           throw new BadRequestException('El monto debe ser mayor a cero');
-        if (registrarPagoDto.monto > saldoPendiente)
+        }
+
+        if (registrarPagoDto.monto > saldoPendiente) {
           throw new BadRequestException(
             `El monto a pagar (Bs. ${registrarPagoDto.monto}) excede el saldo pendiente (Bs. ${saldoPendiente})`,
           );
+        }
+
         const fechaPago = registrarPagoDto.fecha_pago || new Date();
-        this.validarFechaPago(fechaPago);
-        if (planPago.pagos && planPago.pagos.length > 0)
-          this.validarSecuenciaPagos(planPago.pagos, fechaPago);
+
+        const hoy = new Date();
+        const maxFechaPermitida = new Date(hoy);
+        maxFechaPermitida.setDate(maxFechaPermitida.getDate() + 90);
+
+        if (fechaPago > maxFechaPermitida) {
+          throw new BadRequestException(
+            'La fecha de pago no puede ser más de 90 días en el futuro',
+          );
+        }
+
         const pagoData: any = {
           plan_pago_id: registrarPagoDto.plan_pago_id,
           monto: registrarPagoDto.monto,
           fecha_pago: fechaPago,
-          observacion: registrarPagoDto.observacion || 'Pago adicional',
+          observacion: registrarPagoDto.observacion || null,
         };
-        if (registrarPagoDto.metodoPago)
+
+        if (registrarPagoDto.metodoPago) {
           pagoData.metodoPago = registrarPagoDto.metodoPago;
-        const pago = await prisma.pagoPlanPago.create({ data: pagoData });
+        }
+
+        const pago = await prisma.pagoPlanPago.create({
+          data: pagoData,
+        });
+
         await this.registrarMovimientoCaja(
-          registrarPagoDto.cajaId,
+          cajaId,
           {
             monto: registrarPagoDto.monto,
             metodoPago: registrarPagoDto.metodoPago || 'EFECTIVO',
@@ -927,25 +1004,9 @@ export class VentasService {
           ip,
           userAgent,
         );
-        const nuevoTotalPagado = totalPagado + Number(registrarPagoDto.monto);
-        const nuevoSaldoPendiente = this.calcularSaldoPendiente(
-          Number(planPago.total),
-          nuevoTotalPagado,
-        );
-        let nuevoEstadoPlan = EstadoPlanPago.ACTIVO;
-        let nuevoEstadoVenta = EstadoVenta.PENDIENTE;
-        if (nuevoSaldoPendiente <= 0) {
-          nuevoEstadoPlan = EstadoPlanPago.PAGADO;
-          nuevoEstadoVenta = EstadoVenta.PAGADO;
-        }
-        await prisma.planPago.update({
-          where: { id_plan_pago: registrarPagoDto.plan_pago_id },
-          data: { estado: nuevoEstadoPlan, actualizado_en: new Date() },
-        });
-        await prisma.venta.update({
-          where: { id: planPago.ventaId },
-          data: { estado: nuevoEstadoVenta },
-        });
+
+        await this.actualizarEstadoPlan(planPago.id_plan_pago);
+
         await this.crearAuditoria(
           usuarioId,
           'CREAR_PAGO',
@@ -954,10 +1015,15 @@ export class VentasService {
           ip,
           userAgent,
         );
+
         const planActualizado = await prisma.planPago.findUnique({
           where: { id_plan_pago: registrarPagoDto.plan_pago_id },
-          include: { pagos: { orderBy: { fecha_pago: 'asc' } }, venta: true },
+          include: {
+            pagos: { orderBy: { fecha_pago: 'asc' } },
+            venta: true,
+          },
         });
+
         return {
           success: true,
           message: 'Pago registrado correctamente',
@@ -973,8 +1039,10 @@ export class VentasService {
         error instanceof NotFoundException ||
         error instanceof BadRequestException ||
         error instanceof ForbiddenException
-      )
+      ) {
         throw error;
+      }
+      console.error('Error en crearPagoPlan:', error);
       throw new InternalServerErrorException(
         'Error interno del servidor al crear el pago',
       );
@@ -1003,6 +1071,7 @@ export class VentasService {
       return { success: true, data: { pago } };
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
+      console.error('Error en obtenerPago:', error);
       throw new InternalServerErrorException('Error interno del servidor');
     }
   }
@@ -1034,6 +1103,7 @@ export class VentasService {
       };
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
+      console.error('Error en obtenerPagosPlan:', error);
       throw new InternalServerErrorException('Error interno del servidor');
     }
   }
@@ -1072,17 +1142,6 @@ export class VentasService {
           throw new BadRequestException(
             'No se puede actualizar un pago de un plan ya pagado',
           );
-        if (updatePagoPlanDto.fecha_pago) {
-          this.validarFechaPago(updatePagoPlanDto.fecha_pago);
-          const otrosPagos = pagoExistente.planPago.pagos.filter(
-            (p) => p.id_pago_plan !== pagoId,
-          );
-          if (otrosPagos.length > 0)
-            this.validarSecuenciaPagos(
-              otrosPagos,
-              updatePagoPlanDto.fecha_pago,
-            );
-        }
         const montoAnterior = Number(pagoExistente.monto);
         let diferenciaMonto = 0;
         if (updatePagoPlanDto.monto !== undefined) {
@@ -1097,9 +1156,12 @@ export class VentasService {
             );
           diferenciaMonto = Number(updatePagoPlanDto.monto) - montoAnterior;
         }
-        if (diferenciaMonto !== 0 && updatePagoPlanDto.cajaId) {
+        const cajaId = await this.obtenerCajaOriginalVenta(
+          pagoExistente.planPago.ventaId,
+        );
+        if (diferenciaMonto !== 0) {
           await this.revertirMovimientoCaja(
-            updatePagoPlanDto.cajaId,
+            cajaId,
             { monto: montoAnterior, pagoId: pagoId },
             pagoExistente.planPago.venta,
             usuarioId,
@@ -1120,9 +1182,9 @@ export class VentasService {
           where: { id_pago_plan: pagoId },
           data: updateData,
         });
-        if (diferenciaMonto !== 0 && updatePagoPlanDto.cajaId) {
+        if (diferenciaMonto !== 0) {
           await this.registrarMovimientoCaja(
-            updatePagoPlanDto.cajaId,
+            cajaId,
             {
               monto: Number(updatePagoPlanDto.monto),
               pagoId: pagoId,
@@ -1155,6 +1217,7 @@ export class VentasService {
         error instanceof BadRequestException
       )
         throw error;
+      console.error('Error en actualizarPagoPlan:', error);
       throw new InternalServerErrorException('Error interno del servidor');
     }
   }
@@ -1193,9 +1256,12 @@ export class VentasService {
           throw new BadRequestException(
             'No se puede eliminar un pago de un plan ya pagado',
           );
-        await this.verificarCajaActiva(cajaId, prisma);
+        const cajaOriginalId = await this.obtenerCajaOriginalVenta(
+          pago.planPago.ventaId,
+        );
+        await this.verificarCajaActiva(cajaOriginalId, prisma);
         await this.revertirMovimientoCaja(
-          cajaId,
+          cajaOriginalId,
           { monto: pago.monto, pagoId: pagoId },
           pago.planPago.venta,
           usuarioId,
@@ -1203,7 +1269,7 @@ export class VentasService {
           userAgent,
         );
         await prisma.pagoPlanPago.delete({ where: { id_pago_plan: pagoId } });
-        await this.actualizarEstadoPlanConMorosidad(pago.planPago.id_plan_pago);
+        await this.actualizarEstadoPlan(pago.planPago.id_plan_pago);
         await this.crearAuditoria(
           usuarioId,
           'ELIMINAR_PAGO',
@@ -1216,6 +1282,7 @@ export class VentasService {
       });
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
+      console.error('Error en eliminarPagoPlan:', error);
       throw new InternalServerErrorException('Error interno del servidor');
     }
   }
@@ -1297,60 +1364,48 @@ export class VentasService {
         error instanceof BadRequestException
       )
         throw error;
+      console.error('Error en actualizarPlanPago:', error);
       throw new InternalServerErrorException('Error interno del servidor');
     }
   }
 
   private async actualizarEstadoPlan(planPagoId: number) {
-    const planPago = await this.prisma.planPago.findUnique({
-      where: { id_plan_pago: planPagoId },
-      include: { pagos: { orderBy: { fecha_pago: 'asc' } }, venta: true },
-    });
-    if (!planPago) return;
-    const totalPagado = this.calcularTotalPagado(planPago.pagos);
-    const saldoPendiente = Number(planPago.total) - totalPagado;
-    let nuevoEstadoPlan = EstadoPlanPago.ACTIVO;
-    let nuevoEstadoVenta = EstadoVenta.PENDIENTE;
-    if (saldoPendiente <= 0) {
-      nuevoEstadoPlan = EstadoPlanPago.PAGADO;
-      nuevoEstadoVenta = EstadoVenta.PAGADO;
-    }
-    await this.prisma.planPago.update({
-      where: { id_plan_pago: planPagoId },
-      data: { estado: nuevoEstadoPlan, actualizado_en: new Date() },
-    });
-    await this.prisma.venta.update({
-      where: { id: planPago.ventaId },
-      data: { estado: nuevoEstadoVenta },
-    });
-  }
+    try {
+      const planPago = await this.prisma.planPago.findUnique({
+        where: { id_plan_pago: planPagoId },
+        include: { pagos: { orderBy: { fecha_pago: 'asc' } }, venta: true },
+      });
 
-  private async actualizarEstadoPlanConMorosidad(planPagoId: number) {
-    const planPago = await this.prisma.planPago.findUnique({
-      where: { id_plan_pago: planPagoId },
-      include: { pagos: { orderBy: { fecha_pago: 'asc' } }, venta: true },
-    });
-    if (!planPago) return;
-    const totalPagado = this.calcularTotalPagado(planPago.pagos);
-    const saldoPendiente = Number(planPago.total) - totalPagado;
-    let nuevoEstadoPlan = EstadoPlanPago.ACTIVO;
-    let nuevoEstadoVenta = EstadoVenta.PENDIENTE;
-    if (saldoPendiente <= 0) {
-      nuevoEstadoPlan = EstadoPlanPago.PAGADO;
-      nuevoEstadoVenta = EstadoVenta.PAGADO;
-    } else {
-      const hoy = new Date();
-      if (hoy > planPago.fecha_vencimiento)
-        nuevoEstadoPlan = EstadoPlanPago.MOROSO;
+      if (!planPago) return;
+
+      const totalPagado = this.calcularTotalPagado(planPago.pagos);
+      const saldoPendiente = Number(planPago.total) - totalPagado;
+
+      let nuevoEstadoPlan = EstadoPlanPago.ACTIVO;
+      let nuevoEstadoVenta = EstadoVenta.PENDIENTE;
+
+      if (saldoPendiente <= 0) {
+        nuevoEstadoPlan = EstadoPlanPago.PAGADO;
+        nuevoEstadoVenta = EstadoVenta.PAGADO;
+      } else {
+        const hoy = new Date();
+        if (hoy > planPago.fecha_vencimiento) {
+          nuevoEstadoPlan = EstadoPlanPago.MOROSO;
+        }
+      }
+
+      await this.prisma.planPago.update({
+        where: { id_plan_pago: planPagoId },
+        data: { estado: nuevoEstadoPlan, actualizado_en: new Date() },
+      });
+
+      await this.prisma.venta.update({
+        where: { id: planPago.ventaId },
+        data: { estado: nuevoEstadoVenta },
+      });
+    } catch (error) {
+      console.error('Error en actualizarEstadoPlan:', error);
     }
-    await this.prisma.planPago.update({
-      where: { id_plan_pago: planPagoId },
-      data: { estado: nuevoEstadoPlan, actualizado_en: new Date() },
-    });
-    await this.prisma.venta.update({
-      where: { id: planPago.ventaId },
-      data: { estado: nuevoEstadoVenta },
-    });
   }
 
   async obtenerResumenPlanPago(ventaId: number) {
@@ -1358,7 +1413,13 @@ export class VentasService {
       const venta = await this.prisma.venta.findUnique({
         where: { id: ventaId },
         include: {
-          planPago: { include: { pagos: { orderBy: { fecha_pago: 'asc' } } } },
+          planPago: {
+            include: {
+              pagos: {
+                orderBy: { fecha_pago: 'asc' },
+              },
+            },
+          },
           cliente: {
             select: { id: true, fullName: true, email: true, telefono: true },
           },
@@ -1370,14 +1431,20 @@ export class VentasService {
           },
         },
       });
-      if (!venta)
+
+      if (!venta) {
         throw new NotFoundException(`Venta con ID ${ventaId} no encontrada`);
-      if (!venta.planPago)
+      }
+
+      if (!venta.planPago) {
         throw new BadRequestException(
           'La venta no tiene un plan de pago asociado',
         );
+      }
+
       const ventaConCalculos = this.agregarCalculosVenta(venta);
       const planPago = ventaConCalculos.planPago;
+
       return {
         success: true,
         data: {
@@ -1388,6 +1455,7 @@ export class VentasService {
             cliente: venta.cliente,
             asesor: venta.asesor,
             lote: venta.lote,
+            observaciones: venta.observaciones,
           },
           planPago,
           resumen: {
@@ -1411,8 +1479,10 @@ export class VentasService {
       if (
         error instanceof NotFoundException ||
         error instanceof BadRequestException
-      )
+      ) {
         throw error;
+      }
+      console.error('Error en obtenerResumenPlanPago:', error);
       throw new InternalServerErrorException('Error interno del servidor');
     }
   }
@@ -1459,6 +1529,7 @@ export class VentasService {
         },
       };
     } catch (error) {
+      console.error('Error en obtenerPlanesPagoActivos:', error);
       throw new InternalServerErrorException('Error interno del servidor');
     }
   }
@@ -1499,6 +1570,7 @@ export class VentasService {
         },
       };
     } catch (error) {
+      console.error('Error en verificarMorosidadPlanPago:', error);
       throw new InternalServerErrorException('Error interno del servidor');
     }
   }
@@ -1523,6 +1595,7 @@ export class VentasService {
       );
       return { success: true, data: { ventas: ventasConCalculos } };
     } catch (error) {
+      console.error('Error en obtenerVentasPorCliente:', error);
       throw new InternalServerErrorException('Error interno del servidor');
     }
   }
@@ -1548,6 +1621,7 @@ export class VentasService {
         data: { cajas },
       };
     } catch (error) {
+      console.error('Error en obtenerCajasActivas:', error);
       throw new InternalServerErrorException('Error interno del servidor');
     }
   }

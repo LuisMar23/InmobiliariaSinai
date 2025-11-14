@@ -12,10 +12,14 @@ import { MovimientoModule } from './movimiento/movimiento.module';
 import { CierreModule } from './cierre/cierre.module';
 import { VisitasModule } from './visita/visita.module';
 import { ArchivosModule } from './archivos/archivos.module';
+
 import { DashboardModule } from './dashboard/dashboard.module';
 
+import { RecibosModule } from './recibo/recibo.module';
+
 @Module({
-  imports: [AuthModule, UsersModule, UrbanizacionModule, PromocionModule, LotesModule, VentasModule, ReservasModule, CotizacionesModule, CajaModule, MovimientoModule, CierreModule, VisitasModule, ArchivosModule, DashboardModule],
+  imports: [AuthModule, UsersModule, UrbanizacionModule, PromocionModule, LotesModule, VentasModule, ReservasModule, CotizacionesModule, CajaModule, MovimientoModule, CierreModule, VisitasModule, ArchivosModule, RecibosModule,DashboardModule],
+
   controllers: [],
   providers: [],
 })

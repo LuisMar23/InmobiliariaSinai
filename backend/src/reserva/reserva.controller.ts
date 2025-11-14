@@ -65,4 +65,10 @@ export class ReservasController {
     const usuarioId = req.user.id;
     return this.reservasService.remove(+id, usuarioId);
   }
+
+  // NUEVO ENDPOINT PARA OBTENER CAJAS ABIERTAS
+  @Get('cajas/abiertas')
+  getCajasAbiertas() {
+    return this.reservasService.getCajasAbiertas();
+  }
 }

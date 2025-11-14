@@ -96,7 +96,6 @@ export interface RegistrarPagoDto {
   fecha_pago?: string;
   observacion?: string;
   metodoPago?: string;
-  cajaId: string;
 }
 
 export interface PagoPlanPago {

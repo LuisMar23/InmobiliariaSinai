@@ -10,7 +10,7 @@ import {
   CreateReservaDto,
   TipoInmueble,
   EstadoReserva,
-  UserRole,
+  MetodoPago,
 } from './dto/create-reserva.dto';
 import { UpdateReservaDto } from './dto/update-reserva.dto';
 
@@ -21,8 +21,7 @@ export class ReservasService {
   private getCurrentTimeLaPaz(): Date {
     const now = new Date();
     const offset = -4 * 60;
-    const localTime = new Date(now.getTime() + offset * 60 * 1000);
-    return localTime;
+    return new Date(now.getTime() + offset * 60 * 1000);
   }
 
   private async crearAuditoria(
@@ -36,7 +35,7 @@ export class ReservasService {
     try {
       await this.prisma.auditoria.create({
         data: {
-          usuarioId: usuarioId,
+          usuarioId,
           accion,
           tablaAfectada,
           registroId,
@@ -50,6 +49,166 @@ export class ReservasService {
     } catch (error) {
       console.error('Error creando auditoría:', error);
     }
+  }
+
+  private async verificarCajaActiva(cajaId: number, prisma: any) {
+    const caja = await prisma.caja.findUnique({
+      where: { id: cajaId },
+    });
+    if (!caja) {
+      throw new BadRequestException(`Caja con ID ${cajaId} no encontrada`);
+    }
+    if (caja.estado !== 'ABIERTA') {
+      throw new BadRequestException(`La caja con ID ${cajaId} no está abierta`);
+    }
+    return caja;
+  }
+
+  private async registrarMovimientoCajaReserva(
+    cajaId: number,
+    monto: number,
+    reserva: any,
+    usuarioId: number,
+    metodoPago: MetodoPago = MetodoPago.EFECTIVO,
+  ) {
+    return this.prisma.$transaction(async (prisma) => {
+      const caja = await this.verificarCajaActiva(cajaId, prisma);
+
+      const movimiento = await prisma.movimientoCaja.create({
+        data: {
+          cajaId,
+          usuarioId,
+          tipo: 'INGRESO',
+          monto,
+          descripcion: `Reserva #${reserva.id} - Cliente ID: ${reserva.clienteId}`,
+          metodoPago,
+          referencia: `Reserva-${reserva.id}`,
+        },
+      });
+
+      const nuevoSaldo = Number(caja.saldoActual) + Number(monto);
+      await prisma.caja.update({
+        where: { id: cajaId },
+        data: { saldoActual: nuevoSaldo },
+      });
+
+      await this.crearAuditoria(
+        usuarioId,
+        'CREAR_MOVIMIENTO_CAJA_RESERVA',
+        'MovimientoCaja',
+        movimiento.id,
+        null,
+        { cajaId, monto, reservaId: reserva.id, tipo: 'INGRESO', metodoPago },
+      );
+
+      return movimiento;
+    });
+  }
+
+  private async revertirMovimientoCajaReserva(
+    cajaId: number,
+    monto: number,
+    reserva: any,
+    usuarioId: number,
+  ) {
+    return this.prisma.$transaction(async (prisma) => {
+      const caja = await this.verificarCajaActiva(cajaId, prisma);
+
+      const movimiento = await prisma.movimientoCaja.create({
+        data: {
+          cajaId,
+          usuarioId,
+          tipo: 'EGRESO',
+          monto,
+          descripcion: `Reversión de reserva #${reserva.id} - Cliente ID: ${reserva.clienteId}`,
+          metodoPago: MetodoPago.EFECTIVO,
+          referencia: `Reserva-${reserva.id}-Reversion`,
+        },
+      });
+
+      const nuevoSaldo = Number(caja.saldoActual) - Number(monto);
+      await prisma.caja.update({
+        where: { id: cajaId },
+        data: { saldoActual: nuevoSaldo },
+      });
+
+      await this.crearAuditoria(
+        usuarioId,
+        'REVERTIR_MOVIMIENTO_CAJA_RESERVA',
+        'MovimientoCaja',
+        movimiento.id,
+        null,
+        { cajaId, monto, reservaId: reserva.id, tipo: 'EGRESO' },
+      );
+
+      return movimiento;
+    });
+  }
+
+  private async obtenerCajaOriginalReserva(reservaId: number): Promise<number> {
+    const movimientoCaja = await this.prisma.movimientoCaja.findFirst({
+      where: { referencia: { contains: `Reserva-${reservaId}` } },
+      orderBy: { fecha: 'asc' },
+    });
+
+    if (!movimientoCaja) {
+      throw new BadRequestException(
+        'No se encontró caja asociada a esta reserva',
+      );
+    }
+
+    return movimientoCaja.cajaId;
+  }
+
+  private async actualizarMovimientoCajaReserva(
+    cajaId: number,
+    montoAnterior: number,
+    montoNuevo: number,
+    reserva: any,
+    usuarioId: number,
+  ) {
+    return this.prisma.$transaction(async (prisma) => {
+      const caja = await this.verificarCajaActiva(cajaId, prisma);
+
+      const diferencia = montoNuevo - montoAnterior;
+
+      if (diferencia !== 0) {
+        const movimiento = await prisma.movimientoCaja.create({
+          data: {
+            cajaId,
+            usuarioId,
+            tipo: diferencia > 0 ? 'INGRESO' : 'EGRESO',
+            monto: Math.abs(diferencia),
+            descripcion: `Ajuste de reserva #${reserva.id} - ${diferencia > 0 ? 'Incremento' : 'Decremento'} de monto`,
+            metodoPago: MetodoPago.EFECTIVO,
+            referencia: `Reserva-${reserva.id}-Ajuste`,
+          },
+        });
+
+        const nuevoSaldo = Number(caja.saldoActual) + diferencia;
+        await prisma.caja.update({
+          where: { id: cajaId },
+          data: { saldoActual: nuevoSaldo },
+        });
+
+        await this.crearAuditoria(
+          usuarioId,
+          'ACTUALIZAR_MOVIMIENTO_CAJA_RESERVA',
+          'MovimientoCaja',
+          movimiento.id,
+          null,
+          {
+            cajaId,
+            diferencia,
+            reservaId: reserva.id,
+            tipo: diferencia > 0 ? 'INGRESO' : 'EGRESO',
+          },
+        );
+
+        return movimiento;
+      }
+      return null;
+    });
   }
 
   private validarFechasReserva(
@@ -67,6 +226,46 @@ export class ReservasService {
     if (fechaInicio >= fechaVencimiento) {
       throw new BadRequestException(
         'La fecha de inicio debe ser anterior a la fecha de vencimiento',
+      );
+    }
+  }
+
+  // NUEVO MÉTODO PARA OBTENER CAJAS ABIERTAS
+  async getCajasAbiertas() {
+    try {
+      const cajasAbiertas = await this.prisma.caja.findMany({
+        where: {
+          estado: 'ABIERTA',
+        },
+        select: {
+          id: true,
+          nombre: true,
+          montoInicial: true,
+          saldoActual: true,
+          estado: true,
+          usuarioApertura: {
+            select: {
+              id: true,
+              fullName: true,
+              username: true,
+              role: true,
+            },
+          },
+          creadoEn: true,
+          actualizadoEn: true,
+        },
+        orderBy: {
+          creadoEn: 'desc',
+        },
+      });
+
+      return {
+        success: true,
+        data: cajasAbiertas,
+      };
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Error al obtener las cajas abiertas',
       );
     }
   }
@@ -107,6 +306,8 @@ export class ReservasService {
           );
         }
 
+        await this.verificarCajaActiva(createReservaDto.cajaId, prisma);
+
         if (createReservaDto.inmuebleTipo === TipoInmueble.LOTE) {
           const lote = await prisma.lote.findUnique({
             where: { id: createReservaDto.inmuebleId },
@@ -126,12 +327,12 @@ export class ReservasService {
         const reserva = await prisma.reserva.create({
           data: {
             clienteId: createReservaDto.clienteId,
-            asesorId: asesorId,
+            asesorId,
             inmuebleTipo: createReservaDto.inmuebleTipo,
             inmuebleId: createReservaDto.inmuebleId,
             montoReserva: createReservaDto.montoReserva,
-            fechaInicio: fechaInicio,
-            fechaVencimiento: fechaVencimiento,
+            fechaInicio,
+            fechaVencimiento,
             estado: createReservaDto.estado || EstadoReserva.ACTIVA,
           },
           include: {
@@ -143,7 +344,6 @@ export class ReservasService {
                 telefono: true,
                 direccion: true,
                 role: true,
-                createdAt: true,
               },
             },
             asesor: {
@@ -157,6 +357,14 @@ export class ReservasService {
             },
           },
         });
+
+        await this.registrarMovimientoCajaReserva(
+          createReservaDto.cajaId,
+          createReservaDto.montoReserva,
+          reserva,
+          asesorId,
+          createReservaDto.metodoPago || MetodoPago.EFECTIVO,
+        );
 
         if (createReservaDto.inmuebleTipo === TipoInmueble.LOTE) {
           await prisma.lote.update({
@@ -180,6 +388,7 @@ export class ReservasService {
             fechaInicio: reserva.fechaInicio,
             fechaVencimiento: reserva.fechaVencimiento,
             estado: reserva.estado,
+            cajaId: createReservaDto.cajaId,
           },
         );
 
@@ -203,7 +412,6 @@ export class ReservasService {
   async findAll(clienteId?: number, estado?: string) {
     try {
       const where: any = {};
-
       if (clienteId) where.clienteId = clienteId;
       if (estado) where.estado = estado;
 
@@ -271,11 +479,7 @@ export class ReservasService {
               where: { id: reserva.inmuebleId },
               include: {
                 urbanizacion: {
-                  select: {
-                    id: true,
-                    nombre: true,
-                    ubicacion: true,
-                  },
+                  select: { id: true, nombre: true, ubicacion: true },
                 },
               },
             });
@@ -292,10 +496,7 @@ export class ReservasService {
             }
           }
 
-          return {
-            ...reserva,
-            lote: loteInfo,
-          };
+          return { ...reserva, lote: loteInfo };
         }),
       );
 
@@ -362,11 +563,7 @@ export class ReservasService {
           where: { id: reserva.inmuebleId },
           include: {
             urbanizacion: {
-              select: {
-                id: true,
-                nombre: true,
-                ubicacion: true,
-              },
+              select: { id: true, nombre: true, ubicacion: true },
             },
           },
         });
@@ -410,12 +607,7 @@ export class ReservasService {
         },
       });
 
-      const reservaConLote = {
-        ...reservaActual,
-        lote: loteInfo,
-      };
-
-      return { success: true, data: reservaConLote };
+      return { success: true, data: { ...reservaActual, lote: loteInfo } };
     } catch (error) {
       if (error instanceof NotFoundException) {
         throw error;
@@ -482,6 +674,21 @@ export class ReservasService {
               'Cliente no encontrado o no tiene rol de CLIENTE',
             );
           }
+        }
+
+        if (
+          updateReservaDto.montoReserva !== undefined &&
+          updateReservaDto.montoReserva !==
+            Number(reservaExistente.montoReserva)
+        ) {
+          const cajaId = await this.obtenerCajaOriginalReserva(id);
+          await this.actualizarMovimientoCajaReserva(
+            cajaId,
+            Number(reservaExistente.montoReserva),
+            updateReservaDto.montoReserva,
+            reservaExistente,
+            usuarioId,
+          );
         }
 
         const reservaActualizada = await prisma.reserva.update({
@@ -567,6 +774,21 @@ export class ReservasService {
 
         const datosAntes = { ...reserva };
 
+        try {
+          const cajaId = await this.obtenerCajaOriginalReserva(id);
+          await this.revertirMovimientoCajaReserva(
+            cajaId,
+            Number(reserva.montoReserva),
+            reserva,
+            usuarioId,
+          );
+        } catch (error) {
+          console.warn(
+            'No se pudo revertir movimiento de caja:',
+            error.message,
+          );
+        }
+
         await prisma.reserva.delete({ where: { id } });
 
         if (reserva.inmuebleTipo === TipoInmueble.LOTE) {
@@ -609,15 +831,10 @@ export class ReservasService {
       }
 
       const reservas = await this.prisma.reserva.findMany({
-        where: { clienteId: clienteId },
+        where: { clienteId },
         include: {
           asesor: {
-            select: {
-              id: true,
-              fullName: true,
-              telefono: true,
-              role: true,
-            },
+            select: { id: true, fullName: true, telefono: true, role: true },
           },
         },
         orderBy: { createdAt: 'desc' },
@@ -642,10 +859,7 @@ export class ReservasService {
               });
             }
 
-            return {
-              ...reservaActualizada,
-              asesor: reserva.asesor,
-            };
+            return { ...reservaActualizada, asesor: reserva.asesor };
           }
           return reserva;
         }),
@@ -660,11 +874,7 @@ export class ReservasService {
               where: { id: reserva.inmuebleId },
               include: {
                 urbanizacion: {
-                  select: {
-                    id: true,
-                    nombre: true,
-                    ubicacion: true,
-                  },
+                  select: { id: true, nombre: true, ubicacion: true },
                 },
               },
             });
@@ -681,17 +891,11 @@ export class ReservasService {
             }
           }
 
-          return {
-            ...reserva,
-            lote: loteInfo,
-          };
+          return { ...reserva, lote: loteInfo };
         }),
       );
 
-      return {
-        success: true,
-        data: { cliente, reservas: reservasConLotes },
-      };
+      return { success: true, data: { cliente, reservas: reservasConLotes } };
     } catch (error) {
       if (error instanceof NotFoundException) {
         throw error;

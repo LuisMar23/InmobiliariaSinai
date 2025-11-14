@@ -1,4 +1,3 @@
-// reserva.service.ts
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
@@ -41,11 +40,11 @@ export class ReservaService {
       .pipe(map((response) => response.data));
   }
 
-  create(reserva: Partial<ReservaDto>): Observable<any> {
+  create(reserva: any): Observable<any> {
     return this.http.post<ApiResponse<any>>(this.apiUrl, reserva).pipe(map((response) => response));
   }
 
-  update(id: number, reserva: Partial<ReservaDto>): Observable<any> {
+  update(id: number, reserva: any): Observable<any> {
     return this.http
       .patch<ApiResponse<any>>(`${this.apiUrl}/${id}`, reserva)
       .pipe(map((response) => response));
@@ -54,6 +53,56 @@ export class ReservaService {
   delete(id: number): Observable<any> {
     return this.http
       .delete<ApiResponse<any>>(`${this.apiUrl}/${id}`)
+      .pipe(map((response) => response));
+  }
+
+  // CORREGIDO: Usar el endpoint correcto para cajas abiertas
+  getCajasActivas(): Observable<any> {
+    return this.http
+      .get<ApiResponse<any>>(`${this.apiUrl}/cajas/abiertas`)
+      .pipe(map((response) => response));
+  }
+
+  // NUEVO: Métodos para recibos de reserva
+  subirRecibosReserva(
+    reservaId: number,
+    files: File[],
+    usuarioRegistroId: number
+  ): Observable<any> {
+    try {
+      const formData = new FormData();
+
+      if (!files || !Array.isArray(files)) {
+        throw new Error('Archivos inválidos');
+      }
+
+      files.forEach((file) => {
+        if (file instanceof File) {
+          formData.append('files', file);
+        }
+      });
+
+      formData.append('reservaId', reservaId.toString());
+      formData.append('usuarioRegistroId', usuarioRegistroId.toString());
+
+      return this.http
+        .post<any>(`${environment.apiUrl}/recibos/reserva/upload`, formData)
+        .pipe(map((response) => response));
+    } catch (error) {
+      console.error('Error preparando datos para subir recibos:', error);
+      throw error;
+    }
+  }
+
+  obtenerRecibosPorReserva(reservaId: number): Observable<any> {
+    return this.http
+      .get<any>(`${environment.apiUrl}/recibos/reserva/${reservaId}`)
+      .pipe(map((response) => response));
+  }
+
+  eliminarReciboReserva(reciboId: number): Observable<any> {
+    return this.http
+      .delete<any>(`${environment.apiUrl}/recibos/${reciboId}`)
       .pipe(map((response) => response));
   }
 }
