@@ -1,10 +1,6 @@
-<<<<<<< HEAD
-<div class="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-emerald-50 py-4 px-2 sm:px-4 lg:px-8">
-=======
 <div
   class="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-emerald-50 py-4 px-2 sm:px-4 lg:px-8"
 >
->>>>>>> bdb18dc4f57f20ad9e9dfcb3dc27113bb8e350fd
   <div class="max-w-full mx-auto">
     <div class="bg-emerald-500 rounded-t-2xl shadow-lg p-4 sm:p-6">
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -219,16 +215,6 @@
               <p class="text-gray-800 text-sm">{{ u.descripcion || '-' }}</p>
             </div>
             <div class="flex justify-end gap-2 mt-2">
-              <button (click)="verDetalles(u)"
-                class="flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-2 rounded-lg text-sm font-medium shadow-sm transition transform hover:scale-105">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                </svg>
-                Detalles
-              </button>
               <button [routerLink]="['/urbanizaciones/editar', u.id]"
                 class="flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-medium shadow-sm transition transform hover:scale-105">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -406,123 +392,11 @@
       Subir archivos para Urbanizacion #{{ urbanizacionSeleccionada()?.id }}
     </h3>
 
-<<<<<<< HEAD
-    <div class="p-6 space-y-6">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div class="bg-gray-50 rounded-xl p-5">
-          <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            Información General
-          </h3>
-          <div class="space-y-3">
-            <div class="flex justify-between items-center py-2 border-b border-gray-100">
-              <span class="text-sm font-medium text-gray-500">Nombre:</span>
-              <span class="text-sm font-semibold text-gray-900">{{
-                urbanizacionSeleccionada()!.nombre
-                }}</span>
-            </div>
-            <div class="flex justify-between items-center py-2 border-b border-gray-100">
-              <span class="text-sm font-medium text-gray-500">Ubicación:</span>
-              <span class="text-sm text-gray-900">{{
-                urbanizacionSeleccionada()!.ubicacion || 'No especificada'
-                }}</span>
-            </div>
-            <div class="flex justify-between items-center py-2 border-b border-gray-100">
-              <span class="text-sm font-medium text-gray-500">Ciudad:</span>
-              <span class="text-sm font-semibold text-gray-900">{{
-                urbanizacionSeleccionada()!.ciudad
-                }}</span>
-            </div>
-            <div class="flex justify-between items-center py-2 border-b border-gray-100">
-              <span class="text-sm font-medium text-gray-500">Total de Lotes:</span>
-              <span class="text-sm font-bold text-emerald-600">
-                {{ urbanizacionSeleccionada()!._count?.lotes ?? 0 }}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div class="bg-gray-50 rounded-xl p-5">
-          <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            Información Adicional
-          </h3>
-          <div class="space-y-3">
-            <div class="flex justify-between items-center py-2 border-b border-gray-100">
-              <span class="text-sm font-medium text-gray-500">ID:</span>
-              <span class="text-sm font-semibold text-gray-900">{{
-                urbanizacionSeleccionada()!.id || 'N/A'
-                }}</span>
-            </div>
-            <div class="flex justify-between items-center py-2 border-b border-gray-100">
-              <span class="text-sm font-medium text-gray-500">UUID:</span>
-              <span class="text-sm text-gray-900 font-mono">{{
-                urbanizacionSeleccionada()!.uuid || 'N/A'
-                }}</span>
-            </div>
-            @if (urbanizacionSeleccionada()!.createdAt) {
-            <div class="flex justify-between items-center py-2 border-b border-gray-100">
-              <span class="text-sm font-medium text-gray-500">Creado:</span>
-              <span class="text-sm text-gray-900">{{
-                (urbanizacionSeleccionada()!.createdAt | date: 'dd/MM/yyyy') || 'N/A'
-                }}</span>
-            </div>
-            }
-          </div>
-        </div>
-      </div>
-
-      @if (urbanizacionSeleccionada()!.descripcion) {
-      <div class="bg-gray-50 rounded-xl p-5">
-        <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <svg class="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-          </svg>
-          Descripción
-        </h3>
-        <div class="text-sm text-gray-700 whitespace-pre-line leading-relaxed">
-          {{ urbanizacionSeleccionada()!.descripcion }}
-        </div>
-      </div>
-      }
-    </div>
-
-    <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row justify-end gap-3">
-      <button (click)="delete(urbanizacionSeleccionada()!)"
-        class="flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-lg shadow-md transition-all duration-200 font-semibold w-full sm:w-auto order-2 sm:order-1">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-        </svg>
-        Eliminar Urbanización
-      </button>
-      <button [routerLink]="['/urbanizaciones/editar', urbanizacionSeleccionada()!.id]" (click)="cerrarModalDetalles()"
-        class="flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg shadow-md transition-all duration-200 font-semibold w-full sm:w-auto order-1 sm:order-2">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-        </svg>
-        Editar Urbanización
-      </button>
-      <button (click)="cerrarModalDetalles()"
-        class="flex items-center justify-center gap-2 bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg shadow-md transition-all duration-200 font-semibold w-full sm:w-auto order-3">
-        Cerrar
-      </button>
-    </div>
-=======
     <app-archivos
       [urbanizacionId]="urbanizacionSeleccionada()?.id!"
       modo="crear"
       (subidaCompleta)="onSubidaCompleta()"
     ></app-archivos>
->>>>>>> bdb18dc4f57f20ad9e9dfcb3dc27113bb8e350fd
   </div>
 </div>
 }

@@ -12,21 +12,14 @@ import { MovimientoModule } from './movimiento/movimiento.module';
 import { CierreModule } from './cierre/cierre.module';
 import { VisitasModule } from './visita/visita.module';
 import { ArchivosModule } from './archivos/archivos.module';
-<<<<<<< HEAD
-import { ReciboModule } from './recibo/recibo.module';
-
-@Module({
-  imports: [AuthModule, UsersModule, UrbanizacionModule, PromocionModule, LotesModule, VentasModule, ReservasModule, CotizacionesModule, CajaModule, MovimientoModule, CierreModule, VisitasModule, ArchivosModule, ReciboModule],
-=======
 
 import { DashboardModule } from './dashboard/dashboard.module';
 
-import { RecibosModule } from './recibo/recibo.module';
+import { ReciboModule } from './recibo/recibo.module';
 
 @Module({
-  imports: [AuthModule, UsersModule, UrbanizacionModule, PromocionModule, LotesModule, VentasModule, ReservasModule, CotizacionesModule, CajaModule, MovimientoModule, CierreModule, VisitasModule, ArchivosModule, RecibosModule,DashboardModule],
+  imports: [AuthModule, UsersModule, UrbanizacionModule, PromocionModule, LotesModule, VentasModule, ReservasModule, CotizacionesModule, CajaModule, MovimientoModule, CierreModule, VisitasModule, ArchivosModule, ReciboModule,DashboardModule],
 
->>>>>>> bdb18dc4f57f20ad9e9dfcb3dc27113bb8e350fd
   controllers: [],
   providers: [],
 })

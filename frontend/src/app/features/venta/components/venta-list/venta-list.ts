@@ -11,14 +11,11 @@ import {
 import { VentaDto, RegistrarPagoDto } from '../../../../core/interfaces/venta.interface';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { VentaService } from '../../service/venta.service';
-<<<<<<< HEAD
 import { ReciboService, Recibo } from '../../../../core/services/recibo.service';
-=======
 import { ArchivosComponent } from '../../../../components/archivos/archivos/archivos';
 import { environment } from '../../../../../environments/environment';
 import { UploadArchivosService } from '../../../../components/services/archivos.service';
 import { Galeria } from '../../../../components/galeria/galeria';
->>>>>>> bdb18dc4f57f20ad9e9dfcb3dc27113bb8e350fd
 
 @Component({
   selector: 'app-venta-list',
