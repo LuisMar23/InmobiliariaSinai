@@ -66,7 +66,6 @@ export class ReservasController {
     return this.reservasService.remove(+id, usuarioId);
   }
 
-  // NUEVO ENDPOINT PARA OBTENER CAJAS ABIERTAS
   @Get('cajas/abiertas')
   getCajasAbiertas() {
     return this.reservasService.getCajasAbiertas();

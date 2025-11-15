@@ -429,4 +429,5 @@ export class VentaService {
       ingresos: venta.ingresos || [],
     };
   }
+  
 }

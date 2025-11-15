@@ -1,7 +1,6 @@
 <!-- reserva-list.html -->
 <div class="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-emerald-50 py-4 px-2 sm:px-4 lg:px-8">
     <div class="max-w-full mx-auto">
-        <!-- Header -->
         <div class="bg-emerald-500 rounded-t-2xl shadow-lg p-4 sm:p-6">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div class="flex items-center gap-3">
@@ -25,9 +24,7 @@
             </div>
         </div>
 
-        <!-- Contenido -->
         <div class="bg-white rounded-b-2xl shadow-xl p-3 sm:p-4 lg:p-6">
-            <!-- Barra de búsqueda -->
             <div class="mb-4 sm:mb-6">
                 <div class="relative max-w-md">
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -43,7 +40,6 @@
                 </div>
             </div>
 
-            <!-- Estado de carga -->
             @if (cargando()) {
             <div class="text-center py-8 sm:py-12">
                 <div class="animate-spin rounded-full h-8 w-8 sm:h-12 sm:w-12 border-b-2 border-emerald-500 mx-auto">
@@ -51,7 +47,6 @@
                 <p class="text-gray-600 mt-3 sm:mt-4 text-sm sm:text-base">Cargando reservas...</p>
             </div>
             } @else {
-            <!-- Vista Desktop - Tabla -->
             <div class="hidden lg:block">
                 <div class="overflow-x-auto rounded-lg border border-gray-200">
                     <table class="w-full">
@@ -173,12 +168,10 @@
                 </div>
             </div>
 
-            <!-- Vista Mobile/Tablet - Cards -->
             <div class="lg:hidden space-y-3">
                 @for (reserva of getReservasPaginadas(); track reserva.id) {
                 <div
                     class="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden">
-                    <!-- Header de la card -->
                     <div class="bg-gradient-to-r from-emerald-500 to-emerald-600 p-3">
                         <div class="flex justify-between items-start">
                             <div class="flex-1 min-w-0">
@@ -192,9 +185,7 @@
                         </div>
                     </div>
 
-                    <!-- Contenido de la card -->
                     <div class="p-3 space-y-2">
-                        <!-- Información compacta -->
                         <div class="grid grid-cols-2 gap-2 text-xs">
                             <div class="flex items-center gap-1">
                                 <svg class="w-3 h-3 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor"
@@ -214,7 +205,6 @@
                             </div>
                         </div>
 
-                        <!-- Información adicional -->
                         <div class="grid grid-cols-2 gap-2 text-xs">
                             <div>
                                 <p class="text-gray-500 text-xs">Vence:</p>
@@ -226,7 +216,6 @@
                             </div>
                         </div>
 
-                        <!-- Botones de acción -->
                         <div class="flex justify-between gap-1 pt-2 border-t border-gray-100">
                             <button
                                 class="flex items-center justify-center gap-1 bg-blue-500 hover:bg-blue-600 text-white px-2 py-1.5 rounded text-xs font-medium shadow-sm transition flex-1"
@@ -275,7 +264,6 @@
                 }
             </div>
 
-            <!-- Paginación -->
             <div class="flex flex-col xs:flex-row xs:justify-between xs:items-center mt-4 gap-3 px-1">
                 <div class="text-xs text-gray-600 text-center xs:text-left order-2 xs:order-1">
                     Mostrando {{ rangeStart() }} a {{ rangeEnd() }} de {{ total() }} reservas
@@ -310,11 +298,9 @@
     </div>
 </div>
 
-<!-- Modal de Detalles para Reservas -->
 @if (mostrarModal() && reservaSeleccionada()) {
 <div class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
     <div class="bg-white w-full max-w-4xl rounded-2xl shadow-2xl max-h-[95vh] overflow-y-auto">
-        <!-- Header del Modal -->
         <div class="bg-emerald-500 text-white p-6 rounded-t-2xl flex justify-between items-center">
             <div class="flex items-center gap-3">
                 <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -333,10 +319,8 @@
             </button>
         </div>
 
-        <!-- Contenido del Modal -->
         <div class="p-6 space-y-6">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Información General -->
                 <div class="bg-gray-50 rounded-xl p-5">
                     <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                         <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -370,7 +354,6 @@
                     </div>
                 </div>
 
-                <!-- Información del Lote -->
                 @if (reservaSeleccionada()!.lote) {
                 <div class="bg-gray-50 rounded-xl p-5">
                     <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -409,7 +392,6 @@
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Información del Cliente -->
                 <div class="bg-gray-50 rounded-xl p-5">
                     <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                         <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -432,7 +414,6 @@
                     </div>
                 </div>
 
-                <!-- Información del Asesor -->
                 <div class="bg-gray-50 rounded-xl p-5">
                     <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                         <svg class="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -450,9 +431,119 @@
                     </div>
                 </div>
             </div>
+
+            <div class="bg-gray-50 rounded-xl p-5">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    Subir Archivos de Reserva
+                </h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Seleccionar Archivos (Máximo 3)
+                        </label>
+                        <div class="flex flex-col sm:flex-row gap-4">
+                            <div class="flex-1">
+                                <input type="file" multiple (change)="onFileChange($event)"
+                                    accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                                    class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm sm:text-base"
+                                    [disabled]="archivosCargando()" />
+                            </div>
+                            <button type="button"
+                                (click)="prepararSubidaArchivos(reservaSeleccionada()!.id); subirArchivosModal()"
+                                [disabled]="archivosSeleccionados().length === 0 || archivosCargando()"
+                                class="flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white px-6 py-3 rounded-lg shadow-md transition-all duration-200 font-semibold w-full sm:w-auto disabled:bg-gray-400 disabled:cursor-not-allowed">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                </svg>
+                                {{ archivosCargando() ? 'Subiendo...' : 'Subir Archivos' }}
+                            </button>
+                        </div>
+                    </div>
+
+                    @if (archivosSeleccionados().length > 0) {
+                    <div class="mt-4">
+                        <h4 class="text-sm font-medium text-gray-700 mb-2">Archivos Seleccionados:</h4>
+                        <div class="space-y-2 max-h-40 overflow-y-auto">
+                            @for (archivo of archivosSeleccionados(); track $index) {
+                            <div
+                                class="flex items-center justify-between bg-gray-100 p-3 rounded-lg border border-gray-200">
+                                <div class="flex items-center gap-2">
+                                    <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    <span class="text-sm text-gray-700 truncate max-w-xs">{{ archivo.name }}</span>
+                                    <span class="text-xs text-gray-500">({{ formatFileSize(archivo.size) }})</span>
+                                </div>
+                                <button type="button" (click)="eliminarArchivo($index)"
+                                    class="text-red-500 hover:text-red-700 p-1">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                </button>
+                            </div>
+                            }
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2">Archivos seleccionados: {{ archivosSeleccionados().length
+                            }} / {{ maxArchivos }}</p>
+                    </div>
+                    }
+
+                    <div class="mt-6">
+                        <h4 class="text-sm font-medium text-gray-700 mb-2">Archivos Subidos:</h4>
+                        @if (recibosCargando()) {
+                        <p class="text-sm text-gray-500">Cargando recibos...</p>
+                        } @else {
+                        @if (recibosReserva().length > 0) {
+                        <div class="space-y-2 max-h-60 overflow-y-auto">
+                            @for (recibo of recibosReserva(); track recibo.id) {
+                            <div
+                                class="flex items-center justify-between bg-emerald-50 p-3 rounded-lg border border-emerald-200">
+                                <div class="flex items-center gap-2">
+                                    <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    <span class="text-sm text-gray-700 truncate max-w-xs">{{ recibo.nombreArchivo ||
+                                        recibo.urlArchivo }}</span>
+                                    <span class="text-xs text-gray-500">({{ formatFecha(recibo.creado_en) }})</span>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button type="button" (click)="descargarRecibo(recibo)"
+                                        class="text-emerald-500 hover:text-emerald-700 p-1">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                        </svg>
+                                    </button>
+                                    <button type="button" (click)="eliminarRecibo(recibo)"
+                                        class="text-red-500 hover:text-red-700 p-1">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            }
+                        </div>
+                        } @else {
+                        <p class="text-sm text-gray-500">No hay archivos subidos para esta reserva.</p>
+                        }
+                        }
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <!-- Footer del Modal -->
         <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row justify-end gap-3">
             <button (click)="eliminarReserva(reservaSeleccionada()!.id)"
                 class="flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-lg shadow-md transition-all duration-200 font-semibold w-full sm:w-auto order-2 sm:order-1">

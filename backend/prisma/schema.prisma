@@ -93,7 +93,6 @@ enum EstadoPlanPago {
 enum TipoOperacion {
   VENTA
   RESERVA
-  PAGO_PLAN
 }
 
 enum EstadoCaja {

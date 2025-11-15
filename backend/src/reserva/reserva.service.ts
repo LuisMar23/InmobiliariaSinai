@@ -230,7 +230,6 @@ export class ReservasService {
     }
   }
 
-  // NUEVO MÉTODO PARA OBTENER CAJAS ABIERTAS
   async getCajasAbiertas() {
     try {
       const cajasAbiertas = await this.prisma.caja.findMany({
@@ -647,21 +646,96 @@ export class ReservasService {
 
         const datosAntes = { ...reservaExistente };
 
-        let fechaInicio = reservaExistente.fechaInicio;
-        let fechaVencimiento = reservaExistente.fechaVencimiento;
+        const dataActualizada: any = {};
 
-        if (updateReservaDto.fechaInicio) {
-          fechaInicio = new Date(updateReservaDto.fechaInicio);
-        }
-        if (updateReservaDto.fechaVencimiento) {
-          fechaVencimiento = new Date(updateReservaDto.fechaVencimiento);
+        // Solo incluir campos que están presentes en el DTO y han cambiado
+        if (
+          updateReservaDto.clienteId !== undefined &&
+          updateReservaDto.clienteId !== reservaExistente.clienteId
+        ) {
+          dataActualizada.clienteId = updateReservaDto.clienteId;
         }
 
-        if (updateReservaDto.fechaInicio || updateReservaDto.fechaVencimiento) {
+        if (
+          updateReservaDto.montoReserva !== undefined &&
+          updateReservaDto.montoReserva !==
+            Number(reservaExistente.montoReserva)
+        ) {
+          dataActualizada.montoReserva = updateReservaDto.montoReserva;
+        }
+
+        if (
+          updateReservaDto.estado !== undefined &&
+          updateReservaDto.estado !== reservaExistente.estado
+        ) {
+          dataActualizada.estado = updateReservaDto.estado;
+        }
+
+        if (
+          updateReservaDto.inmuebleTipo !== undefined &&
+          updateReservaDto.inmuebleTipo !== reservaExistente.inmuebleTipo
+        ) {
+          dataActualizada.inmuebleTipo = updateReservaDto.inmuebleTipo;
+        }
+
+        if (
+          updateReservaDto.inmuebleId !== undefined &&
+          updateReservaDto.inmuebleId !== reservaExistente.inmuebleId
+        ) {
+          dataActualizada.inmuebleId = updateReservaDto.inmuebleId;
+        }
+
+        // Manejo especial para fechas - solo procesar si están presentes y han cambiado
+        let fechaInicioCambio = false;
+        let fechaVencimientoCambio = false;
+
+        if (updateReservaDto.fechaInicio !== undefined) {
+          const nuevaFechaInicio = new Date(updateReservaDto.fechaInicio);
+          const fechaExistenteInicio = new Date(reservaExistente.fechaInicio);
+
+          // Comparar solo la fecha (sin hora) para evitar problemas de timezone
+          if (
+            nuevaFechaInicio.toISOString().split('T')[0] !==
+            fechaExistenteInicio.toISOString().split('T')[0]
+          ) {
+            fechaInicioCambio = true;
+            dataActualizada.fechaInicio = nuevaFechaInicio;
+          }
+        }
+
+        if (updateReservaDto.fechaVencimiento !== undefined) {
+          const nuevaFechaVencimiento = new Date(
+            updateReservaDto.fechaVencimiento,
+          );
+          const fechaExistenteVencimiento = new Date(
+            reservaExistente.fechaVencimiento,
+          );
+
+          // Comparar solo la fecha (sin hora) para evitar problemas de timezone
+          if (
+            nuevaFechaVencimiento.toISOString().split('T')[0] !==
+            fechaExistenteVencimiento.toISOString().split('T')[0]
+          ) {
+            fechaVencimientoCambio = true;
+            dataActualizada.fechaVencimiento = nuevaFechaVencimiento;
+          }
+        }
+
+        // Solo validar fechas si la fecha de inicio ha cambiado
+        if (fechaInicioCambio) {
+          const fechaInicio =
+            dataActualizada.fechaInicio || reservaExistente.fechaInicio;
+          const fechaVencimiento =
+            dataActualizada.fechaVencimiento ||
+            reservaExistente.fechaVencimiento;
           this.validarFechasReserva(fechaInicio, fechaVencimiento);
         }
 
-        if (updateReservaDto.clienteId) {
+        // Validar cliente si se está cambiando
+        if (
+          updateReservaDto.clienteId !== undefined &&
+          updateReservaDto.clienteId !== reservaExistente.clienteId
+        ) {
           const cliente = await prisma.user.findFirst({
             where: {
               id: updateReservaDto.clienteId,
@@ -676,6 +750,7 @@ export class ReservasService {
           }
         }
 
+        // Actualizar movimiento de caja si el monto cambió
         if (
           updateReservaDto.montoReserva !== undefined &&
           updateReservaDto.montoReserva !==
@@ -691,13 +766,18 @@ export class ReservasService {
           );
         }
 
+        // Si no hay cambios, retornar sin actualizar
+        if (Object.keys(dataActualizada).length === 0) {
+          return {
+            success: true,
+            message: 'No hay cambios para actualizar',
+            data: reservaExistente,
+          };
+        }
+
         const reservaActualizada = await prisma.reserva.update({
           where: { id },
-          data: {
-            ...updateReservaDto,
-            ...(updateReservaDto.fechaInicio && { fechaInicio }),
-            ...(updateReservaDto.fechaVencimiento && { fechaVencimiento }),
-          },
+          data: dataActualizada,
           include: {
             cliente: {
               select: {

@@ -1,4 +1,3 @@
-// src/app/modules/urbanizacion/components/urbanizacion-list/urbanizacion-list.ts
 import { Component, computed, inject, signal } from '@angular/core';
 import {
   FormBuilder,
@@ -131,16 +130,12 @@ export class UrbanizacionList {
           this.loadUrbanizaciones();
           this.cancelEdit();
         } else {
-          this.notificationService.showError(response.message || 'Error al crear urbanización');
+          this.notificationService.showError('Error al crear urbanización');
         }
       },
       error: (err) => {
         console.error('Error al crear urbanización:', err);
-        let errorMessage = 'Error al crear urbanización';
-        if (err.error?.message) {
-          errorMessage = err.error.message;
-        }
-        this.notificationService.showError(errorMessage);
+        this.notificationService.showError('Error al crear urbanización');
       },
     });
   }
@@ -176,18 +171,12 @@ export class UrbanizacionList {
                 this.notificationService.showSuccess('Urbanización eliminada correctamente');
                 this.loadUrbanizaciones();
               } else {
-                this.notificationService.showError(
-                  response.message || 'Error al eliminar urbanización'
-                );
+                this.notificationService.showError('Error al eliminar urbanización');
               }
             },
             error: (err) => {
               console.error('Error al eliminar urbanización:', err);
-              let errorMessage = 'Error al eliminar urbanización';
-              if (err.error?.message) {
-                errorMessage = err.error.message;
-              }
-              this.notificationService.showError(errorMessage);
+              this.notificationService.showError('Error al eliminar urbanización');
             },
           });
         }

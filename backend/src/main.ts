@@ -7,10 +7,8 @@ import { join } from 'path';
 async function bootstrap() {
     const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  // Configurar CORS
   app.enableCors();
 
-  // Global prefix para todas las rutas
   app.setGlobalPrefix('apisinai');
 
   app.useStaticAssets(join(__dirname, '..', 'uploads'), {

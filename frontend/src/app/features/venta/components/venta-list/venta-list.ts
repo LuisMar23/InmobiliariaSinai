@@ -11,6 +11,7 @@ import {
 import { VentaDto, RegistrarPagoDto } from '../../../../core/interfaces/venta.interface';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { VentaService } from '../../service/venta.service';
+import { ReciboService, Recibo } from '../../../../core/services/recibo.service';
 
 @Component({
   selector: 'app-venta-list',
@@ -29,6 +30,15 @@ export class VentaList implements OnInit {
   mostrarFormPago = signal<boolean>(false);
   enviandoPago = signal<boolean>(false);
 
+  // Nuevas variables para manejo de archivos
+  archivosSeleccionados = signal<File[]>([]);
+  maxArchivos = 6; // Máximo de archivos para venta
+  archivosCargando = signal<boolean>(false);
+  ventaIdParaArchivos = signal<number | null>(null);
+
+  recibosVenta = signal<Recibo[]>([]);
+  recibosCargando = signal<boolean>(true);
+
   pagoForm: FormGroup;
 
   total = signal(0);
@@ -38,6 +48,7 @@ export class VentaList implements OnInit {
   private ventaSvc = inject(VentaService);
   private notificationService = inject(NotificationService);
   private fb = inject(FormBuilder);
+  private reciboSvc = inject(ReciboService); // Inyecta el servicio de recibos
 
   constructor() {
     this.pagoForm = this.crearPagoForm();
@@ -107,6 +118,20 @@ export class VentaList implements OnInit {
         console.error('Error al cargar ventas:', err);
         this.error.set('No se pudieron cargar las ventas');
         this.cargando.set(false);
+      },
+    });
+  }
+
+  cargarRecibosVenta(ventaId: number): void {
+    this.recibosCargando.set(true);
+    this.reciboSvc.obtenerPorVenta(ventaId).subscribe({
+      next: (recibos) => {
+        this.recibosVenta.set(recibos);
+        this.recibosCargando.set(false);
+      },
+      error: (err) => {
+        this.notificationService.showError('No se pudieron cargar los recibos de la venta');
+        this.recibosCargando.set(false);
       },
     });
   }
@@ -206,6 +231,9 @@ export class VentaList implements OnInit {
     this.mostrarModal.set(true);
     this.mostrarFormPago.set(false);
     this.pagoForm.reset();
+    this.archivosSeleccionados.set([]); // Limpiar archivos seleccionados al abrir el modal
+    this.ventaIdParaArchivos.set(venta.id); // Guardar ID de la venta
+    this.cargarRecibosVenta(venta.id); // Cargar recibos de la venta
 
     const hoy = new Date();
     const fechaHoy = hoy.toISOString().split('T')[0];
@@ -222,6 +250,9 @@ export class VentaList implements OnInit {
     this.ventaSeleccionada.set(null);
     this.mostrarFormPago.set(false);
     this.pagoForm.reset();
+    this.archivosSeleccionados.set([]); // Limpiar archivos al cerrar
+    this.ventaIdParaArchivos.set(null);
+    this.recibosVenta.set([]);
   }
 
   toggleFormPago(): void {
@@ -298,6 +329,7 @@ export class VentaList implements OnInit {
             this.ventaSvc.getById(venta.id).subscribe({
               next: (ventaActualizada: VentaDto) => {
                 this.ventaSeleccionada.set(ventaActualizada);
+                this.cargarRecibosVenta(venta.id); // Recargar recibos tras pago
               },
               error: (err) => {
                 console.error('Error al actualizar venta:', err);
@@ -327,6 +359,115 @@ export class VentaList implements OnInit {
         }
         this.notificationService.showError(errorMessage);
       },
+    });
+  }
+
+  // Métodos para manejo de archivos
+  onFileChange(event: any) {
+    const files: FileList | null = event.target.files;
+    if (files) {
+      const nuevosArchivos = Array.from(files);
+      const archivosActuales = this.archivosSeleccionados();
+      const archivosFinales = [...archivosActuales, ...nuevosArchivos];
+
+      if (archivosFinales.length > this.maxArchivos) {
+        this.notificationService.showError(
+          `Solo puedes subir un máximo de ${this.maxArchivos} archivos.`
+        );
+        return;
+      }
+
+      this.archivosSeleccionados.set(archivosFinales);
+    }
+  }
+
+  eliminarArchivo(index: number) {
+    const archivosActuales = this.archivosSeleccionados();
+    archivosActuales.splice(index, 1);
+    this.archivosSeleccionados.set([...archivosActuales]);
+  }
+
+  prepararSubidaArchivos(ventaId: number) {
+    this.ventaIdParaArchivos.set(ventaId);
+    this.archivosSeleccionados.set([]);
+  }
+
+  subirArchivosModal() {
+    if (this.archivosSeleccionados().length === 0) {
+      this.notificationService.showError('No hay archivos seleccionados para subir.');
+      return;
+    }
+
+    const ventaId = this.ventaIdParaArchivos();
+    if (!ventaId) {
+      this.notificationService.showError('No se puede subir archivos: ID de venta no disponible.');
+      return;
+    }
+
+    this.archivosCargando.set(true);
+
+    this.reciboSvc
+      .subirRecibosGenerales(this.archivosSeleccionados(), {
+        tipoOperacion: 'VENTA',
+        ventaId: ventaId,
+        observaciones: 'Subido desde listado de ventas',
+      })
+      .subscribe({
+        next: (response) => {
+          this.archivosCargando.set(false);
+          this.notificationService.showSuccess('Archivos subidos exitosamente.');
+          this.archivosSeleccionados.set([]);
+          this.cargarRecibosVenta(ventaId); // Recarga los recibos después de subir
+        },
+        error: (error) => {
+          this.archivosCargando.set(false);
+          this.notificationService.showError(
+            'Error al subir los archivos: ' + (error?.error?.message || 'Error desconocido')
+          );
+        },
+      });
+  }
+
+  descargarRecibo(recibo: Recibo) {
+    this.reciboSvc.descargarRecibo(recibo);
+  }
+
+  eliminarRecibo(recibo: Recibo) {
+    this.notificationService
+      .confirmDelete('¿Está seguro que desea eliminar este archivo?')
+      .then((result) => {
+        if (result.isConfirmed) {
+          this.reciboSvc.eliminarRecibo(recibo.id).subscribe({
+            next: () => {
+              this.notificationService.showSuccess('Archivo eliminado exitosamente.');
+              const ventaId = this.ventaSeleccionada()?.id;
+              if (ventaId) {
+                this.cargarRecibosVenta(ventaId);
+              }
+            },
+            error: (err) => {
+              this.notificationService.showError('No se pudo eliminar el archivo.');
+            },
+          });
+        }
+      });
+  }
+
+  formatFileSize(bytes: number): string {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  }
+
+  formatFecha(fecha: string | Date): string {
+    if (!fecha) return 'N/A';
+    const date = new Date(fecha);
+    return date.toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
     });
   }
 
