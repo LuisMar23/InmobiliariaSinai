@@ -81,6 +81,7 @@ export class UrbanizacionService {
         skip,
         take: limit,
         include: {
+          archivos: true,
           _count: {
             select: {
               lotes: true,
@@ -107,9 +108,18 @@ export class UrbanizacionService {
   }
 
   async findOne(id: number) {
+    console.log(id);
     const urbanizacion = await this.prisma.urbanizacion.findUnique({
       where: { id },
       include: {
+        archivos: {
+          select: {
+            id: true,
+            urlArchivo: true,
+            tipoArchivo: true,
+            nombreArchivo: true,
+          },
+        },
         lotes: {
           include: {
             _count: {
@@ -117,6 +127,7 @@ export class UrbanizacionService {
                 cotizaciones: true,
                 ventas: true,
                 reservas: true,
+                archivos: true,
               },
             },
           },
@@ -138,7 +149,56 @@ export class UrbanizacionService {
       data: urbanizacion,
     };
   }
+  async findOneUUID(uuid:string) {
 
+    const urbanizacion = await this.prisma.urbanizacion.findUnique({
+      where: { uuid },
+      include: {
+        archivos: {
+          select: {
+            id: true,
+            urlArchivo: true,
+            tipoArchivo: true,
+            nombreArchivo: true,
+          },
+        },
+        lotes: {
+          include: {
+                   archivos: {
+          select: {
+            id: true,
+            urlArchivo: true,
+            tipoArchivo: true,
+            nombreArchivo: true,
+          },
+        },
+            _count: {
+              select: {
+                cotizaciones: true,
+                ventas: true,
+                reservas: true,
+                archivos: true,
+              },
+            },
+          },
+        },
+        _count: {
+          select: {
+            lotes: true,
+          },
+        },
+      },
+    });
+
+    if (!urbanizacion) {
+      throw new NotFoundException(`Urbanización con ID ${uuid} no encontrada`);
+    }
+
+    return {
+      success: true,
+      data: urbanizacion,
+    };
+  }
   async update(id: number, updateUrbanizacionDto: UpdateUrbanizacionDto) {
     return this.prisma.$transaction(async (prisma) => {
       const urbanizacionExistente = await prisma.urbanizacion.findUnique({

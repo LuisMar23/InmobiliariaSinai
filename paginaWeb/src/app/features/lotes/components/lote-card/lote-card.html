@@ -1,0 +1,77 @@
+<div class="group bg-white rounded-xl shadow-md hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100 hover:border-emerald-200">
+  <!-- Imagen con overlay -->
+  <div class="relative overflow-hidden">
+    <img
+      [src]="urlServer+lote.archivos?.[0]?.urlArchivo || 'assets/no-image.jpg'"
+      class="w-full h-48 object-cover transition-transform duration-500 group-hover:scale-110"
+      [alt]="'Lote ' + lote.numeroLote"
+    />
+    
+    <!-- Badge de estado flotante -->
+    <div class="absolute top-3 right-3">
+      <span
+        class="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold backdrop-blur-sm shadow-lg"
+        [ngClass]="{
+          'bg-emerald-500/90 text-white': lote.estado === 'DISPONIBLE',
+          'bg-amber-500/90 text-white': lote.estado === 'RESERVADO',
+          'bg-gray-500/90 text-white': lote.estado === 'VENDIDO'
+        }"
+      >
+        <span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
+        {{ lote.estado }}
+      </span>
+    </div>
+
+    <!-- Overlay con gradiente -->
+    <div class="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+  </div>
+
+  <!-- Contenido -->
+  <div class="p-4">
+    <!-- Título -->
+    <h3 class="font-bold text-lg text-gray-900 mb-2 line-clamp-1">
+      Lote {{ lote.numeroLote }}
+    </h3>
+
+    <!-- Ubicación -->
+    <div class="flex items-center gap-1.5 text-sm text-gray-600 mb-3">
+      <svg class="w-4 h-4 text-emerald-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+      </svg>
+      <span class="line-clamp-1">{{ lote.ciudad }} • {{ lote.urbanizacion?.nombre || 'Sin urbanización' }}</span>
+    </div>
+
+    <!-- Características -->
+    <div class="flex items-center gap-4 mb-4 pb-4 border-b border-gray-100">
+      <!-- Superficie -->
+      <div class="flex items-center gap-1.5">
+        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>
+        </svg>
+        <span class="text-sm text-gray-600">
+          <span class="font-semibold text-gray-900">{{ lote.superficieM2 }}</span> m²
+        </span>
+      </div>
+    </div>
+
+    <!-- Precio -->
+    <div class="mb-4">
+      <p class="text-xs text-gray-500 mb-0.5">Precio base</p>
+      <p class="text-2xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+        Bs {{ lote.precioBase | number }}
+      </p>
+    </div>
+
+    <!-- Botón de acción -->
+    <a 
+      [routerLink]="['/lotes', lote.uuid]"
+      class="group/btn flex items-center justify-center gap-2 w-full bg-gradient-to-br from-emerald-900 via-teal-800 to-emerald-900 text-white text-center py-2.5 rounded-lg hover:from-emerald-700 hover:to-teal-700 transition-all duration-300 font-medium text-sm shadow-md hover:shadow-lg"
+    >
+      Ver detalles
+      <svg class="w-4 h-4 transition-transform group-hover/btn:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+      </svg>
+    </a>
+  </div>
+</div>

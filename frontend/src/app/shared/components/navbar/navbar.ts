@@ -14,10 +14,12 @@ import {
   faUsers,
 } from '@fortawesome/free-solid-svg-icons';
 import { AuthService } from '../../../components/services/auth.service';
+import { AppRoutingModule } from "../../../app.routes";
+import { RouterModule } from '@angular/router';
 
 @Component({
   selector: 'app-navbar',
-  imports: [FontAwesomeModule, CommonModule],
+  imports: [FontAwesomeModule, CommonModule,RouterModule],
   templateUrl: './navbar.html',
   styleUrl: './navbar.css',
 })

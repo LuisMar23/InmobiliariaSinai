@@ -1,0 +1,113 @@
+<form class="bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-lg border border-gray-100 p-6" (ngSubmit)="onBuscar()">
+  <!-- Título del formulario -->
+  <div class="flex items-center gap-2 mb-5">
+    <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+    </svg>
+    <h3 class="text-lg font-semibold text-gray-800">Filtrar búsqueda</h3>
+  </div>
+
+  <!-- Grid de inputs y botones -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 items-end">
+    
+    <!-- Ciudad -->
+    <div class="relative">
+      <label class="block text-xs font-medium text-gray-600 mb-1.5">Ciudad</label>
+      <div class="relative">
+        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+          </svg>
+        </span>
+        <input 
+          type="text" 
+          placeholder="Ej: La Paz" 
+          [(ngModel)]="filtros.ciudad" 
+          name="ciudad"
+          class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition outline-none text-sm"
+        />
+      </div>
+    </div>
+
+    <!-- Precio Mínimo -->
+    <div class="relative">
+      <label class="block text-xs font-medium text-gray-600 mb-1.5">Precio mín.</label>
+      <div class="relative">
+        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium">Bs</span>
+        <input 
+          type="number" 
+          placeholder="0" 
+          [(ngModel)]="filtros.precioMin" 
+          name="precioMin"
+          class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition outline-none text-sm"
+        />
+      </div>
+    </div>
+
+    <!-- Precio Máximo -->
+    <div class="relative">
+      <label class="block text-xs font-medium text-gray-600 mb-1.5">Precio máx.</label>
+      <div class="relative">
+        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium">Bs</span>
+        <input 
+          type="number" 
+          placeholder="9,999,999" 
+          [(ngModel)]="filtros.precioMax" 
+          name="precioMax"
+          class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition outline-none text-sm"
+        />
+      </div>
+    </div>
+
+    <!-- Estado -->
+    <div class="relative">
+      <label class="block text-xs font-medium text-gray-600 mb-1.5">Estado</label>
+      <div class="relative">
+        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+        </span>
+        <select 
+          [(ngModel)]="filtros.estado" 
+          name="estado"
+          class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition outline-none text-sm appearance-none bg-white cursor-pointer"
+        >
+          <option value="">Todos</option>
+          <option value="DISPONIBLE">✓ Disponible</option>
+          <option value="RESERVADO">⏳ Reservado</option>
+          <option value="VENDIDO">✕ Vendido</option>
+        </select>
+        <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+          </svg>
+        </span>
+      </div>
+    </div>
+
+    <!-- Botón Limpiar -->
+    <button 
+      type="button"
+      (click)="limpiar()"
+      class="flex items-center justify-center gap-2 px-4 py-2.5 text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-all font-medium text-sm"
+    >
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+      </svg>
+      Limpiar
+    </button>
+    
+    <!-- Botón Buscar -->
+    <button 
+      type="submit" 
+      class="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg hover:from-emerald-700 hover:to-teal-700 transition-all font-medium text-sm shadow-md hover:shadow-lg"
+    >
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+      </svg>
+      Buscar
+    </button>
+  </div>
+</form>

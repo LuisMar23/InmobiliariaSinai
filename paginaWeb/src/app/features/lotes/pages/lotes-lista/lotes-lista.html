@@ -1,0 +1,97 @@
+<div class="container mx-auto px-4 py-6">
+  <app-filtro-lotes [filtros]="filtros" (buscar)="onBuscar($event)"></app-filtro-lotes>
+
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mt-6">
+  <div>
+    <h2 class="text-2xl font-bold text-gray-800">Lotes disponibles</h2>
+    <p class="text-sm text-gray-500 mt-1">
+      <span class="inline-flex items-center gap-1">
+        <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+        </svg>
+        {{ lotesFiltrados().length }} resultados encontrados
+      </span>
+    </p>
+  </div>
+
+  <div class="flex items-center gap-2 bg-gray-50 p-1 rounded-lg shadow-sm">
+    <span class="text-xs font-medium text-gray-500 px-2 hidden sm:block">Vista:</span>
+    
+    <!-- Grid Button -->
+    <button
+      (click)="cambiarVista('grid')"
+      [class.bg-white]="vista() === 'grid'"
+      [class.text-emerald-600]="vista() === 'grid'"
+      [class.shadow-sm]="vista() === 'grid'"
+      class="flex items-center gap-2 px-4 py-2 rounded-md transition-all hover:bg-white group"
+      title="Vista en cuadrícula"
+    >
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"></path>
+      </svg>
+      <span class="text-sm font-medium hidden sm:inline">Grid</span>
+    </button>
+
+    <!-- List Button -->
+    <button
+      (click)="cambiarVista('list')"
+      [class.bg-white]="vista() === 'list'"
+      [class.text-emerald-600]="vista() === 'list'"
+      [class.shadow-sm]="vista() === 'list'"
+      class="flex items-center gap-2 px-4 py-2 rounded-md transition-all hover:bg-white group"
+      title="Vista en lista"
+    >
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+      </svg>
+      <span class="text-sm font-medium hidden sm:inline">Lista</span>
+    </button>
+
+    <!-- Map Button -->
+    <button
+      (click)="cambiarVista('map')"
+      [class.bg-white]="vista() === 'map'"
+      [class.text-emerald-600]="vista() === 'map'"
+      [class.shadow-sm]="vista() === 'map'"
+      class="flex items-center gap-2 px-4 py-2 rounded-md transition-all hover:bg-white group"
+      title="Vista en mapa"
+    >
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path>
+      </svg>
+      <span class="text-sm font-medium hidden sm:inline">Mapa</span>
+    </button>
+  </div>
+</div>
+  <!-- Mensaje de carga -->
+  <div *ngIf="cargando()" class="mt-6 text-center py-12">
+    <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-emerald-500 border-t-transparent"></div>
+    <p class="mt-2 text-gray-600">Cargando lotes...</p>
+  </div>
+
+  <!-- Sin resultados -->
+  <div *ngIf="!cargando() && lotesFiltrados().length === 0" class="mt-6 text-center py-12 bg-gray-50 rounded-lg">
+    <p class="text-gray-600 text-lg">No se encontraron lotes con los filtros seleccionados</p>
+  </div>
+
+  <!-- Contenido -->
+  <div class="mt-6" *ngIf="!cargando() && lotesFiltrados().length > 0">
+    <ng-container [ngSwitch]="vista()">
+      <div *ngSwitchCase="'grid'" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <app-lote-card *ngFor="let lote of lotesFiltrados()" [lote]="lote"></app-lote-card>
+      </div>
+
+      <div *ngSwitchCase="'list'" class="space-y-3">
+        <app-lote-list-item
+          *ngFor="let lote of lotesFiltrados()"
+          [lote]="lote"
+        ></app-lote-list-item>
+      </div>
+
+      <div *ngSwitchCase="'map'" class="min-h-[500px]">
+        <!-- Contenedor donde se cargará dinámicamente VistaMapa -->
+        <ng-container #mapaContainer></ng-container>
+      </div>
+    </ng-container>
+  </div>
+</div>

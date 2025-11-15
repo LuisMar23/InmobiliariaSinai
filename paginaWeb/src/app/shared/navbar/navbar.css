@@ -1,0 +1,26 @@
+.nav-link {
+  position: relative;
+}
+
+.nav-link.active {
+  color: #ffffff; /* Cambié a blanco para contraste */
+  background: linear-gradient(to bottom right, #065f46, #0d9488, #065f46); /* equivalente al gradiente Tailwind */
+  /* Si quieres que se vea como un botón con bordes redondeados */
+  border-radius: 0.5rem; /* opcional */
+}
+
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slideDown {
+  animation: slideDown 0.3s ease-out;
+}

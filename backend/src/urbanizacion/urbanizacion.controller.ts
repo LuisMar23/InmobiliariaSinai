@@ -35,6 +35,12 @@ export class UrbanizacionController {
   findOne(@Param('id') id: string) {
     return this.urbanizacionService.findOne(+id);
   }
+  @Get('uuid/:uuid')
+  findOneUUID(@Param('uuid') id: string) {
+    console.log(id)
+    return this.urbanizacionService.findOneUUID(id);
+  }
+
 
   @Patch(':id')
   update(

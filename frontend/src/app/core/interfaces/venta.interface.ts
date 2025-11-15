@@ -10,6 +10,7 @@ export interface VentaDto {
   observaciones?: string;
   createdAt?: string;
   updatedAt?: string;
+
   cliente?: {
     id: number;
     fullName: string;
@@ -54,7 +55,7 @@ export interface VentaDto {
     monto_cuota?: number;
     dias_restantes?: number;
   };
-  archivos?: any[];
+  archivos?:any;
   ingresos?: any[];
   cajaId?: number;
   caja?: {

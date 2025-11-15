@@ -22,6 +22,7 @@ export interface LoteDto {
   estado: string;
   createdAt: string;
   updatedAt: string;
+  archivos?:any;
   urbanizacion?: {
     id: number;
     nombre: string;
