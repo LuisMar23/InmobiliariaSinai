@@ -15,12 +15,11 @@ import { ReciboService, Recibo } from '../../../../core/services/recibo.service'
 import { ArchivosComponent } from '../../../../components/archivos/archivos/archivos';
 import { environment } from '../../../../../environments/environment';
 import { UploadArchivosService } from '../../../../components/services/archivos.service';
-import { Galeria } from '../../../../components/galeria/galeria';
 
 @Component({
   selector: 'app-venta-list',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, ReactiveFormsModule,ArchivosComponent,Galeria],
+  imports: [CommonModule, RouterModule, FormsModule, ReactiveFormsModule, ArchivosComponent],
   templateUrl: './venta-list.html',
 })
 export class VentaList implements OnInit {
@@ -568,7 +567,9 @@ export class VentaList implements OnInit {
       return 'N/A';
     }
   }
+  
   mostrarUploader = signal(false);
+  
   abrirModalSubirArchivos(venta:VentaDto) {
       this.ventaSeleccionada.set(venta);
     this.mostrarUploader.set(true);
@@ -578,29 +579,11 @@ export class VentaList implements OnInit {
     this.mostrarUploader.set(false);
    this.ventaSeleccionada.set(null);
   }
+  
   onSubidaCompleta() {
     this.cerrarModalUploader();
     this.notificationService.showSuccess('Archivos subidos correctamente');
   }
+  
   private archivoService = inject(UploadArchivosService);
-  eliminarImagen(id: number | undefined) {
-    console.log(id);
-    if (!id) return;
-
-    this.notificationService
-      .confirmDelete(`¿Está seguro de eliminar esta imagen?`)
-      .then((result) => {
-        if (result.isConfirmed) {
-          this.archivoService.eliminarArchivo(id).subscribe({
-            next: (resp) => {
-              this.notificationService.showSuccess(`Se ha eliminado correctamente el archivo`);
-
-            },
-            error: (err) => {
-              this.notificationService.showError(err);
-            },
-          });
-        }
-      });
-  }
 }

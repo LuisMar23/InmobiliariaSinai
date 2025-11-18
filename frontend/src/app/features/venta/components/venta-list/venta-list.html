@@ -24,344 +24,339 @@
             </div>
         </div>
 
-        <button [routerLink]="['/ventas/crear']"
-            class="flex items-center justify-center gap-2 bg-white/20 hover:bg-white/30 text-white px-4 py-2 sm:px-6 sm:py-3 rounded-lg shadow transition-all duration-200 w-full sm:w-auto text-sm sm:text-base font-semibold">
-            <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-            </svg>
-            Nueva Venta
-        </button>
-    </div>
-</div>
-
-<!-- Contenido -->
-<div class="bg-white rounded-b-2xl shadow-xl p-3 sm:p-6 lg:p-8">
-    <!-- Barra de búsqueda -->
-    <div class="flex flex-col lg:flex-row justify-between items-center gap-3 mb-4 sm:mb-6">
-        <div class="w-full lg:w-1/3">
-            <div class="relative">
-                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <svg class="w-4 h-4 sm:w-5 sm:h-5 text-emerald-500" fill="none" stroke="currentColor"
-                        viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
+        <!-- Contenido -->
+        <div class="bg-white rounded-b-2xl shadow-xl p-3 sm:p-6 lg:p-8">
+            <!-- Barra de búsqueda -->
+            <div class="flex flex-col lg:flex-row justify-between items-center gap-3 mb-4 sm:mb-6">
+                <div class="w-full lg:w-1/3">
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg class="w-4 h-4 sm:w-5 sm:h-5 text-emerald-500" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </div>
+                        <input type="text" [ngModel]="searchTerm()" (ngModelChange)="searchTerm.set($event)"
+                            placeholder="Buscar ventas..."
+                            class="w-full pl-10 pr-4 py-2 sm:py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm" />
+                    </div>
                 </div>
-                <input type="text" [ngModel]="searchTerm()" (ngModelChange)="searchTerm.set($event)"
-                    placeholder="Buscar ventas..."
-                    class="w-full pl-10 pr-4 py-2 sm:py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm" />
             </div>
-        </div>
-    </div>
 
-    <!-- Estado de carga -->
-    @if (cargando()) {
-    <div class="text-center py-8 sm:py-12">
-        <div class="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-emerald-600 mx-auto"></div>
-        <p class="text-gray-600 mt-3 text-sm sm:text-base">Cargando ventas...</p>
-    </div>
-    } @else {
-    <!-- Vista Desktop/Tablet - Tabla -->
-    <div class="hidden xl:block">
-        <div class="overflow-x-auto rounded-lg border border-gray-200">
-            <table class="w-full">
-                <thead class="bg-gradient-to-r from-emerald-500 to-emerald-600">
-                    <tr>
-                        <th class="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
-                            ID
-                        </th>
-                        <th class="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
-                            Cliente
-                        </th>
-                        <th class="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
-                            Asesor
-                        </th>
-                        <th class="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
-                            Lote
-                        </th>
-                        <th class="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
-                            Precio Final
-                        </th>
-                        <th class="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
-                            Estado
-                        </th>
-                        <th class="px-4 py-3 text-center text-xs font-bold text-white uppercase tracking-wider">
-                            Plan de Pago
-                        </th>
-                        <th class="px-4 py-3 text-center text-xs font-bold text-white uppercase tracking-wider">
-                            Acciones
-                        </th>
-                    </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-100">
-                    @for (venta of getVentasPaginadas(); track venta.id) {
-                    <tr class="hover:bg-gray-50 transition-colors">
-                        <td class="px-4 py-3 whitespace-nowrap">
-                            <div class="flex items-center gap-2">
-                                <div
-                                    class="w-6 h-6 sm:w-8 sm:h-8 bg-gray-100 rounded-lg flex items-center justify-center">
-                                    <svg class="w-3 h-3 sm:w-4 sm:h-4 text-gray-600" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                                    </svg>
-                                </div>
-                                <div>
-                                    <p class="font-medium text-gray-900 text-sm">#{{ venta.id }}</p>
-                                </div>
-                            </div>
-                        </td>
-                        <td class="px-4 py-3 whitespace-nowrap">
-                            <div>
-                                <p class="text-gray-900 font-medium text-sm">{{ venta.cliente?.fullName }}</p>
-                                <p class="text-xs text-gray-500">{{ venta.cliente?.email }}</p>
-                            </div>
-                        </td>
-                        <td class="px-4 py-3 whitespace-nowrap">
-                            <div>
-                                <p class="text-gray-900 font-medium text-sm">{{ venta.asesor?.fullName }}</p>
-                                <p class="text-xs text-gray-500">{{ venta.asesor?.email }}</p>
-                            </div>
-                        </td>
-                        <td class="px-4 py-3 whitespace-nowrap">
-                            @if (venta.lote) {
-                            <div>
-                                <p class="text-gray-900 font-medium text-sm">{{ venta.lote.numeroLote }}</p>
-                                <p class="text-xs text-gray-500">{{ venta.lote.urbanizacion?.nombre }}</p>
-                            </div>
-                            } @else {
-                            <span class="text-gray-400 text-sm">-</span>
+            <!-- Estado de carga -->
+            @if (cargando()) {
+            <div class="text-center py-8 sm:py-12">
+                <div class="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-emerald-600 mx-auto">
+                </div>
+                <p class="text-gray-600 mt-3 text-sm sm:text-base">Cargando ventas...</p>
+            </div>
+            } @else {
+            <!-- Vista Desktop/Tablet - Tabla -->
+            <div class="hidden xl:block">
+                <div class="overflow-x-auto rounded-lg border border-gray-200">
+                    <table class="w-full">
+                        <thead class="bg-gradient-to-r from-emerald-500 to-emerald-600">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
+                                    ID
+                                </th>
+                                <th class="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
+                                    Cliente
+                                </th>
+                                <th class="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
+                                    Asesor
+                                </th>
+                                <th class="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
+                                    Lote
+                                </th>
+                                <th class="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
+                                    Precio Final
+                                </th>
+                                <th class="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
+                                    Estado
+                                </th>
+                                <th class="px-4 py-3 text-center text-xs font-bold text-white uppercase tracking-wider">
+                                    Plan de Pago
+                                </th>
+                                <th class="px-4 py-3 text-center text-xs font-bold text-white uppercase tracking-wider">
+                                    Acciones
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-100">
+                            @for (venta of getVentasPaginadas(); track venta.id) {
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    <div class="flex items-center gap-2">
+                                        <div
+                                            class="w-6 h-6 sm:w-8 sm:h-8 bg-gray-100 rounded-lg flex items-center justify-center">
+                                            <svg class="w-3 h-3 sm:w-4 sm:h-4 text-gray-600" fill="none"
+                                                stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <p class="font-medium text-gray-900 text-sm">#{{ venta.id }}</p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    <div>
+                                        <p class="text-gray-900 font-medium text-sm">{{ venta.cliente?.fullName }}</p>
+                                        <p class="text-xs text-gray-500">{{ venta.cliente?.email }}</p>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    <div>
+                                        <p class="text-gray-900 font-medium text-sm">{{ venta.asesor?.fullName }}</p>
+                                        <p class="text-xs text-gray-500">{{ venta.asesor?.email }}</p>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    @if (venta.lote) {
+                                    <div>
+                                        <p class="text-gray-900 font-medium text-sm">{{ venta.lote.numeroLote }}</p>
+                                        <p class="text-xs text-gray-500">{{ venta.lote.urbanizacion?.nombre }}</p>
+                                    </div>
+                                    } @else {
+                                    <span class="text-gray-400 text-sm">-</span>
+                                    }
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap text-gray-600 font-semibold text-sm">
+                                    $ {{ formatPrecio(venta.precioFinal) }}
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    <span [class]="getEstadoBadgeClass(venta.estado)" class="text-xs">
+                                        {{ venta.estado }}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    @if (venta.planPago) {
+                                    <div class="space-y-1">
+                                        <div class="flex justify-between text-xs">
+                                            <span class="text-gray-600">Pagado:</span>
+                                            <span class="font-semibold">$ {{ getTotalPagado(venta) | number : '1.2-2'
+                                                }}</span>
+                                        </div>
+                                        <div class="w-full bg-gray-200 rounded-full h-1.5">
+                                            <div class="bg-emerald-600 h-1.5 rounded-full"
+                                                [style.width]="getPorcentajePagado(venta) + '%'"></div>
+                                        </div>
+                                        <div class="text-xs text-gray-500 text-center">
+                                            {{ getPorcentajePagado(venta) | number : '1.0-0' }}%
+                                        </div>
+                                    </div>
+                                    } @else {
+                                    <span class="text-gray-400 text-xs">Sin plan</span>
+                                    }
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap text-center">
+                                    <div class="flex justify-center gap-1">
+                                        <button
+                                            class="p-1.5 sm:p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+                                            [routerLink]="['/ventas/editar', venta.id]" title="Editar">
+                                            <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                            </svg>
+                                        </button>
+                                        <button
+                                            class="p-1.5 sm:p-2 rounded-lg bg-gray-50 text-gray-600 hover:bg-gray-100 transition-colors"
+                                            (click)="verDetalles(venta)" title="Ver Detalles">
+                                            <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            </svg>
+                                        </button>
+                                        <button
+                                            class="p-1.5 rounded-lg bg-teal-50 text-teal-600 hover:bg-teal-100 transition-colors"
+                                            (click)="abrirModalSubirArchivos(venta)" title="Subir Archivos o Imágenes">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M4 4v16h16V4H4zm4 8h8m-4-4v8" />
+                                            </svg>
+                                        </button>
+                                        <button
+                                            class="p-1.5 sm:p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+                                            (click)="eliminarVenta(venta.id)" title="Eliminar">
+                                            <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
                             }
-                        </td>
-                        <td class="px-4 py-3 whitespace-nowrap text-gray-600 font-semibold text-sm">
-                            $ {{ formatPrecio(venta.precioFinal) }}
-                        </td>
-                        <td class="px-4 py-3 whitespace-nowrap">
-                            <span [class]="getEstadoBadgeClass(venta.estado)" class="text-xs">
+
+                            <!-- Estado vacío -->
+                            @if (filteredVentas().length === 0 && !cargando()) {
+                            <tr>
+                                <td colspan="8" class="px-6 py-12 text-center text-gray-500">
+                                    <div class="flex flex-col items-center gap-2">
+                                        <svg class="w-12 h-12 sm:w-16 sm:h-16 text-gray-300" fill="none"
+                                            stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                        </svg>
+                                        <p class="text-base sm:text-lg font-semibold">No hay ventas registradas</p>
+                                        <p class="text-xs sm:text-sm">Haz clic en "Nueva Venta" para comenzar</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Vista Mobile/Tablet - Cards - MEJORADO -->
+            <div class="xl:hidden space-y-3">
+                @for (venta of getVentasPaginadas(); track venta.id) {
+                <div
+                    class="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow transition-all duration-200 overflow-hidden">
+                    <div class="bg-gradient-to-r from-emerald-500 to-emerald-600 p-3">
+                        <div class="flex justify-between items-start">
+                            <div class="max-w-[70%]">
+                                <h3 class="font-bold text-white text-sm">Venta #{{ venta.id }}</h3>
+                                <p class="text-emerald-100 text-xs truncate">Cliente: {{ venta.cliente?.fullName }}</p>
+                            </div>
+                            <span [class]="getEstadoBadgeClass(venta.estado)" class="text-xs px-2 py-1 rounded-full">
                                 {{ venta.estado }}
                             </span>
-                        </td>
-                        <td class="px-4 py-3 whitespace-nowrap">
-                            @if (venta.planPago) {
-                            <div class="space-y-1">
-                                <div class="flex justify-between text-xs">
-                                    <span class="text-gray-600">Pagado:</span>
-                                    <span class="font-semibold">$ {{ getTotalPagado(venta) | number : '1.2-2' }}</span>
-                                </div>
-                                <div class="w-full bg-gray-200 rounded-full h-1.5">
-                                    <div class="bg-emerald-600 h-1.5 rounded-full"
-                                        [style.width]="getPorcentajePagado(venta) + '%'"></div>
-                                </div>
-                                <div class="text-xs text-gray-500 text-center">
-                                    {{ getPorcentajePagado(venta) | number : '1.0-0' }}%
-                                </div>
-                            </div>
-                            } @else {
-                            <span class="text-gray-400 text-xs">Sin plan</span>
-                            }
-                        </td>
-                        <td class="px-4 py-3 whitespace-nowrap text-center">
-                            <div class="flex justify-center gap-1">
-                                <button
-                                    class="p-1.5 sm:p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
-                                    [routerLink]="['/ventas/editar', venta.id]" title="Editar">
-                                    <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                    </svg>
-                                </button>
-                                <button
-                                    class="p-1.5 sm:p-2 rounded-lg bg-gray-50 text-gray-600 hover:bg-gray-100 transition-colors"
-                                    (click)="verDetalles(venta)" title="Ver Detalles">
-                                    <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                    </svg>
-                                </button>
-                                <button
-                                    class="p-1.5 rounded-lg bg-teal-50 text-teal-600 hover:bg-teal-100 transition-colors"
-                                    (click)="abrirModalSubirArchivos(venta)" title="Subir Archivos o Imágenes">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M4 4v16h16V4H4zm4 8h8m-4-4v8" />
-                                    </svg>
-                                </button>
-                                <button
-                                    class="p-1.5 sm:p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
-                                    (click)="eliminarVenta(venta.id)" title="Eliminar">
-                                    <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                    </svg>
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-                    }
-
-                    <!-- Estado vacío -->
-                    @if (filteredVentas().length === 0 && !cargando()) {
-                    <tr>
-                        <td colspan="8" class="px-6 py-12 text-center text-gray-500">
-                            <div class="flex flex-col items-center gap-2">
-                                <svg class="w-12 h-12 sm:w-16 sm:h-16 text-gray-300" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                                </svg>
-                                <p class="text-base sm:text-lg font-semibold">No hay ventas registradas</p>
-                                <p class="text-xs sm:text-sm">Haz clic en "Nueva Venta" para comenzar</p>
-                            </div>
-                        </td>
-                    </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- Vista Mobile/Tablet - Cards - MEJORADO -->
-    <div class="xl:hidden space-y-3">
-        @for (venta of getVentasPaginadas(); track venta.id) {
-        <div
-            class="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow transition-all duration-200 overflow-hidden">
-            <div class="bg-gradient-to-r from-emerald-500 to-emerald-600 p-3">
-                <div class="flex justify-between items-start">
-                    <div class="max-w-[70%]">
-                        <h3 class="font-bold text-white text-sm">Venta #{{ venta.id }}</h3>
-                        <p class="text-emerald-100 text-xs truncate">Cliente: {{ venta.cliente?.fullName }}</p>
-                    </div>
-                    <span [class]="getEstadoBadgeClass(venta.estado)" class="text-xs px-2 py-1 rounded-full">
-                        {{ venta.estado }}
-                    </span>
-                </div>
-            </div>
-            <div class="p-3 space-y-2">
-                <div class="flex items-center gap-2 text-xs">
-                    <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                    <span class="text-gray-900 truncate">{{ venta.asesor?.fullName }}</span>
-                </div>
-                <div class="flex items-center gap-2 text-xs">
-                    <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                    </svg>
-                    <span class="text-gray-900 font-semibold">$ {{ formatPrecio(venta.precioFinal) }}</span>
-                </div>
-                @if (venta.lote) {
-                <div class="pt-2 border-t border-gray-100">
-                    <p class="text-xs text-gray-500 mb-1">Lote</p>
-                    <p class="text-xs font-semibold text-gray-700">{{ venta.lote.numeroLote }}</p>
-                    <p class="text-xs text-gray-500 truncate">{{ venta.lote.urbanizacion?.nombre }}</p>
-                </div>
-                } @if (venta.planPago) {
-                <div class="pt-2 border-t border-gray-100">
-                    <p class="text-xs text-gray-500 mb-1">Plan de Pago</p>
-                    <div class="flex justify-between items-center text-xs mb-1">
-                        <span>Pagado: $ {{ getTotalPagado(venta) | number : '1.2-2' }}</span>
-                        <span>Saldo: $ {{ getSaldoPendiente(venta) | number : '1.2-2' }}</span>
-                    </div>
-                    <div class="w-full bg-gray-200 rounded-full h-1.5">
-                        <div class="bg-emerald-600 h-1.5 rounded-full" [style.width]="getPorcentajePagado(venta) + '%'">
                         </div>
                     </div>
+                    <div class="p-3 space-y-2">
+                        <div class="flex items-center gap-2 text-xs">
+                            <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                            <span class="text-gray-900 truncate">{{ venta.asesor?.fullName }}</span>
+                        </div>
+                        <div class="flex items-center gap-2 text-xs">
+                            <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                            </svg>
+                            <span class="text-gray-900 font-semibold">$ {{ formatPrecio(venta.precioFinal) }}</span>
+                        </div>
+                        @if (venta.lote) {
+                        <div class="pt-2 border-t border-gray-100">
+                            <p class="text-xs text-gray-500 mb-1">Lote</p>
+                            <p class="text-xs font-semibold text-gray-700">{{ venta.lote.numeroLote }}</p>
+                            <p class="text-xs text-gray-500 truncate">{{ venta.lote.urbanizacion?.nombre }}</p>
+                        </div>
+                        } @if (venta.planPago) {
+                        <div class="pt-2 border-t border-gray-100">
+                            <p class="text-xs text-gray-500 mb-1">Plan de Pago</p>
+                            <div class="flex justify-between items-center text-xs mb-1">
+                                <span>Pagado: $ {{ getTotalPagado(venta) | number : '1.2-2' }}</span>
+                                <span>Saldo: $ {{ getSaldoPendiente(venta) | number : '1.2-2' }}</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-1.5">
+                                <div class="bg-emerald-600 h-1.5 rounded-full"
+                                    [style.width]="getPorcentajePagado(venta) + '%'">
+                                </div>
+                            </div>
+                        </div>
+                        }
+                    </div>
+                    <div class="flex justify-end gap-1 p-3 border-t border-gray-100">
+                        <button
+                            class="flex items-center justify-center gap-1 bg-blue-500 hover:bg-blue-600 text-white px-2 py-1.5 rounded text-xs font-medium shadow-sm transition"
+                            [routerLink]="['/ventas/editar', venta.id]">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                            Editar
+                        </button>
+                        <button
+                            class="flex items-center justify-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1.5 rounded text-xs font-medium shadow-sm transition"
+                            (click)="verDetalles(venta)">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                            Detalles
+                        </button>
+                        <button class="p-1.5 rounded-lg bg-teal-50 text-teal-600 hover:bg-teal-100 transition-colors"
+                            (click)="abrirModalSubirArchivos(venta)" title="Subir Archivos o Imágenes">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M4 4v16h16V4H4zm4 8h8m-4-4v8" />
+                            </svg>
+                        </button>
+                        <button
+                            class="flex items-center justify-center gap-1 bg-red-500 hover:bg-red-600 text-white px-2 py-1.5 rounded text-xs font-medium shadow-sm transition"
+                            (click)="eliminarVenta(venta.id)">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            Eliminar
+                        </button>
+                    </div>
+                </div>
+                } @if (filteredVentas().length === 0 && !cargando()) {
+                <div class="bg-white rounded-lg p-6 text-center">
+                    <svg class="w-12 h-12 sm:w-16 sm:h-16 text-gray-300 mb-3" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                    <p class="text-base font-semibold text-gray-700 mb-1">No hay ventas registradas</p>
+                    <p class="text-xs text-gray-500">Haz clic en "Nueva Venta" para comenzar</p>
                 </div>
                 }
             </div>
-            <div class="flex justify-end gap-1 p-3 border-t border-gray-100">
-                <button
-                    class="flex items-center justify-center gap-1 bg-blue-500 hover:bg-blue-600 text-white px-2 py-1.5 rounded text-xs font-medium shadow-sm transition"
-                    [routerLink]="['/ventas/editar', venta.id]">
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                    Editar
-                </button>
-                <button
-                    class="flex items-center justify-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1.5 rounded text-xs font-medium shadow-sm transition"
-                    (click)="verDetalles(venta)">
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                    Detalles
-                </button>
-                <button class="p-1.5 rounded-lg bg-teal-50 text-teal-600 hover:bg-teal-100 transition-colors"
-                    (click)="abrirModalSubirArchivos(venta)" title="Subir Archivos o Imágenes">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M4 4v16h16V4H4zm4 8h8m-4-4v8" />
-                    </svg>
-                </button>
-                <button
-                    class="flex items-center justify-center gap-1 bg-red-500 hover:bg-red-600 text-white px-2 py-1.5 rounded text-xs font-medium shadow-sm transition"
-                    (click)="eliminarVenta(venta.id)">
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                    Eliminar
-                </button>
-            </div>
-        </div>
-        } @if (filteredVentas().length === 0 && !cargando()) {
-        <div class="bg-white rounded-lg p-6 text-center">
-            <svg class="w-12 h-12 sm:w-16 sm:h-16 text-gray-300 mb-3" fill="none" stroke="currentColor"
-                viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-            </svg>
-            <p class="text-base font-semibold text-gray-700 mb-1">No hay ventas registradas</p>
-            <p class="text-xs text-gray-500">Haz clic en "Nueva Venta" para comenzar</p>
-        </div>
-        }
-    </div>
 
-    <!-- Paginación -->
-    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mt-4 sm:mt-6 gap-3 px-1">
-        <div class="text-xs sm:text-sm text-gray-600 text-center sm:text-left">
-            Mostrando {{ rangeStart() }} a {{ rangeEnd() }} de {{ filteredVentas().length }} ventas
-        </div>
-        <div class="flex items-center justify-center gap-1 sm:gap-2 flex-wrap">
-            <button (click)="prevPage()" [disabled]="currentPage() === 1"
-                class="px-2 py-1.5 sm:px-3 sm:py-2 bg-gray-200 hover:bg-gray-300 rounded text-xs sm:text-sm disabled:opacity-50 font-medium transition-colors">
-                <span class="hidden sm:inline">Anterior</span>
-                <svg class="w-3 h-3 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                </svg>
-            </button>
-            @for (i of pageArray(); track i) {
-            <button (click)="goToPage(i)" [class.font-bold]="currentPage() === i"
-                [class.bg-emerald-500]="currentPage() === i" [class.text-white]="currentPage() === i"
-                [class.shadow-md]="currentPage() === i"
-                class="px-2 py-1.5 sm:px-3 sm:py-2 border rounded text-xs sm:text-sm hover:bg-emerald-100 font-medium transition-all min-w-[32px] sm:min-w-[40px]">
-                {{ i }}
-            </button>
+            <!-- Paginación -->
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mt-4 sm:mt-6 gap-3 px-1">
+                <div class="text-xs sm:text-sm text-gray-600 text-center sm:text-left">
+                    Mostrando {{ rangeStart() }} a {{ rangeEnd() }} de {{ filteredVentas().length }} ventas
+                </div>
+                <div class="flex items-center justify-center gap-1 sm:gap-2 flex-wrap">
+                    <button (click)="prevPage()" [disabled]="currentPage() === 1"
+                        class="px-2 py-1.5 sm:px-3 sm:py-2 bg-gray-200 hover:bg-gray-300 rounded text-xs sm:text-sm disabled:opacity-50 font-medium transition-colors">
+                        <span class="hidden sm:inline">Anterior</span>
+                        <svg class="w-3 h-3 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                        </svg>
+                    </button>
+                    @for (i of pageArray(); track i) {
+                    <button (click)="goToPage(i)" [class.font-bold]="currentPage() === i"
+                        [class.bg-emerald-500]="currentPage() === i" [class.text-white]="currentPage() === i"
+                        [class.shadow-md]="currentPage() === i"
+                        class="px-2 py-1.5 sm:px-3 sm:py-2 border rounded text-xs sm:text-sm hover:bg-emerald-100 font-medium transition-all min-w-[32px] sm:min-w-[40px]">
+                        {{ i }}
+                    </button>
+                    }
+                    <button (click)="nextPage()" [disabled]="currentPage() === totalPages()"
+                        class="px-2 py-1.5 sm:px-3 sm:py-2 bg-gray-200 hover:bg-gray-300 rounded text-xs sm:text-sm disabled:opacity-50 font-medium transition-colors">
+                        <span class="hidden sm:inline">Siguiente</span>
+                        <svg class="w-3 h-3 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
             }
-            <button (click)="nextPage()" [disabled]="currentPage() === totalPages()"
-                class="px-2 py-1.5 sm:px-3 sm:py-2 bg-gray-200 hover:bg-gray-300 rounded text-xs sm:text-sm disabled:opacity-50 font-medium transition-colors">
-                <span class="hidden sm:inline">Siguiente</span>
-                <svg class="w-3 h-3 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                </svg>
-            </button>
         </div>
     </div>
-    }
 </div>
 
-<!-- Modal de Detalles - MEJORADO para móviles -->
+<!-- Modal de Detalles -->
 @if (mostrarModal() && ventaSeleccionada()) {
 <div class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-2 sm:p-4">
     <div class="bg-white w-full max-w-4xl rounded-xl sm:rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
@@ -379,307 +374,11 @@
                     <p class="text-emerald-100 text-xs">#{{ ventaSeleccionada()!.id }}</p>
                 </div>
             </div>
-
-            <!-- Contenido del Modal - Mejorado para móviles -->
-            <div class="p-3 sm:p-4 md:p-6 space-y-3 sm:space-y-4 md:space-y-6">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 md:gap-6">
-                    <!-- Información Principal -->
-                    <div class="bg-gray-50 rounded-lg sm:rounded-xl p-3 sm:p-4">
-                        <h3
-                            class="text-sm sm:text-base font-semibold text-gray-900 mb-2 flex items-center gap-1 sm:gap-2">
-                            <svg class="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 text-gray-600" fill="none"
-                                stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                            Información Principal
-                        </h3>
-                        <div class="space-y-1 sm:space-y-2">
-                            <div class="flex justify-between items-center py-1 sm:py-2 border-b border-gray-100">
-                                <span class="text-xs sm:text-sm font-medium text-gray-500">Cliente:</span>
-                                <span class="text-xs sm:text-sm font-semibold text-gray-900">{{
-                                    ventaSeleccionada()!.cliente?.fullName || '-'
-                                    }}</span>
-                            </div>
-                            <div class="flex justify-between items-center py-1 sm:py-2 border-b border-gray-100">
-                                <span class="text-xs sm:text-sm font-medium text-gray-500">Asesor:</span>
-                                <span class="text-xs sm:text-sm font-semibold text-gray-900">{{
-                                    ventaSeleccionada()!.asesor?.fullName || '-'
-                                    }}</span>
-                            </div>
-                            <div class="flex justify-between items-center py-1 sm:py-2 border-b border-gray-100">
-                                <span class="text-xs sm:text-sm font-medium text-gray-500">Precio Final:</span>
-                                <span class="text-xs sm:text-sm font-bold text-gray-900">$ {{
-                                    formatPrecio(ventaSeleccionada()!.precioFinal) }}</span>
-                            </div>
-                            <div class="flex justify-between items-center py-1 sm:py-2 border-b border-gray-100">
-                                <span class="text-xs sm:text-sm font-medium text-gray-500">Estado:</span>
-                                <span [class]="getEstadoBadgeClass(ventaSeleccionada()!.estado)" class="text-xs">{{
-                                    ventaSeleccionada()!.estado
-                                    }}</span>
-                            </div>
-                            <div class="flex justify-between items-center py-1 sm:py-2">
-                                <span class="text-xs sm:text-sm font-medium text-gray-500">Fecha Creación:</span>
-                                <span class="text-xs sm:text-sm font-semibold text-gray-900">{{
-                                    formatDate(ventaSeleccionada()!.createdAt)
-                                    }}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Información del Lote -->
-                    @if (ventaSeleccionada()!.lote) {
-                    <div class="bg-gray-50 rounded-lg sm:rounded-xl p-3 sm:p-4">
-                        <h3
-                            class="text-sm sm:text-base font-semibold text-gray-900 mb-2 flex items-center gap-1 sm:gap-2">
-                            <svg class="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 text-gray-600" fill="none"
-                                stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                            </svg>
-                            Información del Lote
-                        </h3>
-                        <div class="space-y-1 sm:space-y-2">
-                            <div class="flex justify-between items-center py-1 sm:py-2 border-b border-gray-100">
-                                <span class="text-xs sm:text-sm font-medium text-gray-500">Número:</span>
-                                <span class="text-xs sm:text-sm font-semibold text-gray-900">{{
-                                    ventaSeleccionada()!.lote!.numeroLote || '-'
-                                    }}</span>
-                            </div>
-                            <div class="flex justify-between items-center py-1 sm:py-2 border-b border-gray-100">
-                                <span class="text-xs sm:text-sm font-medium text-gray-500">Urbanización:</span>
-                                <span class="text-xs sm:text-sm font-semibold text-gray-700">{{
-                                    ventaSeleccionada()!.lote!.urbanizacion?.nombre || '-'
-                                    }}</span>
-                            </div>
-                            <div class="flex justify-between items-center py-1 sm:py-2">
-                                <span class="text-xs sm:text-sm font-medium text-gray-500">Estado:</span>
-                                <span class="text-xs sm:text-sm font-semibold text-gray-900">{{
-                                    ventaSeleccionada()!.lote!.estado || '-'
-                                    }}</span>
-                            </div>
-                        </div>
-                    </div>
-                    }
-
-                    <!-- Plan de Pagos -->
-                    @if (ventaSeleccionada()!.planPago) {
-                    <div class="bg-gray-50 rounded-lg sm:rounded-xl p-3 sm:p-4 md:col-span-2">
-                        <h3
-                            class="text-sm sm:text-base font-semibold text-gray-900 mb-2 flex items-center gap-1 sm:gap-2">
-                            <svg class="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 text-gray-600" fill="none"
-                                stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                            </svg>
-                            Plan de Pagos
-                        </h3>
-
-                        <!-- Resumen del Plan -->
-                        <div class="bg-white rounded-lg p-2 sm:p-3 md:p-4 mb-2 sm:mb-3 shadow-sm">
-                            <div class="grid grid-cols-2 gap-2 sm:gap-3 mb-2 sm:mb-3">
-                                <div class="text-center">
-                                    <p class="text-xs text-gray-500">Total a Pagar</p>
-                                    <p class="text-sm sm:text-base md:text-lg font-bold text-gray-900">
-                                        $ {{ formatPrecio(ventaSeleccionada()!.planPago!.total) }}
-                                    </p>
-                                </div>
-                                <div class="text-center">
-                                    <p class="text-xs text-gray-500">Total Pagado</p>
-                                    <p class="text-sm sm:text-base md:text-lg font-bold text-gray-700">
-                                        $ {{ formatPrecio(getTotalPagado(ventaSeleccionada()!)) }}
-                                    </p>
-                                </div>
-                            </div>
-                            <div class="text-center mb-2 sm:mb-3">
-                                <p class="text-xs text-gray-500">Saldo Pendiente</p>
-                                <p class="text-base sm:text-lg md:text-xl font-bold text-blue-600">
-                                    $ {{ formatPrecio(getSaldoPendiente(ventaSeleccionada()!)) }}
-                                </p>
-                            </div>
-                            <div class="w-full bg-gray-200 rounded-full h-1.5 sm:h-2">
-                                <div class="bg-emerald-600 h-1.5 sm:h-2 rounded-full"
-                                    [style.width]="getPorcentajePagado(ventaSeleccionada()!) + '%'"></div>
-                            </div>
-                            <div class="text-center mt-1 sm:mt-2">
-                                <span class="text-xs sm:text-sm font-semibold text-gray-700">{{
-                                    getPorcentajePagado(ventaSeleccionada()!) | number : '1.0-0' }}%
-                                    Completado</span>
-                            </div>
-                        </div>
-
-                        <!-- Detalles del Plan -->
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-                            <div class="flex justify-between items-center py-1 sm:py-2 border-b border-gray-100">
-                                <span class="text-xs sm:text-sm font-medium text-gray-500">Monto Inicial:</span>
-                                <span class="text-xs sm:text-sm font-semibold text-gray-900">$ {{
-                                    formatPrecio(ventaSeleccionada()!.planPago!.monto_inicial) }}</span>
-                            </div>
-                            <div class="flex justify-between items-center py-1 sm:py-2 border-b border-gray-100">
-                                <span class="text-xs sm:text-sm font-medium text-gray-500">Plazo:</span>
-                                <span class="text-xs sm:text-sm font-semibold text-gray-900">{{
-                                    ventaSeleccionada()!.planPago!.plazo || '-' }}
-                                    {{ (ventaSeleccionada()!.planPago!.periodicidad || '').toLowerCase() }}</span>
-                            </div>
-                            <div class="flex justify-between items-center py-1 sm:py-2 border-b border-gray-100">
-                                <span class="text-xs sm:text-sm font-medium text-gray-500">Estado:</span>
-                                <span [class]="getEstadoPlanPagoClass(ventaSeleccionada()!.planPago!.estado)"
-                                    class="text-xs">{{ ventaSeleccionada()!.planPago!.estado || '-' }}</span>
-                            </div>
-                            <div class="flex justify-between items-center py-1 sm:py-2 border-b border-gray-100">
-                                <span class="text-xs sm:text-sm font-medium text-gray-500">Fecha Vencimiento:</span>
-                                <span class="text-xs sm:text-sm font-semibold text-gray-900">{{
-                                    formatDate(ventaSeleccionada()!.planPago!.fecha_vencimiento)
-                                    }}</span>
-                            </div>
-                        </div>
-                    </div>
-                    }
-                </div>
-
-                <!-- SECCIÓN NUEVA: Agregar Pago -->
-                @if (ventaSeleccionada()!.planPago && getSaldoPendiente(ventaSeleccionada()!) > 0) {
-                <div class="bg-emerald-50 rounded-lg sm:rounded-xl p-3 sm:p-4 border border-emerald-200">
-                    <div class="flex items-center justify-between mb-3">
-                        <h3
-                            class="text-sm sm:text-base font-semibold text-emerald-900 flex items-center gap-1 sm:gap-2">
-                            <svg class="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                            </svg>
-                            Registrar Nuevo Pago
-                        </h3>
-                        <button type="button" (click)="toggleFormPago()"
-                            class="flex items-center gap-1 sm:gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded text-xs sm:text-sm font-semibold transition-colors">
-                            <svg class="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                            </svg>
-                            {{ mostrarFormPago() ? 'Ocultar' : 'Agregar Pago' }}
-                        </button>
-                    </div>
-
-                    @if (mostrarFormPago()) {
-                    <div class="bg-white rounded-lg p-3 sm:p-4 border border-emerald-100">
-                        <!-- FORMULARIO DE PAGO SEPARADO -->
-                        <form [formGroup]="pagoForm" class="space-y-3 sm:space-y-4">
-                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                                <div>
-                                    <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                                        Monto ($) <span class="text-red-500">*</span>
-                                    </label>
-                                    <div class="relative">
-                                        <span
-                                            class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">$</span>
-                                        <input type="number" step="0.01" formControlName="monto"
-                                            class="w-full pl-8 pr-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
-                                            placeholder="0.00" [max]="getMontoMaximoPago()" />
-                                    </div>
-                                    <p class="mt-1 text-xs text-gray-500">
-                                        Máximo: $ {{ formatPrecio(getMontoMaximoPago()) }}
-                                    </p>
-                                </div>
-
-                                <div>
-                                    <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                                        Fecha <span class="text-red-500">*</span>
-                                    </label>
-                                    <input type="date" formControlName="fecha_pago"
-                                        class="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm" />
-                                </div>
-
-                                <div>
-                                    <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                                        Método <span class="text-red-500">*</span>
-                                    </label>
-                                    <select formControlName="metodoPago"
-                                        class="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm">
-                                        <option value="EFECTIVO">Efectivo</option>
-                                        <option value="TRANSFERENCIA">Transferencia</option>
-                                        <option value="TARJETA">Tarjeta</option>
-                                    </select>
-                                </div>
-
-                                <div class="sm:col-span-2 lg:col-span-1">
-                                    <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                                        Observación
-                                    </label>
-                                    <input type="text" formControlName="observacion"
-                                        class="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
-                                        placeholder="Observación del pago..." />
-                                </div>
-                            </div>
-
-                            <div class="flex justify-end gap-2">
-                                <button type="button" (click)="toggleFormPago()"
-                                    class="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded text-xs sm:text-sm font-medium transition-colors">
-                                    Cancelar
-                                </button>
-                                <button type="button" (click)="registrarPago()"
-                                    [disabled]="pagoForm.invalid || enviandoPago()"
-                                    class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs sm:text-sm font-medium disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors">
-                                    {{ enviandoPago() ? 'Registrando...' : 'Registrar Pago' }}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                    }
-                </div>
-                }
-
-                <!-- Historial de Pagos -->
-                @if (ventaSeleccionada()?.planPago?.pagos && ventaSeleccionada()!.planPago!.pagos!.length >
-                0) {
-                <div class="bg-gray-50 rounded-lg sm:rounded-xl p-3 sm:p-4">
-                    <h3 class="text-sm sm:text-base font-semibold text-gray-900 mb-2 flex items-center gap-1 sm:gap-2">
-                        <svg class="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 text-gray-600" fill="none" stroke="currentColor"
-                            viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                        </svg>
-                        Historial de Pagos ({{ ventaSeleccionada()!.planPago!.pagos!.length }})
-                    </h3>
-                    <div class="space-y-2 max-h-32 sm:max-h-48 overflow-y-auto">
-                        @for (pago of ventaSeleccionada()!.planPago!.pagos!; track pago.id_pago_plan) {
-                        <div class="bg-white rounded p-2 sm:p-3 shadow-sm border border-gray-200">
-                            <div class="flex justify-between items-start mb-1">
-                                <div>
-                                    <p class="font-semibold text-gray-900 text-xs sm:text-sm">
-                                        $ {{ formatPrecio(pago.monto) }}
-                                    </p>
-                                    <p class="text-xs text-gray-500">{{ formatDate(pago.fecha_pago) }}</p>
-                                </div>
-                                <span
-                                    class="px-1.5 py-0.5 sm:px-2 sm:py-1 bg-green-100 text-green-800 text-xs rounded-full">Pagado</span>
-                            </div>
-                            @if (pago.observacion) {
-                            <p class="text-xs text-gray-600">{{ pago.observacion }}</p>
-                            }
-                        </div>
-                        }
-                    </div>
-                </div>
-                }
-            </div>
-
-            <!-- Footer del Modal - Mejorado para móviles -->
-            <div
-                class="px-3 sm:px-4 md:px-6 py-2 sm:py-3 md:py-4 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row justify-end gap-2">
-                <button (click)="eliminarVenta(ventaSeleccionada()!.id)"
-                    class="flex items-center justify-center gap-1 sm:gap-2 bg-red-500 hover:bg-red-600 text-white px-3 sm:px-4 md:px-6 py-1.5 sm:py-2 md:py-3 rounded shadow transition-all duration-200 font-semibold text-xs sm:text-sm order-2 sm:order-1">
-                    <svg class="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5" fill="none" stroke="currentColor"
-                        viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                    Eliminar Venta
-                </button>
-                <button (click)="cerrarModal()"
-                    class="flex items-center justify-center gap-1 sm:gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-3 sm:px-4 md:px-6 py-1.5 sm:py-2 md:py-3 rounded shadow transition-all duration-200 font-semibold text-xs sm:text-sm order-1 sm:order-2">
-                    Cerrar
-                </button>
-            </div>
+            <button (click)="cerrarModal()" class="text-white hover:text-emerald-100 transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
         </div>
 
         <!-- Contenido del Modal - Mejorado para móviles -->
@@ -833,10 +532,6 @@
                         </div>
                     </div>
                 </div>
-                } @if (ventaSeleccionada()!.archivos && ventaSeleccionada()!.archivos!.length > 0) {
-                <app-galeria [archivos]="ventaSeleccionada()!.archivos" [urlServer]="urlServer"
-                    (eliminar)="eliminarImagen($event)">
-                </app-galeria>
                 }
             </div>
 
@@ -913,23 +608,6 @@
                             </div>
                         </div>
 
-                        <!-- CORREGIDO: Campo cajaId agregado -->
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div>
-                                <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                                    Caja <span class="text-red-500">*</span>
-                                </label>
-                                <select formControlName="cajaId"
-                                    class="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm">
-                                    <option value="">Seleccione una caja</option>
-                                    <!-- Aquí se cargarían las cajas activas dinámicamente -->
-                                </select>
-                                @if (pagoForm.get('cajaId')?.invalid && pagoForm.get('cajaId')?.touched) {
-                                <p class="mt-1 text-xs text-red-600">La caja es requerida</p>
-                                }
-                            </div>
-                        </div>
-
                         <div class="flex justify-end gap-2">
                             <button type="button" (click)="toggleFormPago()"
                                 class="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded text-xs sm:text-sm font-medium transition-colors">
@@ -945,7 +623,10 @@
                 </div>
                 }
             </div>
-            } @if (ventaSeleccionada()?.planPago?.pagos && ventaSeleccionada()!.planPago!.pagos!.length >
+            }
+
+            <!-- Historial de Pagos -->
+            @if (ventaSeleccionada()?.planPago?.pagos && ventaSeleccionada()!.planPago!.pagos!.length >
             0) {
             <div class="bg-gray-50 rounded-lg sm:rounded-xl p-3 sm:p-4">
                 <h3 class="text-sm sm:text-base font-semibold text-gray-900 mb-2 flex items-center gap-1 sm:gap-2">
@@ -978,6 +659,8 @@
             </div>
             }
         </div>
+
+        <!-- Footer del Modal - Mejorado para móviles -->
         <div
             class="px-3 sm:px-4 md:px-6 py-2 sm:py-3 md:py-4 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row justify-end gap-2">
             <button (click)="eliminarVenta(ventaSeleccionada()!.id)"
@@ -995,7 +678,10 @@
         </div>
     </div>
 </div>
-} @if (mostrarUploader() && ventaSeleccionada()) {
+}
+
+<!-- Modal para subir archivos -->
+@if (mostrarUploader() && ventaSeleccionada()) {
 <div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
     <div class="bg-white rounded-xl p-6 shadow-lg w-[400px] relative">
         <button class="absolute top-2 right-2 text-gray-500 hover:text-gray-700" (click)="cerrarModalUploader()">
@@ -1003,7 +689,7 @@
         </button>
 
         <h3 class="text-lg font-semibold mb-4">
-            Subir archivos para Lote #{{ ventaSeleccionada()?.id }}
+            Subir archivos para Venta #{{ ventaSeleccionada()?.id }}
         </h3>
 
         <app-archivos [ventaId]="ventaSeleccionada()?.id!" modo="crear"
