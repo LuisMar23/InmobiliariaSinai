@@ -17,6 +17,9 @@ export interface Urbanizacion {
   createdAt: Date;
   updatedAt: Date;
   lotes?:any
+  _count?: {
+    lotes: number;
+  };
 }
 
 export interface Promocion {

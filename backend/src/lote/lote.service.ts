@@ -685,4 +685,39 @@ export class LoteService {
       data: lotesConPromocion,
     };
   }
+
+  // lote.service.ts
+  async obtenerLotesConPromocion() {
+    const hoy = new Date();
+
+    return this.prisma.lote.findMany({
+      where: {
+        LotePromocion: {
+          some: {
+            promocion: {
+              isActive: true,
+              fechaInicio: { lte: hoy },
+              fechaFin: { gte: hoy },
+            },
+          },
+        },
+      },
+      include: {
+        LotePromocion: {
+          where: {
+            promocion: {
+              isActive: true,
+              fechaInicio: { lte: hoy },
+              fechaFin: { gte: hoy },
+            },
+          },
+          include: {
+            promocion: true,
+          },
+        },
+        archivos: true,
+        urbanizacion: true,
+      },
+    });
+  }
 }

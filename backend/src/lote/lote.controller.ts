@@ -25,6 +25,10 @@ export class LoteController {
     return this.loteService.create(createLoteDto);
   }
 
+  @Get('con-promocion')
+  async obtenerLotesConPromocion() {
+    return this.loteService.obtenerLotesConPromocion();
+  }
   @Get()
   findAll(@Query('urbanizacionId') urbanizacionId?: string) {
     return this.loteService.findAll(
@@ -54,4 +58,5 @@ export class LoteController {
   remove(@Param('id') id: string) {
     return this.loteService.remove(+id);
   }
+
 }

@@ -2,6 +2,7 @@ import { RouterModule, Routes } from '@angular/router';
 import { MainLayout } from './shared/main-layout/main-layout';
 import { NgModule } from '@angular/core';
 import { Contacto } from './features/contacto/contacto/contacto';
+import { LotesPromocionComponent } from './features/promocion/promocion-list/promocion-list';
 
 export const routes: Routes = [
   {
@@ -24,6 +25,10 @@ export const routes: Routes = [
       {
         path:'contacto',
         component:Contacto
+      },
+      {
+        path:'promociones',
+        component:LotesPromocionComponent
       }
     ],
   },
@@ -31,8 +36,7 @@ export const routes: Routes = [
 @NgModule({
   imports: [
     RouterModule.forRoot(routes, {
-      // Configuración optimizada para lazy loading
-      preloadingStrategy: false, // Desactivar preloading para evitar conflictos
+      preloadingStrategy: false,
       enableTracing: false,
       scrollPositionRestoration: 'enabled',
     }),

@@ -29,4 +29,11 @@ export class LoteService {
       map(response => response.data) // ✅ Extrae solo el array
     );
   }
+
+  getLotesPromocion():Observable<any>{
+    return this.http.get<any>(`${this.baseUrl}/con-promocion`)
+  }
+
+
+
 }

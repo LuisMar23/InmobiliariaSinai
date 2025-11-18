@@ -38,55 +38,66 @@ export class LotesLista {
   }
 
   cargarLotes() {
-  console.log('📡 Intentando cargar lotes...');
-  this.cargando.set(true);
-  
-  this.loteSvc.getAll().subscribe({
-    next: (data) => {
-      console.log('✅ Lotes recibidos:', data);
-      console.log('📊 Cantidad:', data.length);
-      this.lotes.set(data);
-      this.lotesFiltrados.set(data);
-      this.cargando.set(false);
-    },
-    error: (err) => {
-      console.error('❌ Error cargando lotes:', err);
-      console.error('❌ Status:', err.status);
-      console.error('❌ Mensaje:', err.message);
-      this.cargando.set(false);
-    },
+    this.cargando.set(true);
+    this.loteSvc.getAll().subscribe({
+      next: (data) => {
+        this.lotes.set([...data]); // clonamos array
+        this.lotesFiltrados.set([...data]);
+        this.cargando.set(false);
+      },
+      error: (err) => {
+        console.error(err);
+        this.cargando.set(false);
+      }
+    });
+  }
+
+onBuscar(filtros: FiltrosLote) {
+  // Actualizar la referencia de filtros
+  this.filtros = { ...filtros };
+  // Aplicar filtros inmediatamente con los nuevos valores
+  this.aplicarFiltros();
+}
+aplicarFiltros() {
+  const f = {
+    ciudad: (this.filtros.ciudad ?? '').toString().trim().toLowerCase(),
+    precioMin: Number(this.filtros.precioMin ?? 0),
+    precioMax: Number(this.filtros.precioMax ?? 9999999),
+    superficieMin: Number(this.filtros.superficieMin ?? 0),
+    superficieMax: Number(this.filtros.superficieMax ?? 9999999),
+    estado: (this.filtros.estado ?? '').toString().trim(),
+    busqueda: (this.filtros.busqueda ?? '').toString().trim().toLowerCase()
+  };
+
+  // Agregar console.log para debug
+  console.log('Filtros aplicados:', f);
+  console.log('Total lotes origen:', this.lotes().length);
+
+  const origen = this.lotes();
+
+  const filtrados = origen.filter(lote => {
+    const ciudad = (lote.ciudad ?? '').toString().trim().toLowerCase();
+    const numeroLote = (lote.numeroLote ?? '').toString().toLowerCase();
+    const descripcion = (lote.descripcion ?? '').toString().toLowerCase();
+    
+    // CAMBIO CRÍTICO: Verificar longitud === 0 en lugar de !f.ciudad
+    const cumpleCiudad = f.ciudad.length === 0 || ciudad.includes(f.ciudad);
+    const cumplePrecio = (lote.precioBase ?? 0) >= f.precioMin && (lote.precioBase ?? 0) <= f.precioMax;
+    const cumpleSup = (lote.superficieM2 ?? 0) >= f.superficieMin && (lote.superficieM2 ?? 0) <= f.superficieMax;
+    const cumpleEstado = f.estado.length === 0 || lote.estado === f.estado;
+    const cumpleTexto = f.busqueda.length === 0 || numeroLote.includes(f.busqueda) || descripcion.includes(f.busqueda);
+
+    return cumpleCiudad && cumplePrecio && cumpleSup && cumpleEstado && cumpleTexto;
   });
+
+  console.log('Lotes filtrados:', filtrados.length);
+  this.lotesFiltrados.set(filtrados);
+
+  if (this.mapaComponentRef) {
+    this.mapaComponentRef.setInput('lotes', this.lotesFiltrados());
   }
+}
 
-  onBuscar(filtros: FiltrosLote) {
-    this.filtros = filtros;
-    this.aplicarFiltros();
-  }
-
-  aplicarFiltros() {
-    const f = this.filtros;
-    this.lotesFiltrados.set(
-      this.lotes().filter((lote) => {
-        const cumpleCiudad =
-          !f.ciudad || lote.ciudad.toLowerCase().includes(f.ciudad.toLowerCase());
-        const cumplePrecio = lote.precioBase >= f.precioMin && lote.precioBase <= f.precioMax;
-        const cumpleSup =
-          lote.superficieM2 >= f.superficieMin && lote.superficieM2 <= f.superficieMax;
-        const cumpleEstado = !f.estado || lote.estado === f.estado;
-        const cumpleTexto =
-          !f.busqueda ||
-          lote.numeroLote.toLowerCase().includes(f.busqueda.toLowerCase()) ||
-          lote.descripcion?.toLowerCase().includes(f.busqueda.toLowerCase());
-
-        return cumpleCiudad && cumplePrecio && cumpleSup && cumpleEstado && cumpleTexto;
-      })
-    );
-
-    // Actualizar el mapa si ya está cargado
-    if (this.mapaComponentRef) {
-      this.mapaComponentRef.setInput('lotes', this.lotesFiltrados());
-    }
-  }
 
   // ✅ Método que cambia la vista (usa este en los botones)
   cambiarVista(v: VistaLote) {
