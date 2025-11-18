@@ -56,14 +56,12 @@ export class ReservaService {
       .pipe(map((response) => response));
   }
 
-  // CORREGIDO: Usar el endpoint correcto para cajas abiertas
   getCajasActivas(): Observable<any> {
     return this.http
       .get<ApiResponse<any>>(`${this.apiUrl}/cajas/abiertas`)
       .pipe(map((response) => response));
   }
 
-  // NUEVO: Métodos para recibos de reserva
   subirRecibosReserva(
     reservaId: number,
     files: File[],

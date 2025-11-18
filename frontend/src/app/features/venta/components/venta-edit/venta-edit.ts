@@ -10,6 +10,7 @@ import { Caja } from '../../../../core/interfaces/caja.interface';
 import { LoteService } from '../../../lote/service/lote.service';
 import { AuthService } from '../../../../components/services/auth.service';
 import { VentaService } from '../../service/venta.service';
+import { ReciboService, Recibo } from '../../../../core/services/recibo.service';
 import {
   VentaDto,
   UpdateVentaDto,
@@ -47,6 +48,14 @@ export class VentaEdit implements OnInit {
   showLotesDropdown = signal<boolean>(false);
 
   pagoSeleccionado = signal<any>(null);
+
+  // Nuevas variables para manejar archivos
+  archivosSeleccionados = signal<File[]>([]);
+  maxArchivos = 6; // Máximo de archivos para venta
+  archivosCargando = signal<boolean>(false);
+
+  recibosVenta = signal<Recibo[]>([]);
+  recibosCargando = signal<boolean>(true);
 
   filteredClientes = computed(() => {
     const search = this.searchCliente().toLowerCase();
@@ -122,6 +131,7 @@ export class VentaEdit implements OnInit {
   private notificationService = inject(NotificationService);
   private datePipe = inject(DatePipe);
   private authService = inject(AuthService);
+  private reciboSvc = inject(ReciboService); // Inyecta el servicio de recibos
 
   constructor() {
     this.ventaForm = this.crearFormularioVenta();
@@ -263,6 +273,7 @@ export class VentaEdit implements OnInit {
           this.cargarDatosFormulario(venta);
           this.cargarClientes();
           this.cargarLotes();
+          this.cargarRecibosVenta(id); // Carga los recibos de la venta
         } else {
           this.error.set('No se encontró la venta');
           this.cargando.set(false);
@@ -305,6 +316,131 @@ export class VentaEdit implements OnInit {
     } catch {
       return 'N/A';
     }
+  }
+
+  // Métodos para manejo de archivos
+  onFileChange(event: any) {
+    const files: FileList | null = event.target.files;
+    if (files) {
+      const nuevosArchivos = Array.from(files);
+      const archivosActuales = this.archivosSeleccionados();
+      const archivosFinales = [...archivosActuales, ...nuevosArchivos];
+
+      if (archivosFinales.length > this.maxArchivos) {
+        this.notificationService.showError(
+          `Solo puedes subir un máximo de ${this.maxArchivos} archivos.`
+        );
+        return;
+      }
+
+      this.archivosSeleccionados.set(archivosFinales);
+    }
+  }
+
+  eliminarArchivo(index: number) {
+    const archivosActuales = this.archivosSeleccionados();
+    archivosActuales.splice(index, 1);
+    this.archivosSeleccionados.set([...archivosActuales]);
+  }
+
+  subirArchivos() {
+    if (this.archivosSeleccionados().length === 0) {
+      this.notificationService.showError('No hay archivos seleccionados para subir.');
+      return;
+    }
+
+    const ventaId = this.ventaId();
+    if (!ventaId) {
+      this.notificationService.showError('No se puede subir archivos: ID de venta no disponible.');
+      return;
+    }
+
+    this.archivosCargando.set(true);
+
+    const usuarioId = this.authService.getCurrentUser()?.id;
+    if (!usuarioId) {
+      this.notificationService.showError('No se pudo obtener el usuario autenticado.');
+      this.archivosCargando.set(false);
+      return;
+    }
+
+    this.reciboSvc
+      .subirRecibosGenerales(this.archivosSeleccionados(), {
+        tipoOperacion: 'VENTA',
+        ventaId: ventaId,
+        observaciones: 'Subido desde edición de venta',
+      })
+      .subscribe({
+        next: (response) => {
+          this.archivosCargando.set(false);
+          this.notificationService.showSuccess('Archivos subidos exitosamente.');
+          this.archivosSeleccionados.set([]);
+          this.cargarRecibosVenta(ventaId); // Recarga los recibos
+        },
+        error: (error) => {
+          this.archivosCargando.set(false);
+          this.notificationService.showError(
+            'Error al subir los archivos: ' + (error?.error?.message || 'Error desconocido')
+          );
+        },
+      });
+  }
+
+  cargarRecibosVenta(ventaId: number): void {
+    this.recibosCargando.set(true);
+    this.reciboSvc.obtenerPorVenta(ventaId).subscribe({
+      next: (recibos) => {
+        this.recibosVenta.set(recibos);
+        this.recibosCargando.set(false);
+      },
+      error: (err) => {
+        this.notificationService.showError('No se pudieron cargar los recibos de la venta');
+        this.recibosCargando.set(false);
+      },
+    });
+  }
+
+  descargarRecibo(recibo: Recibo) {
+    this.reciboSvc.descargarRecibo(recibo);
+  }
+
+  eliminarRecibo(recibo: Recibo) {
+    this.notificationService
+      .confirmDelete('¿Está seguro que desea eliminar este archivo?')
+      .then((result) => {
+        if (result.isConfirmed) {
+          this.reciboSvc.eliminarRecibo(recibo.id).subscribe({
+            next: () => {
+              this.notificationService.showSuccess('Archivo eliminado exitosamente.');
+              const ventaId = this.ventaId();
+              if (ventaId) {
+                this.cargarRecibosVenta(ventaId);
+              }
+            },
+            error: (err) => {
+              this.notificationService.showError('No se pudo eliminar el archivo.');
+            },
+          });
+        }
+      });
+  }
+
+  formatFileSize(bytes: number): string {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  }
+
+  formatFecha(fecha: string | Date): string {
+    if (!fecha) return 'N/A';
+    const date = new Date(fecha);
+    return date.toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
   }
 
   editarPago(pago: any): void {

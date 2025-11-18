@@ -86,9 +86,7 @@ export class Sidebar implements OnInit {
     { label: 'Reservas', icon: faCalendarCheck, route: '/reservas' },
     { label: 'Visitas', icon: faEye, route: '/visitas' },
     { label: 'Caja', icon: faCashRegister, route: '/caja' },
-    { label: 'Pagos', icon: faDollarSign, route: '/pagos' },
     { label: 'Promociones', icon: faTag, route: '/promociones' },
-    { label: 'Ajustes', icon: faCog, route: '/ajustes' },
   ];
 
   constructor(private authService: AuthService) {

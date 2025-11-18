@@ -7,6 +7,7 @@ import { join } from 'path';
 async function bootstrap() {
     const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
+  app.enableCors();
   // Configurar CORS
   // app.enableCors({
   //       origin: ['http://localhost:4300', ],
@@ -16,7 +17,6 @@ async function bootstrap() {
   origin: '*', // cualquier dominio
 });
 
-  // Global prefix para todas las rutas
   app.setGlobalPrefix('apisinai');
 
   app.useStaticAssets(join(__dirname, '..', 'uploads'), {

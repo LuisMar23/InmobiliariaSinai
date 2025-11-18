@@ -1,4 +1,3 @@
-// reserva-list.component.ts
 import { Component, inject, signal, OnInit, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
@@ -6,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { ReservaDto } from '../../../../core/interfaces/reserva.interface';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { ReservaService } from '../../service/reserva.service';
+import { ReciboService, Recibo } from '../../../../core/services/recibo.service';
 
 interface ColumnConfig {
   key: keyof ReservaDto;
@@ -28,6 +28,14 @@ export class ReservaList implements OnInit {
   reservaSeleccionada = signal<ReservaDto | null>(null);
   mostrarModal = signal<boolean>(false);
 
+  archivosSeleccionados = signal<File[]>([]);
+  maxArchivos = 3;
+  archivosCargando = signal<boolean>(false);
+  reservaIdParaArchivos = signal<number | null>(null);
+
+  recibosReserva = signal<Recibo[]>([]);
+  recibosCargando = signal<boolean>(true);
+
   sortColumn = signal<keyof ReservaDto>('id');
   sortDirection = signal<'asc' | 'desc'>('desc');
 
@@ -46,6 +54,7 @@ export class ReservaList implements OnInit {
 
   private reservaSvc = inject(ReservaService);
   private notificationService = inject(NotificationService);
+  private reciboSvc = inject(ReciboService);
 
   filteredReservas = computed(() => {
     const term = this.searchTerm().toLowerCase();
@@ -151,11 +160,31 @@ export class ReservaList implements OnInit {
   verDetalles(reserva: ReservaDto) {
     this.reservaSeleccionada.set(reserva);
     this.mostrarModal.set(true);
+    if (reserva.id) {
+      this.cargarRecibosReserva(reserva.id);
+    }
+  }
+
+  cargarRecibosReserva(reservaId: number): void {
+    this.recibosCargando.set(true);
+    this.reciboSvc.obtenerPorReserva(reservaId).subscribe({
+      next: (recibos) => {
+        this.recibosReserva.set(recibos);
+        this.recibosCargando.set(false);
+      },
+      error: (err) => {
+        this.notificationService.showError('No se pudieron cargar los recibos de la reserva');
+        this.recibosCargando.set(false);
+      },
+    });
   }
 
   cerrarModal() {
     this.mostrarModal.set(false);
     this.reservaSeleccionada.set(null);
+    this.archivosSeleccionados.set([]);
+    this.reservaIdParaArchivos.set(null);
+    this.recibosReserva.set([]);
   }
 
   eliminarReserva(id: number) {
@@ -261,5 +290,102 @@ export class ReservaList implements OnInit {
       month: '2-digit',
       year: 'numeric',
     });
+  }
+
+  onFileChange(event: any) {
+    const files: FileList | null = event.target.files;
+    if (files) {
+      const nuevosArchivos = Array.from(files);
+      const archivosActuales = this.archivosSeleccionados();
+      const archivosFinales = [...archivosActuales, ...nuevosArchivos];
+
+      if (archivosFinales.length > this.maxArchivos) {
+        this.notificationService.showError(
+          `Solo puedes subir un máximo de ${this.maxArchivos} archivos.`
+        );
+        return;
+      }
+
+      this.archivosSeleccionados.set(archivosFinales);
+    }
+  }
+
+  eliminarArchivo(index: number) {
+    const archivosActuales = this.archivosSeleccionados();
+    archivosActuales.splice(index, 1);
+    this.archivosSeleccionados.set([...archivosActuales]);
+  }
+
+  prepararSubidaArchivos(reservaId: number) {
+    this.reservaIdParaArchivos.set(reservaId);
+    this.archivosSeleccionados.set([]);
+  }
+
+  subirArchivosModal() {
+    if (this.archivosSeleccionados().length === 0) {
+      this.notificationService.showError('No hay archivos seleccionados para subir.');
+      return;
+    }
+
+    const reservaId = this.reservaIdParaArchivos();
+    if (!reservaId) {
+      this.notificationService.showError(
+        'No se puede subir archivos: ID de reserva no disponible.'
+      );
+      return;
+    }
+
+    this.archivosCargando.set(true);
+
+    this.reciboSvc
+      .subirRecibosGenerales(this.archivosSeleccionados(), {
+        tipoOperacion: 'RESERVA',
+        reservaId: reservaId,
+        observaciones: 'Subido desde listado de reservas',
+      })
+      .subscribe({
+        next: (response) => {
+          this.archivosCargando.set(false);
+          this.notificationService.showSuccess('Archivos subidos exitosamente.');
+          this.archivosSeleccionados.set([]);
+          this.cargarRecibosReserva(reservaId);
+        },
+        error: (error) => {
+          this.archivosCargando.set(false);
+          this.notificationService.showError(
+            'Error al subir los archivos: ' + (error?.error?.message || 'Error desconocido')
+          );
+        },
+      });
+  }
+
+  descargarRecibo(recibo: Recibo) {
+    this.reciboSvc.descargarRecibo(recibo);
+  }
+
+  eliminarRecibo(recibo: Recibo) {
+    this.notificationService
+      .confirmDelete('¿Está seguro que desea eliminar este archivo?')
+      .then((result) => {
+        if (result.isConfirmed) {
+          this.reciboSvc.eliminarRecibo(recibo.id).subscribe({
+            next: () => {
+              this.notificationService.showSuccess('Archivo eliminado exitosamente.');
+              this.cargarRecibosReserva(this.reservaSeleccionada()!.id);
+            },
+            error: (err) => {
+              this.notificationService.showError('No se pudo eliminar el archivo.');
+            },
+          });
+        }
+      });
+  }
+
+  formatFileSize(bytes: number): string {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   }
 }

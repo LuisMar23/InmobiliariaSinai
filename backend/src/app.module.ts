@@ -15,10 +15,10 @@ import { ArchivosModule } from './archivos/archivos.module';
 
 import { DashboardModule } from './dashboard/dashboard.module';
 
-import { RecibosModule } from './recibo/recibo.module';
+import { ReciboModule } from './recibo/recibo.module';
 
 @Module({
-  imports: [AuthModule, UsersModule, UrbanizacionModule, PromocionModule, LotesModule, VentasModule, ReservasModule, CotizacionesModule, CajaModule, MovimientoModule, CierreModule, VisitasModule, ArchivosModule, RecibosModule,DashboardModule],
+  imports: [AuthModule, UsersModule, UrbanizacionModule, PromocionModule, LotesModule, VentasModule, ReservasModule, CotizacionesModule, CajaModule, MovimientoModule, CierreModule, VisitasModule, ArchivosModule, ReciboModule,DashboardModule],
 
   controllers: [],
   providers: [],

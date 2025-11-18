@@ -39,6 +39,7 @@
     "express": "^5.1.0",
     "ng-apexcharts": "^2.0.3",
     "ng2-charts": "^8.0.0",
+    "pdfmake": "^0.2.20",
     "rxjs": "~7.8.0",
     "sweetalert2": "^11.23.0",
     "tslib": "^2.3.0"
@@ -50,6 +51,7 @@
     "@types/express": "^5.0.1",
     "@types/jasmine": "~5.1.0",
     "@types/node": "^20.17.19",
+    "@types/pdfmake": "^0.2.12",
     "autoprefixer": "^10.4.21",
     "jasmine-core": "~5.9.0",
     "karma": "~6.4.0",
