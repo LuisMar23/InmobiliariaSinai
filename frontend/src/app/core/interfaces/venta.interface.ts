@@ -10,7 +10,6 @@ export interface VentaDto {
   observaciones?: string;
   createdAt?: string;
   updatedAt?: string;
-
   cliente?: {
     id: number;
     fullName: string;

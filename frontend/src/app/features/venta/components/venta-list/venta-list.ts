@@ -15,6 +15,7 @@ import { ReciboService, Recibo } from '../../../../core/services/recibo.service'
 import { ArchivosComponent } from '../../../../components/archivos/archivos/archivos';
 import { environment } from '../../../../../environments/environment';
 import { UploadArchivosService } from '../../../../components/services/archivos.service';
+import { PdfService } from '../../../../core/services/pdf.service';
 
 @Component({
   selector: 'app-venta-list',
@@ -130,6 +131,7 @@ export class VentaList implements OnInit {
     this.recibosCargando.set(true);
     this.reciboSvc.obtenerPorVenta(ventaId).subscribe({
       next: (recibos) => {
+        console.log(recibos)
         this.recibosVenta.set(recibos);
         this.recibosCargando.set(false);
       },
@@ -235,9 +237,9 @@ export class VentaList implements OnInit {
     this.mostrarModal.set(true);
     this.mostrarFormPago.set(false);
     this.pagoForm.reset();
-    this.archivosSeleccionados.set([]); // Limpiar archivos seleccionados al abrir el modal
-    this.ventaIdParaArchivos.set(venta.id); // Guardar ID de la venta
-    this.cargarRecibosVenta(venta.id); // Cargar recibos de la venta
+    this.archivosSeleccionados.set([]);
+    this.ventaIdParaArchivos.set(venta.id); 
+    this.cargarRecibosVenta(venta.id); 
 
     const hoy = new Date();
     const fechaHoy = hoy.toISOString().split('T')[0];
@@ -333,7 +335,7 @@ export class VentaList implements OnInit {
             this.ventaSvc.getById(venta.id).subscribe({
               next: (ventaActualizada: VentaDto) => {
                 this.ventaSeleccionada.set(ventaActualizada);
-                this.cargarRecibosVenta(venta.id); // Recargar recibos tras pago
+                this.cargarRecibosVenta(venta.id); 
               },
               error: (err) => {
                 console.error('Error al actualizar venta:', err);
@@ -365,8 +367,6 @@ export class VentaList implements OnInit {
       },
     });
   }
-
-  // Métodos para manejo de archivos
   onFileChange(event: any) {
     const files: FileList | null = event.target.files;
     if (files) {
@@ -584,6 +584,10 @@ export class VentaList implements OnInit {
     this.cerrarModalUploader();
     this.notificationService.showSuccess('Archivos subidos correctamente');
   }
-  
+    private pdfService = inject(PdfService);
+  generarPdfVenta(venta:any){
+    this.pdfService.generarPdfVentaIndividual(venta)
+  }
+
   private archivoService = inject(UploadArchivosService);
 }

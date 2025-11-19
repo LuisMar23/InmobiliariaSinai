@@ -19,6 +19,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { ClientesService } from '../../service/cliente.service';
 import { NotificationService } from '../../../../core/services/notification.service';
+import { PdfService } from '../../../../core/services/pdf.service';
 
 @Component({
   selector: 'app-clientes-list',
@@ -40,13 +41,11 @@ export class ClientesListComponent implements OnInit {
   faMapMarkerAlt = faMapMarkerAlt;
   faPlus = faPlus;
 
-  // USANDO SIGNALS COMO URBANIZACIÓN
   clientes = signal<any[]>([]);
   allClientes = signal<any[]>([]);
   searchTerm = signal('');
   isLoading = signal(false);
 
-  // Columnas para ordenamiento
   columns = [
     { key: 'fullName', label: 'Cliente', sortable: true },
     { key: 'ci', label: 'CI', sortable: true },
@@ -55,16 +54,13 @@ export class ClientesListComponent implements OnInit {
     { key: 'estado', label: 'Estado', sortable: true },
   ];
 
-  // Señales para ordenamiento
   sortColumn = signal<string>('fullName');
   sortDirection = signal<'asc' | 'desc'>('asc');
 
-  // Computed para búsqueda y ordenamiento - IGUAL QUE URBANIZACIÓN
   filteredClientes = computed(() => {
     const term = this.searchTerm().toLowerCase();
     let clientes = this.allClientes();
 
-    // Aplicar filtro de búsqueda
     if (term) {
       clientes = clientes.filter(
         (cliente: any) =>
@@ -74,7 +70,6 @@ export class ClientesListComponent implements OnInit {
       );
     }
 
-    // Aplicar ordenamiento
     const column = this.sortColumn();
     const direction = this.sortDirection();
 
@@ -84,11 +79,9 @@ export class ClientesListComponent implements OnInit {
       let aValue: any = a[column];
       let bValue: any = b[column];
 
-      // Manejar valores undefined/null
       if (aValue === undefined || aValue === null) aValue = '';
       if (bValue === undefined || bValue === null) bValue = '';
 
-      // Ordenar por texto
       const aString = aValue.toString().toLowerCase();
       const bString = bValue.toString().toLowerCase();
 
@@ -100,7 +93,6 @@ export class ClientesListComponent implements OnInit {
     });
   });
 
-  // Paginación
   total = signal(0);
   pageSize = signal(10);
   currentPage = signal(1);
@@ -108,20 +100,18 @@ export class ClientesListComponent implements OnInit {
   private clientesService = inject(ClientesService);
   private notificationService = inject(NotificationService);
   private route = inject(ActivatedRoute);
+  private pdfService = inject(PdfService);
 
-  // CONSTRUCTOR CON CARGA INMEDIATA - IGUAL QUE URBANIZACIÓN
   constructor() {
     this.loadClientes();
   }
 
   ngOnInit() {
-    // Recargar cuando cambie la ruta
     this.route.url.subscribe(() => {
       this.loadClientes();
     });
   }
 
-  // CARGA DIRECTA EN CONSTRUCTOR - IGUAL QUE URBANIZACIÓN
   loadClientes() {
     this.isLoading.set(true);
     this.clientesService.getClientes().subscribe({
@@ -148,7 +138,6 @@ export class ClientesListComponent implements OnInit {
     });
   }
 
-  // Ordenamiento
   sort(column: string) {
     if (this.sortColumn() === column) {
       this.sortDirection.set(this.sortDirection() === 'asc' ? 'desc' : 'asc');
@@ -158,7 +147,6 @@ export class ClientesListComponent implements OnInit {
     }
   }
 
-  // Método para obtener clase de flecha
   getClaseFlecha(columna: string): string {
     if (this.sortColumn() !== columna) {
       return 'opacity-30';
@@ -168,7 +156,7 @@ export class ClientesListComponent implements OnInit {
 
   deleteCliente(cliente: any) {
     this.notificationService
-      .confirmDelete(`¿Estás seguro de eliminar al cliente ${cliente.fullName}?`)
+      .confirmDelete("¿Estás seguro de eliminar al cliente ${cliente.fullName}?")
       .then((result) => {
         if (result.isConfirmed) {
           this.clientesService.delete(cliente.id).subscribe({
@@ -192,7 +180,6 @@ export class ClientesListComponent implements OnInit {
       : 'px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700';
   }
 
-  // Paginación
   nextPage() {
     if (this.currentPage() < this.totalPages()) {
       this.currentPage.update((v) => v + 1);
@@ -233,4 +220,12 @@ export class ClientesListComponent implements OnInit {
     const endIndex = startIndex + this.pageSize();
     return this.filteredClientes().slice(startIndex, endIndex);
   }
+
+  generarPdfTodosClientes(): void {
+    this.pdfService.generarPdfClientes(this.allClientes());
+  }
+
+  generarPdfClienteIndividual(cliente: any): void {
+    this.pdfService.generarPdfClienteIndividual(cliente);
+  }
 }

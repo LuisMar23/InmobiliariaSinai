@@ -1,10 +1,12 @@
 import { Injectable } from '@angular/core';
 
 declare const require: any;
-const pdfMake = require('pdfmake/build/pdfmake');
-const pdfFonts = require('pdfmake/build/vfs_fonts');
 
-pdfMake.vfs = pdfFonts.pdfMake.vfs;
+import * as pdfMakeLib from 'pdfmake/build/pdfmake';
+import * as pdfFonts from 'pdfmake/build/vfs_fonts';
+const pdfMake: any = pdfMakeLib;
+pdfMake.vfs = pdfFonts as any;
+
 pdfMake.fonts = {
   Roboto: {
     normal: 'Roboto-Regular.ttf',
@@ -1085,201 +1087,248 @@ export class PdfService {
       const subtotal = this.formatCurrency(venta.subtotal);
       const descuento = this.formatCurrency(venta.descuento);
 
+      let primaryColor = '#0D9488'; // teal-600
+      let accentColor = '#14B8A6'; // teal-500
+      let darkTeal = '#115E59'; // teal-800
+      const lightBg = '#F0FDFA'; // teal-50
+      let darkText = '#134E4A';
+      const mutedText = '#5EEAD4';
+
       const docDefinition: any = {
         pageSize: 'A4',
-        pageOrientation: 'portrait',
-        pageMargins: [40, 60, 40, 60],
+        pageMargins: [40, 120, 40, 60],
 
-        header: {
-          columns: [
-            {
-              stack: [
-                { text: 'COMPROBANTE DE VENTA', style: 'header' },
-                { text: 'Sistema de Gestión Inmobiliaria', style: 'subheader' },
-              ],
-              alignment: 'center',
-            },
-          ],
-          margin: [0, 20, 0, 0],
+        header: (currentPage: number) => {
+          return {
+            stack: [
+              {
+                canvas: [
+                  {
+                    type: 'rect',
+                    x: 0,
+                    y: 0,
+                    w: 595,
+                    h: 100,
+                    color: primaryColor,
+                  },
+                ],
+              },
+              {
+                text: 'COMPROBANTE DE VENTA',
+                style: 'mainHeader',
+                margin: [40, -80, 40, 0],
+              },
+              {
+                text: `Venta #${venta.id}`,
+                style: 'subHeader',
+                margin: [40, 5, 40, 0],
+              },
+              {
+                canvas: [
+                  {
+                    type: 'line',
+                    x1: 40,
+                    y1: 15,
+                    x2: 555,
+                    y2: 15,
+                    lineWidth: 3,
+                    lineColor: '#FFFFFF',
+                  },
+                ],
+              },
+            ],
+          };
         },
 
         footer: (currentPage: number, pageCount: number) => {
           return {
             columns: [
               {
-                text: `Generado el: ${fechaHora}`,
+                text: `Generado: ${fechaHora}`,
+                style: 'footer',
                 alignment: 'left',
                 margin: [40, 0, 0, 0],
-                fontSize: 8,
-                color: '#666666',
               },
               {
                 text: `Página ${currentPage} de ${pageCount}`,
+                style: 'footer',
                 alignment: 'right',
                 margin: [0, 0, 40, 0],
-                fontSize: 8,
-                color: '#666666',
               },
             ],
-            margin: [0, 10, 0, 10],
           };
         },
 
         content: [
-          // Información General de la Venta
+          // INFORMACIÓN DE LA VENTA
           {
-            text: 'INFORMACIÓN GENERAL DE LA VENTA',
-            style: 'sectionHeader',
-            margin: [0, 0, 0, 10],
-          },
-          {
-            table: {
-              widths: ['30%', '70%'],
-              body: [
-                [
-                  { text: 'Número de Venta:', style: 'labelCell' },
-                  { text: `#${venta.id}`, style: 'valueCell' },
-                ],
-                [
-                  { text: 'Fecha de Venta:', style: 'labelCell' },
-                  { text: fechaVenta, style: 'valueCell' },
-                ],
-                [
-                  { text: 'Estado:', style: 'labelCell' },
+            columns: [
+              {
+                width: '48%',
+                stack: [
                   {
-                    text: venta.estado?.toUpperCase() || 'N/A',
-                    style: 'valueCell',
-                    bold: true,
+                    text: 'Información de Venta',
+                    style: 'cardTitle',
+                  },
+                  {
+                    table: {
+                      widths: ['100%'],
+                      body: [
+                        [
+                          {
+                            stack: [
+                              {
+                                columns: [
+                                  { text: 'Fecha:', style: 'tableLabel', width: '35%' },
+                                  { text: fechaVenta, style: 'tableValue', width: '65%' },
+                                ],
+                                margin: [0, 8, 0, 8],
+                              },
+                              {
+                                canvas: [
+                                  {
+                                    type: 'line',
+                                    x1: 0,
+                                    y1: 0,
+                                    x2: 220,
+                                    y2: 0,
+                                    lineWidth: 0.5,
+                                    lineColor: '#99F6E4',
+                                  },
+                                ],
+                              },
+                              {
+                                columns: [
+                                  { text: 'Estado:', style: 'tableLabel', width: '35%' },
+                                  {
+                                    text: venta.estado?.toUpperCase() || 'N/A',
+                                    style: 'statusBadge',
+                                    width: '65%',
+                                  },
+                                ],
+                                margin: [0, 8, 0, 8],
+                              },
+                              {
+                                canvas: [
+                                  {
+                                    type: 'line',
+                                    x1: 0,
+                                    y1: 0,
+                                    x2: 220,
+                                    y2: 0,
+                                    lineWidth: 0.5,
+                                    lineColor: '#99F6E4',
+                                  },
+                                ],
+                              },
+                              {
+                                columns: [
+                                  { text: 'Método de Pago:', style: 'tableLabel', width: '35%' },
+                                  {
+                                    text: venta.metodo_pago?.toUpperCase() || 'N/A',
+                                    style: 'tableValue',
+                                    width: '65%',
+                                  },
+                                ],
+                                margin: [0, 8, 0, 8],
+                              },
+                            ],
+                            fillColor: '#FFFFFF',
+                            margin: [10, 5, 10, 5],
+                          },
+                        ],
+                      ],
+                    },
+                    layout: {
+                      hLineWidth: () => 2,
+                      vLineWidth: () => 2,
+                      hLineColor: () => primaryColor,
+                      vLineColor: () => primaryColor,
+                      paddingLeft: () => 0,
+                      paddingRight: () => 0,
+                      paddingTop: () => 0,
+                      paddingBottom: () => 0,
+                    },
                   },
                 ],
-                [
-                  { text: 'Método de Pago:', style: 'labelCell' },
-                  { text: venta.metodo_pago?.toUpperCase() || 'N/A', style: 'valueCell' },
-                ],
-              ],
-            },
-            layout: {
-              hLineWidth: () => 0.5,
-              vLineWidth: () => 0.5,
-              hLineColor: () => '#000000',
-              vLineColor: () => '#000000',
-            },
-            margin: [0, 0, 0, 20],
-          },
-
-          // Información del Cliente
-          {
-            text: 'INFORMACIÓN DEL CLIENTE',
-            style: 'sectionHeader',
-            margin: [0, 0, 0, 10],
-          },
-          {
-            table: {
-              widths: ['30%', '70%'],
-              body: [
-                [
-                  { text: 'Nombre:', style: 'labelCell' },
-                  { text: venta.cliente?.fullName || 'N/A', style: 'valueCell' },
-                ],
-                [
-                  { text: 'Email:', style: 'labelCell' },
-                  { text: venta.cliente?.email || 'N/A', style: 'valueCell' },
-                ],
-                [
-                  { text: 'Teléfono:', style: 'labelCell' },
-                  { text: venta.cliente?.telefono || 'N/A', style: 'valueCell' },
-                ],
-                [
-                  { text: 'Dirección:', style: 'labelCell' },
-                  { text: venta.cliente?.direccion || 'N/A', style: 'valueCell' },
-                ],
-              ],
-            },
-            layout: {
-              hLineWidth: () => 0.5,
-              vLineWidth: () => 0.5,
-              hLineColor: () => '#000000',
-              vLineColor: () => '#000000',
-            },
-            margin: [0, 0, 0, 20],
-          },
-
-          // Información del Lote
-          {
-            text: 'INFORMACIÓN DEL INMUEBLE',
-            style: 'sectionHeader',
-            margin: [0, 0, 0, 10],
-          },
-          {
-            table: {
-              widths: ['30%', '70%'],
-              body: [
-                [
-                  { text: 'Número de Lote:', style: 'labelCell' },
-                  { text: venta.lote?.numeroLote || 'N/A', style: 'valueCell' },
-                ],
-                [
-                  { text: 'Superficie:', style: 'labelCell' },
-                  { text: `${venta.lote?.superficieM2 || 'N/A'} m²`, style: 'valueCell' },
-                ],
-                [
-                  { text: 'Urbanización:', style: 'labelCell' },
-                  { text: venta.lote?.urbanizacion?.nombre || 'N/A', style: 'valueCell' },
-                ],
-                [
-                  { text: 'Precio Base:', style: 'labelCell' },
-                  { text: this.formatCurrency(venta.lote?.precioBase || 0), style: 'valueCell' },
-                ],
-              ],
-            },
-            layout: {
-              hLineWidth: () => 0.5,
-              vLineWidth: () => 0.5,
-              hLineColor: () => '#000000',
-              vLineColor: () => '#000000',
-            },
-            margin: [0, 0, 0, 20],
-          },
-
-          // Información del Asesor
-          {
-            text: 'INFORMACIÓN DEL ASESOR',
-            style: 'sectionHeader',
-            margin: [0, 0, 0, 10],
-          },
-          {
-            table: {
-              widths: ['30%', '70%'],
-              body: [
-                [
-                  { text: 'Nombre:', style: 'labelCell' },
+              },
+              { width: '4%', text: '' },
+              {
+                width: '48%',
+                stack: [
                   {
-                    text: venta.asesor?.fullName || venta.usuario?.fullName || 'N/A',
-                    style: 'valueCell',
+                    text: 'Cliente',
+                    style: 'cardTitle',
+                  },
+                  {
+                    table: {
+                      widths: ['100%'],
+                      body: [
+                        [
+                          {
+                            stack: [
+                              {
+                                text: venta.cliente?.fullName || 'N/A',
+                                style: 'clientName',
+                                margin: [0, 8, 0, 5],
+                              },
+                              {
+                                canvas: [
+                                  {
+                                    type: 'line',
+                                    x1: 0,
+                                    y1: 0,
+                                    x2: 220,
+                                    y2: 0,
+                                    lineWidth: 0.5,
+                                    lineColor: '#99F6E4',
+                                  },
+                                ],
+                                margin: [0, 0, 0, 5],
+                              },
+                              {
+                                text: venta.cliente?.email || 'N/A',
+                                style: 'clientDetail',
+                                margin: [0, 0, 0, 3],
+                              },
+                              {
+                                text: venta.cliente?.telefono || 'N/A',
+                                style: 'clientDetail',
+                                margin: [0, 0, 0, 3],
+                              },
+                              {
+                                text: venta.cliente?.direccion || 'N/A',
+                                style: 'clientDetail',
+                                margin: [0, 0, 0, 8],
+                              },
+                            ],
+                            fillColor: '#FFFFFF',
+                            margin: [10, 5, 10, 5],
+                          },
+                        ],
+                      ],
+                    },
+                    layout: {
+                      hLineWidth: () => 2,
+                      vLineWidth: () => 2,
+                      hLineColor: () => primaryColor,
+                      vLineColor: () => primaryColor,
+                      paddingLeft: () => 0,
+                      paddingRight: () => 0,
+                      paddingTop: () => 0,
+                      paddingBottom: () => 0,
+                    },
                   },
                 ],
-                [
-                  { text: 'Email:', style: 'labelCell' },
-                  {
-                    text: venta.asesor?.email || venta.usuario?.email || 'N/A',
-                    style: 'valueCell',
-                  },
-                ],
-              ],
-            },
-            layout: {
-              hLineWidth: () => 0.5,
-              vLineWidth: () => 0.5,
-              hLineColor: () => '#000000',
-              vLineColor: () => '#000000',
-            },
-            margin: [0, 0, 0, 20],
+              },
+            ],
+            margin: [0, 0, 0, 25],
           },
 
-          // Resumen Financiero
+          // INFORMACIÓN DEL INMUEBLE
           {
-            text: 'RESUMEN FINANCIERO',
-            style: 'sectionHeader',
+            text: 'Detalle del Inmueble',
+            style: 'sectionTitle',
             margin: [0, 0, 0, 10],
           },
           {
@@ -1287,86 +1336,253 @@ export class PdfService {
               widths: ['50%', '50%'],
               body: [
                 [
-                  { text: 'Subtotal:', style: 'labelCell' },
-                  { text: subtotal, style: 'valueCell', alignment: 'right' },
+                  {
+                    text: 'Lote',
+                    style: 'tableHeaderCell',
+                    fillColor: primaryColor,
+                    color: '#FFFFFF',
+                  },
+                  {
+                    text: venta.lote?.numeroLote || 'N/A',
+                    style: 'tableValueCell',
+                    fillColor: '#FFFFFF',
+                  },
                 ],
                 [
-                  { text: 'Descuento:', style: 'labelCell' },
-                  { text: descuento, style: 'valueCell', alignment: 'right' },
+                  {
+                    text: 'Superficie',
+                    style: 'tableHeaderCell',
+                    fillColor: primaryColor,
+                    color: '#FFFFFF',
+                  },
+                  {
+                    text: `${venta.lote?.superficieM2 || 'N/A'} m²`,
+                    style: 'tableValueCell',
+                    fillColor: '#FFFFFF',
+                  },
                 ],
                 [
-                  { text: 'TOTAL:', style: 'totalLabel' },
-                  { text: precioFinal, style: 'totalValue', alignment: 'right' },
+                  {
+                    text: 'Urbanización',
+                    style: 'tableHeaderCell',
+                    fillColor: primaryColor,
+                    color: '#FFFFFF',
+                  },
+                  {
+                    text: venta.lote?.urbanizacion?.nombre || 'N/A',
+                    style: 'tableValueCell',
+                    fillColor: '#FFFFFF',
+                  },
+                ],
+                [
+                  {
+                    text: 'Precio Base',
+                    style: 'tableHeaderCell',
+                    fillColor: primaryColor,
+                    color: '#FFFFFF',
+                  },
+                  {
+                    text: this.formatCurrency(venta.lote?.precioBase || 0),
+                    style: 'tableValueCell',
+                    fillColor: '#FFFFFF',
+                  },
                 ],
               ],
             },
             layout: {
-              hLineWidth: () => 0.5,
-              vLineWidth: () => 0.5,
-              hLineColor: () => '#000000',
-              vLineColor: () => '#000000',
+              hLineWidth: (i: number, node: any) => 2,
+              vLineWidth: (i: number, node: any) => 2,
+              hLineColor: () => primaryColor,
+              vLineColor: () => primaryColor,
             },
-            margin: [0, 0, 0, 20],
           },
 
-          // Plan de Pagos (si existe)
+          // RESUMEN FINANCIERO
+          {
+            text: 'RESUMEN FINANCIERO',
+            style: 'financialTitle',
+            margin: [0, 25, 0, 15],
+            alignment: 'center',
+          },
+          {
+            table: {
+              widths: ['60%', '40%'],
+              body: [
+                [
+                  {
+                    text: 'Subtotal:',
+                    style: 'financialRowLabel',
+                    fillColor: primaryColor,
+                    color: '#FFFFFF',
+                  },
+                  {
+                    text: subtotal,
+                    style: 'financialRowValue',
+                    fillColor: primaryColor,
+                    color: '#FFFFFF',
+                    alignment: 'right',
+                  },
+                ],
+                [
+                  {
+                    text: 'Descuento:',
+                    style: 'financialRowLabel',
+                    fillColor: primaryColor,
+                    color: '#FFFFFF',
+                  },
+                  {
+                    text: descuento,
+                    style: 'financialRowValue',
+                    fillColor: primaryColor,
+                    color: '#FFFFFF',
+                    alignment: 'right',
+                  },
+                ],
+                [
+                  {
+                    text: 'TOTAL:',
+                    style: 'totalLabel',
+                    fillColor: '#FFFFFF',
+                    color: primaryColor,
+                  },
+                  {
+                    text: precioFinal,
+                    style: 'totalAmount',
+                    fillColor: '#FFFFFF',
+                    color: primaryColor,
+                    alignment: 'right',
+                  },
+                ],
+              ],
+            },
+            layout: {
+              hLineWidth: (i: number) => 3,
+              vLineWidth: (i: number) => 3,
+              hLineColor: () => primaryColor,
+              vLineColor: () => primaryColor,
+              paddingLeft: () => 20,
+              paddingRight: () => 20,
+              paddingTop: () => 15,
+              paddingBottom: () => 15,
+            },
+          },
+
+          // PLAN DE PAGOS
           ...this.buildPlanPagosSection(venta.planPago),
 
-          // Observaciones
+          // OBSERVACIONES
           ...this.buildObservacionesSection(venta.observaciones),
         ],
 
         styles: {
-          header: {
-            fontSize: 18,
+          mainHeader: {
+            fontSize: 24,
             bold: true,
-            color: '#000000',
+            color: '#FFFFFF',
             alignment: 'center',
           },
-          subheader: {
+          subHeader: {
             fontSize: 12,
-            color: '#666666',
+            color: '#CCFBF1',
             alignment: 'center',
-            margin: [0, 0, 0, 10],
           },
-          sectionHeader: {
+          footer: {
+            fontSize: 8,
+            color: '#5EEAD4',
+          },
+          cardTitle: {
+            fontSize: 13,
+            bold: true,
+            color: primaryColor,
+            margin: [0, 0, 0, 8],
+          },
+          tableLabel: {
+            fontSize: 9,
+            color: darkTeal,
+            bold: true,
+          },
+          tableValue: {
+            fontSize: 10,
+            color: darkText,
+          },
+          statusBadge: {
+            fontSize: 9,
+            bold: true,
+            color: accentColor,
+          },
+          clientName: {
+            fontSize: 12,
+            bold: true,
+            color: primaryColor,
+          },
+          clientDetail: {
+            fontSize: 9,
+            color: darkText,
+          },
+          sectionTitle: {
             fontSize: 14,
             bold: true,
-            color: '#000000',
-            margin: [0, 0, 0, 5],
+            color: primaryColor,
           },
-          labelCell: {
-            fontSize: 10,
+          tableHeaderCell: {
+            fontSize: 11,
             bold: true,
-            color: '#000000',
-            fillColor: '#f8f8f8',
-            padding: [8, 6, 8, 6],
+            margin: [0, 8, 0, 8],
           },
-          valueCell: {
-            fontSize: 10,
-            color: '#000000',
-            padding: [8, 6, 8, 6],
+          tableValueCell: {
+            fontSize: 11,
+            color: darkText,
+            margin: [0, 8, 0, 8],
+          },
+          financialTitle: {
+            fontSize: 14,
+            bold: true,
+            color: primaryColor,
+          },
+          financialRowLabel: {
+            fontSize: 11,
+            color: darkText,
+          },
+          financialRowValue: {
+            fontSize: 11,
+            color: darkText,
           },
           totalLabel: {
-            fontSize: 11,
+            fontSize: 14,
             bold: true,
-            color: '#000000',
-            fillColor: '#e8e8e8',
-            padding: [8, 6, 8, 6],
           },
-          totalValue: {
+          totalAmount: {
+            fontSize: 16,
+            bold: true,
+          },
+          paymentHeaderCell: {
             fontSize: 11,
             bold: true,
-            color: '#000000',
-            fillColor: '#e8e8e8',
-            padding: [8, 6, 8, 6],
+          },
+          paymentValueCell: {
+            fontSize: 11,
+            color: darkText,
+          },
+          paymentHighlight: {
+            fontSize: 12,
+            bold: true,
+            color: accentColor,
+          },
+          paymentStatus: {
+            fontSize: 11,
+            bold: true,
+            color: accentColor,
+          },
+          observationsText: {
+            fontSize: 10,
+            color: darkText,
+            alignment: 'justify',
+            lineHeight: 1.5,
           },
         },
 
         defaultStyle: {
           font: 'Roboto',
-          fontSize: 10,
-          color: '#000000',
         },
       };
 
@@ -1377,9 +1593,6 @@ export class PdfService {
     }
   }
 
-  /**
-   * CONSTRUIR SECCIÓN DE PLAN DE PAGOS
-   */
   private buildPlanPagosSection(planPago: any): any[] {
     if (!planPago) {
       return [];
@@ -1397,63 +1610,114 @@ export class PdfService {
 
     return [
       {
-        text: 'PLAN DE PAGOS',
-        style: 'sectionHeader',
-        margin: [0, 10, 0, 10],
+        text: 'Plan de Pagos',
+        style: 'sectionTitle',
+        margin: [0, 25, 0, 10],
       },
       {
         table: {
           widths: ['50%', '50%'],
           body: [
             [
-              { text: 'Monto Total:', style: 'labelCell' },
-              { text: this.formatCurrency(planPago.total), style: 'valueCell', alignment: 'right' },
-            ],
-            [
-              { text: 'Monto Inicial:', style: 'labelCell' },
               {
-                text: this.formatCurrency(planPago.monto_inicial),
-                style: 'valueCell',
+                text: 'Monto Total',
+                style: 'paymentHeaderCell',
+                fillColor: '#0D9488',
+                color: '#FFFFFF',
+              },
+              {
+                text: this.formatCurrency(planPago.total),
+                style: 'paymentValueCell',
+                fillColor: '#FFFFFF',
                 alignment: 'right',
               },
             ],
             [
-              { text: 'Total Pagado:', style: 'labelCell' },
-              { text: this.formatCurrency(totalPagado), style: 'valueCell', alignment: 'right' },
+              {
+                text: 'Monto Inicial',
+                style: 'paymentHeaderCell',
+                fillColor: '#0D9488',
+                color: '#FFFFFF',
+              },
+              {
+                text: this.formatCurrency(planPago.monto_inicial),
+                style: 'paymentValueCell',
+                fillColor: '#FFFFFF',
+                alignment: 'right',
+              },
             ],
             [
-              { text: 'Saldo Pendiente:', style: 'labelCell' },
-              { text: this.formatCurrency(saldoPendiente), style: 'valueCell', alignment: 'right' },
+              {
+                text: 'Total Pagado',
+                style: 'paymentHeaderCell',
+                fillColor: '#0D9488',
+                color: '#FFFFFF',
+              },
+              {
+                text: this.formatCurrency(totalPagado),
+                style: 'paymentValueCell',
+                fillColor: '#FFFFFF',
+                alignment: 'right',
+              },
             ],
             [
-              { text: 'Porcentaje Pagado:', style: 'labelCell' },
-              { text: `${porcentajePagado.toFixed(1)}%`, style: 'valueCell', alignment: 'right' },
+              {
+                text: 'Saldo Pendiente',
+                style: 'paymentHeaderCell',
+                fillColor: '#0D9488',
+                color: '#FFFFFF',
+              },
+              {
+                text: this.formatCurrency(saldoPendiente),
+                style: 'paymentHighlight',
+                fillColor: '#FFFFFF',
+                alignment: 'right',
+              },
             ],
             [
-              { text: 'Estado:', style: 'labelCell' },
+              {
+                text: 'Porcentaje Pagado',
+                style: 'paymentHeaderCell',
+                fillColor: '#0D9488',
+                color: '#FFFFFF',
+              },
+              {
+                text: `${porcentajePagado.toFixed(1)}%`,
+                style: 'paymentValueCell',
+                fillColor: '#FFFFFF',
+                alignment: 'right',
+              },
+            ],
+            [
+              {
+                text: 'Estado',
+                style: 'paymentHeaderCell',
+                fillColor: '#0D9488',
+                color: '#FFFFFF',
+              },
               {
                 text: planPago.estado?.toUpperCase() || 'ACTIVO',
-                style: 'valueCell',
+                style: 'paymentStatus',
+                fillColor: '#FFFFFF',
                 alignment: 'right',
-                bold: true,
               },
             ],
           ],
         },
         layout: {
-          hLineWidth: () => 0.5,
-          vLineWidth: () => 0.5,
-          hLineColor: () => '#000000',
-          vLineColor: () => '#000000',
+          hLineWidth: () => 2,
+          vLineWidth: () => 2,
+          hLineColor: () => '#0D9488',
+          vLineColor: () => '#0D9488',
+          paddingLeft: () => 15,
+          paddingRight: () => 15,
+          paddingTop: () => 10,
+          paddingBottom: () => 10,
         },
-        margin: [0, 0, 0, 20],
       },
     ];
   }
 
-  /**
-   * CONSTRUIR SECCIÓN DE OBSERVACIONES
-   */
   private buildObservacionesSection(observaciones: string | undefined): any[] {
     if (!observaciones) {
       return [];
@@ -1461,26 +1725,37 @@ export class PdfService {
 
     return [
       {
-        text: 'OBSERVACIONES',
-        style: 'sectionHeader',
-        margin: [0, 0, 0, 10],
+        text: 'Observaciones',
+        style: 'sectionTitle',
+        margin: [0, 25, 0, 10],
       },
       {
-        text: observaciones,
-        style: {
-          fontSize: 10,
-          color: '#000000',
-          alignment: 'justify',
-          lineHeight: 1.4,
+        table: {
+          widths: ['100%'],
+          body: [
+            [
+              {
+                text: observaciones,
+                style: 'observationsText',
+                fillColor: '#FFFFFF',
+              },
+            ],
+          ],
         },
-        margin: [0, 0, 0, 20],
+        layout: {
+          hLineWidth: () => 2,
+          vLineWidth: () => 2,
+          hLineColor: () => '#0D9488',
+          vLineColor: () => '#0D9488',
+          paddingLeft: () => 15,
+          paddingRight: () => 15,
+          paddingTop: () => 15,
+          paddingBottom: () => 15,
+        },
       },
     ];
   }
 
-  /**
-   * MÉTODOS AUXILIARES PRIVADOS
-   */
   private formatDate(dateString: string | Date): string {
     if (!dateString) return 'N/A';
     try {
@@ -1494,7 +1769,6 @@ export class PdfService {
       return 'Fecha inválida';
     }
   }
-
   private formatCurrency(value: any): string {
     if (value === null || value === undefined) return '$ 0.00';
     const num = typeof value === 'string' ? parseFloat(value) : Number(value);
