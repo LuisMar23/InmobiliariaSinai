@@ -150,7 +150,7 @@
                                         <!-- NUEVO: Botón PDF Individual -->
                                         <button
                                             class="p-1.5 rounded-lg bg-orange-50 text-orange-600 hover:bg-orange-100 transition-colors"
-                                            (click)="generarPdfReservaIndividual()" title="Generar PDF">
+                                            (click)="generarPdfReservaIndividual(reserva)" title="Generar PDF">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                     d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -261,7 +261,7 @@
                             <!-- NUEVO: Botón PDF Individual en móvil -->
                             <button
                                 class="flex items-center justify-center gap-1 bg-orange-500 hover:bg-orange-600 text-white px-2 py-1.5 rounded text-xs font-medium shadow-sm transition flex-1"
-                                (click)="generarPdfReservaIndividual()">
+                                (click)="generarPdfReservaIndividual(reserva)">
                                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -577,7 +577,7 @@
 
         <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row justify-end gap-3">
             <!-- NUEVO: Botón Generar PDF Individual en Modal -->
-            <button (click)="generarPdfReservaIndividual()"
+            <button (click)="generarPdfReservas()"
                 class="flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg shadow-md transition-all duration-200 font-semibold w-full sm:w-auto order-1">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"

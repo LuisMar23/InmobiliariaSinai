@@ -193,15 +193,9 @@ export class VentaList implements OnInit {
     this.pdfService.generarPdfVentas(this.allVentas());
   }
 
-  // NUEVO: Generar PDF de venta individual (versión unificada)
-  generarPdfVentaIndividual(venta?: VentaDto) {
-    const ventaParaPdf = venta || this.ventaSeleccionada();
-    if (ventaParaPdf) {
-      this.pdfService.generarPdfVentaIndividual(ventaParaPdf);
-    } else {
-      this.notificationService.showError('No hay venta seleccionada para generar el PDF');
-    }
-  }
+  generarPdfVentaIndividual(venta: VentaDto) {
+  this.pdfService.generarPdfVentaIndividual(venta);
+}
 
   totalPages() {
     return Math.ceil(this.filteredVentas().length / this.pageSize());

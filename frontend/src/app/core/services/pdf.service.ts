@@ -1,12 +1,9 @@
 import { Injectable } from '@angular/core';
-
 declare const require: any;
-
 import * as pdfMakeLib from 'pdfmake/build/pdfmake';
 import * as pdfFonts from 'pdfmake/build/vfs_fonts';
 const pdfMake: any = pdfMakeLib;
 pdfMake.vfs = pdfFonts as any;
-
 pdfMake.fonts = {
   Roboto: {
     normal: 'Roboto-Regular.ttf',
@@ -22,62 +19,65 @@ pdfMake.fonts = {
 export class PdfService {
   constructor() {}
 
-  private primaryColor = '#0D9488';
-  private accentColor = '#14B8A6';
-  private darkColor = '#115E59';
-  private lightBg = '#F0FDFA';
-  private successColor = '#10B981';
-  private warningColor = '#F59E0B';
-  private errorColor = '#EF4444';
+  // Nueva paleta de colores verde esmeralda con mejor contraste
+  private primaryColor = '#047857';
+  private primaryLight = '#D1FAE5';
+  private primaryLighter = '#ECFDF5';
+  private primaryDark = '#065F46';
+  private accentColor = '#10B981';
+  private headerBg = '#065F46';
+  private headerTextColor = '#FFFFFF';
+  private successColor = '#059669';
+  private warningColor = '#D97706';
+  private errorColor = '#DC2626';
+  private textColor = '#1F2937';
+  private textLight = '#6B7280';
+  private borderColor = '#E5E7EB';
+  private tableHeaderBg = '#047857';
+  private tableStripedBg = '#F9FAFB';
 
   generarPdfClientes(clientes: any[]): void {
     try {
       if (!clientes || clientes.length === 0) {
-        console.error('No hay clientes para generar el PDF');
         return;
       }
-
       const fechaHora = new Date().toLocaleString('es-BO');
       const fechaGeneracion = new Date().toLocaleDateString('es-BO');
-
       const tableBody: any[] = [];
 
       tableBody.push([
         { text: '#', style: 'tableHeader', alignment: 'center' },
         { text: 'CLIENTE', style: 'tableHeader', alignment: 'left' },
-        { text: 'CONTACTO', style: 'tableHeader', alignment: 'left' },
         { text: 'DOCUMENTO', style: 'tableHeader', alignment: 'center' },
-        { text: 'PLAN PAGO', style: 'tableHeader', alignment: 'center' },
+        { text: 'TELÉFONO', style: 'tableHeader', alignment: 'center' },
+        { text: 'TOTAL DEUDA', style: 'tableHeader', alignment: 'center' },
+        { text: 'TOTAL PAGADO', style: 'tableHeader', alignment: 'center' },
+        { text: 'SALDO', style: 'tableHeader', alignment: 'center' },
         { text: 'AVANCE', style: 'tableHeader', alignment: 'center' },
       ]);
 
       clientes.forEach((cliente, index) => {
         const infoPlanPago = this.obtenerInfoPlanPagoCliente(cliente);
-
         tableBody.push([
           { text: (index + 1).toString(), style: 'tableCell', alignment: 'center' },
-          {
-            stack: [
-              { text: cliente.fullName || 'N/A', style: 'tableCellBold' },
-              {
-                text: cliente.direccion || 'Sin dirección',
-                style: 'tableCellSmall',
-                color: '#666',
-              },
-            ],
-            alignment: 'left',
-          },
-          {
-            stack: [
-              { text: cliente.email || 'Sin email', style: 'tableCell' },
-              { text: cliente.telefono || 'Sin teléfono', style: 'tableCellSmall', color: '#666' },
-            ],
-            alignment: 'left',
-          },
+          { text: cliente.fullName || 'N/A', style: 'tableCellBold' },
           { text: cliente.ci || 'N/A', style: 'tableCell', alignment: 'center' },
+          { text: cliente.telefono || 'N/A', style: 'tableCell', alignment: 'center' },
           {
-            text: infoPlanPago.tienePlan ? 'SÍ' : 'NO',
-            style: infoPlanPago.tienePlan ? 'statusActive' : 'statusInactive',
+            text: infoPlanPago.tienePlan
+              ? this.formatCurrency(infoPlanPago.totalDeuda)
+              : 'SIN DEUDA',
+            style: infoPlanPago.tienePlan ? 'tableCellBold' : 'tableCell',
+            alignment: 'center',
+          },
+          {
+            text: infoPlanPago.tienePlan ? this.formatCurrency(infoPlanPago.totalPagado) : 'N/A',
+            style: 'tableCell',
+            alignment: 'center',
+          },
+          {
+            text: infoPlanPago.tienePlan ? this.formatCurrency(infoPlanPago.saldoPendiente) : 'N/A',
+            style: infoPlanPago.saldoPendiente > 0 ? 'deudaWarning' : 'tableCellSuccess',
             alignment: 'center',
           },
           {
@@ -92,13 +92,11 @@ export class PdfService {
       const clientesConPlan = clientes.filter(
         (cliente) => this.obtenerInfoPlanPagoCliente(cliente).tienePlan
       ).length;
-      const clientesSinPlan = totalClientes - clientesConPlan;
 
       const docDefinition: any = {
         pageSize: 'A4',
         pageOrientation: 'landscape',
-        pageMargins: [20, 100, 20, 60],
-
+        pageMargins: [20, 120, 20, 60],
         header: {
           stack: [
             {
@@ -107,107 +105,144 @@ export class PdfService {
                   type: 'rect',
                   x: 0,
                   y: 0,
-                  w: 595,
-                  h: 80,
-                  color: this.primaryColor,
+                  w: 595.28,
+                  h: 100,
+                  color: this.headerBg,
                 },
               ],
             },
             {
-              text: 'REPORTE DE CLIENTES',
-              style: 'mainHeader',
-              margin: [20, -60, 20, 0],
-            },
-            {
-              text: `Generado el ${fechaHora}`,
-              style: 'subHeader',
-              margin: [20, 5, 20, 0],
+              stack: [
+                {
+                  text: 'REPORTE DE CLIENTES - ESTADO DE PAGOS',
+                  style: 'mainHeader',
+                  margin: [0, 20, 0, 0],
+                },
+                {
+                  text: `Generado el ${fechaHora}`,
+                  style: 'subHeader',
+                  margin: [0, 5, 0, 0],
+                },
+              ],
+              alignment: 'center',
+              margin: [20, -90, 20, 0],
             },
           ],
         },
-
         footer: (currentPage: number, pageCount: number) => {
           return {
-            columns: [
+            stack: [
               {
-                text: 'Sistema de Gestión Inmobiliaria',
-                style: 'footer',
-                alignment: 'left',
-                margin: [20, 0, 0, 0],
+                canvas: [
+                  {
+                    type: 'rect',
+                    x: 0,
+                    y: 0,
+                    w: 595.28,
+                    h: 30,
+                    color: this.primaryLighter,
+                  },
+                ],
               },
               {
-                text: `Página ${currentPage} de ${pageCount}`,
-                style: 'footer',
-                alignment: 'right',
-                margin: [0, 0, 20, 0],
+                columns: [
+                  {
+                    text: 'Sistema de Gestión Inmobiliaria',
+                    style: 'footer',
+                    alignment: 'left',
+                    margin: [20, -25, 0, 0],
+                  },
+                  {
+                    text: `Página ${currentPage} de ${pageCount}`,
+                    style: 'footer',
+                    alignment: 'right',
+                    margin: [0, -25, 20, 0],
+                  },
+                ],
               },
             ],
           };
         },
-
         content: [
           {
             columns: [
               {
-                width: '33%',
+                width: '50%',
                 stack: [
-                  { text: 'TOTAL CLIENTES', style: 'statLabel' },
-                  { text: totalClientes.toString(), style: 'statValue' },
+                  {
+                    text: 'TOTAL CLIENTES',
+                    style: 'statLabel',
+                    alignment: 'center',
+                    margin: [0, 0, 0, 5],
+                  },
+                  {
+                    text: totalClientes.toString(),
+                    style: 'statValue',
+                    alignment: 'center',
+                  },
                 ],
-                alignment: 'center',
+                background: this.primaryLighter,
+                margin: [0, 0, 10, 20],
+                padding: [10, 10, 10, 10],
               },
               {
-                width: '33%',
+                width: '50%',
                 stack: [
-                  { text: 'CON PLAN PAGO', style: 'statLabel' },
-                  { text: clientesConPlan.toString(), style: 'statValue' },
+                  {
+                    text: 'CON PLAN PAGO',
+                    style: 'statLabel',
+                    alignment: 'center',
+                    margin: [0, 0, 0, 5],
+                  },
+                  {
+                    text: clientesConPlan.toString(),
+                    style: 'statValue',
+                    alignment: 'center',
+                  },
                 ],
-                alignment: 'center',
-              },
-              {
-                width: '33%',
-                stack: [
-                  { text: 'SIN PLAN PAGO', style: 'statLabel' },
-                  { text: clientesSinPlan.toString(), style: 'statValue' },
-                ],
-                alignment: 'center',
+                background: this.primaryLighter,
+                margin: [10, 0, 0, 20],
+                padding: [10, 10, 10, 10],
               },
             ],
             margin: [0, 0, 0, 20],
           },
-
           {
             table: {
               headerRows: 1,
-              widths: ['5%', '25%', '20%', '15%', '15%', '20%'],
+              widths: ['5%', '25%', '12%', '13%', '15%', '15%', '10%', '5%'],
               body: tableBody,
             },
             layout: {
+              fillColor: (rowIndex: number, node: any, columnIndex: number) => {
+                if (rowIndex === 0) return this.tableHeaderBg;
+                return rowIndex % 2 === 0 ? this.tableStripedBg : null;
+              },
               hLineWidth: (i: number) => (i === 0 ? 2 : 0.5),
               vLineWidth: () => 0.5,
-              hLineColor: (i: number) => (i === 0 ? this.primaryColor : '#E5E7EB'),
-              vLineColor: () => '#E5E7EB',
-              paddingTop: () => 8,
-              paddingBottom: () => 8,
+              hLineColor: () => this.borderColor,
+              vLineColor: () => this.borderColor,
+              paddingTop: (i: number) => (i === 0 ? 10 : 8),
+              paddingBottom: (i: number) => (i === 0 ? 10 : 8),
             },
           },
         ],
-
         styles: {
           mainHeader: {
-            fontSize: 20,
+            fontSize: 18,
             bold: true,
-            color: '#FFFFFF',
+            color: this.headerTextColor,
             alignment: 'center',
           },
           subHeader: {
             fontSize: 10,
-            color: '#CCFBF1',
+            color: this.headerTextColor,
             alignment: 'center',
           },
           footer: {
             fontSize: 8,
-            color: '#6B7280',
+            color: this.primaryDark,
+            bold: true,
           },
           statLabel: {
             fontSize: 11,
@@ -215,43 +250,38 @@ export class PdfService {
             bold: true,
           },
           statValue: {
-            fontSize: 18,
-            color: this.darkColor,
+            fontSize: 16,
+            color: this.primaryDark,
             bold: true,
           },
           tableHeader: {
             fontSize: 9,
             bold: true,
-            color: '#FFFFFF',
-            fillColor: this.primaryColor,
+            color: this.headerTextColor,
           },
           tableCell: {
-            fontSize: 8,
-            color: '#1F2937',
+            fontSize: 9,
+            color: this.textColor,
           },
           tableCellBold: {
-            fontSize: 8,
-            color: '#1F2937',
+            fontSize: 9,
+            color: this.textColor,
             bold: true,
           },
-          tableCellSmall: {
-            fontSize: 7,
-            color: '#6B7280',
-          },
-          statusActive: {
-            fontSize: 8,
-            bold: true,
+          tableCellSuccess: {
+            fontSize: 9,
             color: this.successColor,
+            bold: true,
           },
-          statusInactive: {
-            fontSize: 8,
+          deudaWarning: {
+            fontSize: 9,
             bold: true,
             color: this.errorColor,
           },
         },
-
         defaultStyle: {
           font: 'Roboto',
+          color: this.textColor,
         },
       };
 
@@ -265,17 +295,14 @@ export class PdfService {
   generarPdfClienteIndividual(cliente: any): void {
     try {
       if (!cliente) {
-        console.error('No hay datos de cliente para generar el PDF');
         return;
       }
-
       const fechaHora = new Date().toLocaleString('es-BO');
-      const infoDeudas = this.calcularInfoDeudasCliente(cliente);
+      const infoPlanPago = this.obtenerInfoPlanPagoCliente(cliente);
 
       const docDefinition: any = {
         pageSize: 'A4',
-        pageMargins: [40, 120, 40, 60],
-
+        pageMargins: [40, 140, 40, 60],
         header: {
           stack: [
             {
@@ -284,58 +311,74 @@ export class PdfService {
                   type: 'rect',
                   x: 0,
                   y: 0,
-                  w: 595,
-                  h: 80,
-                  color: this.primaryColor,
+                  w: 595.28,
+                  h: 110,
+                  color: this.headerBg,
                 },
               ],
             },
             {
-              text: 'INFORMACIÓN DEL CLIENTE',
-              style: 'mainHeader',
-              margin: [40, -60, 40, 0],
-            },
-            {
-              text: `Cliente #${cliente.id}`,
-              style: 'subHeader',
-              margin: [40, 5, 40, 0],
+              stack: [
+                {
+                  text: 'INFORMACIÓN DETALLADA DEL CLIENTE',
+                  style: 'mainHeader',
+                  margin: [0, 25, 0, 0],
+                },
+                {
+                  text: `Cliente #${cliente.id}`,
+                  style: 'subHeader',
+                  margin: [0, 5, 0, 0],
+                },
+              ],
+              alignment: 'center',
+              margin: [40, -100, 40, 0],
             },
           ],
         },
-
         footer: (currentPage: number, pageCount: number) => {
           return {
-            columns: [
+            stack: [
               {
-                text: `Generado: ${fechaHora}`,
-                style: 'footer',
-                alignment: 'left',
-                margin: [40, 0, 0, 0],
+                canvas: [
+                  {
+                    type: 'rect',
+                    x: 0,
+                    y: 0,
+                    w: 595.28,
+                    h: 30,
+                    color: this.primaryLighter,
+                  },
+                ],
               },
               {
-                text: `Página ${currentPage} de ${pageCount}`,
-                style: 'footer',
-                alignment: 'right',
-                margin: [0, 0, 40, 0],
+                columns: [
+                  {
+                    text: `Generado: ${fechaHora}`,
+                    style: 'footer',
+                    alignment: 'left',
+                    margin: [40, -25, 0, 0],
+                  },
+                  {
+                    text: `Página ${currentPage} de ${pageCount}`,
+                    style: 'footer',
+                    alignment: 'right',
+                    margin: [0, -25, 40, 0],
+                  },
+                ],
               },
             ],
           };
         },
-
         content: [
           {
             columns: [
               {
                 width: '60%',
                 stack: [
-                  {
-                    text: cliente.fullName || 'N/A',
-                    style: 'clientName',
-                  },
+                  { text: cliente.fullName || 'N/A', style: 'clientName' },
                   {
                     text: cliente.ci ? `CI: ${cliente.ci}` : 'Documento no registrado',
                     style: 'clientDetail',
-                    margin: [0, 5, 0, 0],
                   },
                 ],
               },
@@ -343,27 +386,28 @@ export class PdfService {
                 width: '40%',
                 stack: [
                   {
-                    text: infoDeudas.tieneDeudas ? 'CON DEUDAS' : 'SIN DEUDAS',
-                    style: infoDeudas.tieneDeudas ? 'statusDeuda' : 'statusSinDeuda',
+                    text: infoPlanPago.tienePlan ? 'CON PLAN PAGO' : 'SIN PLAN PAGO',
+                    style: infoPlanPago.tienePlan ? 'statusActive' : 'statusInactive',
                     alignment: 'right',
+                    margin: [0, 10, 0, 0],
                   },
                 ],
               },
             ],
             margin: [0, 0, 0, 25],
           },
-
           {
             stack: [
-              { text: 'INFORMACIÓN DE CONTACTO', style: 'sectionTitle' },
+              {
+                text: 'INFORMACIÓN DE CONTACTO',
+                style: 'sectionTitle',
+                background: this.primaryLighter,
+                margin: [0, 0, 0, 10],
+              },
               {
                 table: {
-                  widths: ['30%', '70%'],
+                  widths: ['25%', '75%'],
                   body: [
-                    [
-                      { text: 'Email:', style: 'labelCell' },
-                      { text: cliente.email || 'No registrado', style: 'valueCell' },
-                    ],
                     [
                       { text: 'Teléfono:', style: 'labelCell' },
                       { text: cliente.telefono || 'No registrado', style: 'valueCell' },
@@ -372,105 +416,107 @@ export class PdfService {
                       { text: 'Dirección:', style: 'labelCell' },
                       { text: cliente.direccion || 'No registrada', style: 'valueCell' },
                     ],
+                    [
+                      { text: 'Observaciones:', style: 'labelCell' },
+                      { text: cliente.observaciones || 'Ninguna', style: 'valueCell' },
+                    ],
                   ],
                 },
                 layout: {
                   hLineWidth: () => 0.5,
                   vLineWidth: () => 0.5,
-                  hLineColor: () => '#E5E7EB',
-                  vLineColor: () => '#E5E7EB',
+                  hLineColor: () => this.borderColor,
+                  vLineColor: () => this.borderColor,
+                  fillColor: (rowIndex: number) =>
+                    rowIndex % 2 === 0 ? this.tableStripedBg : null,
                 },
               },
             ],
             margin: [0, 0, 0, 25],
           },
-
           {
             stack: [
-              { text: 'SITUACIÓN FINANCIERA', style: 'sectionTitle' },
-              this.buildDeudasSection(infoDeudas),
+              {
+                text: 'RESUMEN FINANCIERO',
+                style: 'sectionTitle',
+                background: this.primaryLighter,
+                margin: [0, 0, 0, 10],
+              },
+              this.buildResumenFinancieroCliente(infoPlanPago),
             ],
+            margin: [0, 0, 0, 25],
           },
-
-          ...this.buildVentasClienteSection(cliente),
+          ...this.buildDetalleVentasCliente(cliente),
         ],
-
         styles: {
           mainHeader: {
-            fontSize: 20,
+            fontSize: 18,
             bold: true,
-            color: '#FFFFFF',
+            color: this.headerTextColor,
             alignment: 'center',
           },
           subHeader: {
             fontSize: 12,
-            color: '#CCFBF1',
+            color: this.headerTextColor,
             alignment: 'center',
           },
           footer: {
             fontSize: 8,
-            color: '#6B7280',
+            color: this.primaryDark,
+            bold: true,
           },
           clientName: {
-            fontSize: 18,
+            fontSize: 16,
             bold: true,
-            color: this.darkColor,
+            color: this.primaryDark,
           },
           clientDetail: {
             fontSize: 12,
-            color: '#6B7280',
+            color: this.textLight,
           },
           sectionTitle: {
             fontSize: 14,
             bold: true,
-            color: this.primaryColor,
-            margin: [0, 0, 0, 10],
+            color: this.primaryDark,
+            padding: [10, 5, 10, 5],
           },
           labelCell: {
             fontSize: 10,
             bold: true,
-            color: this.darkColor,
-            fillColor: this.lightBg,
-            padding: [8, 6, 8, 6],
+            color: this.textColor,
           },
           valueCell: {
             fontSize: 10,
-            color: '#1F2937',
-            padding: [8, 6, 8, 6],
+            color: this.textColor,
           },
-          statusDeuda: {
-            fontSize: 12,
-            bold: true,
-            color: this.errorColor,
-          },
-          statusSinDeuda: {
+          statusActive: {
             fontSize: 12,
             bold: true,
             color: this.successColor,
           },
-          deudaLabel: {
+          statusInactive: {
+            fontSize: 12,
+            bold: true,
+            color: this.textLight,
+          },
+          financialLabel: {
             fontSize: 10,
             bold: true,
-            color: this.darkColor,
+            color: this.textColor,
           },
-          deudaValue: {
+          financialValue: {
             fontSize: 10,
-            color: '#1F2937',
+            color: this.textColor,
           },
-          deudaHighlight: {
-            fontSize: 11,
-            bold: true,
-            color: this.primaryColor,
-          },
-          deudaWarning: {
-            fontSize: 11,
+          financialWarning: {
+            fontSize: 10,
             bold: true,
             color: this.errorColor,
           },
         },
-
         defaultStyle: {
           font: 'Roboto',
+          color: this.textColor,
         },
       };
 
@@ -484,41 +530,38 @@ export class PdfService {
   generarPdfReservas(reservas: any[]): void {
     try {
       if (!reservas || reservas.length === 0) {
-        console.error('No hay reservas para generar el PDF');
         return;
       }
-
       const fechaHora = new Date().toLocaleString('es-BO');
       const fechaGeneracion = new Date().toLocaleDateString('es-BO');
-
       const tableBody: any[] = [];
 
       tableBody.push([
         { text: '#', style: 'tableHeader', alignment: 'center' },
-        { text: 'RESERVA', style: 'tableHeader', alignment: 'left' },
+        { text: 'RESERVA', style: 'tableHeader', alignment: 'center' },
         { text: 'CLIENTE', style: 'tableHeader', alignment: 'left' },
         { text: 'LOTE', style: 'tableHeader', alignment: 'center' },
         { text: 'MONTO', style: 'tableHeader', alignment: 'right' },
-        { text: 'FECHAS', style: 'tableHeader', alignment: 'center' },
+        { text: 'FECHA INICIO', style: 'tableHeader', alignment: 'center' },
+        { text: 'FECHA VENCE', style: 'tableHeader', alignment: 'center' },
         { text: 'ESTADO', style: 'tableHeader', alignment: 'center' },
       ]);
 
       reservas.forEach((reserva, index) => {
-        const fechaInicio = this.formatDate(reserva.fechaInicio);
-        const fechaVencimiento = this.formatDate(reserva.fechaVencimiento);
-        const montoReserva = this.formatCurrency(reserva.montoReserva);
-
         tableBody.push([
           { text: (index + 1).toString(), style: 'tableCell', alignment: 'center' },
-          { text: `#${reserva.id}`, style: 'tableCellBold' },
+          { text: `#${reserva.id}`, style: 'tableCellBold', alignment: 'center' },
           { text: reserva.cliente?.fullName || 'N/A', style: 'tableCell' },
           { text: reserva.lote?.numeroLote || 'N/A', style: 'tableCell', alignment: 'center' },
-          { text: montoReserva, style: 'tableCellBold', alignment: 'right' },
           {
-            stack: [
-              { text: `Inicio: ${fechaInicio}`, style: 'tableCellSmall' },
-              { text: `Vence: ${fechaVencimiento}`, style: 'tableCellSmall' },
-            ],
+            text: this.formatCurrency(reserva.montoReserva),
+            style: 'tableCellBold',
+            alignment: 'right',
+          },
+          { text: this.formatDate(reserva.fechaInicio), style: 'tableCell', alignment: 'center' },
+          {
+            text: this.formatDate(reserva.fechaVencimiento),
+            style: 'tableCell',
             alignment: 'center',
           },
           {
@@ -529,16 +572,10 @@ export class PdfService {
         ]);
       });
 
-      const totalReservas = reservas.length;
-      const totalMonto = reservas.reduce((sum, reserva) => sum + (reserva.montoReserva || 0), 0);
-      const reservasActivas = reservas.filter((r) => r.estado === 'ACTIVA').length;
-      const reservasVencidas = reservas.filter((r) => r.estado === 'VENCIDA').length;
-
       const docDefinition: any = {
         pageSize: 'A4',
         pageOrientation: 'landscape',
-        pageMargins: [20, 100, 20, 60],
-
+        pageMargins: [20, 120, 20, 60],
         header: {
           stack: [
             {
@@ -547,149 +584,120 @@ export class PdfService {
                   type: 'rect',
                   x: 0,
                   y: 0,
-                  w: 595,
-                  h: 80,
-                  color: this.primaryColor,
+                  w: 595.28,
+                  h: 100,
+                  color: this.headerBg,
                 },
               ],
             },
             {
-              text: 'REPORTE DE RESERVAS',
-              style: 'mainHeader',
-              margin: [20, -60, 20, 0],
-            },
-            {
-              text: `Generado el ${fechaHora}`,
-              style: 'subHeader',
-              margin: [20, 5, 20, 0],
+              stack: [
+                {
+                  text: 'REPORTE DE RESERVAS',
+                  style: 'mainHeader',
+                  margin: [0, 20, 0, 0],
+                },
+                {
+                  text: `Generado el ${fechaHora}`,
+                  style: 'subHeader',
+                  margin: [0, 5, 0, 0],
+                },
+              ],
+              alignment: 'center',
+              margin: [20, -90, 20, 0],
             },
           ],
         },
-
         footer: (currentPage: number, pageCount: number) => {
           return {
-            columns: [
+            stack: [
               {
-                text: 'Sistema de Gestión Inmobiliaria',
-                style: 'footer',
-                alignment: 'left',
-                margin: [20, 0, 0, 0],
+                canvas: [
+                  {
+                    type: 'rect',
+                    x: 0,
+                    y: 0,
+                    w: 595.28,
+                    h: 30,
+                    color: this.primaryLighter,
+                  },
+                ],
               },
               {
-                text: `Página ${currentPage} de ${pageCount}`,
-                style: 'footer',
-                alignment: 'right',
-                margin: [0, 0, 20, 0],
+                columns: [
+                  {
+                    text: 'Sistema de Gestión Inmobiliaria',
+                    style: 'footer',
+                    alignment: 'left',
+                    margin: [20, -25, 0, 0],
+                  },
+                  {
+                    text: `Página ${currentPage} de ${pageCount}`,
+                    style: 'footer',
+                    alignment: 'right',
+                    margin: [0, -25, 20, 0],
+                  },
+                ],
               },
             ],
           };
         },
-
         content: [
-          {
-            columns: [
-              {
-                width: '25%',
-                stack: [
-                  { text: 'TOTAL', style: 'statLabel' },
-                  { text: totalReservas.toString(), style: 'statValue' },
-                ],
-                alignment: 'center',
-              },
-              {
-                width: '25%',
-                stack: [
-                  { text: 'MONTO TOTAL', style: 'statLabel' },
-                  { text: this.formatCurrency(totalMonto), style: 'statValue' },
-                ],
-                alignment: 'center',
-              },
-              {
-                width: '25%',
-                stack: [
-                  { text: 'ACTIVAS', style: 'statLabel' },
-                  { text: reservasActivas.toString(), style: 'statValue' },
-                ],
-                alignment: 'center',
-              },
-              {
-                width: '25%',
-                stack: [
-                  { text: 'VENCIDAS', style: 'statLabel' },
-                  { text: reservasVencidas.toString(), style: 'statValue' },
-                ],
-                alignment: 'center',
-              },
-            ],
-            margin: [0, 0, 0, 20],
-          },
-
           {
             table: {
               headerRows: 1,
-              widths: ['5%', '10%', '20%', '10%', '15%', '20%', '20%'],
+              widths: ['5%', '8%', '27%', '10%', '15%', '15%', '15%', '5%'],
               body: tableBody,
             },
             layout: {
+              fillColor: (rowIndex: number, node: any, columnIndex: number) => {
+                if (rowIndex === 0) return this.tableHeaderBg;
+                return rowIndex % 2 === 0 ? this.tableStripedBg : null;
+              },
               hLineWidth: (i: number) => (i === 0 ? 2 : 0.5),
               vLineWidth: () => 0.5,
-              hLineColor: (i: number) => (i === 0 ? this.primaryColor : '#E5E7EB'),
-              vLineColor: () => '#E5E7EB',
-              paddingTop: () => 8,
-              paddingBottom: () => 8,
+              hLineColor: () => this.borderColor,
+              vLineColor: () => this.borderColor,
+              paddingTop: (i: number) => (i === 0 ? 10 : 8),
+              paddingBottom: (i: number) => (i === 0 ? 10 : 8),
             },
           },
         ],
-
         styles: {
           mainHeader: {
-            fontSize: 20,
+            fontSize: 18,
             bold: true,
-            color: '#FFFFFF',
+            color: this.headerTextColor,
             alignment: 'center',
           },
           subHeader: {
             fontSize: 10,
-            color: '#CCFBF1',
+            color: this.headerTextColor,
             alignment: 'center',
           },
           footer: {
             fontSize: 8,
-            color: '#6B7280',
-          },
-          statLabel: {
-            fontSize: 11,
-            color: this.primaryColor,
-            bold: true,
-          },
-          statValue: {
-            fontSize: 16,
-            color: this.darkColor,
+            color: this.primaryDark,
             bold: true,
           },
           tableHeader: {
             fontSize: 10,
             bold: true,
-            color: '#FFFFFF',
-            fillColor: this.primaryColor,
+            color: this.headerTextColor,
           },
           tableCell: {
             fontSize: 9,
-            color: '#1F2937',
+            color: this.textColor,
           },
           tableCellBold: {
             fontSize: 9,
-            color: '#1F2937',
+            color: this.textColor,
             bold: true,
           },
-          tableCellSmall: {
-            fontSize: 8,
-            color: '#6B7280',
-          },
         },
-
         defaultStyle: {
           font: 'Roboto',
+          color: this.textColor,
         },
       };
 
@@ -703,19 +711,13 @@ export class PdfService {
   generarPdfReservaIndividual(reserva: any): void {
     try {
       if (!reserva) {
-        console.error('No hay datos de reserva para generar el PDF');
         return;
       }
-
       const fechaHora = new Date().toLocaleString('es-BO');
-      const fechaInicio = this.formatDate(reserva.fechaInicio);
-      const fechaVencimiento = this.formatDate(reserva.fechaVencimiento);
-      const montoReserva = this.formatCurrency(reserva.montoReserva);
 
       const docDefinition: any = {
         pageSize: 'A4',
-        pageMargins: [40, 120, 40, 60],
-
+        pageMargins: [40, 140, 40, 60],
         header: {
           stack: [
             {
@@ -724,54 +726,79 @@ export class PdfService {
                   type: 'rect',
                   x: 0,
                   y: 0,
-                  w: 595,
-                  h: 80,
-                  color: this.primaryColor,
+                  w: 595.28,
+                  h: 110,
+                  color: this.headerBg,
                 },
               ],
             },
             {
-              text: 'COMPROBANTE DE RESERVA',
-              style: 'mainHeader',
-              margin: [40, -60, 40, 0],
-            },
-            {
-              text: `Reserva #${reserva.id}`,
-              style: 'subHeader',
-              margin: [40, 5, 40, 0],
+              stack: [
+                {
+                  text: 'COMPROBANTE DE RESERVA',
+                  style: 'mainHeader',
+                  margin: [0, 25, 0, 0],
+                },
+                {
+                  text: `Reserva #${reserva.id}`,
+                  style: 'subHeader',
+                  margin: [0, 5, 0, 0],
+                },
+              ],
+              alignment: 'center',
+              margin: [40, -100, 40, 0],
             },
           ],
         },
-
         footer: (currentPage: number, pageCount: number) => {
           return {
-            columns: [
+            stack: [
               {
-                text: `Generado: ${fechaHora}`,
-                style: 'footer',
-                alignment: 'left',
-                margin: [40, 0, 0, 0],
+                canvas: [
+                  {
+                    type: 'rect',
+                    x: 0,
+                    y: 0,
+                    w: 595.28,
+                    h: 30,
+                    color: this.primaryLighter,
+                  },
+                ],
               },
               {
-                text: `Página ${currentPage} de ${pageCount}`,
-                style: 'footer',
-                alignment: 'right',
-                margin: [0, 0, 40, 0],
+                columns: [
+                  {
+                    text: `Generado: ${fechaHora}`,
+                    style: 'footer',
+                    alignment: 'left',
+                    margin: [40, -25, 0, 0],
+                  },
+                  {
+                    text: `Página ${currentPage} de ${pageCount}`,
+                    style: 'footer',
+                    alignment: 'right',
+                    margin: [0, -25, 40, 0],
+                  },
+                ],
               },
             ],
           };
         },
-
         content: [
           {
             columns: [
               {
                 width: '50%',
                 stack: [
-                  { text: 'INFORMACIÓN GENERAL', style: 'sectionTitle' },
+                  {
+                    text: 'INFORMACIÓN GENERAL',
+                    style: 'sectionTitle',
+                    background: this.primaryLighter,
+                    margin: [0, 0, 0, 10],
+                  },
                   {
                     table: {
-                      widths: ['40%', '60%'],
+                      widths: ['35%', '65%'],
                       body: [
                         [
                           { text: 'Estado:', style: 'labelCell' },
@@ -782,15 +809,18 @@ export class PdfService {
                         ],
                         [
                           { text: 'Monto:', style: 'labelCell' },
-                          { text: montoReserva, style: 'valueCellBold' },
+                          {
+                            text: this.formatCurrency(reserva.montoReserva),
+                            style: 'valueCellBold',
+                          },
                         ],
                         [
                           { text: 'Fecha Inicio:', style: 'labelCell' },
-                          { text: fechaInicio, style: 'valueCell' },
+                          { text: this.formatDate(reserva.fechaInicio), style: 'valueCell' },
                         ],
                         [
                           { text: 'Fecha Vence:', style: 'labelCell' },
-                          { text: fechaVencimiento, style: 'valueCell' },
+                          { text: this.formatDate(reserva.fechaVencimiento), style: 'valueCell' },
                         ],
                       ],
                     },
@@ -801,7 +831,12 @@ export class PdfService {
               {
                 width: '50%',
                 stack: [
-                  { text: 'CLIENTE', style: 'sectionTitle' },
+                  {
+                    text: 'CLIENTE',
+                    style: 'sectionTitle',
+                    background: this.primaryLighter,
+                    margin: [0, 0, 0, 10],
+                  },
                   {
                     table: {
                       widths: ['100%'],
@@ -811,14 +846,12 @@ export class PdfService {
                             stack: [
                               { text: reserva.cliente?.fullName || 'N/A', style: 'clientName' },
                               {
-                                text: reserva.cliente?.email || 'Sin email',
-                                style: 'clientDetail',
-                              },
-                              {
                                 text: reserva.cliente?.telefono || 'Sin teléfono',
                                 style: 'clientDetail',
                               },
                             ],
+                            background: this.primaryLight,
+                            padding: [10, 10, 10, 10],
                           },
                         ],
                       ],
@@ -835,10 +868,10 @@ export class PdfService {
             ],
             margin: [0, 0, 0, 25],
           },
-
           {
             text: 'DETALLE DEL INMUEBLE',
             style: 'sectionTitle',
+            background: this.primaryLighter,
             margin: [0, 0, 0, 10],
           },
           {
@@ -846,10 +879,10 @@ export class PdfService {
               widths: ['25%', '25%', '25%', '25%'],
               body: [
                 [
-                  { text: 'Lote', style: 'labelCell', fillColor: this.lightBg },
-                  { text: 'Superficie', style: 'labelCell', fillColor: this.lightBg },
-                  { text: 'Urbanización', style: 'labelCell', fillColor: this.lightBg },
-                  { text: 'Precio Base', style: 'labelCell', fillColor: this.lightBg },
+                  { text: 'Lote', style: 'labelCell', fillColor: this.primaryLight },
+                  { text: 'Superficie', style: 'labelCell', fillColor: this.primaryLight },
+                  { text: 'Urbanización', style: 'labelCell', fillColor: this.primaryLight },
+                  { text: 'Precio Base', style: 'labelCell', fillColor: this.primaryLight },
                 ],
                 [
                   { text: reserva.lote?.numeroLote || 'N/A', style: 'valueCell' },
@@ -862,61 +895,61 @@ export class PdfService {
             layout: {
               hLineWidth: () => 0.5,
               vLineWidth: () => 0.5,
-              hLineColor: () => '#E5E7EB',
-              vLineColor: () => '#E5E7EB',
+              hLineColor: () => this.borderColor,
+              vLineColor: () => this.borderColor,
             },
           },
         ],
-
         styles: {
           mainHeader: {
-            fontSize: 20,
+            fontSize: 18,
             bold: true,
-            color: '#FFFFFF',
+            color: this.headerTextColor,
             alignment: 'center',
           },
           subHeader: {
             fontSize: 12,
-            color: '#CCFBF1',
+            color: this.headerTextColor,
             alignment: 'center',
           },
           footer: {
             fontSize: 8,
-            color: '#6B7280',
+            color: this.primaryDark,
+            bold: true,
           },
           sectionTitle: {
             fontSize: 14,
             bold: true,
-            color: this.primaryColor,
-            margin: [0, 0, 0, 10],
+            color: this.primaryDark,
+            padding: [10, 5, 10, 5],
           },
           labelCell: {
             fontSize: 10,
             bold: true,
-            color: this.darkColor,
+            color: this.textColor,
           },
           valueCell: {
             fontSize: 10,
-            color: '#1F2937',
+            color: this.textColor,
           },
           valueCellBold: {
             fontSize: 10,
-            color: '#1F2937',
+            color: this.textColor,
             bold: true,
           },
           clientName: {
             fontSize: 12,
             bold: true,
-            color: this.darkColor,
+            color: this.primaryDark,
           },
           clientDetail: {
             fontSize: 10,
-            color: '#6B7280',
+            color: this.textLight,
           },
         },
-
         defaultStyle: {
           font: 'Roboto',
+          color: this.textColor,
         },
       };
 
@@ -930,67 +963,56 @@ export class PdfService {
   generarPdfVentas(ventas: any[]): void {
     try {
       if (!ventas || ventas.length === 0) {
-        console.error('No hay ventas para generar el PDF');
         return;
       }
-
       const fechaHora = new Date().toLocaleString('es-BO');
       const fechaGeneracion = new Date().toLocaleDateString('es-BO');
-
       const tableBody: any[] = [];
 
       tableBody.push([
         { text: '#', style: 'tableHeader', alignment: 'center' },
-        { text: 'VENTA', style: 'tableHeader', alignment: 'left' },
+        { text: 'VENTA', style: 'tableHeader', alignment: 'center' },
         { text: 'CLIENTE', style: 'tableHeader', alignment: 'left' },
         { text: 'LOTE', style: 'tableHeader', alignment: 'center' },
-        { text: 'MONTO', style: 'tableHeader', alignment: 'right' },
-        { text: 'ESTADO', style: 'tableHeader', alignment: 'center' },
-        { text: 'PLAN PAGO', style: 'tableHeader', alignment: 'center' },
+        { text: 'FECHA VENTA', style: 'tableHeader', alignment: 'center' },
+        { text: 'TOTAL', style: 'tableHeader', alignment: 'right' },
+        { text: 'PAGADO', style: 'tableHeader', alignment: 'right' },
+        { text: 'SALDO', style: 'tableHeader', alignment: 'right' },
+        { text: 'AVANCE', style: 'tableHeader', alignment: 'center' },
       ]);
 
       ventas.forEach((venta: any, index: number) => {
-        const fechaVenta = this.formatDate(venta.fecha_venta);
-        const precioFinal = this.formatCurrency(venta.precioFinal || venta.total);
-        const tienePlanPago = this.tienePlanPago(venta) ? 'SÍ' : 'NO';
+        const planPago = venta.planPago || venta.plan_pago;
+        const totalPagado = planPago
+          ? Number(planPago.total_pagado || planPago.monto_pagado || 0)
+          : 0;
+        const totalVenta = Number(venta.precioFinal || venta.total || 0);
+        const saldoPendiente = totalVenta - totalPagado;
+        const porcentajePagado = totalVenta > 0 ? (totalPagado / totalVenta) * 100 : 0;
+        const fechaVenta =
+          venta.fecha_venta || (planPago ? planPago.fecha_inicio : venta.createdAt);
 
         tableBody.push([
           { text: (index + 1).toString(), style: 'tableCell', alignment: 'center' },
-          {
-            stack: [
-              { text: `#${venta.id}`, style: 'tableCellBold' },
-              { text: fechaVenta, style: 'tableCellSmall' },
-            ],
-          },
+          { text: `#${venta.id}`, style: 'tableCellBold', alignment: 'center' },
           { text: venta.cliente?.fullName || 'N/A', style: 'tableCell' },
           { text: venta.lote?.numeroLote || 'N/A', style: 'tableCell', alignment: 'center' },
-          { text: precioFinal, style: 'tableCellBold', alignment: 'right' },
+          { text: this.formatDate(fechaVenta), style: 'tableCell', alignment: 'center' },
+          { text: this.formatCurrency(totalVenta), style: 'tableCellBold', alignment: 'right' },
+          { text: this.formatCurrency(totalPagado), style: 'tableCell', alignment: 'right' },
           {
-            text: venta.estado?.toUpperCase() || 'N/A',
-            style: this.getEstadoVentaStyle(venta.estado),
-            alignment: 'center',
+            text: this.formatCurrency(saldoPendiente),
+            style: saldoPendiente > 0 ? 'deudaWarning' : 'tableCellSuccess',
+            alignment: 'right',
           },
-          {
-            text: tienePlanPago,
-            style: tienePlanPago === 'SÍ' ? 'statusActive' : 'statusInactive',
-            alignment: 'center',
-          },
+          { text: `${porcentajePagado.toFixed(1)}%`, style: 'tableCell', alignment: 'center' },
         ]);
       });
-
-      const totalVentas = ventas.length;
-      const totalMonto = ventas.reduce(
-        (sum: number, venta: any) => sum + (venta.precioFinal || venta.total || 0),
-        0
-      );
-      const ventasPagadas = ventas.filter((v: any) => v.estado === 'pagado').length;
-      const ventasPendientes = ventas.filter((v: any) => v.estado === 'pendiente').length;
 
       const docDefinition: any = {
         pageSize: 'A4',
         pageOrientation: 'landscape',
-        pageMargins: [20, 100, 20, 60],
-
+        pageMargins: [20, 120, 20, 60],
         header: {
           stack: [
             {
@@ -999,159 +1021,130 @@ export class PdfService {
                   type: 'rect',
                   x: 0,
                   y: 0,
-                  w: 595,
-                  h: 80,
-                  color: this.primaryColor,
+                  w: 595.28,
+                  h: 100,
+                  color: this.headerBg,
                 },
               ],
             },
             {
-              text: 'REPORTE DE VENTAS',
-              style: 'mainHeader',
-              margin: [20, -60, 20, 0],
-            },
-            {
-              text: `Generado el ${fechaHora}`,
-              style: 'subHeader',
-              margin: [20, 5, 20, 0],
+              stack: [
+                {
+                  text: 'REPORTE DE VENTAS - PLANES DE PAGO',
+                  style: 'mainHeader',
+                  margin: [0, 20, 0, 0],
+                },
+                {
+                  text: `Generado el ${fechaHora}`,
+                  style: 'subHeader',
+                  margin: [0, 5, 0, 0],
+                },
+              ],
+              alignment: 'center',
+              margin: [20, -90, 20, 0],
             },
           ],
         },
-
         footer: (currentPage: number, pageCount: number) => {
           return {
-            columns: [
+            stack: [
               {
-                text: 'Sistema de Gestión Inmobiliaria',
-                style: 'footer',
-                alignment: 'left',
-                margin: [20, 0, 0, 0],
+                canvas: [
+                  {
+                    type: 'rect',
+                    x: 0,
+                    y: 0,
+                    w: 595.28,
+                    h: 30,
+                    color: this.primaryLighter,
+                  },
+                ],
               },
               {
-                text: `Página ${currentPage} de ${pageCount}`,
-                style: 'footer',
-                alignment: 'right',
-                margin: [0, 0, 20, 0],
+                columns: [
+                  {
+                    text: 'Sistema de Gestión Inmobiliaria',
+                    style: 'footer',
+                    alignment: 'left',
+                    margin: [20, -25, 0, 0],
+                  },
+                  {
+                    text: `Página ${currentPage} de ${pageCount}`,
+                    style: 'footer',
+                    alignment: 'right',
+                    margin: [0, -25, 20, 0],
+                  },
+                ],
               },
             ],
           };
         },
-
         content: [
-          {
-            columns: [
-              {
-                width: '25%',
-                stack: [
-                  { text: 'TOTAL', style: 'statLabel' },
-                  { text: totalVentas.toString(), style: 'statValue' },
-                ],
-                alignment: 'center',
-              },
-              {
-                width: '25%',
-                stack: [
-                  { text: 'MONTO TOTAL', style: 'statLabel' },
-                  { text: this.formatCurrency(totalMonto), style: 'statValue' },
-                ],
-                alignment: 'center',
-              },
-              {
-                width: '25%',
-                stack: [
-                  { text: 'PAGADAS', style: 'statLabel' },
-                  { text: ventasPagadas.toString(), style: 'statValue' },
-                ],
-                alignment: 'center',
-              },
-              {
-                width: '25%',
-                stack: [
-                  { text: 'PENDIENTES', style: 'statLabel' },
-                  { text: ventasPendientes.toString(), style: 'statValue' },
-                ],
-                alignment: 'center',
-              },
-            ],
-            margin: [0, 0, 0, 20],
-          },
-
           {
             table: {
               headerRows: 1,
-              widths: ['5%', '15%', '25%', '10%', '15%', '15%', '15%'],
+              widths: ['4%', '6%', '20%', '8%', '12%', '12%', '12%', '12%', '14%'],
               body: tableBody,
             },
             layout: {
+              fillColor: (rowIndex: number, node: any, columnIndex: number) => {
+                if (rowIndex === 0) return this.tableHeaderBg;
+                return rowIndex % 2 === 0 ? this.tableStripedBg : null;
+              },
               hLineWidth: (i: number) => (i === 0 ? 2 : 0.5),
               vLineWidth: () => 0.5,
-              hLineColor: (i: number) => (i === 0 ? this.primaryColor : '#E5E7EB'),
-              vLineColor: () => '#E5E7EB',
-              paddingTop: () => 8,
-              paddingBottom: () => 8,
+              hLineColor: () => this.borderColor,
+              vLineColor: () => this.borderColor,
+              paddingTop: (i: number) => (i === 0 ? 10 : 8),
+              paddingBottom: (i: number) => (i === 0 ? 10 : 8),
             },
           },
         ],
-
         styles: {
           mainHeader: {
-            fontSize: 20,
+            fontSize: 16,
             bold: true,
-            color: '#FFFFFF',
+            color: this.headerTextColor,
             alignment: 'center',
           },
           subHeader: {
             fontSize: 10,
-            color: '#CCFBF1',
+            color: this.headerTextColor,
             alignment: 'center',
           },
           footer: {
             fontSize: 8,
-            color: '#6B7280',
-          },
-          statLabel: {
-            fontSize: 11,
-            color: this.primaryColor,
-            bold: true,
-          },
-          statValue: {
-            fontSize: 16,
-            color: this.darkColor,
+            color: this.primaryDark,
             bold: true,
           },
           tableHeader: {
-            fontSize: 10,
+            fontSize: 8,
             bold: true,
-            color: '#FFFFFF',
-            fillColor: this.primaryColor,
+            color: this.headerTextColor,
           },
           tableCell: {
-            fontSize: 9,
-            color: '#1F2937',
+            fontSize: 8,
+            color: this.textColor,
           },
           tableCellBold: {
-            fontSize: 9,
-            color: '#1F2937',
+            fontSize: 8,
+            color: this.textColor,
             bold: true,
           },
-          tableCellSmall: {
+          tableCellSuccess: {
             fontSize: 8,
-            color: '#6B7280',
-          },
-          statusActive: {
-            fontSize: 8,
-            bold: true,
             color: this.successColor,
+            bold: true,
           },
-          statusInactive: {
+          deudaWarning: {
             fontSize: 8,
             bold: true,
             color: this.errorColor,
           },
         },
-
         defaultStyle: {
           font: 'Roboto',
+          color: this.textColor,
         },
       };
 
@@ -1165,20 +1158,21 @@ export class PdfService {
   generarPdfVentaIndividual(venta: any): void {
     try {
       if (!venta) {
-        console.error('No hay datos de venta para generar el PDF');
         return;
       }
-
       const fechaHora = new Date().toLocaleString('es-BO');
-      const fechaVenta = this.formatDate(venta.fecha_venta);
-      const precioFinal = this.formatCurrency(venta.precioFinal || venta.total);
-      const subtotal = this.formatCurrency(venta.subtotal);
-      const descuento = this.formatCurrency(venta.descuento);
+      const planPago = venta.planPago || venta.plan_pago;
+      const totalPagado = planPago
+        ? Number(planPago.total_pagado || planPago.monto_pagado || 0)
+        : 0;
+      const totalVenta = Number(venta.precioFinal || venta.total || 0);
+      const saldoPendiente = totalVenta - totalPagado;
+      const porcentajePagado = totalVenta > 0 ? (totalPagado / totalVenta) * 100 : 0;
+      const fechaVenta = venta.fecha_venta || (planPago ? planPago.fecha_inicio : venta.createdAt);
 
       const docDefinition: any = {
         pageSize: 'A4',
-        pageMargins: [40, 120, 40, 60],
-
+        pageMargins: [40, 140, 40, 60],
         header: {
           stack: [
             {
@@ -1187,58 +1181,83 @@ export class PdfService {
                   type: 'rect',
                   x: 0,
                   y: 0,
-                  w: 595,
-                  h: 80,
-                  color: this.primaryColor,
+                  w: 595.28,
+                  h: 110,
+                  color: this.headerBg,
                 },
               ],
             },
             {
-              text: 'COMPROBANTE DE VENTA',
-              style: 'mainHeader',
-              margin: [40, -60, 40, 0],
-            },
-            {
-              text: `Venta #${venta.id}`,
-              style: 'subHeader',
-              margin: [40, 5, 40, 0],
+              stack: [
+                {
+                  text: 'DETALLE COMPLETO DE VENTA',
+                  style: 'mainHeader',
+                  margin: [0, 25, 0, 0],
+                },
+                {
+                  text: `Venta #${venta.id}`,
+                  style: 'subHeader',
+                  margin: [0, 5, 0, 0],
+                },
+              ],
+              alignment: 'center',
+              margin: [40, -100, 40, 0],
             },
           ],
         },
-
         footer: (currentPage: number, pageCount: number) => {
           return {
-            columns: [
+            stack: [
               {
-                text: `Generado: ${fechaHora}`,
-                style: 'footer',
-                alignment: 'left',
-                margin: [40, 0, 0, 0],
+                canvas: [
+                  {
+                    type: 'rect',
+                    x: 0,
+                    y: 0,
+                    w: 595.28,
+                    h: 30,
+                    color: this.primaryLighter,
+                  },
+                ],
               },
               {
-                text: `Página ${currentPage} de ${pageCount}`,
-                style: 'footer',
-                alignment: 'right',
-                margin: [0, 0, 40, 0],
+                columns: [
+                  {
+                    text: `Generado: ${fechaHora}`,
+                    style: 'footer',
+                    alignment: 'left',
+                    margin: [40, -25, 0, 0],
+                  },
+                  {
+                    text: `Página ${currentPage} de ${pageCount}`,
+                    style: 'footer',
+                    alignment: 'right',
+                    margin: [0, -25, 40, 0],
+                  },
+                ],
               },
             ],
           };
         },
-
         content: [
           {
             columns: [
               {
                 width: '50%',
                 stack: [
-                  { text: 'INFORMACIÓN DE VENTA', style: 'sectionTitle' },
+                  {
+                    text: 'INFORMACIÓN DE VENTA',
+                    style: 'sectionTitle',
+                    background: this.primaryLighter,
+                    margin: [0, 0, 0, 10],
+                  },
                   {
                     table: {
-                      widths: ['40%', '60%'],
+                      widths: ['35%', '65%'],
                       body: [
                         [
-                          { text: 'Fecha:', style: 'labelCell' },
-                          { text: fechaVenta, style: 'valueCell' },
+                          { text: 'Fecha Venta:', style: 'labelCell' },
+                          { text: this.formatDate(fechaVenta), style: 'valueCell' },
                         ],
                         [
                           { text: 'Estado:', style: 'labelCell' },
@@ -1246,10 +1265,6 @@ export class PdfService {
                             text: venta.estado?.toUpperCase() || 'N/A',
                             style: this.getEstadoVentaStyle(venta.estado),
                           },
-                        ],
-                        [
-                          { text: 'Método Pago:', style: 'labelCell' },
-                          { text: venta.metodo_pago?.toUpperCase() || 'N/A', style: 'valueCell' },
                         ],
                       ],
                     },
@@ -1260,7 +1275,12 @@ export class PdfService {
               {
                 width: '50%',
                 stack: [
-                  { text: 'CLIENTE', style: 'sectionTitle' },
+                  {
+                    text: 'CLIENTE',
+                    style: 'sectionTitle',
+                    background: this.primaryLighter,
+                    margin: [0, 0, 0, 10],
+                  },
                   {
                     table: {
                       widths: ['100%'],
@@ -1269,12 +1289,13 @@ export class PdfService {
                           {
                             stack: [
                               { text: venta.cliente?.fullName || 'N/A', style: 'clientName' },
-                              { text: venta.cliente?.email || 'Sin email', style: 'clientDetail' },
                               {
                                 text: venta.cliente?.telefono || 'Sin teléfono',
                                 style: 'clientDetail',
                               },
                             ],
+                            background: this.primaryLight,
+                            padding: [10, 10, 10, 10],
                           },
                         ],
                       ],
@@ -1291,10 +1312,10 @@ export class PdfService {
             ],
             margin: [0, 0, 0, 25],
           },
-
           {
             text: 'DETALLE DEL INMUEBLE',
             style: 'sectionTitle',
+            background: this.primaryLighter,
             margin: [0, 0, 0, 10],
           },
           {
@@ -1302,10 +1323,10 @@ export class PdfService {
               widths: ['25%', '25%', '25%', '25%'],
               body: [
                 [
-                  { text: 'Lote', style: 'labelCell', fillColor: this.lightBg },
-                  { text: 'Superficie', style: 'labelCell', fillColor: this.lightBg },
-                  { text: 'Urbanización', style: 'labelCell', fillColor: this.lightBg },
-                  { text: 'Precio Base', style: 'labelCell', fillColor: this.lightBg },
+                  { text: 'Lote', style: 'labelCell', fillColor: this.primaryLight },
+                  { text: 'Superficie', style: 'labelCell', fillColor: this.primaryLight },
+                  { text: 'Urbanización', style: 'labelCell', fillColor: this.primaryLight },
+                  { text: 'Precio Base', style: 'labelCell', fillColor: this.primaryLight },
                 ],
                 [
                   { text: venta.lote?.numeroLote || 'N/A', style: 'valueCell' },
@@ -1318,111 +1339,127 @@ export class PdfService {
             layout: {
               hLineWidth: () => 0.5,
               vLineWidth: () => 0.5,
-              hLineColor: () => '#E5E7EB',
-              vLineColor: () => '#E5E7EB',
+              hLineColor: () => this.borderColor,
+              vLineColor: () => this.borderColor,
             },
           },
-
           {
             text: 'RESUMEN FINANCIERO',
             style: 'sectionTitle',
+            background: this.primaryLighter,
             margin: [0, 25, 0, 10],
           },
           {
             table: {
-              widths: ['70%', '30%'],
+              widths: ['60%', '40%'],
               body: [
                 [
-                  { text: 'Subtotal:', style: 'financialLabel' },
-                  { text: subtotal, style: 'financialValue', alignment: 'right' },
+                  { text: 'Total Venta:', style: 'financialLabel' },
+                  {
+                    text: this.formatCurrency(totalVenta),
+                    style: 'financialValue',
+                    alignment: 'right',
+                  },
                 ],
                 [
-                  { text: 'Descuento:', style: 'financialLabel' },
-                  { text: descuento, style: 'financialValue', alignment: 'right' },
+                  { text: 'Total Pagado:', style: 'financialLabel' },
+                  {
+                    text: this.formatCurrency(totalPagado),
+                    style: 'financialValue',
+                    alignment: 'right',
+                  },
                 ],
                 [
-                  { text: 'TOTAL:', style: 'totalLabel' },
-                  { text: precioFinal, style: 'totalValue', alignment: 'right' },
+                  { text: 'Saldo Pendiente:', style: 'financialLabel' },
+                  {
+                    text: this.formatCurrency(saldoPendiente),
+                    style: saldoPendiente > 0 ? 'financialWarning' : 'financialSuccess',
+                    alignment: 'right',
+                  },
+                ],
+                [
+                  { text: 'Porcentaje Pagado:', style: 'financialLabel' },
+                  {
+                    text: `${porcentajePagado.toFixed(1)}%`,
+                    style: 'financialValue',
+                    alignment: 'right',
+                  },
                 ],
               ],
             },
             layout: {
-              hLineWidth: (i: number) => (i === 2 ? 2 : 0.5),
+              hLineWidth: (i: number) => (i === 0 || i === 3 ? 2 : 0.5),
               vLineWidth: () => 0.5,
-              hLineColor: (i: number) => (i === 2 ? this.primaryColor : '#E5E7EB'),
-              vLineColor: () => '#E5E7EB',
+              hLineColor: (i: number) => (i === 0 || i === 3 ? this.primaryDark : this.borderColor),
+              vLineColor: () => this.borderColor,
+              fillColor: (rowIndex: number) => (rowIndex % 2 === 0 ? this.tableStripedBg : null),
             },
           },
-
-          ...this.buildPlanPagosSection(venta),
+          ...this.buildDetallePagos(planPago),
         ],
-
         styles: {
           mainHeader: {
-            fontSize: 20,
+            fontSize: 16,
             bold: true,
-            color: '#FFFFFF',
+            color: this.headerTextColor,
             alignment: 'center',
           },
           subHeader: {
             fontSize: 12,
-            color: '#CCFBF1',
+            color: this.headerTextColor,
             alignment: 'center',
           },
           footer: {
             fontSize: 8,
-            color: '#6B7280',
+            color: this.primaryDark,
+            bold: true,
           },
           sectionTitle: {
             fontSize: 14,
             bold: true,
-            color: this.primaryColor,
-            margin: [0, 0, 0, 10],
+            color: this.primaryDark,
+            padding: [10, 5, 10, 5],
           },
           labelCell: {
             fontSize: 10,
             bold: true,
-            color: this.darkColor,
+            color: this.textColor,
           },
           valueCell: {
             fontSize: 10,
-            color: '#1F2937',
+            color: this.textColor,
           },
           clientName: {
             fontSize: 12,
             bold: true,
-            color: this.darkColor,
+            color: this.primaryDark,
           },
           clientDetail: {
             fontSize: 10,
-            color: '#6B7280',
+            color: this.textLight,
           },
           financialLabel: {
             fontSize: 11,
-            color: '#1F2937',
-            padding: [0, 8, 0, 8],
+            color: this.textColor,
           },
           financialValue: {
             fontSize: 11,
-            color: '#1F2937',
-            padding: [0, 8, 0, 8],
+            color: this.textColor,
           },
-          totalLabel: {
-            fontSize: 12,
+          financialSuccess: {
+            fontSize: 11,
+            color: this.successColor,
             bold: true,
-            color: this.primaryColor,
-            padding: [0, 8, 0, 8],
           },
-          totalValue: {
-            fontSize: 12,
+          financialWarning: {
+            fontSize: 11,
             bold: true,
-            color: this.primaryColor,
-            padding: [0, 8, 0, 8],
+            color: this.errorColor,
           },
         },
-
         defaultStyle: {
           font: 'Roboto',
+          color: this.textColor,
         },
       };
 
@@ -1438,210 +1475,75 @@ export class PdfService {
     let totalPagado = 0;
     let tienePlan = false;
 
-    if (cliente.ventas && Array.isArray(cliente.ventas)) {
-      cliente.ventas.forEach((venta: any) => {
+    const ventas = cliente.ventas || (cliente.cliente ? cliente.cliente.ventas : []);
+    if (ventas && Array.isArray(ventas)) {
+      ventas.forEach((venta: any) => {
         const planPago = venta.planPago || venta.plan_pago;
-
         if (planPago) {
           tienePlan = true;
-
-          const totalVenta = Number(
-            planPago.total || planPago.monto_total || planPago.precioFinal || 0
-          );
-          const pagadoVenta = Number(
-            planPago.total_pagado || planPago.monto_pagado || planPago.totalPagado || 0
-          );
-
+          const totalVenta = Number(venta.precioFinal || venta.total || 0);
+          let pagadoVenta = 0;
+          if (planPago.total_pagado !== undefined && planPago.total_pagado !== null) {
+            pagadoVenta = Number(planPago.total_pagado);
+          } else if (planPago.pagos && Array.isArray(planPago.pagos)) {
+            pagadoVenta = planPago.pagos.reduce(
+              (sum: number, pago: any) => sum + Number(pago.monto || 0),
+              0
+            );
+          }
           totalDeuda += totalVenta;
           totalPagado += pagadoVenta;
         }
       });
     }
 
-    if (cliente.planPago && (cliente.planPago.id_plan_pago || cliente.planPago.id)) {
-      tienePlan = true;
-
-      const totalPlan = Number(cliente.planPago.total || cliente.planPago.monto_total || 0);
-      const pagadoPlan = Number(
-        cliente.planPago.total_pagado || cliente.planPago.monto_pagado || 0
-      );
-
-      totalDeuda += totalPlan;
-      totalPagado += pagadoPlan;
-    }
-
-    if (cliente.tieneDeuda !== undefined) {
-      if (cliente.tieneDeuda) {
-        tienePlan = true;
-        if (totalDeuda === 0) {
-          totalDeuda = cliente.montoDeuda || 1000;
-        }
-      }
-    }
-
     const porcentajePagado = totalDeuda > 0 ? (totalPagado / totalDeuda) * 100 : 0;
-
     return {
       tienePlan,
       porcentajePagado: porcentajePagado.toFixed(1),
       totalDeuda,
       totalPagado,
+      saldoPendiente: totalDeuda - totalPagado,
     };
   }
 
-  private calcularInfoDeudasCliente(cliente: any): any {
-    const infoPlan = this.obtenerInfoPlanPagoCliente(cliente);
-
-    if (!infoPlan.tienePlan) {
-      return {
-        tieneDeudas: false,
-        mensaje: 'El cliente no tiene planes de pago activos',
-        totalDeuda: 0,
-        totalPagado: 0,
-        saldoPendiente: 0,
-        porcentajePagado: 0,
-      };
-    }
-
-    const saldoPendiente = infoPlan.totalDeuda - infoPlan.totalPagado;
-
-    return {
-      tieneDeudas: saldoPendiente > 0,
-      mensaje: saldoPendiente > 0 ? 'Cliente tiene saldo pendiente' : 'Plan de pago al día',
-      totalDeuda: infoPlan.totalDeuda,
-      totalPagado: infoPlan.totalPagado,
-      saldoPendiente: saldoPendiente,
-      porcentajePagado: infoPlan.porcentajePagado,
-    };
-  }
-
-  private buildVentasClienteSection(cliente: any): any[] {
-    if (!cliente.ventas || !Array.isArray(cliente.ventas) || cliente.ventas.length === 0) {
-      return [];
-    }
-
-    const ventasConPlan = cliente.ventas.filter((venta: any) => venta.planPago || venta.plan_pago);
-
-    if (ventasConPlan.length === 0) {
-      return [];
-    }
-
-    const tableBody: any[] = [
-      [
-        { text: 'VENTA', style: 'labelCell', fillColor: this.lightBg },
-        { text: 'LOTE', style: 'labelCell', fillColor: this.lightBg },
-        { text: 'MONTO TOTAL', style: 'labelCell', fillColor: this.lightBg },
-        { text: 'PAGADO', style: 'labelCell', fillColor: this.lightBg },
-        { text: 'SALDO', style: 'labelCell', fillColor: this.lightBg },
-        { text: 'AVANCE', style: 'labelCell', fillColor: this.lightBg },
-      ],
-    ];
-
-    ventasConPlan.forEach((venta: any) => {
-      const planPago = venta.planPago || venta.plan_pago;
-      const total = Number(planPago.total || planPago.monto_total || venta.precioFinal || 0);
-      const pagado = Number(planPago.total_pagado || planPago.monto_pagado || 0);
-      const saldo = total - pagado;
-      const porcentaje = total > 0 ? (pagado / total) * 100 : 0;
-
-      tableBody.push([
-        { text: `#${venta.id}`, style: 'valueCell' },
-        { text: venta.lote?.numeroLote || 'N/A', style: 'valueCell' },
-        { text: this.formatCurrency(total), style: 'valueCell' },
-        { text: this.formatCurrency(pagado), style: 'valueCell' },
-        {
-          text: this.formatCurrency(saldo),
-          style: saldo > 0 ? 'deudaWarning' : 'valueCell',
-        },
-        { text: `${porcentaje.toFixed(1)}%`, style: 'valueCell' },
-      ]);
-    });
-
-    return [
-      {
-        text: 'DETALLE DE VENTAS CON PLANES DE PAGO',
-        style: 'sectionTitle',
-        margin: [0, 25, 0, 10],
-      },
-      {
-        table: {
-          headerRows: 1,
-          widths: ['15%', '15%', '20%', '20%', '15%', '15%'],
-          body: tableBody,
-        },
-        layout: {
-          hLineWidth: (i: number) => (i === 0 ? 2 : 0.5),
-          vLineWidth: () => 0.5,
-          hLineColor: (i: number) => (i === 0 ? this.primaryColor : '#E5E7EB'),
-          vLineColor: () => '#E5E7EB',
-        },
-      },
-    ];
-  }
-
-  private tienePlanPago(venta: any): boolean {
-    return !!(venta.planPago || venta.plan_pago);
-  }
-
-  private buildDeudasSection(infoDeudas: any): any {
-    if (!infoDeudas.tieneDeudas) {
-      return {
-        table: {
-          widths: ['100%'],
-          body: [
-            [
-              {
-                text: infoDeudas.mensaje,
-                style: 'deudaValue',
-                alignment: 'center',
-                fillColor: this.lightBg,
-              },
-            ],
-          ],
-        },
-        layout: {
-          hLineWidth: () => 0.5,
-          vLineWidth: () => 0.5,
-          hLineColor: () => '#E5E7EB',
-          vLineColor: () => '#E5E7EB',
-        },
-      };
-    }
-
+  private buildResumenFinancieroCliente(infoPlanPago: any): any {
     return {
       table: {
         widths: ['50%', '50%'],
         body: [
           [
-            { text: 'Deuda Total:', style: 'deudaLabel', fillColor: this.lightBg },
+            { text: 'Deuda Total:', style: 'financialLabel', fillColor: this.tableStripedBg },
             {
-              text: this.formatCurrency(infoDeudas.totalDeuda),
-              style: 'deudaValue',
-              fillColor: this.lightBg,
+              text: this.formatCurrency(infoPlanPago.totalDeuda),
+              style: 'financialValue',
+              fillColor: this.tableStripedBg,
+              alignment: 'right',
             },
           ],
           [
-            { text: 'Total Pagado:', style: 'deudaLabel', fillColor: this.lightBg },
+            { text: 'Total Pagado:', style: 'financialLabel' },
             {
-              text: this.formatCurrency(infoDeudas.totalPagado),
-              style: 'deudaValue',
-              fillColor: this.lightBg,
+              text: this.formatCurrency(infoPlanPago.totalPagado),
+              style: 'financialValue',
+              alignment: 'right',
             },
           ],
           [
-            { text: 'Saldo Pendiente:', style: 'deudaLabel', fillColor: this.lightBg },
+            { text: 'Saldo Pendiente:', style: 'financialLabel', fillColor: this.tableStripedBg },
             {
-              text: this.formatCurrency(infoDeudas.saldoPendiente),
-              style: 'deudaWarning',
-              fillColor: this.lightBg,
+              text: this.formatCurrency(infoPlanPago.saldoPendiente),
+              style: infoPlanPago.saldoPendiente > 0 ? 'financialWarning' : 'financialSuccess',
+              fillColor: this.tableStripedBg,
+              alignment: 'right',
             },
           ],
           [
-            { text: 'Progreso de Pago:', style: 'deudaLabel', fillColor: this.lightBg },
+            { text: 'Progreso de Pago:', style: 'financialLabel' },
             {
-              text: `${infoDeudas.porcentajePagado}%`,
-              style: 'deudaHighlight',
-              fillColor: this.lightBg,
+              text: `${infoPlanPago.porcentajePagado}%`,
+              style: 'financialValue',
+              alignment: 'right',
             },
           ],
         ],
@@ -1649,61 +1551,152 @@ export class PdfService {
       layout: {
         hLineWidth: () => 0.5,
         vLineWidth: () => 0.5,
-        hLineColor: () => '#E5E7EB',
-        vLineColor: () => '#E5E7EB',
+        hLineColor: () => this.borderColor,
+        vLineColor: () => this.borderColor,
       },
     };
   }
 
-  private buildPlanPagosSection(venta: any): any[] {
-    const planPago = venta.planPago || venta.plan_pago;
-
-    if (!planPago) {
-      return [];
+  private buildDetalleVentasCliente(cliente: any): any[] {
+    const ventas = cliente.ventas || (cliente.cliente ? cliente.cliente.ventas : []);
+    if (!ventas || !Array.isArray(ventas) || ventas.length === 0) {
+      return [
+        {
+          text: 'DETALLE DE VENTAS',
+          style: 'sectionTitle',
+          background: this.primaryLighter,
+          margin: [0, 20, 0, 10],
+        },
+        {
+          text: 'El cliente no tiene ventas registradas',
+          style: 'valueCell',
+          margin: [0, 0, 0, 20],
+        },
+      ];
     }
 
-    const total = Number(planPago.total || planPago.monto_total || venta.precioFinal || 0);
-    const totalPagado = Number(planPago.total_pagado || planPago.monto_pagado || 0);
-    const saldoPendiente = Math.max(0, total - totalPagado);
-    const porcentajePagado = total > 0 ? (totalPagado / total) * 100 : 0;
+    const tableBody: any[] = [
+      [
+        { text: 'VENTA', style: 'labelCell', fillColor: this.primaryLight },
+        { text: 'LOTE', style: 'labelCell', fillColor: this.primaryLight },
+        { text: 'FECHA VENTA', style: 'labelCell', fillColor: this.primaryLight },
+        { text: 'TOTAL', style: 'labelCell', fillColor: this.primaryLight },
+        { text: 'PAGADO', style: 'labelCell', fillColor: this.primaryLight },
+        { text: 'SALDO', style: 'labelCell', fillColor: this.primaryLight },
+        { text: 'AVANCE', style: 'labelCell', fillColor: this.primaryLight },
+      ],
+    ];
+
+    ventas.forEach((venta: any) => {
+      const planPago = venta.planPago || venta.plan_pago;
+      const total = Number(venta.precioFinal || venta.total || 0);
+      let pagado = 0;
+      if (planPago) {
+        if (planPago.pagos && Array.isArray(planPago.pagos)) {
+          pagado = planPago.pagos.reduce(
+            (sum: number, pago: any) => sum + Number(pago.monto || 0),
+            0
+          );
+        }
+        if (planPago.total_pagado !== undefined && planPago.total_pagado !== null) {
+          pagado = Number(planPago.total_pagado);
+        }
+      }
+      const saldo = total - pagado;
+      const porcentaje = total > 0 ? (pagado / total) * 100 : 0;
+      const fechaVenta = venta.fecha_venta || (planPago ? planPago.fecha_inicio : venta.createdAt);
+
+      tableBody.push([
+        { text: `#${venta.id}`, style: 'valueCell' },
+        { text: venta.lote?.numeroLote || 'N/A', style: 'valueCell' },
+        { text: this.formatDate(fechaVenta), style: 'valueCell' },
+        { text: this.formatCurrency(total), style: 'valueCell' },
+        { text: this.formatCurrency(pagado), style: 'valueCell' },
+        {
+          text: this.formatCurrency(saldo),
+          style: saldo > 0 ? 'financialWarning' : 'financialSuccess',
+        },
+        { text: `${porcentaje.toFixed(1)}%`, style: 'valueCell' },
+      ]);
+    });
 
     return [
       {
-        text: 'PLAN DE PAGOS',
+        text: 'DETALLE DE VENTAS',
         style: 'sectionTitle',
-        margin: [0, 25, 0, 10],
+        background: this.primaryLighter,
+        margin: [0, 20, 0, 10],
       },
       {
         table: {
-          widths: ['50%', '50%'],
-          body: [
-            [
-              { text: 'Monto Total:', style: 'labelCell', fillColor: this.lightBg },
-              { text: this.formatCurrency(total), style: 'valueCell', alignment: 'right' },
-            ],
-            [
-              { text: 'Total Pagado:', style: 'labelCell', fillColor: this.lightBg },
-              { text: this.formatCurrency(totalPagado), style: 'valueCell', alignment: 'right' },
-            ],
-            [
-              { text: 'Saldo Pendiente:', style: 'labelCell', fillColor: this.lightBg },
-              {
-                text: this.formatCurrency(saldoPendiente),
-                style: 'valueCellBold',
-                alignment: 'right',
-              },
-            ],
-            [
-              { text: 'Progreso:', style: 'labelCell', fillColor: this.lightBg },
-              { text: `${porcentajePagado.toFixed(1)}%`, style: 'valueCell', alignment: 'right' },
-            ],
-          ],
+          headerRows: 1,
+          widths: ['10%', '12%', '15%', '15%', '15%', '15%', '8%'],
+          body: tableBody,
         },
         layout: {
-          hLineWidth: () => 0.5,
+          fillColor: (rowIndex: number, node: any, columnIndex: number) => {
+            if (rowIndex === 0) return this.primaryLight;
+            return rowIndex % 2 === 0 ? this.tableStripedBg : null;
+          },
+          hLineWidth: (i: number) => (i === 0 ? 2 : 0.5),
           vLineWidth: () => 0.5,
-          hLineColor: () => '#E5E7EB',
-          vLineColor: () => '#E5E7EB',
+          hLineColor: (i: number) => (i === 0 ? this.primaryDark : this.borderColor),
+          vLineColor: () => this.borderColor,
+        },
+      },
+    ];
+  }
+
+  private buildDetallePagos(planPago: any): any[] {
+    if (
+      !planPago ||
+      !planPago.pagos ||
+      !Array.isArray(planPago.pagos) ||
+      planPago.pagos.length === 0
+    ) {
+      return [];
+    }
+
+    const tableBody: any[] = [
+      [
+        { text: 'FECHA PAGO', style: 'labelCell', fillColor: this.primaryLight },
+        { text: 'MONTO', style: 'labelCell', fillColor: this.primaryLight },
+        { text: 'MÉTODO', style: 'labelCell', fillColor: this.primaryLight },
+        { text: 'OBSERVACIÓN', style: 'labelCell', fillColor: this.primaryLight },
+      ],
+    ];
+
+    planPago.pagos.forEach((pago: any) => {
+      tableBody.push([
+        { text: this.formatDate(pago.fecha_pago), style: 'valueCell' },
+        { text: this.formatCurrency(pago.monto), style: 'valueCell' },
+        { text: pago.metodoPago || 'EFECTIVO', style: 'valueCell' },
+        { text: pago.observacion || '-', style: 'valueCell' },
+      ]);
+    });
+
+    return [
+      {
+        text: 'HISTORIAL DE PAGOS',
+        style: 'sectionTitle',
+        background: this.primaryLighter,
+        margin: [0, 20, 0, 10],
+      },
+      {
+        table: {
+          headerRows: 1,
+          widths: ['20%', '20%', '20%', '40%'],
+          body: tableBody,
+        },
+        layout: {
+          fillColor: (rowIndex: number, node: any, columnIndex: number) => {
+            if (rowIndex === 0) return this.primaryLight;
+            return rowIndex % 2 === 0 ? this.tableStripedBg : null;
+          },
+          hLineWidth: (i: number) => (i === 0 ? 2 : 0.5),
+          vLineWidth: () => 0.5,
+          hLineColor: (i: number) => (i === 0 ? this.primaryDark : this.borderColor),
+          vLineColor: () => this.borderColor,
         },
       },
     ];
@@ -1711,21 +1704,20 @@ export class PdfService {
 
   private getEstadoReservaStyle(estado: string): any {
     const styles: { [key: string]: any } = {
-      ACTIVA: { fontSize: 8, bold: true, color: this.successColor },
-      VENCIDA: { fontSize: 8, bold: true, color: this.errorColor },
-      CANCELADA: { fontSize: 8, bold: true, color: this.warningColor },
-      CONVERTIDA_EN_VENTA: { fontSize: 8, bold: true, color: this.primaryColor },
+      ACTIVA: { fontSize: 10, bold: true, color: this.successColor },
+      VENCIDA: { fontSize: 10, bold: true, color: this.errorColor },
+      CANCELADA: { fontSize: 10, bold: true, color: this.warningColor },
     };
-    return styles[estado?.toUpperCase()] || { fontSize: 8, bold: true, color: '#6B7280' };
+    return styles[estado?.toUpperCase()] || { fontSize: 10, bold: true, color: this.textColor };
   }
 
   private getEstadoVentaStyle(estado: string): any {
     const styles: { [key: string]: any } = {
-      pagado: { fontSize: 8, bold: true, color: this.successColor },
-      pendiente: { fontSize: 8, bold: true, color: this.warningColor },
-      cancelado: { fontSize: 8, bold: true, color: this.errorColor },
+      PAGADO: { fontSize: 10, bold: true, color: this.successColor },
+      PENDIENTE: { fontSize: 10, bold: true, color: this.warningColor },
+      CANCELADO: { fontSize: 10, bold: true, color: this.errorColor },
     };
-    return styles[estado?.toLowerCase()] || { fontSize: 8, bold: true, color: '#6B7280' };
+    return styles[estado?.toUpperCase()] || { fontSize: 10, bold: true, color: this.textColor };
   }
 
   private formatDate(dateString: string | Date): string {
