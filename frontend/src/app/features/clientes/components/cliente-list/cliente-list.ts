@@ -156,7 +156,7 @@ export class ClientesListComponent implements OnInit {
 
   deleteCliente(cliente: any) {
     this.notificationService
-      .confirmDelete(`¿Estás seguro de eliminar al cliente ${cliente.fullName}?`)
+      .confirmDelete("¿Estás seguro de eliminar al cliente ${cliente.fullName}?")
       .then((result) => {
         if (result.isConfirmed) {
           this.clientesService.delete(cliente.id).subscribe({
@@ -227,5 +227,5 @@ export class ClientesListComponent implements OnInit {
 
   generarPdfClienteIndividual(cliente: any): void {
     this.pdfService.generarPdfClienteIndividual(cliente);
-  }
+  }
 }

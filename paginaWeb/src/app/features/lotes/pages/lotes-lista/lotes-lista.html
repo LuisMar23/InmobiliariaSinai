@@ -1,5 +1,5 @@
 <div class="container mx-auto px-4 py-6">
-  <app-filtro-lotes [filtros]="filtros" (buscar)="onBuscar($event)"></app-filtro-lotes>
+
 
 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mt-6">
   <div>
@@ -46,21 +46,6 @@
       </svg>
       <span class="text-sm font-medium hidden sm:inline">Lista</span>
     </button>
-
-    <!-- Map Button -->
-    <button
-      (click)="cambiarVista('map')"
-      [class.bg-white]="vista() === 'map'"
-      [class.text-emerald-600]="vista() === 'map'"
-      [class.shadow-sm]="vista() === 'map'"
-      class="flex items-center gap-2 px-4 py-2 rounded-md transition-all hover:bg-white group"
-      title="Vista en mapa"
-    >
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path>
-      </svg>
-      <span class="text-sm font-medium hidden sm:inline">Mapa</span>
-    </button>
   </div>
 </div>
   <!-- Mensaje de carga -->
@@ -77,8 +62,8 @@
   <!-- Contenido -->
   <div class="mt-6" *ngIf="!cargando() && lotesFiltrados().length > 0">
     <ng-container [ngSwitch]="vista()">
-      <div *ngSwitchCase="'grid'" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <app-lote-card *ngFor="let lote of lotesFiltrados()" [lote]="lote"></app-lote-card>
+      <div *ngSwitchCase="'grid'">
+        <app-lote-card  ></app-lote-card>
       </div>
 
       <div *ngSwitchCase="'list'" class="space-y-3">
@@ -86,11 +71,6 @@
           *ngFor="let lote of lotesFiltrados()"
           [lote]="lote"
         ></app-lote-list-item>
-      </div>
-
-      <div *ngSwitchCase="'map'" class="min-h-[500px]">
-        <!-- Contenedor donde se cargará dinámicamente VistaMapa -->
-        <ng-container #mapaContainer></ng-container>
       </div>
     </ng-container>
   </div>

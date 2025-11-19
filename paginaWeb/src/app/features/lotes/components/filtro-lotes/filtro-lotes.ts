@@ -1,6 +1,7 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
 import { FiltrosLote } from '../../../../core/interfaces/datos.interface';
 import { FormsModule } from '@angular/forms';
+import { debounceTime, Subject, Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-filtro-lotes',
@@ -8,16 +9,57 @@ import { FormsModule } from '@angular/forms';
   templateUrl: './filtro-lotes.html',
   styleUrl: './filtro-lotes.css',
 })
-export class FiltroLotes {
- @Input() filtros!: FiltrosLote;
+export class FiltroLotes implements OnInit, OnDestroy {
+  @Input() filtros!: FiltrosLote;
   @Output() buscar = new EventEmitter<FiltrosLote>();
 
-  onBuscar() {
-    this.buscar.emit(this.filtros);
+  private cambios$ = new Subject<FiltrosLote>();
+  private sub?: Subscription;
+
+  ngOnInit() {
+    this.sub = this.cambios$.pipe(debounceTime(300)).subscribe(f => {
+      this.buscar.emit({ ...f });
+    });
+  }
+
+  ngOnDestroy() {
+    this.sub?.unsubscribe();
+  }
+
+  // Para campos de texto (con debounce)
+onCambioTexto() {
+  const normalizados: FiltrosLote = {
+    ciudad: (this.filtros.ciudad ?? '').toString().trim(),
+    precioMin: this.filtros.precioMin ?? 0,
+    precioMax: this.filtros.precioMax ?? 9999999,
+    superficieMin: this.filtros.superficieMin ?? 0,
+    superficieMax: this.filtros.superficieMax ?? 9999999,
+    estado: this.filtros.estado ?? '',
+    busqueda: (this.filtros.busqueda ?? '').toString().trim()
+  };
+
+  this.cambios$.next(normalizados);
+}
+  // Para selects y números (instantáneo)
+  onCambioInstantaneo() {
+    const normalizados = this.normalizar();
+    this.buscar.emit({ ...normalizados });
+  }
+
+  private normalizar(): FiltrosLote {
+    return {
+      ciudad: (this.filtros.ciudad ?? '').trim(),
+      precioMin: this.filtros.precioMin ?? 0,
+      precioMax: this.filtros.precioMax ?? 9999999,
+      superficieMin: this.filtros.superficieMin ?? 0,
+      superficieMax: this.filtros.superficieMax ?? 9999999,
+      estado: this.filtros.estado ?? '',
+      busqueda: (this.filtros.busqueda ?? '').toString().trim()
+    };
   }
 
   limpiar() {
-    this.filtros = {
+    const defaults: FiltrosLote = {
       ciudad: '',
       precioMin: 0,
       precioMax: 9999999,
@@ -26,6 +68,9 @@ export class FiltroLotes {
       estado: '',
       busqueda: '',
     };
-    this.buscar.emit(this.filtros);
+
+    this.filtros = { ...defaults };
+    this.buscar.emit({ ...this.filtros });
   }
 }
+

@@ -217,11 +217,14 @@ export class ReservaList implements OnInit {
     this.pdfService.generarPdfReservas(this.allReservas());
   }
 
-  // NUEVO: Generar PDF de reserva individual
-  generarPdfReservaIndividual() {
-    const reserva = this.reservaSeleccionada();
-    if (reserva) {
-      this.pdfService.generarPdfReservaIndividual(reserva);
+
+  // NUEVO: Generar PDF de reserva individual (versión mejorada)
+  generarPdfReservaIndividual(reserva?: ReservaDto) {
+    const reservaParaPdf = reserva || this.reservaSeleccionada();
+    if (reservaParaPdf) {
+      this.pdfService.generarPdfReservaIndividual(reservaParaPdf);
+    } else {
+      this.notificationService.showError('No hay reserva seleccionada para generar el PDF');
     }
   }
 
