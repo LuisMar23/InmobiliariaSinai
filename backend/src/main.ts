@@ -5,7 +5,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 
 async function bootstrap() {
-    const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   app.enableCors();
   // Configurar CORS
@@ -14,14 +14,20 @@ async function bootstrap() {
   //   credentials: true,
   // });
   app.enableCors({
-  origin: '*', // cualquier dominio
-});
+    origin: '*', // cualquier dominio
+  });
 
   app.setGlobalPrefix('apisinai');
 
   app.useStaticAssets(join(__dirname, '..', 'uploads'), {
     prefix: '/uploads/',
   });
+
+  // Serializar BigInt como string al convertir a JSON
+  (BigInt.prototype as any).toJSON = function () {
+    return this.toString();
+  };
+
   await app.listen(process.env.PORT ?? 3301);
   console.log('Application is running on: http://localhost:3301/apisinai');
 }

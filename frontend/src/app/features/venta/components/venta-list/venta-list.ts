@@ -24,7 +24,7 @@ import { PdfService } from '../../../../core/services/pdf.service';
   templateUrl: './venta-list.html',
 })
 export class VentaList implements OnInit {
-    urlServer = environment.fileServer;
+  urlServer = environment.fileServer;
   ventas = signal<VentaDto[]>([]);
   allVentas = signal<VentaDto[]>([]);
   searchTerm = signal('');
@@ -35,11 +35,12 @@ export class VentaList implements OnInit {
   mostrarFormPago = signal<boolean>(false);
   enviandoPago = signal<boolean>(false);
 
-  // Nuevas variables para manejo de archivos
+  // Variables unificadas para manejo de archivos
   archivosSeleccionados = signal<File[]>([]);
-  maxArchivos = 6; // Máximo de archivos para venta
+  maxArchivos = 6;
   archivosCargando = signal<boolean>(false);
   ventaIdParaArchivos = signal<number | null>(null);
+  mostrarUploader = signal(false);
 
   recibosVenta = signal<Recibo[]>([]);
   recibosCargando = signal<boolean>(true);
@@ -50,10 +51,13 @@ export class VentaList implements OnInit {
   pageSize = signal(10);
   currentPage = signal(1);
 
+  // Servicios inyectados una sola vez
   private ventaSvc = inject(VentaService);
   private notificationService = inject(NotificationService);
   private fb = inject(FormBuilder);
-  private reciboSvc = inject(ReciboService); // Inyecta el servicio de recibos
+  private reciboSvc = inject(ReciboService);
+  private pdfService = inject(PdfService);
+  private archivoService = inject(UploadArchivosService);
 
   constructor() {
     this.pagoForm = this.crearPagoForm();
@@ -131,7 +135,7 @@ export class VentaList implements OnInit {
     this.recibosCargando.set(true);
     this.reciboSvc.obtenerPorVenta(ventaId).subscribe({
       next: (recibos) => {
-        console.log(recibos)
+        console.log(recibos);
         this.recibosVenta.set(recibos);
         this.recibosCargando.set(false);
       },
@@ -183,6 +187,15 @@ export class VentaList implements OnInit {
     const total = Number(venta.planPago.total || 0);
     return (this.getTotalPagado(venta) / total) * 100;
   }
+
+  // Generar PDF de todas las ventas
+  generarPdfVentas() {
+    this.pdfService.generarPdfVentas(this.allVentas());
+  }
+
+  generarPdfVentaIndividual(venta: VentaDto) {
+  this.pdfService.generarPdfVentaIndividual(venta);
+}
 
   totalPages() {
     return Math.ceil(this.filteredVentas().length / this.pageSize());
@@ -238,8 +251,8 @@ export class VentaList implements OnInit {
     this.mostrarFormPago.set(false);
     this.pagoForm.reset();
     this.archivosSeleccionados.set([]);
-    this.ventaIdParaArchivos.set(venta.id); 
-    this.cargarRecibosVenta(venta.id); 
+    this.ventaIdParaArchivos.set(venta.id);
+    this.cargarRecibosVenta(venta.id);
 
     const hoy = new Date();
     const fechaHoy = hoy.toISOString().split('T')[0];
@@ -256,7 +269,7 @@ export class VentaList implements OnInit {
     this.ventaSeleccionada.set(null);
     this.mostrarFormPago.set(false);
     this.pagoForm.reset();
-    this.archivosSeleccionados.set([]); // Limpiar archivos al cerrar
+    this.archivosSeleccionados.set([]);
     this.ventaIdParaArchivos.set(null);
     this.recibosVenta.set([]);
   }
@@ -335,7 +348,7 @@ export class VentaList implements OnInit {
             this.ventaSvc.getById(venta.id).subscribe({
               next: (ventaActualizada: VentaDto) => {
                 this.ventaSeleccionada.set(ventaActualizada);
-                this.cargarRecibosVenta(venta.id); 
+                this.cargarRecibosVenta(venta.id);
               },
               error: (err) => {
                 console.error('Error al actualizar venta:', err);
@@ -367,69 +380,21 @@ export class VentaList implements OnInit {
       },
     });
   }
-  onFileChange(event: any) {
-    const files: FileList | null = event.target.files;
-    if (files) {
-      const nuevosArchivos = Array.from(files);
-      const archivosActuales = this.archivosSeleccionados();
-      const archivosFinales = [...archivosActuales, ...nuevosArchivos];
 
-      if (archivosFinales.length > this.maxArchivos) {
-        this.notificationService.showError(
-          `Solo puedes subir un máximo de ${this.maxArchivos} archivos.`
-        );
-        return;
-      }
-
-      this.archivosSeleccionados.set(archivosFinales);
-    }
+  // Métodos unificados para manejo de archivos
+  abrirModalSubirArchivos(venta: VentaDto) {
+    this.ventaSeleccionada.set(venta);
+    this.mostrarUploader.set(true);
   }
 
-  eliminarArchivo(index: number) {
-    const archivosActuales = this.archivosSeleccionados();
-    archivosActuales.splice(index, 1);
-    this.archivosSeleccionados.set([...archivosActuales]);
+  cerrarModalUploader() {
+    this.mostrarUploader.set(false);
+    this.ventaSeleccionada.set(null);
   }
 
-  prepararSubidaArchivos(ventaId: number) {
-    this.ventaIdParaArchivos.set(ventaId);
-    this.archivosSeleccionados.set([]);
-  }
-
-  subirArchivosModal() {
-    if (this.archivosSeleccionados().length === 0) {
-      this.notificationService.showError('No hay archivos seleccionados para subir.');
-      return;
-    }
-
-    const ventaId = this.ventaIdParaArchivos();
-    if (!ventaId) {
-      this.notificationService.showError('No se puede subir archivos: ID de venta no disponible.');
-      return;
-    }
-
-    this.archivosCargando.set(true);
-
-    this.reciboSvc
-      .subirRecibosGenerales(this.archivosSeleccionados(), {
-        tipoOperacion: 'VENTA',
-        ventaId: ventaId,
-        observaciones: 'Subido desde listado de ventas',
-      })
-      .subscribe({
-        next: (response) => {
-          this.archivosCargando.set(false);
-          this.notificationService.showSuccess('Archivos subidos exitosamente.');
-          this.archivosSeleccionados.set([]);
-          this.cargarRecibosVenta(ventaId); // Recarga los recibos después de subir
-        },
-        error: (error) => {
-          this.archivosCargando.set(false);
-          this.notificationService.showError(
-            'Error al subir los archivos: ' + (error?.error?.message || 'Error desconocido')
-          );
-        },
-      });
+  onSubidaCompleta() {
+    this.cerrarModalUploader();
+    this.notificationService.showSuccess('Archivos subidos correctamente');
   }
 
   descargarRecibo(recibo: Recibo) {
@@ -455,24 +420,6 @@ export class VentaList implements OnInit {
           });
         }
       });
-  }
-
-  formatFileSize(bytes: number): string {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  }
-
-  formatFecha(fecha: string | Date): string {
-    if (!fecha) return 'N/A';
-    const date = new Date(fecha);
-    return date.toLocaleDateString('es-ES', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    });
   }
 
   eliminarVenta(id: number) {
@@ -527,6 +474,7 @@ export class VentaList implements OnInit {
     });
   }
 
+  // Métodos de utilidad
   getEstadoBadgeClass(estado: string): string {
     const classes: { [key: string]: string } = {
       PENDIENTE: 'px-3 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-700',
@@ -567,27 +515,22 @@ export class VentaList implements OnInit {
       return 'N/A';
     }
   }
-  
-  mostrarUploader = signal(false);
-  
-  abrirModalSubirArchivos(venta:VentaDto) {
-      this.ventaSeleccionada.set(venta);
-    this.mostrarUploader.set(true);
+
+  formatFileSize(bytes: number): string {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   }
 
-  cerrarModalUploader() {
-    this.mostrarUploader.set(false);
-   this.ventaSeleccionada.set(null);
+  formatFecha(fecha: string | Date): string {
+    if (!fecha) return 'N/A';
+    const date = new Date(fecha);
+    return date.toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
   }
-  
-  onSubidaCompleta() {
-    this.cerrarModalUploader();
-    this.notificationService.showSuccess('Archivos subidos correctamente');
-  }
-    private pdfService = inject(PdfService);
-  generarPdfVenta(venta:any){
-    this.pdfService.generarPdfVentaIndividual(venta)
-  }
-
-  private archivoService = inject(UploadArchivosService);
 }
