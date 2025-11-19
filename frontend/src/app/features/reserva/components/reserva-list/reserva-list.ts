@@ -6,6 +6,7 @@ import { ReservaDto } from '../../../../core/interfaces/reserva.interface';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { ReservaService } from '../../service/reserva.service';
 import { ReciboService, Recibo } from '../../../../core/services/recibo.service';
+import { PdfService } from '../../../../core/services/pdf.service';
 
 interface ColumnConfig {
   key: keyof ReservaDto;
@@ -55,6 +56,7 @@ export class ReservaList implements OnInit {
   private reservaSvc = inject(ReservaService);
   private notificationService = inject(NotificationService);
   private reciboSvc = inject(ReciboService);
+  private pdfService = inject(PdfService);
 
   filteredReservas = computed(() => {
     const term = this.searchTerm().toLowerCase();
@@ -208,6 +210,19 @@ export class ReservaList implements OnInit {
           });
         }
       });
+  }
+
+  // NUEVO: Generar PDF de todas las reservas
+  generarPdfReservas() {
+    this.pdfService.generarPdfReservas(this.allReservas());
+  }
+
+  // NUEVO: Generar PDF de reserva individual
+  generarPdfReservaIndividual() {
+    const reserva = this.reservaSeleccionada();
+    if (reserva) {
+      this.pdfService.generarPdfReservaIndividual(reserva);
+    }
   }
 
   getEstadoBadgeClass(estado: string): string {

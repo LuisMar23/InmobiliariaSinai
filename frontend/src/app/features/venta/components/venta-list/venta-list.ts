@@ -15,6 +15,7 @@ import { ReciboService, Recibo } from '../../../../core/services/recibo.service'
 import { ArchivosComponent } from '../../../../components/archivos/archivos/archivos';
 import { environment } from '../../../../../environments/environment';
 import { UploadArchivosService } from '../../../../components/services/archivos.service';
+import { PdfService } from '../../../../core/services/pdf.service';
 
 @Component({
   selector: 'app-venta-list',
@@ -23,7 +24,7 @@ import { UploadArchivosService } from '../../../../components/services/archivos.
   templateUrl: './venta-list.html',
 })
 export class VentaList implements OnInit {
-    urlServer = environment.fileServer;
+  urlServer = environment.fileServer;
   ventas = signal<VentaDto[]>([]);
   allVentas = signal<VentaDto[]>([]);
   searchTerm = signal('');
@@ -52,7 +53,8 @@ export class VentaList implements OnInit {
   private ventaSvc = inject(VentaService);
   private notificationService = inject(NotificationService);
   private fb = inject(FormBuilder);
-  private reciboSvc = inject(ReciboService); // Inyecta el servicio de recibos
+  private reciboSvc = inject(ReciboService);
+  private pdfService = inject(PdfService);
 
   constructor() {
     this.pagoForm = this.crearPagoForm();
@@ -180,6 +182,19 @@ export class VentaList implements OnInit {
 
     const total = Number(venta.planPago.total || 0);
     return (this.getTotalPagado(venta) / total) * 100;
+  }
+
+  // NUEVO: Generar PDF de todas las ventas
+  generarPdfVentas() {
+    this.pdfService.generarPdfVentas(this.allVentas());
+  }
+
+  // NUEVO: Generar PDF de venta individual
+  generarPdfVentaIndividual() {
+    const venta = this.ventaSeleccionada();
+    if (venta) {
+      this.pdfService.generarPdfVentaIndividual(venta);
+    }
   }
 
   totalPages() {
@@ -567,23 +582,23 @@ export class VentaList implements OnInit {
       return 'N/A';
     }
   }
-  
+
   mostrarUploader = signal(false);
-  
-  abrirModalSubirArchivos(venta:VentaDto) {
-      this.ventaSeleccionada.set(venta);
+
+  abrirModalSubirArchivos(venta: VentaDto) {
+    this.ventaSeleccionada.set(venta);
     this.mostrarUploader.set(true);
   }
 
   cerrarModalUploader() {
     this.mostrarUploader.set(false);
-   this.ventaSeleccionada.set(null);
+    this.ventaSeleccionada.set(null);
   }
-  
+
   onSubidaCompleta() {
     this.cerrarModalUploader();
     this.notificationService.showSuccess('Archivos subidos correctamente');
   }
-  
+
   private archivoService = inject(UploadArchivosService);
 }

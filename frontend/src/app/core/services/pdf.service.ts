@@ -1,10 +1,12 @@
 import { Injectable } from '@angular/core';
 
 declare const require: any;
-const pdfMake = require('pdfmake/build/pdfmake');
-const pdfFonts = require('pdfmake/build/vfs_fonts');
 
-pdfMake.vfs = pdfFonts.pdfMake.vfs;
+import * as pdfMakeLib from 'pdfmake/build/pdfmake';
+import * as pdfFonts from 'pdfmake/build/vfs_fonts';
+const pdfMake: any = pdfMakeLib;
+pdfMake.vfs = pdfFonts as any;
+
 pdfMake.fonts = {
   Roboto: {
     normal: 'Roboto-Regular.ttf',

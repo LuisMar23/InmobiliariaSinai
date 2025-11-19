@@ -14,13 +14,25 @@
                     </div>
                 </div>
 
-                <button [routerLink]="['/ventas/crear']"
-                    class="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white px-4 py-2 sm:px-6 sm:py-3 rounded-lg shadow-lg transition-all duration-200 transform hover:scale-105 w-full sm:w-auto justify-center font-semibold text-sm sm:text-base">
-                    <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                    </svg>
-                    Nueva Venta
-                </button>
+                <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                    <!-- NUEVO: Botón Generar PDF -->
+                    <button (click)="generarPdfVentas()"
+                        class="flex items-center gap-2 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white px-4 py-2 sm:px-6 sm:py-3 rounded-lg shadow-lg transition-all duration-200 transform hover:scale-105 w-full sm:w-auto justify-center font-semibold text-sm sm:text-base">
+                        <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Generar PDF
+                    </button>
+
+                    <button [routerLink]="['/ventas/crear']"
+                        class="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white px-4 py-2 sm:px-6 sm:py-3 rounded-lg shadow-lg transition-all duration-200 transform hover:scale-105 w-full sm:w-auto justify-center font-semibold text-sm sm:text-base">
+                        <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        Nueva Venta
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -174,6 +186,16 @@
                                                     d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                             </svg>
                                         </button>
+                                        <!-- NUEVO: Botón PDF Individual -->
+                                        <button
+                                            class="p-1.5 sm:p-2 rounded-lg bg-orange-50 text-orange-600 hover:bg-orange-100 transition-colors"
+                                            (click)="generarPdfVentaIndividual()" title="Generar PDF">
+                                            <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                        </button>
                                         <button
                                             class="p-1.5 rounded-lg bg-teal-50 text-teal-600 hover:bg-teal-100 transition-colors"
                                             (click)="abrirModalSubirArchivos(venta)" title="Subir Archivos o Imágenes">
@@ -289,6 +311,16 @@
                                     d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                             </svg>
                             Detalles
+                        </button>
+                        <!-- NUEVO: Botón PDF Individual en móvil -->
+                        <button
+                            class="flex items-center justify-center gap-1 bg-orange-500 hover:bg-orange-600 text-white px-2 py-1.5 rounded text-xs font-medium shadow-sm transition"
+                            (click)="generarPdfVentaIndividual()">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            PDF
                         </button>
                         <button class="p-1.5 rounded-lg bg-teal-50 text-teal-600 hover:bg-teal-100 transition-colors"
                             (click)="abrirModalSubirArchivos(venta)" title="Subir Archivos o Imágenes">
@@ -663,6 +695,15 @@
         <!-- Footer del Modal - Mejorado para móviles -->
         <div
             class="px-3 sm:px-4 md:px-6 py-2 sm:py-3 md:py-4 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row justify-end gap-2">
+            <!-- NUEVO: Botón Generar PDF Individual en Modal -->
+            <button (click)="generarPdfVentaIndividual()"
+                class="flex items-center justify-center gap-1 sm:gap-2 bg-orange-500 hover:bg-orange-600 text-white px-3 sm:px-4 md:px-6 py-1.5 sm:py-2 md:py-3 rounded shadow transition-all duration-200 font-semibold text-xs sm:text-sm order-1">
+                <svg class="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Generar PDF
+            </button>
             <button (click)="eliminarVenta(ventaSeleccionada()!.id)"
                 class="flex items-center justify-center gap-1 sm:gap-2 bg-red-500 hover:bg-red-600 text-white px-3 sm:px-4 md:px-6 py-1.5 sm:py-2 md:py-3 rounded shadow transition-all duration-200 font-semibold text-xs sm:text-sm order-2 sm:order-1">
                 <svg class="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -672,7 +713,7 @@
                 Eliminar Venta
             </button>
             <button (click)="cerrarModal()"
-                class="flex items-center justify-center gap-1 sm:gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-3 sm:px-4 md:px-6 py-1.5 sm:py-2 md:py-3 rounded shadow transition-all duration-200 font-semibold text-xs sm:text-sm order-1 sm:order-2">
+                class="flex items-center justify-center gap-1 sm:gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-3 sm:px-4 md:px-6 py-1.5 sm:py-2 md:py-3 rounded shadow transition-all duration-200 font-semibold text-xs sm:text-sm order-3">
                 Cerrar
             </button>
         </div>

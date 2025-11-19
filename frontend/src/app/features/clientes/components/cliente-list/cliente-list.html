@@ -1,6 +1,5 @@
 <div class="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-emerald-50 py-4 px-2 sm:px-4 lg:px-8">
     <div class="max-w-full mx-auto">
-        <!-- Header -->
         <div class="bg-emerald-500 rounded-t-2xl shadow-lg p-4 sm:p-6">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div class="flex items-center gap-3">
@@ -11,7 +10,6 @@
                     </div>
                 </div>
 
-                <!-- Botón nuevo cliente -->
                 <button [routerLink]="['/clientes/crear']"
                     class="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white px-6 py-3 rounded-lg shadow-lg transition-all duration-200 transform hover:scale-105 w-full sm:w-auto justify-center sm:justify-start font-semibold">
                     <fa-icon [icon]="faPlus" class="text-sm"></fa-icon>
@@ -20,11 +18,8 @@
             </div>
         </div>
 
-        <!-- Contenido -->
         <div class="bg-white rounded-b-2xl shadow-xl p-4 sm:p-6 lg:p-8">
-            <!-- Barra de búsqueda -->
             <div class="flex flex-col lg:flex-row justify-between items-center gap-4 mb-6">
-                <!-- Buscador -->
                 <div class="w-full lg:w-1/3">
                     <div class="relative">
                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -35,16 +30,24 @@
                             class="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm sm:text-base" />
                     </div>
                 </div>
+                <div class="flex gap-2">
+                    <button (click)="generarPdfTodosClientes()"
+                        class="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-3 rounded-lg shadow-lg transition-all duration-200 transform hover:scale-105 font-semibold">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Exportar PDF
+                    </button>
+                </div>
             </div>
 
-            <!-- Estado de carga -->
             @if (isLoading()) {
             <div class="text-center py-12">
                 <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mx-auto"></div>
                 <p class="text-gray-600 mt-4">Cargando clientes...</p>
             </div>
             } @else {
-            <!-- Vista Desktop/Tablet - Tabla -->
             <div class="hidden xl:block">
                 <div class="overflow-x-auto rounded-lg border border-gray-200">
                     <table class="w-full">
@@ -77,7 +80,6 @@
                         <tbody class="bg-white divide-y divide-gray-100">
                             @for (cliente of getClientesPaginados(); track cliente.id) {
                             <tr class="hover:bg-gray-50 transition-colors">
-                                <!-- Información del cliente -->
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="flex items-center">
                                         <div class="flex-shrink-0 h-10 w-10">
@@ -93,12 +95,10 @@
                                     </div>
                                 </td>
 
-                                <!-- CI -->
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                     {{ cliente.ci }}
                                 </td>
 
-                                <!-- Teléfono -->
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                     <div class="flex items-center gap-1">
                                         <fa-icon [icon]="faPhone" class="text-gray-400 text-xs"></fa-icon>
@@ -106,7 +106,6 @@
                                     </div>
                                 </td>
 
-                                <!-- Dirección -->
                                 <td class="px-6 py-4 text-sm text-gray-900">
                                     <div class="flex items-center gap-1">
                                         <fa-icon [icon]="faMapMarkerAlt" class="text-gray-400 text-xs"></fa-icon>
@@ -114,7 +113,6 @@
                                     </div>
                                 </td>
 
-                                <!-- Estado -->
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <span [class]="getStatusClass(cliente.isActive)"
                                         class="px-3 py-1 rounded-full text-xs font-bold">
@@ -122,17 +120,23 @@
                                     </span>
                                 </td>
 
-                                <!-- Acciones -->
                                 <td class="px-6 py-4 whitespace-nowrap text-center">
                                     <div class="flex justify-center gap-2">
-                                        <!-- Editar -->
                                         <a [routerLink]="['/clientes/editar', cliente.id]"
                                             class="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
                                             title="Editar cliente">
                                             <fa-icon [icon]="faUserEdit"></fa-icon>
                                         </a>
 
-                                        <!-- Eliminar -->
+                                        <button (click)="generarPdfClienteIndividual(cliente)"
+                                            class="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+                                            title="Descargar PDF">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                        </button>
+
                                         <button (click)="deleteCliente(cliente)"
                                             class="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
                                             title="Eliminar cliente">
@@ -143,7 +147,6 @@
                             </tr>
                             }
 
-                            <!-- Estado vacío -->
                             @if (filteredClientes().length === 0 && !isLoading()) {
                             <tr>
                                 <td colspan="6" class="px-6 py-16 text-center text-gray-500">
@@ -160,7 +163,6 @@
                 </div>
             </div>
 
-            <!-- Vista Mobile/Tablet - Cards -->
             <div class="xl:hidden space-y-4">
                 @for (cliente of getClientesPaginados(); track cliente.id) {
                 <div
@@ -195,6 +197,13 @@
                                 class="flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-medium shadow-sm transition transform hover:scale-105">
                                 <fa-icon [icon]="faUserEdit" class="text-xs"></fa-icon> Editar
                             </a>
+                            <button (click)="generarPdfClienteIndividual(cliente)"
+                                class="flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-sm font-medium shadow-sm transition transform hover:scale-105">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg> PDF
+                            </button>
                             <button (click)="deleteCliente(cliente)"
                                 class="flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-sm font-medium shadow-sm transition transform hover:scale-105">
                                 <fa-icon [icon]="faTrash" class="text-xs"></fa-icon> Eliminar
@@ -213,7 +222,6 @@
                 }
             </div>
 
-            <!-- Paginación -->
             <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mt-6 gap-4 px-2">
                 <div class="text-sm text-gray-600 text-center sm:text-left">
                     Mostrando {{ rangeStart() }} a {{ rangeEnd() }} de {{ total() }} clientes
