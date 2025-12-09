@@ -9,11 +9,16 @@ export const routes: Routes = [
     path: '',
     component: MainLayout,
     children: [
-  { path: '', redirectTo: 'lotes', pathMatch: 'full' },     
-        {
+      { path: '', redirectTo: 'lotes', pathMatch: 'full' },
+      {
         path: 'lotes',
         loadChildren: () =>
           import('./features/lotes/lotes.routes').then((m) => m.LotesRoutingModule),
+      },
+      {
+        path: 'propiedades',
+        loadChildren: () =>
+          import('./features/propiedad/propiedad.routes').then((m) => m.PropiedadesRoutingModule),
       },
       {
         path: 'urbanizaciones',
@@ -23,16 +28,17 @@ export const routes: Routes = [
           ),
       },
       {
-        path:'contacto',
-        component:Contacto
+        path: 'contacto',
+        component: Contacto,
       },
       {
-        path:'promociones',
-        component:LotesPromocionComponent
-      }
+        path: 'promociones',
+        component: LotesPromocionComponent,
+      },
     ],
   },
 ];
+
 @NgModule({
   imports: [
     RouterModule.forRoot(routes, {

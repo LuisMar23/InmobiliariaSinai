@@ -18,6 +18,7 @@ import { FilesInterceptor } from '@nestjs/platform-express';
 import * as fs from 'fs';
 import { extname, join } from 'path';
 import { diskStorage } from 'multer';
+
 @Controller('archivos')
 export class ArchivosController {
   constructor(private readonly archivosService: ArchivosService) {}
@@ -52,14 +53,15 @@ export class ArchivosController {
       urbanizacionId: dto.urbanizacionId
         ? Number(dto.urbanizacionId)
         : undefined,
+      propiedadId: dto.propiedadId ? Number(dto.propiedadId) : undefined,
     };
-
 
     let folder = 'otros';
     if (normalizedDto.ventaId) folder = 'ventas';
     else if (normalizedDto.reservaId) folder = 'reservas';
     else if (normalizedDto.loteId) folder = 'lotes';
     else if (normalizedDto.urbanizacionId) folder = 'urbanizaciones';
+    else if (normalizedDto.propiedadId) folder = 'propiedades';
 
     const targetPath = `./uploads/${folder}`;
     if (!fs.existsSync(targetPath)) {
@@ -96,13 +98,15 @@ export class ArchivosController {
     FilesInterceptor('files', 10, {
       storage: diskStorage({
         destination: (req, file, cb) => {
-          const { ventaId, reservaId, loteId, urbanizacionId } = req.body;
+          const { ventaId, reservaId, loteId, urbanizacionId, propiedadId } =
+            req.body;
           let folder = 'otros';
 
           if (ventaId) folder = 'ventas';
           else if (reservaId) folder = 'reservas';
           else if (loteId) folder = 'lotes';
           else if (urbanizacionId) folder = 'urbanizaciones';
+          else if (propiedadId) folder = 'propiedades';
 
           const uploadPath = `./uploads/${folder}`;
           if (!fs.existsSync(uploadPath)) {
@@ -137,9 +141,11 @@ export class ArchivosController {
     else if (dto.urbanizacionId)
       ((folder = 'urbanizaciones'),
         (where.urbanizacionId = Number(dto.urbanizacionId)));
+    else if (dto.propiedadId)
+      ((folder = 'propiedades'), (where.propiedadId = Number(dto.propiedadId)));
     else {
       throw new BadRequestException(
-        'Debe especificar ventaId, reservaId, loteId o urbanizacionId',
+        'Debe especificar ventaId, reservaId, loteId, urbanizacionId o propiedadId',
       );
     }
     const prisma = this.archivosService.prisma;
@@ -186,10 +192,29 @@ export class ArchivosController {
     return this.archivosService.findByVenta(id);
   }
 
- @Delete(':id')
-  async remove(@Param('id', ParseIntPipe) id: number) {
-    console.log(id)
-    return this.archivosService.remove(id);
+  @Get('reserva/:id')
+  findByReserva(@Param('id', ParseIntPipe) id: number) {
+    return this.archivosService.findByReserva(id);
   }
 
+  @Get('propiedad/:id')
+  findByPropiedad(@Param('id', ParseIntPipe) id: number) {
+    return this.archivosService.findByPropiedad(id);
+  }
+
+  @Get('lote/:id')
+  findByLote(@Param('id', ParseIntPipe) id: number) {
+    return this.archivosService.findByLote(id);
+  }
+
+  @Get('urbanizacion/:id')
+  findByUrbanizacion(@Param('id', ParseIntPipe) id: number) {
+    return this.archivosService.findByUrbanizacion(id);
+  }
+
+  @Delete(':id')
+  async remove(@Param('id', ParseIntPipe) id: number) {
+    console.log(id);
+    return this.archivosService.remove(id);
+  }
 }

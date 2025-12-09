@@ -38,6 +38,12 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'propiedades', // Nueva ruta para Propiedades
+        loadChildren: () =>
+          import('./features/propiedad/propiedad.routes').then((r) => r.PropiedadRoutingModule
+          ),
+      },
+      {
         path: 'promociones',
         loadChildren: () =>
           import('./features/promocion/promocion.routes').then((r) => r.PromocionesRoutingModule),
@@ -65,8 +71,7 @@ export const routes: Routes = [
       },
       {
         path: 'caja',
-        loadChildren: () =>
-          import('./features/caja/caja.routes').then((r) => r.CajaRoutingModule),
+        loadChildren: () => import('./features/caja/caja.routes').then((r) => r.CajaRoutingModule),
       },
       {
         path: 'visitas',

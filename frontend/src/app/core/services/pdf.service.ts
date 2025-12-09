@@ -19,22 +19,18 @@ pdfMake.fonts = {
 export class PdfService {
   constructor() {}
 
-  // Nueva paleta de colores verde esmeralda con mejor contraste
-  private primaryColor = '#047857';
-  private primaryLight = '#D1FAE5';
-  private primaryLighter = '#ECFDF5';
-  private primaryDark = '#065F46';
-  private accentColor = '#10B981';
-  private headerBg = '#065F46';
+  private primaryColor = '#059669';
+  private primaryLight = '#10B981';
+  private primaryDark = '#047857';
+  private accentColor = '#34D399';
+  private lightBg = '#ECFDF5';
+  private headerBg = '#059669';
   private headerTextColor = '#FFFFFF';
-  private successColor = '#059669';
-  private warningColor = '#D97706';
-  private errorColor = '#DC2626';
+  private successColor = '#10B981';
+  private warningColor = '#F59E0B';
+  private errorColor = '#EF4444';
   private textColor = '#1F2937';
-  private textLight = '#6B7280';
-  private borderColor = '#E5E7EB';
-  private tableHeaderBg = '#047857';
-  private tableStripedBg = '#F9FAFB';
+  private borderColor = '#D1FAE5';
 
   generarPdfClientes(clientes: any[]): void {
     try {
@@ -46,7 +42,7 @@ export class PdfService {
       const tableBody: any[] = [];
 
       tableBody.push([
-        { text: '#', style: 'tableHeader', alignment: 'center' },
+        { text: 'N°', style: 'tableHeader', alignment: 'center' },
         { text: 'CLIENTE', style: 'tableHeader', alignment: 'left' },
         { text: 'DOCUMENTO', style: 'tableHeader', alignment: 'center' },
         { text: 'TELÉFONO', style: 'tableHeader', alignment: 'center' },
@@ -77,7 +73,7 @@ export class PdfService {
           },
           {
             text: infoPlanPago.tienePlan ? this.formatCurrency(infoPlanPago.saldoPendiente) : 'N/A',
-            style: infoPlanPago.saldoPendiente > 0 ? 'deudaWarning' : 'tableCellSuccess',
+            style: infoPlanPago.saldoPendiente > 0 ? 'deudaWarning' : 'tableCell',
             alignment: 'center',
           },
           {
@@ -96,7 +92,7 @@ export class PdfService {
       const docDefinition: any = {
         pageSize: 'A4',
         pageOrientation: 'landscape',
-        pageMargins: [20, 120, 20, 60],
+        pageMargins: [20, 150, 20, 60],
         header: {
           stack: [
             {
@@ -106,7 +102,7 @@ export class PdfService {
                   x: 0,
                   y: 0,
                   w: 595.28,
-                  h: 100,
+                  h: 120,
                   color: this.headerBg,
                 },
               ],
@@ -114,18 +110,28 @@ export class PdfService {
             {
               stack: [
                 {
-                  text: 'REPORTE DE CLIENTES - ESTADO DE PAGOS',
+                  text: 'GESTIÓN INMOBILIARIA',
+                  style: 'companyName',
+                  margin: [0, 15, 0, 0],
+                },
+                {
+                  text: 'REPORTE DE CLIENTES',
                   style: 'mainHeader',
-                  margin: [0, 20, 0, 0],
+                  margin: [0, 10, 0, 0],
+                },
+                {
+                  text: `Estado de Pagos y Finanzas`,
+                  style: 'headerSubtitle',
+                  margin: [0, 5, 0, 0],
                 },
                 {
                   text: `Generado el ${fechaHora}`,
-                  style: 'subHeader',
-                  margin: [0, 5, 0, 0],
+                  style: 'headerDate',
+                  margin: [0, 10, 0, 0],
                 },
               ],
               alignment: 'center',
-              margin: [20, -90, 20, 0],
+              margin: [20, -110, 20, 0],
             },
           ],
         },
@@ -139,24 +145,24 @@ export class PdfService {
                     x: 0,
                     y: 0,
                     w: 595.28,
-                    h: 30,
-                    color: this.primaryLighter,
+                    h: 40,
+                    color: this.lightBg,
                   },
                 ],
               },
               {
                 columns: [
                   {
-                    text: 'Sistema de Gestión Inmobiliaria',
+                    text: 'Sistema de Gestión Inmobiliaria - Todos los derechos reservados',
                     style: 'footer',
                     alignment: 'left',
-                    margin: [20, -25, 0, 0],
+                    margin: [20, -30, 0, 0],
                   },
                   {
                     text: `Página ${currentPage} de ${pageCount}`,
                     style: 'footer',
                     alignment: 'right',
-                    margin: [0, -25, 20, 0],
+                    margin: [0, -30, 20, 0],
                   },
                 ],
               },
@@ -181,9 +187,6 @@ export class PdfService {
                     alignment: 'center',
                   },
                 ],
-                background: this.primaryLighter,
-                margin: [0, 0, 10, 20],
-                padding: [10, 10, 10, 10],
               },
               {
                 width: '50%',
@@ -200,9 +203,6 @@ export class PdfService {
                     alignment: 'center',
                   },
                 ],
-                background: this.primaryLighter,
-                margin: [10, 0, 0, 20],
-                padding: [10, 10, 10, 10],
               },
             ],
             margin: [0, 0, 0, 20],
@@ -214,13 +214,10 @@ export class PdfService {
               body: tableBody,
             },
             layout: {
-              fillColor: (rowIndex: number, node: any, columnIndex: number) => {
-                if (rowIndex === 0) return this.tableHeaderBg;
-                return rowIndex % 2 === 0 ? this.tableStripedBg : null;
-              },
+              fillColor: (rowIndex: number) => (rowIndex === 0 ? this.primaryDark : null),
               hLineWidth: (i: number) => (i === 0 ? 2 : 0.5),
               vLineWidth: () => 0.5,
-              hLineColor: () => this.borderColor,
+              hLineColor: () => this.primaryDark,
               vLineColor: () => this.borderColor,
               paddingTop: (i: number) => (i === 0 ? 10 : 8),
               paddingBottom: (i: number) => (i === 0 ? 10 : 8),
@@ -228,15 +225,26 @@ export class PdfService {
           },
         ],
         styles: {
+          companyName: {
+            fontSize: 12,
+            bold: true,
+            color: '#E5E7EB',
+            alignment: 'center',
+          },
           mainHeader: {
-            fontSize: 18,
+            fontSize: 20,
             bold: true,
             color: this.headerTextColor,
             alignment: 'center',
           },
-          subHeader: {
+          headerSubtitle: {
+            fontSize: 12,
+            color: '#E5E7EB',
+            alignment: 'center',
+          },
+          headerDate: {
             fontSize: 10,
-            color: this.headerTextColor,
+            color: '#E5E7EB',
             alignment: 'center',
           },
           footer: {
@@ -268,11 +276,6 @@ export class PdfService {
             color: this.textColor,
             bold: true,
           },
-          tableCellSuccess: {
-            fontSize: 9,
-            color: this.successColor,
-            bold: true,
-          },
           deudaWarning: {
             fontSize: 9,
             bold: true,
@@ -302,7 +305,7 @@ export class PdfService {
 
       const docDefinition: any = {
         pageSize: 'A4',
-        pageMargins: [40, 140, 40, 60],
+        pageMargins: [40, 160, 40, 60],
         header: {
           stack: [
             {
@@ -312,7 +315,7 @@ export class PdfService {
                   x: 0,
                   y: 0,
                   w: 595.28,
-                  h: 110,
+                  h: 130,
                   color: this.headerBg,
                 },
               ],
@@ -320,18 +323,28 @@ export class PdfService {
             {
               stack: [
                 {
+                  text: 'GESTIÓN INMOBILIARIA',
+                  style: 'companyName',
+                  margin: [0, 15, 0, 0],
+                },
+                {
                   text: 'INFORMACIÓN DETALLADA DEL CLIENTE',
                   style: 'mainHeader',
-                  margin: [0, 25, 0, 0],
+                  margin: [0, 10, 0, 0],
                 },
                 {
                   text: `Cliente #${cliente.id}`,
-                  style: 'subHeader',
+                  style: 'headerSubtitle',
                   margin: [0, 5, 0, 0],
+                },
+                {
+                  text: `Generado el ${fechaHora}`,
+                  style: 'headerDate',
+                  margin: [0, 10, 0, 0],
                 },
               ],
               alignment: 'center',
-              margin: [40, -100, 40, 0],
+              margin: [40, -120, 40, 0],
             },
           ],
         },
@@ -345,8 +358,8 @@ export class PdfService {
                     x: 0,
                     y: 0,
                     w: 595.28,
-                    h: 30,
-                    color: this.primaryLighter,
+                    h: 40,
+                    color: this.lightBg,
                   },
                 ],
               },
@@ -356,13 +369,13 @@ export class PdfService {
                     text: `Generado: ${fechaHora}`,
                     style: 'footer',
                     alignment: 'left',
-                    margin: [40, -25, 0, 0],
+                    margin: [40, -30, 0, 0],
                   },
                   {
                     text: `Página ${currentPage} de ${pageCount}`,
                     style: 'footer',
                     alignment: 'right',
-                    margin: [0, -25, 40, 0],
+                    margin: [0, -30, 40, 0],
                   },
                 ],
               },
@@ -401,7 +414,7 @@ export class PdfService {
               {
                 text: 'INFORMACIÓN DE CONTACTO',
                 style: 'sectionTitle',
-                background: this.primaryLighter,
+                background: this.lightBg,
                 margin: [0, 0, 0, 10],
               },
               {
@@ -427,8 +440,6 @@ export class PdfService {
                   vLineWidth: () => 0.5,
                   hLineColor: () => this.borderColor,
                   vLineColor: () => this.borderColor,
-                  fillColor: (rowIndex: number) =>
-                    rowIndex % 2 === 0 ? this.tableStripedBg : null,
                 },
               },
             ],
@@ -439,7 +450,7 @@ export class PdfService {
               {
                 text: 'RESUMEN FINANCIERO',
                 style: 'sectionTitle',
-                background: this.primaryLighter,
+                background: this.lightBg,
                 margin: [0, 0, 0, 10],
               },
               this.buildResumenFinancieroCliente(infoPlanPago),
@@ -449,15 +460,26 @@ export class PdfService {
           ...this.buildDetalleVentasCliente(cliente),
         ],
         styles: {
+          companyName: {
+            fontSize: 12,
+            bold: true,
+            color: '#E5E7EB',
+            alignment: 'center',
+          },
           mainHeader: {
             fontSize: 18,
             bold: true,
             color: this.headerTextColor,
             alignment: 'center',
           },
-          subHeader: {
-            fontSize: 12,
-            color: this.headerTextColor,
+          headerSubtitle: {
+            fontSize: 14,
+            color: '#E5E7EB',
+            alignment: 'center',
+          },
+          headerDate: {
+            fontSize: 10,
+            color: '#E5E7EB',
             alignment: 'center',
           },
           footer: {
@@ -472,7 +494,7 @@ export class PdfService {
           },
           clientDetail: {
             fontSize: 12,
-            color: this.textLight,
+            color: this.textColor,
           },
           sectionTitle: {
             fontSize: 14,
@@ -484,6 +506,7 @@ export class PdfService {
             fontSize: 10,
             bold: true,
             color: this.textColor,
+            fillColor: this.lightBg,
           },
           valueCell: {
             fontSize: 10,
@@ -497,7 +520,7 @@ export class PdfService {
           statusInactive: {
             fontSize: 12,
             bold: true,
-            color: this.textLight,
+            color: '#666666',
           },
           financialLabel: {
             fontSize: 10,
@@ -537,7 +560,7 @@ export class PdfService {
       const tableBody: any[] = [];
 
       tableBody.push([
-        { text: '#', style: 'tableHeader', alignment: 'center' },
+        { text: 'N°', style: 'tableHeader', alignment: 'center' },
         { text: 'RESERVA', style: 'tableHeader', alignment: 'center' },
         { text: 'CLIENTE', style: 'tableHeader', alignment: 'left' },
         { text: 'LOTE', style: 'tableHeader', alignment: 'center' },
@@ -575,7 +598,7 @@ export class PdfService {
       const docDefinition: any = {
         pageSize: 'A4',
         pageOrientation: 'landscape',
-        pageMargins: [20, 120, 20, 60],
+        pageMargins: [20, 150, 20, 60],
         header: {
           stack: [
             {
@@ -585,7 +608,7 @@ export class PdfService {
                   x: 0,
                   y: 0,
                   w: 595.28,
-                  h: 100,
+                  h: 120,
                   color: this.headerBg,
                 },
               ],
@@ -593,18 +616,28 @@ export class PdfService {
             {
               stack: [
                 {
+                  text: 'GESTIÓN INMOBILIARIA',
+                  style: 'companyName',
+                  margin: [0, 15, 0, 0],
+                },
+                {
                   text: 'REPORTE DE RESERVAS',
                   style: 'mainHeader',
-                  margin: [0, 20, 0, 0],
+                  margin: [0, 10, 0, 0],
+                },
+                {
+                  text: `Control de Reservas de Inmuebles`,
+                  style: 'headerSubtitle',
+                  margin: [0, 5, 0, 0],
                 },
                 {
                   text: `Generado el ${fechaHora}`,
-                  style: 'subHeader',
-                  margin: [0, 5, 0, 0],
+                  style: 'headerDate',
+                  margin: [0, 10, 0, 0],
                 },
               ],
               alignment: 'center',
-              margin: [20, -90, 20, 0],
+              margin: [20, -110, 20, 0],
             },
           ],
         },
@@ -618,24 +651,24 @@ export class PdfService {
                     x: 0,
                     y: 0,
                     w: 595.28,
-                    h: 30,
-                    color: this.primaryLighter,
+                    h: 40,
+                    color: this.lightBg,
                   },
                 ],
               },
               {
                 columns: [
                   {
-                    text: 'Sistema de Gestión Inmobiliaria',
+                    text: 'Sistema de Gestión Inmobiliaria - Todos los derechos reservados',
                     style: 'footer',
                     alignment: 'left',
-                    margin: [20, -25, 0, 0],
+                    margin: [20, -30, 0, 0],
                   },
                   {
                     text: `Página ${currentPage} de ${pageCount}`,
                     style: 'footer',
                     alignment: 'right',
-                    margin: [0, -25, 20, 0],
+                    margin: [0, -30, 20, 0],
                   },
                 ],
               },
@@ -650,13 +683,10 @@ export class PdfService {
               body: tableBody,
             },
             layout: {
-              fillColor: (rowIndex: number, node: any, columnIndex: number) => {
-                if (rowIndex === 0) return this.tableHeaderBg;
-                return rowIndex % 2 === 0 ? this.tableStripedBg : null;
-              },
+              fillColor: (rowIndex: number) => (rowIndex === 0 ? this.primaryDark : null),
               hLineWidth: (i: number) => (i === 0 ? 2 : 0.5),
               vLineWidth: () => 0.5,
-              hLineColor: () => this.borderColor,
+              hLineColor: () => this.primaryDark,
               vLineColor: () => this.borderColor,
               paddingTop: (i: number) => (i === 0 ? 10 : 8),
               paddingBottom: (i: number) => (i === 0 ? 10 : 8),
@@ -664,15 +694,26 @@ export class PdfService {
           },
         ],
         styles: {
+          companyName: {
+            fontSize: 12,
+            bold: true,
+            color: '#E5E7EB',
+            alignment: 'center',
+          },
           mainHeader: {
-            fontSize: 18,
+            fontSize: 20,
             bold: true,
             color: this.headerTextColor,
             alignment: 'center',
           },
-          subHeader: {
+          headerSubtitle: {
+            fontSize: 12,
+            color: '#E5E7EB',
+            alignment: 'center',
+          },
+          headerDate: {
             fontSize: 10,
-            color: this.headerTextColor,
+            color: '#E5E7EB',
             alignment: 'center',
           },
           footer: {
@@ -717,7 +758,7 @@ export class PdfService {
 
       const docDefinition: any = {
         pageSize: 'A4',
-        pageMargins: [40, 140, 40, 60],
+        pageMargins: [40, 160, 40, 60],
         header: {
           stack: [
             {
@@ -727,7 +768,7 @@ export class PdfService {
                   x: 0,
                   y: 0,
                   w: 595.28,
-                  h: 110,
+                  h: 130,
                   color: this.headerBg,
                 },
               ],
@@ -735,18 +776,28 @@ export class PdfService {
             {
               stack: [
                 {
+                  text: 'GESTIÓN INMOBILIARIA',
+                  style: 'companyName',
+                  margin: [0, 15, 0, 0],
+                },
+                {
                   text: 'COMPROBANTE DE RESERVA',
                   style: 'mainHeader',
-                  margin: [0, 25, 0, 0],
+                  margin: [0, 10, 0, 0],
                 },
                 {
                   text: `Reserva #${reserva.id}`,
-                  style: 'subHeader',
+                  style: 'headerSubtitle',
                   margin: [0, 5, 0, 0],
+                },
+                {
+                  text: `Generado el ${fechaHora}`,
+                  style: 'headerDate',
+                  margin: [0, 10, 0, 0],
                 },
               ],
               alignment: 'center',
-              margin: [40, -100, 40, 0],
+              margin: [40, -120, 40, 0],
             },
           ],
         },
@@ -760,8 +811,8 @@ export class PdfService {
                     x: 0,
                     y: 0,
                     w: 595.28,
-                    h: 30,
-                    color: this.primaryLighter,
+                    h: 40,
+                    color: this.lightBg,
                   },
                 ],
               },
@@ -771,13 +822,13 @@ export class PdfService {
                     text: `Generado: ${fechaHora}`,
                     style: 'footer',
                     alignment: 'left',
-                    margin: [40, -25, 0, 0],
+                    margin: [40, -30, 0, 0],
                   },
                   {
                     text: `Página ${currentPage} de ${pageCount}`,
                     style: 'footer',
                     alignment: 'right',
-                    margin: [0, -25, 40, 0],
+                    margin: [0, -30, 40, 0],
                   },
                 ],
               },
@@ -793,7 +844,7 @@ export class PdfService {
                   {
                     text: 'INFORMACIÓN GENERAL',
                     style: 'sectionTitle',
-                    background: this.primaryLighter,
+                    background: this.lightBg,
                     margin: [0, 0, 0, 10],
                   },
                   {
@@ -834,7 +885,7 @@ export class PdfService {
                   {
                     text: 'CLIENTE',
                     style: 'sectionTitle',
-                    background: this.primaryLighter,
+                    background: this.lightBg,
                     margin: [0, 0, 0, 10],
                   },
                   {
@@ -850,8 +901,6 @@ export class PdfService {
                                 style: 'clientDetail',
                               },
                             ],
-                            background: this.primaryLight,
-                            padding: [10, 10, 10, 10],
                           },
                         ],
                       ],
@@ -859,8 +908,8 @@ export class PdfService {
                     layout: {
                       hLineWidth: () => 2,
                       vLineWidth: () => 2,
-                      hLineColor: () => this.primaryColor,
-                      vLineColor: () => this.primaryColor,
+                      hLineColor: () => this.headerBg,
+                      vLineColor: () => this.headerBg,
                     },
                   },
                 ],
@@ -871,7 +920,7 @@ export class PdfService {
           {
             text: 'DETALLE DEL INMUEBLE',
             style: 'sectionTitle',
-            background: this.primaryLighter,
+            background: this.lightBg,
             margin: [0, 0, 0, 10],
           },
           {
@@ -879,10 +928,10 @@ export class PdfService {
               widths: ['25%', '25%', '25%', '25%'],
               body: [
                 [
-                  { text: 'Lote', style: 'labelCell', fillColor: this.primaryLight },
-                  { text: 'Superficie', style: 'labelCell', fillColor: this.primaryLight },
-                  { text: 'Urbanización', style: 'labelCell', fillColor: this.primaryLight },
-                  { text: 'Precio Base', style: 'labelCell', fillColor: this.primaryLight },
+                  { text: 'Lote', style: 'labelCell', fillColor: this.lightBg },
+                  { text: 'Superficie', style: 'labelCell', fillColor: this.lightBg },
+                  { text: 'Urbanización', style: 'labelCell', fillColor: this.lightBg },
+                  { text: 'Precio Base', style: 'labelCell', fillColor: this.lightBg },
                 ],
                 [
                   { text: reserva.lote?.numeroLote || 'N/A', style: 'valueCell' },
@@ -901,15 +950,26 @@ export class PdfService {
           },
         ],
         styles: {
+          companyName: {
+            fontSize: 12,
+            bold: true,
+            color: '#E5E7EB',
+            alignment: 'center',
+          },
           mainHeader: {
             fontSize: 18,
             bold: true,
             color: this.headerTextColor,
             alignment: 'center',
           },
-          subHeader: {
-            fontSize: 12,
-            color: this.headerTextColor,
+          headerSubtitle: {
+            fontSize: 14,
+            color: '#E5E7EB',
+            alignment: 'center',
+          },
+          headerDate: {
+            fontSize: 10,
+            color: '#E5E7EB',
             alignment: 'center',
           },
           footer: {
@@ -944,7 +1004,7 @@ export class PdfService {
           },
           clientDetail: {
             fontSize: 10,
-            color: this.textLight,
+            color: this.textColor,
           },
         },
         defaultStyle: {
@@ -970,10 +1030,11 @@ export class PdfService {
       const tableBody: any[] = [];
 
       tableBody.push([
-        { text: '#', style: 'tableHeader', alignment: 'center' },
+        { text: 'N°', style: 'tableHeader', alignment: 'center' },
         { text: 'VENTA', style: 'tableHeader', alignment: 'center' },
         { text: 'CLIENTE', style: 'tableHeader', alignment: 'left' },
-        { text: 'LOTE', style: 'tableHeader', alignment: 'center' },
+        { text: 'TIPO INMUEBLE', style: 'tableHeader', alignment: 'center' },
+        { text: 'INMUEBLE', style: 'tableHeader', alignment: 'center' },
         { text: 'FECHA VENTA', style: 'tableHeader', alignment: 'center' },
         { text: 'TOTAL', style: 'tableHeader', alignment: 'right' },
         { text: 'PAGADO', style: 'tableHeader', alignment: 'right' },
@@ -992,17 +1053,30 @@ export class PdfService {
         const fechaVenta =
           venta.fecha_venta || (planPago ? planPago.fecha_inicio : venta.createdAt);
 
+        // Determinar información del inmueble según el tipo
+        let inmuebleInfo = 'N/A';
+        if (venta.inmuebleTipo === 'LOTE' && venta.lote) {
+          inmuebleInfo = venta.lote.numeroLote;
+        } else if (venta.inmuebleTipo === 'PROPIEDAD' && venta.propiedad) {
+          inmuebleInfo = venta.propiedad.nombre;
+        }
+
         tableBody.push([
           { text: (index + 1).toString(), style: 'tableCell', alignment: 'center' },
           { text: `#${venta.id}`, style: 'tableCellBold', alignment: 'center' },
           { text: venta.cliente?.fullName || 'N/A', style: 'tableCell' },
-          { text: venta.lote?.numeroLote || 'N/A', style: 'tableCell', alignment: 'center' },
+          {
+            text: venta.inmuebleTipo === 'LOTE' ? 'LOTE' : 'PROPIEDAD',
+            style: 'tableCell',
+            alignment: 'center',
+          },
+          { text: inmuebleInfo, style: 'tableCell', alignment: 'center' },
           { text: this.formatDate(fechaVenta), style: 'tableCell', alignment: 'center' },
           { text: this.formatCurrency(totalVenta), style: 'tableCellBold', alignment: 'right' },
           { text: this.formatCurrency(totalPagado), style: 'tableCell', alignment: 'right' },
           {
             text: this.formatCurrency(saldoPendiente),
-            style: saldoPendiente > 0 ? 'deudaWarning' : 'tableCellSuccess',
+            style: saldoPendiente > 0 ? 'deudaWarning' : 'tableCell',
             alignment: 'right',
           },
           { text: `${porcentajePagado.toFixed(1)}%`, style: 'tableCell', alignment: 'center' },
@@ -1012,7 +1086,7 @@ export class PdfService {
       const docDefinition: any = {
         pageSize: 'A4',
         pageOrientation: 'landscape',
-        pageMargins: [20, 120, 20, 60],
+        pageMargins: [20, 150, 20, 60],
         header: {
           stack: [
             {
@@ -1022,7 +1096,7 @@ export class PdfService {
                   x: 0,
                   y: 0,
                   w: 595.28,
-                  h: 100,
+                  h: 120,
                   color: this.headerBg,
                 },
               ],
@@ -1030,18 +1104,28 @@ export class PdfService {
             {
               stack: [
                 {
-                  text: 'REPORTE DE VENTAS - PLANES DE PAGO',
+                  text: 'GESTIÓN INMOBILIARIA',
+                  style: 'companyName',
+                  margin: [0, 15, 0, 0],
+                },
+                {
+                  text: 'REPORTE DE VENTAS',
                   style: 'mainHeader',
-                  margin: [0, 20, 0, 0],
+                  margin: [0, 10, 0, 0],
+                },
+                {
+                  text: `Planes de Pago y Estado Financiero`,
+                  style: 'headerSubtitle',
+                  margin: [0, 5, 0, 0],
                 },
                 {
                   text: `Generado el ${fechaHora}`,
-                  style: 'subHeader',
-                  margin: [0, 5, 0, 0],
+                  style: 'headerDate',
+                  margin: [0, 10, 0, 0],
                 },
               ],
               alignment: 'center',
-              margin: [20, -90, 20, 0],
+              margin: [20, -110, 20, 0],
             },
           ],
         },
@@ -1055,24 +1139,24 @@ export class PdfService {
                     x: 0,
                     y: 0,
                     w: 595.28,
-                    h: 30,
-                    color: this.primaryLighter,
+                    h: 40,
+                    color: this.lightBg,
                   },
                 ],
               },
               {
                 columns: [
                   {
-                    text: 'Sistema de Gestión Inmobiliaria',
+                    text: 'Sistema de Gestión Inmobiliaria - Todos los derechos reservados',
                     style: 'footer',
                     alignment: 'left',
-                    margin: [20, -25, 0, 0],
+                    margin: [20, -30, 0, 0],
                   },
                   {
                     text: `Página ${currentPage} de ${pageCount}`,
                     style: 'footer',
                     alignment: 'right',
-                    margin: [0, -25, 20, 0],
+                    margin: [0, -30, 20, 0],
                   },
                 ],
               },
@@ -1083,17 +1167,14 @@ export class PdfService {
           {
             table: {
               headerRows: 1,
-              widths: ['4%', '6%', '20%', '8%', '12%', '12%', '12%', '12%', '14%'],
+              widths: ['3%', '5%', '18%', '8%', '12%', '10%', '12%', '12%', '12%', '8%'],
               body: tableBody,
             },
             layout: {
-              fillColor: (rowIndex: number, node: any, columnIndex: number) => {
-                if (rowIndex === 0) return this.tableHeaderBg;
-                return rowIndex % 2 === 0 ? this.tableStripedBg : null;
-              },
+              fillColor: (rowIndex: number) => (rowIndex === 0 ? this.primaryDark : null),
               hLineWidth: (i: number) => (i === 0 ? 2 : 0.5),
               vLineWidth: () => 0.5,
-              hLineColor: () => this.borderColor,
+              hLineColor: () => this.primaryDark,
               vLineColor: () => this.borderColor,
               paddingTop: (i: number) => (i === 0 ? 10 : 8),
               paddingBottom: (i: number) => (i === 0 ? 10 : 8),
@@ -1101,15 +1182,26 @@ export class PdfService {
           },
         ],
         styles: {
+          companyName: {
+            fontSize: 12,
+            bold: true,
+            color: '#E5E7EB',
+            alignment: 'center',
+          },
           mainHeader: {
-            fontSize: 16,
+            fontSize: 20,
             bold: true,
             color: this.headerTextColor,
             alignment: 'center',
           },
-          subHeader: {
+          headerSubtitle: {
+            fontSize: 12,
+            color: '#E5E7EB',
+            alignment: 'center',
+          },
+          headerDate: {
             fontSize: 10,
-            color: this.headerTextColor,
+            color: '#E5E7EB',
             alignment: 'center',
           },
           footer: {
@@ -1118,26 +1210,21 @@ export class PdfService {
             bold: true,
           },
           tableHeader: {
-            fontSize: 8,
+            fontSize: 7,
             bold: true,
             color: this.headerTextColor,
           },
           tableCell: {
-            fontSize: 8,
+            fontSize: 7,
             color: this.textColor,
           },
           tableCellBold: {
-            fontSize: 8,
+            fontSize: 7,
             color: this.textColor,
             bold: true,
           },
-          tableCellSuccess: {
-            fontSize: 8,
-            color: this.successColor,
-            bold: true,
-          },
           deudaWarning: {
-            fontSize: 8,
+            fontSize: 7,
             bold: true,
             color: this.errorColor,
           },
@@ -1170,9 +1257,12 @@ export class PdfService {
       const porcentajePagado = totalVenta > 0 ? (totalPagado / totalVenta) * 100 : 0;
       const fechaVenta = venta.fecha_venta || (planPago ? planPago.fecha_inicio : venta.createdAt);
 
+      // Construir tabla de detalles del inmueble según el tipo
+      const detalleInmuebleTable = this.buildDetalleInmuebleTable(venta);
+
       const docDefinition: any = {
         pageSize: 'A4',
-        pageMargins: [40, 140, 40, 60],
+        pageMargins: [40, 160, 40, 60],
         header: {
           stack: [
             {
@@ -1182,7 +1272,7 @@ export class PdfService {
                   x: 0,
                   y: 0,
                   w: 595.28,
-                  h: 110,
+                  h: 130,
                   color: this.headerBg,
                 },
               ],
@@ -1190,18 +1280,28 @@ export class PdfService {
             {
               stack: [
                 {
+                  text: 'GESTIÓN INMOBILIARIA',
+                  style: 'companyName',
+                  margin: [0, 15, 0, 0],
+                },
+                {
                   text: 'DETALLE COMPLETO DE VENTA',
                   style: 'mainHeader',
-                  margin: [0, 25, 0, 0],
+                  margin: [0, 10, 0, 0],
                 },
                 {
                   text: `Venta #${venta.id}`,
-                  style: 'subHeader',
+                  style: 'headerSubtitle',
                   margin: [0, 5, 0, 0],
+                },
+                {
+                  text: `Generado el ${fechaHora}`,
+                  style: 'headerDate',
+                  margin: [0, 10, 0, 0],
                 },
               ],
               alignment: 'center',
-              margin: [40, -100, 40, 0],
+              margin: [40, -120, 40, 0],
             },
           ],
         },
@@ -1215,8 +1315,8 @@ export class PdfService {
                     x: 0,
                     y: 0,
                     w: 595.28,
-                    h: 30,
-                    color: this.primaryLighter,
+                    h: 40,
+                    color: this.lightBg,
                   },
                 ],
               },
@@ -1226,13 +1326,13 @@ export class PdfService {
                     text: `Generado: ${fechaHora}`,
                     style: 'footer',
                     alignment: 'left',
-                    margin: [40, -25, 0, 0],
+                    margin: [40, -30, 0, 0],
                   },
                   {
                     text: `Página ${currentPage} de ${pageCount}`,
                     style: 'footer',
                     alignment: 'right',
-                    margin: [0, -25, 40, 0],
+                    margin: [0, -30, 40, 0],
                   },
                 ],
               },
@@ -1248,7 +1348,7 @@ export class PdfService {
                   {
                     text: 'INFORMACIÓN DE VENTA',
                     style: 'sectionTitle',
-                    background: this.primaryLighter,
+                    background: this.lightBg,
                     margin: [0, 0, 0, 10],
                   },
                   {
@@ -1266,6 +1366,13 @@ export class PdfService {
                             style: this.getEstadoVentaStyle(venta.estado),
                           },
                         ],
+                        [
+                          { text: 'Tipo Inmueble:', style: 'labelCell' },
+                          {
+                            text: venta.inmuebleTipo === 'LOTE' ? 'LOTE' : 'PROPIEDAD',
+                            style: 'valueCellBold',
+                          },
+                        ],
                       ],
                     },
                     layout: 'noBorders',
@@ -1278,7 +1385,7 @@ export class PdfService {
                   {
                     text: 'CLIENTE',
                     style: 'sectionTitle',
-                    background: this.primaryLighter,
+                    background: this.lightBg,
                     margin: [0, 0, 0, 10],
                   },
                   {
@@ -1294,8 +1401,6 @@ export class PdfService {
                                 style: 'clientDetail',
                               },
                             ],
-                            background: this.primaryLight,
-                            padding: [10, 10, 10, 10],
                           },
                         ],
                       ],
@@ -1303,8 +1408,8 @@ export class PdfService {
                     layout: {
                       hLineWidth: () => 2,
                       vLineWidth: () => 2,
-                      hLineColor: () => this.primaryColor,
-                      vLineColor: () => this.primaryColor,
+                      hLineColor: () => this.headerBg,
+                      vLineColor: () => this.headerBg,
                     },
                   },
                 ],
@@ -1315,38 +1420,14 @@ export class PdfService {
           {
             text: 'DETALLE DEL INMUEBLE',
             style: 'sectionTitle',
-            background: this.primaryLighter,
+            background: this.lightBg,
             margin: [0, 0, 0, 10],
           },
-          {
-            table: {
-              widths: ['25%', '25%', '25%', '25%'],
-              body: [
-                [
-                  { text: 'Lote', style: 'labelCell', fillColor: this.primaryLight },
-                  { text: 'Superficie', style: 'labelCell', fillColor: this.primaryLight },
-                  { text: 'Urbanización', style: 'labelCell', fillColor: this.primaryLight },
-                  { text: 'Precio Base', style: 'labelCell', fillColor: this.primaryLight },
-                ],
-                [
-                  { text: venta.lote?.numeroLote || 'N/A', style: 'valueCell' },
-                  { text: `${venta.lote?.superficieM2 || 'N/A'} m²`, style: 'valueCell' },
-                  { text: venta.lote?.urbanizacion?.nombre || 'N/A', style: 'valueCell' },
-                  { text: this.formatCurrency(venta.lote?.precioBase || 0), style: 'valueCell' },
-                ],
-              ],
-            },
-            layout: {
-              hLineWidth: () => 0.5,
-              vLineWidth: () => 0.5,
-              hLineColor: () => this.borderColor,
-              vLineColor: () => this.borderColor,
-            },
-          },
+          detalleInmuebleTable,
           {
             text: 'RESUMEN FINANCIERO',
             style: 'sectionTitle',
-            background: this.primaryLighter,
+            background: this.lightBg,
             margin: [0, 25, 0, 10],
           },
           {
@@ -1373,7 +1454,7 @@ export class PdfService {
                   { text: 'Saldo Pendiente:', style: 'financialLabel' },
                   {
                     text: this.formatCurrency(saldoPendiente),
-                    style: saldoPendiente > 0 ? 'financialWarning' : 'financialSuccess',
+                    style: saldoPendiente > 0 ? 'financialWarning' : 'financialValue',
                     alignment: 'right',
                   },
                 ],
@@ -1392,21 +1473,31 @@ export class PdfService {
               vLineWidth: () => 0.5,
               hLineColor: (i: number) => (i === 0 || i === 3 ? this.primaryDark : this.borderColor),
               vLineColor: () => this.borderColor,
-              fillColor: (rowIndex: number) => (rowIndex % 2 === 0 ? this.tableStripedBg : null),
             },
           },
           ...this.buildDetallePagos(planPago),
         ],
         styles: {
+          companyName: {
+            fontSize: 12,
+            bold: true,
+            color: '#E5E7EB',
+            alignment: 'center',
+          },
           mainHeader: {
-            fontSize: 16,
+            fontSize: 18,
             bold: true,
             color: this.headerTextColor,
             alignment: 'center',
           },
-          subHeader: {
-            fontSize: 12,
-            color: this.headerTextColor,
+          headerSubtitle: {
+            fontSize: 14,
+            color: '#E5E7EB',
+            alignment: 'center',
+          },
+          headerDate: {
+            fontSize: 10,
+            color: '#E5E7EB',
             alignment: 'center',
           },
           footer: {
@@ -1429,6 +1520,11 @@ export class PdfService {
             fontSize: 10,
             color: this.textColor,
           },
+          valueCellBold: {
+            fontSize: 10,
+            color: this.textColor,
+            bold: true,
+          },
           clientName: {
             fontSize: 12,
             bold: true,
@@ -1436,7 +1532,7 @@ export class PdfService {
           },
           clientDetail: {
             fontSize: 10,
-            color: this.textLight,
+            color: this.textColor,
           },
           financialLabel: {
             fontSize: 11,
@@ -1445,11 +1541,6 @@ export class PdfService {
           financialValue: {
             fontSize: 11,
             color: this.textColor,
-          },
-          financialSuccess: {
-            fontSize: 11,
-            color: this.successColor,
-            bold: true,
           },
           financialWarning: {
             fontSize: 11,
@@ -1467,6 +1558,85 @@ export class PdfService {
       pdfMake.createPdf(docDefinition).download(fileName);
     } catch (error) {
       console.error('Error generando PDF individual de venta:', error);
+    }
+  }
+
+  private buildDetalleInmuebleTable(venta: any): any {
+    if (venta.inmuebleTipo === 'LOTE' && venta.lote) {
+      return {
+        table: {
+          widths: ['25%', '25%', '25%', '25%'],
+          body: [
+            [
+              { text: 'Lote', style: 'labelCell', fillColor: this.lightBg },
+              { text: 'Superficie', style: 'labelCell', fillColor: this.lightBg },
+              { text: 'Urbanización', style: 'labelCell', fillColor: this.lightBg },
+              { text: 'Precio Base', style: 'labelCell', fillColor: this.lightBg },
+            ],
+            [
+              { text: venta.lote?.numeroLote || 'N/A', style: 'valueCell' },
+              { text: `${venta.lote?.superficieM2 || 'N/A'} m²`, style: 'valueCell' },
+              { text: venta.lote?.urbanizacion?.nombre || 'N/A', style: 'valueCell' },
+              { text: this.formatCurrency(venta.lote?.precioBase || 0), style: 'valueCell' },
+            ],
+          ],
+        },
+        layout: {
+          hLineWidth: () => 0.5,
+          vLineWidth: () => 0.5,
+          hLineColor: () => this.borderColor,
+          vLineColor: () => this.borderColor,
+        },
+      };
+    } else if (venta.inmuebleTipo === 'PROPIEDAD' && venta.propiedad) {
+      return {
+        table: {
+          widths: ['20%', '20%', '20%', '20%', '20%'],
+          body: [
+            [
+              { text: 'Nombre', style: 'labelCell', fillColor: this.lightBg },
+              { text: 'Tipo', style: 'labelCell', fillColor: this.lightBg },
+              { text: 'Tamaño', style: 'labelCell', fillColor: this.lightBg },
+              { text: 'Ciudad', style: 'labelCell', fillColor: this.lightBg },
+              { text: 'Precio', style: 'labelCell', fillColor: this.lightBg },
+            ],
+            [
+              { text: venta.propiedad?.nombre || 'N/A', style: 'valueCell' },
+              { text: venta.propiedad?.tipo || 'N/A', style: 'valueCell' },
+              { text: `${venta.propiedad?.tamano || 'N/A'} m²`, style: 'valueCell' },
+              { text: venta.propiedad?.ciudad || 'N/A', style: 'valueCell' },
+              { text: this.formatCurrency(venta.propiedad?.precio || 0), style: 'valueCell' },
+            ],
+          ],
+        },
+        layout: {
+          hLineWidth: () => 0.5,
+          vLineWidth: () => 0.5,
+          hLineColor: () => this.borderColor,
+          vLineColor: () => this.borderColor,
+        },
+      };
+    } else {
+      return {
+        table: {
+          widths: ['100%'],
+          body: [
+            [
+              {
+                text: 'Información del inmueble no disponible',
+                style: 'valueCell',
+                alignment: 'center',
+              },
+            ],
+          ],
+        },
+        layout: {
+          hLineWidth: () => 0.5,
+          vLineWidth: () => 0.5,
+          hLineColor: () => this.borderColor,
+          vLineColor: () => this.borderColor,
+        },
+      };
     }
   }
 
@@ -1513,36 +1683,38 @@ export class PdfService {
         widths: ['50%', '50%'],
         body: [
           [
-            { text: 'Deuda Total:', style: 'financialLabel', fillColor: this.tableStripedBg },
+            { text: 'Deuda Total:', style: 'financialLabel', fillColor: this.lightBg },
             {
               text: this.formatCurrency(infoPlanPago.totalDeuda),
               style: 'financialValue',
-              fillColor: this.tableStripedBg,
+              fillColor: this.lightBg,
               alignment: 'right',
             },
           ],
           [
-            { text: 'Total Pagado:', style: 'financialLabel' },
+            { text: 'Total Pagado:', style: 'financialLabel', fillColor: this.lightBg },
             {
               text: this.formatCurrency(infoPlanPago.totalPagado),
               style: 'financialValue',
+              fillColor: this.lightBg,
               alignment: 'right',
             },
           ],
           [
-            { text: 'Saldo Pendiente:', style: 'financialLabel', fillColor: this.tableStripedBg },
+            { text: 'Saldo Pendiente:', style: 'financialLabel', fillColor: this.lightBg },
             {
               text: this.formatCurrency(infoPlanPago.saldoPendiente),
-              style: infoPlanPago.saldoPendiente > 0 ? 'financialWarning' : 'financialSuccess',
-              fillColor: this.tableStripedBg,
+              style: infoPlanPago.saldoPendiente > 0 ? 'financialWarning' : 'financialValue',
+              fillColor: this.lightBg,
               alignment: 'right',
             },
           ],
           [
-            { text: 'Progreso de Pago:', style: 'financialLabel' },
+            { text: 'Progreso de Pago:', style: 'financialLabel', fillColor: this.lightBg },
             {
               text: `${infoPlanPago.porcentajePagado}%`,
               style: 'financialValue',
+              fillColor: this.lightBg,
               alignment: 'right',
             },
           ],
@@ -1564,7 +1736,7 @@ export class PdfService {
         {
           text: 'DETALLE DE VENTAS',
           style: 'sectionTitle',
-          background: this.primaryLighter,
+          background: this.lightBg,
           margin: [0, 20, 0, 10],
         },
         {
@@ -1577,13 +1749,14 @@ export class PdfService {
 
     const tableBody: any[] = [
       [
-        { text: 'VENTA', style: 'labelCell', fillColor: this.primaryLight },
-        { text: 'LOTE', style: 'labelCell', fillColor: this.primaryLight },
-        { text: 'FECHA VENTA', style: 'labelCell', fillColor: this.primaryLight },
-        { text: 'TOTAL', style: 'labelCell', fillColor: this.primaryLight },
-        { text: 'PAGADO', style: 'labelCell', fillColor: this.primaryLight },
-        { text: 'SALDO', style: 'labelCell', fillColor: this.primaryLight },
-        { text: 'AVANCE', style: 'labelCell', fillColor: this.primaryLight },
+        { text: 'VENTA', style: 'labelCell', fillColor: this.lightBg },
+        { text: 'INMUEBLE', style: 'labelCell', fillColor: this.lightBg },
+        { text: 'TIPO', style: 'labelCell', fillColor: this.lightBg },
+        { text: 'FECHA VENTA', style: 'labelCell', fillColor: this.lightBg },
+        { text: 'TOTAL', style: 'labelCell', fillColor: this.lightBg },
+        { text: 'PAGADO', style: 'labelCell', fillColor: this.lightBg },
+        { text: 'SALDO', style: 'labelCell', fillColor: this.lightBg },
+        { text: 'AVANCE', style: 'labelCell', fillColor: this.lightBg },
       ],
     ];
 
@@ -1591,6 +1764,19 @@ export class PdfService {
       const planPago = venta.planPago || venta.plan_pago;
       const total = Number(venta.precioFinal || venta.total || 0);
       let pagado = 0;
+
+      // Determinar información del inmueble
+      let inmuebleInfo = 'N/A';
+      let tipoInmueble = 'N/A';
+
+      if (venta.inmuebleTipo === 'LOTE' && venta.lote) {
+        inmuebleInfo = venta.lote.numeroLote;
+        tipoInmueble = 'LOTE';
+      } else if (venta.inmuebleTipo === 'PROPIEDAD' && venta.propiedad) {
+        inmuebleInfo = venta.propiedad.nombre;
+        tipoInmueble = 'PROPIEDAD';
+      }
+
       if (planPago) {
         if (planPago.pagos && Array.isArray(planPago.pagos)) {
           pagado = planPago.pagos.reduce(
@@ -1608,13 +1794,14 @@ export class PdfService {
 
       tableBody.push([
         { text: `#${venta.id}`, style: 'valueCell' },
-        { text: venta.lote?.numeroLote || 'N/A', style: 'valueCell' },
+        { text: inmuebleInfo, style: 'valueCell' },
+        { text: tipoInmueble, style: 'valueCell' },
         { text: this.formatDate(fechaVenta), style: 'valueCell' },
         { text: this.formatCurrency(total), style: 'valueCell' },
         { text: this.formatCurrency(pagado), style: 'valueCell' },
         {
           text: this.formatCurrency(saldo),
-          style: saldo > 0 ? 'financialWarning' : 'financialSuccess',
+          style: saldo > 0 ? 'financialWarning' : 'valueCell',
         },
         { text: `${porcentaje.toFixed(1)}%`, style: 'valueCell' },
       ]);
@@ -1624,20 +1811,17 @@ export class PdfService {
       {
         text: 'DETALLE DE VENTAS',
         style: 'sectionTitle',
-        background: this.primaryLighter,
+        background: this.lightBg,
         margin: [0, 20, 0, 10],
       },
       {
         table: {
           headerRows: 1,
-          widths: ['10%', '12%', '15%', '15%', '15%', '15%', '8%'],
+          widths: ['8%', '15%', '10%', '12%', '15%', '15%', '15%', '10%'],
           body: tableBody,
         },
         layout: {
-          fillColor: (rowIndex: number, node: any, columnIndex: number) => {
-            if (rowIndex === 0) return this.primaryLight;
-            return rowIndex % 2 === 0 ? this.tableStripedBg : null;
-          },
+          fillColor: (rowIndex: number) => (rowIndex === 0 ? this.lightBg : null),
           hLineWidth: (i: number) => (i === 0 ? 2 : 0.5),
           vLineWidth: () => 0.5,
           hLineColor: (i: number) => (i === 0 ? this.primaryDark : this.borderColor),
@@ -1659,10 +1843,10 @@ export class PdfService {
 
     const tableBody: any[] = [
       [
-        { text: 'FECHA PAGO', style: 'labelCell', fillColor: this.primaryLight },
-        { text: 'MONTO', style: 'labelCell', fillColor: this.primaryLight },
-        { text: 'MÉTODO', style: 'labelCell', fillColor: this.primaryLight },
-        { text: 'OBSERVACIÓN', style: 'labelCell', fillColor: this.primaryLight },
+        { text: 'FECHA PAGO', style: 'labelCell', fillColor: this.lightBg },
+        { text: 'MONTO', style: 'labelCell', fillColor: this.lightBg },
+        { text: 'MÉTODO', style: 'labelCell', fillColor: this.lightBg },
+        { text: 'OBSERVACIÓN', style: 'labelCell', fillColor: this.lightBg },
       ],
     ];
 
@@ -1679,7 +1863,7 @@ export class PdfService {
       {
         text: 'HISTORIAL DE PAGOS',
         style: 'sectionTitle',
-        background: this.primaryLighter,
+        background: this.lightBg,
         margin: [0, 20, 0, 10],
       },
       {
@@ -1689,10 +1873,7 @@ export class PdfService {
           body: tableBody,
         },
         layout: {
-          fillColor: (rowIndex: number, node: any, columnIndex: number) => {
-            if (rowIndex === 0) return this.primaryLight;
-            return rowIndex % 2 === 0 ? this.tableStripedBg : null;
-          },
+          fillColor: (rowIndex: number) => (rowIndex === 0 ? this.lightBg : null),
           hLineWidth: (i: number) => (i === 0 ? 2 : 0.5),
           vLineWidth: () => 0.5,
           hLineColor: (i: number) => (i === 0 ? this.primaryDark : this.borderColor),

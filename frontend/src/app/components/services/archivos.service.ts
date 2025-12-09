@@ -7,7 +7,7 @@ import { environment } from '../../../environments/environment';
   providedIn: 'root',
 })
 export class UploadArchivosService {
-  private baseUrl =environment.apiUrl + '/archivos';
+  private baseUrl = environment.apiUrl + '/archivos';
 
   constructor(private http: HttpClient) {}
 
@@ -18,7 +18,8 @@ export class UploadArchivosService {
       reservaId?: number;
       loteId?: number;
       urbanizacionId?: number;
-    } = {},
+      propiedadId?: number;
+    } = {}
   ): Observable<any> {
     const formData = new FormData();
 
@@ -31,6 +32,7 @@ export class UploadArchivosService {
     if (opciones.loteId) formData.append('loteId', opciones.loteId.toString());
     if (opciones.urbanizacionId)
       formData.append('urbanizacionId', opciones.urbanizacionId.toString());
+    if (opciones.propiedadId) formData.append('propiedadId', opciones.propiedadId.toString());
 
     const url = `${this.baseUrl}/upload`;
 
@@ -44,7 +46,8 @@ export class UploadArchivosService {
       reservaId?: number;
       loteId?: number;
       urbanizacionId?: number;
-    } = {},
+      propiedadId?: number;
+    } = {}
   ): Observable<any> {
     const formData = new FormData();
     for (const file of files) formData.append('files', file);
@@ -54,12 +57,12 @@ export class UploadArchivosService {
     if (opciones.loteId) formData.append('loteId', opciones.loteId.toString());
     if (opciones.urbanizacionId)
       formData.append('urbanizacionId', opciones.urbanizacionId.toString());
+    if (opciones.propiedadId) formData.append('propiedadId', opciones.propiedadId.toString());
 
     return this.http.post(`${this.baseUrl}/update`, formData);
   }
 
-  eliminarArchivo(id:number):Observable<any>{
-    return this.http.delete<any>(`${this.baseUrl}/${id}`)
+  eliminarArchivo(id: number): Observable<any> {
+    return this.http.delete<any>(`${this.baseUrl}/${id}`);
   }
-
 }

@@ -6,6 +6,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
 import { LoteService } from '../../service/lote.service';
 import { UrbanizacionService } from '../../../urbanizacion/services/urbanizacion.service';
 import { UrbanizacionDto } from '../../../../core/interfaces/urbanizacion.interface';
+import { UserService } from '../../../users/services/users.service';
 
 @Component({
   selector: 'app-lote-edit',
@@ -22,6 +23,7 @@ export class LoteEdit implements OnInit {
   enviando = signal<boolean>(false);
   loteData: any = null;
   urbanizaciones = signal<UrbanizacionDto[]>([]);
+  asesores = signal<any[]>([]);
 
   searchUrbanizacion = signal<string>('');
   showUrbanizacionDropdown = signal<boolean>(false);
@@ -30,6 +32,7 @@ export class LoteEdit implements OnInit {
   private fb = inject(FormBuilder);
   private loteSvc = inject(LoteService);
   private urbanizacionSvc = inject(UrbanizacionService);
+  private userSvc = inject(UserService);
   private route = inject(ActivatedRoute);
   private notificationService = inject(NotificationService);
   private datePipe = inject(DatePipe);
@@ -40,6 +43,7 @@ export class LoteEdit implements OnInit {
 
   ngOnInit(): void {
     this.cargarUrbanizaciones();
+    this.cargarAsesores();
     this.obtenerLote();
     this.setupFormListeners();
   }
@@ -55,6 +59,21 @@ export class LoteEdit implements OnInit {
       descripcion: [''],
       ubicacion: [''],
       estado: ['DISPONIBLE'],
+      encargadoId: [''],
+    });
+  }
+
+  cargarAsesores(): void {
+    this.userSvc.getAsesoresYAdministradores().subscribe({
+      next: (response) => {
+        if (response.success && response.data.users) {
+          this.asesores.set(response.data.users);
+        }
+      },
+      error: (err) => {
+        console.error('Error al cargar asesores:', err);
+        this.notificationService.showError('No se pudieron cargar los encargados disponibles');
+      },
     });
   }
 
@@ -164,6 +183,7 @@ export class LoteEdit implements OnInit {
       descripcion: lote.descripcion || '',
       ubicacion: lote.ubicacion || '',
       estado: lote.estado || 'DISPONIBLE',
+      encargadoId: lote.encargadoId || '',
     });
 
     if (urbanizacionSeleccionada) {
@@ -207,6 +227,7 @@ export class LoteEdit implements OnInit {
       descripcion: formValue.descripcion,
       ubicacion: formValue.ubicacion,
       estado: formValue.estado,
+      encargadoId: formValue.encargadoId ? Number(formValue.encargadoId) : undefined,
     };
 
     this.loteSvc.update(this.loteId, dataActualizada).subscribe({

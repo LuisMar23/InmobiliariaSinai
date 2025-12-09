@@ -16,9 +16,10 @@ import { ArchivosModule } from './archivos/archivos.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 
 import { ReciboModule } from './recibo/recibo.module';
+import { PropiedadModule } from './propiedad/propiedad.module';
 
 @Module({
-  imports: [AuthModule, UsersModule, UrbanizacionModule, PromocionModule, LotesModule, VentasModule, ReservasModule, CotizacionesModule, CajaModule, MovimientoModule, CierreModule, VisitasModule, ArchivosModule, ReciboModule,DashboardModule],
+  imports: [AuthModule, UsersModule, UrbanizacionModule, PromocionModule, LotesModule, VentasModule, ReservasModule, CotizacionesModule, CajaModule, MovimientoModule, CierreModule, VisitasModule, ArchivosModule, ReciboModule,DashboardModule, PropiedadModule],
 
   controllers: [],
   providers: [],

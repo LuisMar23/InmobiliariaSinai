@@ -402,6 +402,18 @@ export class VentaService {
               : undefined,
           }
         : undefined,
+      propiedad: venta.propiedad
+        ? {
+            ...venta.propiedad,
+            id: Number(venta.propiedad.id),
+            tamano: Number(venta.propiedad.tamano || 0),
+            precio: Number(venta.propiedad.precio || 0),
+            habitaciones: venta.propiedad.habitaciones
+              ? Number(venta.propiedad.habitaciones)
+              : undefined,
+            banos: venta.propiedad.banos ? Number(venta.propiedad.banos) : undefined,
+          }
+        : undefined,
       planPago: venta.planPago
         ? {
             ...venta.planPago,
@@ -429,5 +441,4 @@ export class VentaService {
       ingresos: venta.ingresos || [],
     };
   }
-  
 }

@@ -6,8 +6,10 @@ import { FormsModule } from '@angular/forms';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { UserDto } from '../../../../core/interfaces/user.interface';
 import { LoteDto } from '../../../../core/interfaces/lote.interface';
+import { PropiedadDto } from '../../../../core/interfaces/propiedad.interface';
 import { Caja } from '../../../../core/interfaces/caja.interface';
 import { LoteService } from '../../../lote/service/lote.service';
+import { PropiedadService } from '../../../propiedad/service/propiedad.service';
 import { AuthService } from '../../../../components/services/auth.service';
 import { VentaService } from '../../service/venta.service';
 import { ReciboService, Recibo } from '../../../../core/services/recibo.service';
@@ -27,6 +29,7 @@ import {
 export class VentaEdit implements OnInit {
   ventaForm: FormGroup;
   pagoForm: FormGroup;
+  montoInicialForm: FormGroup;
 
   ventaId = signal<number | null>(null);
   cargando = signal<boolean>(true);
@@ -34,24 +37,28 @@ export class VentaEdit implements OnInit {
   enviando = signal<boolean>(false);
   enviandoPago = signal<boolean>(false);
   enviandoEditarPago = signal<boolean>(false);
+  enviandoMontoInicial = signal<boolean>(false);
   ventaData = signal<VentaDto | null>(null);
 
   clientes = signal<UserDto[]>([]);
   lotes = signal<LoteDto[]>([]);
-  cajas = signal<Caja[]>([]);
+  propiedades = signal<PropiedadDto[]>([]);
+  cajasActivas = signal<Caja[]>([]);
 
   mostrarFormPago = signal<boolean>(false);
   mostrarFormEditarPago = signal<boolean>(false);
+  mostrarFormMontoInicial = signal<boolean>(false);
   searchCliente = signal<string>('');
   searchLote = signal<string>('');
+  searchPropiedad = signal<string>('');
   showClientesDropdown = signal<boolean>(false);
   showLotesDropdown = signal<boolean>(false);
+  showPropiedadesDropdown = signal<boolean>(false);
 
   pagoSeleccionado = signal<any>(null);
 
-  // Nuevas variables para manejar archivos
   archivosSeleccionados = signal<File[]>([]);
-  maxArchivos = 6; // Máximo de archivos para venta
+  maxArchivos = 6;
   archivosCargando = signal<boolean>(false);
 
   recibosVenta = signal<Recibo[]>([]);
@@ -78,6 +85,20 @@ export class VentaEdit implements OnInit {
         lote.numeroLote?.toLowerCase().includes(search) ||
         (lote.urbanizacion?.nombre && lote.urbanizacion.nombre.toLowerCase().includes(search)) ||
         lote.precioBase?.toString().includes(search)
+    );
+  });
+
+  filteredPropiedades = computed(() => {
+    const search = this.searchPropiedad().toLowerCase();
+    const propiedades = this.propiedades();
+    if (!search) return propiedades;
+    return propiedades.filter(
+      (propiedad) =>
+        propiedad.nombre?.toLowerCase().includes(search) ||
+        propiedad.ubicacion?.toLowerCase().includes(search) ||
+        propiedad.ciudad?.toLowerCase().includes(search) ||
+        propiedad.tipo?.toLowerCase().includes(search) ||
+        propiedad.precio?.toString().includes(search)
     );
   });
 
@@ -127,24 +148,28 @@ export class VentaEdit implements OnInit {
   private fb = inject(FormBuilder);
   private ventaSvc = inject(VentaService);
   private loteSvc = inject(LoteService);
+  private propiedadSvc = inject(PropiedadService);
   private route = inject(ActivatedRoute);
   private notificationService = inject(NotificationService);
   private datePipe = inject(DatePipe);
   private authService = inject(AuthService);
-  private reciboSvc = inject(ReciboService); // Inyecta el servicio de recibos
+  private reciboSvc = inject(ReciboService);
 
   constructor() {
     this.ventaForm = this.crearFormularioVenta();
     this.pagoForm = this.crearPagoForm();
+    this.montoInicialForm = this.crearMontoInicialForm();
   }
 
   ngOnInit(): void {
     this.obtenerVenta();
+    this.cargarCajasActivas();
   }
 
   crearFormularioVenta(): FormGroup {
     return this.fb.group({
       clienteId: ['', Validators.required],
+      inmuebleTipo: ['LOTE', Validators.required],
       inmuebleId: ['', Validators.required],
       precioFinal: [0, [Validators.required, Validators.min(0.01)]],
       estado: ['PENDIENTE'],
@@ -160,6 +185,24 @@ export class VentaEdit implements OnInit {
       fecha_pago: [fechaHoy, Validators.required],
       observacion: [''],
       metodoPago: ['EFECTIVO', Validators.required],
+    });
+  }
+
+  crearMontoInicialForm(): FormGroup {
+    return this.fb.group({
+      nuevoMontoInicial: [0, [Validators.required, Validators.min(0)]],
+      cajaId: ['', Validators.required],
+    });
+  }
+
+  cargarCajasActivas(): void {
+    this.ventaSvc.obtenerCajasActivas().subscribe({
+      next: (cajas) => {
+        this.cajasActivas.set(cajas);
+      },
+      error: (err) => {
+        console.error('Error cargando cajas activas:', err);
+      },
     });
   }
 
@@ -205,6 +248,27 @@ export class VentaEdit implements OnInit {
     });
   }
 
+  cargarPropiedades(): void {
+    this.propiedadSvc.getAll().subscribe({
+      next: (propiedades: PropiedadDto[]) => {
+        const propiedadesParaVenta = propiedades.filter(
+          (propiedad) =>
+            propiedad.estadoPropiedad === 'VENTA' &&
+            (propiedad.tipo === 'CASA' || propiedad.tipo === 'DEPARTAMENTO')
+        );
+        this.propiedades.set(propiedadesParaVenta);
+        const venta = this.ventaData();
+        if (venta) {
+          this.setupSearchValues(venta);
+        }
+      },
+      error: (err: any) => {
+        console.error('Error cargando propiedades:', err);
+        this.notificationService.showError('No se pudieron cargar las propiedades');
+      },
+    });
+  }
+
   selectCliente(cliente: UserDto) {
     this.ventaForm.patchValue({
       clienteId: cliente.id.toString(),
@@ -221,9 +285,23 @@ export class VentaEdit implements OnInit {
     this.showLotesDropdown.set(false);
   }
 
+  selectPropiedad(propiedad: PropiedadDto) {
+    this.ventaForm.patchValue({
+      inmuebleId: propiedad.id.toString(),
+    });
+    this.searchPropiedad.set(this.getPropiedadDisplayText(propiedad));
+    this.showPropiedadesDropdown.set(false);
+  }
+
   getLoteDisplayText(lote: LoteDto): string {
     return `${lote.numeroLote} - ${lote.urbanizacion?.nombre} - $${this.formatNumber(
       lote.precioBase
+    )}`;
+  }
+
+  getPropiedadDisplayText(propiedad: PropiedadDto): string {
+    return `${propiedad.nombre} - ${propiedad.tipo} - ${propiedad.ubicacion} - $${this.formatNumber(
+      propiedad.precio
     )}`;
   }
 
@@ -235,6 +313,7 @@ export class VentaEdit implements OnInit {
     this.showClientesDropdown.set(!this.showClientesDropdown());
     if (this.showClientesDropdown()) {
       this.showLotesDropdown.set(false);
+      this.showPropiedadesDropdown.set(false);
     }
   }
 
@@ -242,6 +321,15 @@ export class VentaEdit implements OnInit {
     this.showLotesDropdown.set(!this.showLotesDropdown());
     if (this.showLotesDropdown()) {
       this.showClientesDropdown.set(false);
+      this.showPropiedadesDropdown.set(false);
+    }
+  }
+
+  togglePropiedadesDropdown() {
+    this.showPropiedadesDropdown.set(!this.showPropiedadesDropdown());
+    if (this.showPropiedadesDropdown()) {
+      this.showClientesDropdown.set(false);
+      this.showLotesDropdown.set(false);
     }
   }
 
@@ -254,6 +342,12 @@ export class VentaEdit implements OnInit {
   onLoteBlur() {
     setTimeout(() => {
       this.showLotesDropdown.set(false);
+    }, 200);
+  }
+
+  onPropiedadBlur() {
+    setTimeout(() => {
+      this.showPropiedadesDropdown.set(false);
     }, 200);
   }
 
@@ -273,7 +367,8 @@ export class VentaEdit implements OnInit {
           this.cargarDatosFormulario(venta);
           this.cargarClientes();
           this.cargarLotes();
-          this.cargarRecibosVenta(id); // Carga los recibos de la venta
+          this.cargarPropiedades();
+          this.cargarRecibosVenta(id);
         } else {
           this.error.set('No se encontró la venta');
           this.cargando.set(false);
@@ -290,6 +385,7 @@ export class VentaEdit implements OnInit {
   cargarDatosFormulario(venta: VentaDto): void {
     this.ventaForm.patchValue({
       clienteId: venta.clienteId?.toString() || '',
+      inmuebleTipo: venta.inmuebleTipo || 'LOTE',
       inmuebleId: venta.inmuebleId?.toString() || '',
       precioFinal: venta.precioFinal || 0,
       estado: venta.estado || 'PENDIENTE',
@@ -303,9 +399,17 @@ export class VentaEdit implements OnInit {
     if (cliente) {
       this.searchCliente.set(cliente.fullName || '');
     }
-    const lote = this.lotes().find((l) => l.id === venta.inmuebleId);
-    if (lote) {
-      this.searchLote.set(this.getLoteDisplayText(lote));
+
+    if (venta.inmuebleTipo === 'LOTE') {
+      const lote = this.lotes().find((l) => l.id === venta.inmuebleId);
+      if (lote) {
+        this.searchLote.set(this.getLoteDisplayText(lote));
+      }
+    } else if (venta.inmuebleTipo === 'PROPIEDAD') {
+      const propiedad = this.propiedades().find((p) => p.id === venta.inmuebleId);
+      if (propiedad) {
+        this.searchPropiedad.set(this.getPropiedadDisplayText(propiedad));
+      }
     }
   }
 
@@ -318,7 +422,6 @@ export class VentaEdit implements OnInit {
     }
   }
 
-  // Métodos para manejo de archivos
   onFileChange(event: any) {
     const files: FileList | null = event.target.files;
     if (files) {
@@ -375,7 +478,7 @@ export class VentaEdit implements OnInit {
           this.archivosCargando.set(false);
           this.notificationService.showSuccess('Archivos subidos exitosamente.');
           this.archivosSeleccionados.set([]);
-          this.cargarRecibosVenta(ventaId); // Recarga los recibos
+          this.cargarRecibosVenta(ventaId);
         },
         error: (error) => {
           this.archivosCargando.set(false);
@@ -544,6 +647,82 @@ export class VentaEdit implements OnInit {
     });
   }
 
+  editarMontoInicial(): void {
+    const venta = this.ventaData();
+    if (!venta?.planPago) {
+      this.notificationService.showError('No hay plan de pago para esta venta.');
+      return;
+    }
+
+    this.montoInicialForm.patchValue({
+      nuevoMontoInicial: venta.planPago?.monto_inicial || 0,
+      cajaId: this.cajasActivas()[0]?.id?.toString() || '',
+    });
+
+    this.mostrarFormMontoInicial.set(true);
+  }
+
+  actualizarMontoInicial(): void {
+    if (this.montoInicialForm.invalid) {
+      this.montoInicialForm.markAllAsTouched();
+      this.notificationService.showError('Complete todos los campos correctamente.');
+      return;
+    }
+
+    const ventaId = this.ventaId();
+    if (!ventaId) {
+      this.notificationService.showError('ID de venta no válido.');
+      return;
+    }
+
+    const nuevoMontoInicial = Number(this.montoInicialForm.value.nuevoMontoInicial);
+    const cajaId = Number(this.montoInicialForm.value.cajaId);
+
+    if (nuevoMontoInicial < 0) {
+      this.notificationService.showError('El monto inicial no puede ser negativo.');
+      return;
+    }
+
+    const precioFinal = this.ventaData()?.precioFinal || 0;
+    if (nuevoMontoInicial > precioFinal) {
+      this.notificationService.showError('El monto inicial no puede ser mayor al precio final.');
+      return;
+    }
+
+    this.enviandoMontoInicial.set(true);
+
+    this.ventaSvc.actualizarMontoInicialPlanPago(ventaId, nuevoMontoInicial, cajaId).subscribe({
+      next: (response: any) => {
+        this.enviandoMontoInicial.set(false);
+        if (response.success) {
+          this.notificationService.showSuccess('Monto inicial actualizado exitosamente!');
+          this.mostrarFormMontoInicial.set(false);
+          this.obtenerVenta();
+        } else {
+          this.notificationService.showError(
+            response.message || 'Error al actualizar el monto inicial'
+          );
+        }
+      },
+      error: (err: any) => {
+        this.enviandoMontoInicial.set(false);
+        console.error('Error al actualizar monto inicial:', err);
+        let errorMessage = 'Error al actualizar el monto inicial';
+        if (err.error?.message) {
+          errorMessage = err.error.message;
+        } else if (err.status === 400) {
+          errorMessage = 'Datos inválidos para el monto inicial.';
+        }
+        this.notificationService.showError(errorMessage);
+      },
+    });
+  }
+
+  cancelarEdicionMontoInicial(): void {
+    this.mostrarFormMontoInicial.set(false);
+    this.montoInicialForm.reset();
+  }
+
   registrarPago(): void {
     if (this.pagoForm.invalid) {
       this.pagoForm.markAllAsTouched();
@@ -662,8 +841,9 @@ export class VentaEdit implements OnInit {
     }
     const clienteId = this.ventaForm.get('clienteId')?.value;
     const inmuebleId = this.ventaForm.get('inmuebleId')?.value;
-    if (!clienteId || !inmuebleId) {
-      this.notificationService.showError('Debe seleccionar un cliente y un lote');
+    const inmuebleTipo = this.ventaForm.get('inmuebleTipo')?.value;
+    if (!clienteId || !inmuebleId || !inmuebleTipo) {
+      this.notificationService.showError('Debe seleccionar un cliente y un inmueble');
       return;
     }
     this.enviando.set(true);
@@ -672,8 +852,11 @@ export class VentaEdit implements OnInit {
     if (Number(clienteId) !== ventaActual?.clienteId) {
       dataActualizada.clienteId = Number(clienteId);
     }
-    if (Number(inmuebleId) !== ventaActual?.inmuebleId) {
-      dataActualizada.inmuebleTipo = 'LOTE';
+    if (
+      Number(inmuebleId) !== ventaActual?.inmuebleId ||
+      inmuebleTipo !== ventaActual?.inmuebleTipo
+    ) {
+      dataActualizada.inmuebleTipo = inmuebleTipo;
       dataActualizada.inmuebleId = Number(inmuebleId);
     }
     if (Number(this.ventaForm.value.precioFinal) !== ventaActual?.precioFinal) {

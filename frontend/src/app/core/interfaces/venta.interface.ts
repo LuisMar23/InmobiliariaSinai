@@ -35,6 +35,20 @@ export interface VentaDto {
       ubicacion: string;
     };
   };
+  propiedad?: {
+    id: number;
+    nombre: string;
+    tipo: string;
+    tamano: number;
+    precio: number;
+    ubicacion: string;
+    ciudad: string;
+    estado: string;
+    estadoPropiedad: string;
+    habitaciones?: number;
+    banos?: number;
+    descripcion?: string;
+  };
   planPago?: {
     id_plan_pago: number;
     ventaId: number;
@@ -54,7 +68,7 @@ export interface VentaDto {
     monto_cuota?: number;
     dias_restantes?: number;
   };
-  archivos?:any;
+  archivos?: any;
   ingresos?: any[];
   cajaId?: number;
   caja?: {

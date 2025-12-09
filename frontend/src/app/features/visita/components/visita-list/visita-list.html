@@ -106,15 +106,14 @@
                                     </div>
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap">
-                                    @if (visita.lote) {
+                                    <span [class]="getTipoInmuebleBadgeClass(visita.inmuebleTipo)" class="text-xs">
+                                        {{ getTipoInmuebleText(visita.inmuebleTipo) }}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap">
                                     <div>
-                                        <p class="text-gray-900 font-medium text-sm">Lote {{ visita.lote.numeroLote
-                                            }}</p>
-                                        <p class="text-xs text-gray-500">{{ visita.lote.urbanizacion?.nombre }}</p>
+                                        <p class="text-gray-900 font-medium text-sm">{{ getInmuebleInfo(visita) }}</p>
                                     </div>
-                                    } @else {
-                                    <span class="text-gray-400 text-sm">-</span>
-                                    }
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap text-gray-600 font-semibold text-sm">
                                     {{ formatFecha(visita.fechaVisita) }}
@@ -159,7 +158,7 @@
 
                             @if (filteredVisitas().length === 0 && !cargando()) {
                             <tr>
-                                <td colspan="7" class="px-4 py-8 text-center">
+                                <td colspan="8" class="px-4 py-8 text-center">
                                     <div class="flex flex-col items-center gap-2 text-gray-500">
                                         <svg class="w-12 h-12 text-gray-300" fill="none" stroke="currentColor"
                                             viewBox="0 0 24 24">
@@ -177,6 +176,7 @@
                 </div>
             </div>
 
+            <!-- Vista móvil -->
             <div class="lg:hidden space-y-3">
                 @for (visita of getVisitasPaginadas(); track visita.id) {
                 <div
@@ -189,9 +189,14 @@
                                 <p class="text-emerald-100 text-xs truncate">Cliente: {{ visita.cliente?.fullName }}
                                 </p>
                             </div>
-                            <span [class]="getEstadoBadgeClass(visita.estado)" class="text-xs flex-shrink-0 ml-2">
-                                {{ getEstadoText(visita.estado) }}
-                            </span>
+                            <div class="flex flex-col items-end gap-1">
+                                <span [class]="getEstadoBadgeClass(visita.estado)" class="text-xs">
+                                    {{ getEstadoText(visita.estado) }}
+                                </span>
+                                <span [class]="getTipoInmuebleBadgeClass(visita.inmuebleTipo)" class="text-xs">
+                                    {{ getTipoInmuebleText(visita.inmuebleTipo) }}
+                                </span>
+                            </div>
                         </div>
                     </div>
 
@@ -217,18 +222,11 @@
                             </div>
                         </div>
 
-                        @if (visita.lote) {
+                        <!-- Información del inmueble -->
                         <div class="pt-1 border-t border-gray-100">
-                            <p class="text-gray-500 text-xs mb-1">Lote</p>
-                            <p class="text-emerald-600 font-medium text-sm">Lote {{ visita.lote.numeroLote }}</p>
-                            <p class="text-gray-500 text-xs">{{ visita.lote.urbanizacion?.nombre }}</p>
+                            <p class="text-gray-500 text-xs mb-1">Inmueble</p>
+                            <p class="text-emerald-600 font-medium text-sm">{{ getInmuebleInfo(visita) }}</p>
                         </div>
-                        } @else {
-                        <div class="pt-1 border-t border-gray-100">
-                            <p class="text-gray-500 text-xs mb-1">Lote</p>
-                            <p class="text-gray-400 text-sm">-</p>
-                        </div>
-                        }
 
                         <!-- Botones de acción -->
                         <div class="flex justify-between gap-1 pt-2 border-t border-gray-100">
@@ -279,6 +277,7 @@
                 }
             </div>
 
+            <!-- Paginación -->
             <div class="flex flex-col xs:flex-row xs:justify-between xs:items-center mt-4 gap-3 px-1">
                 <div class="text-xs text-gray-600 text-center xs:text-left order-2 xs:order-1">
                     Mostrando {{ rangeStart() }} a {{ rangeEnd() }} de {{ total() }} visitas
@@ -350,6 +349,12 @@
                     </h3>
                     <div class="space-y-3">
                         <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                            <span class="text-sm font-medium text-gray-500">Tipo de Inmueble:</span>
+                            <span [class]="getTipoInmuebleBadgeClass(visitaSeleccionada()!.inmuebleTipo)">
+                                {{ getTipoInmuebleText(visitaSeleccionada()!.inmuebleTipo) }}
+                            </span>
+                        </div>
+                        <div class="flex justify-between items-center py-2 border-b border-gray-100">
                             <span class="text-sm font-medium text-gray-500">Estado:</span>
                             <span [class]="getEstadoBadgeClass(visitaSeleccionada()!.estado)">
                                 {{ getEstadoText(visitaSeleccionada()!.estado) }}
@@ -370,8 +375,8 @@
                     </div>
                 </div>
 
-                <!-- Información del Lote -->
-                @if (visitaSeleccionada()!.lote) {
+                <!-- Información del Inmueble -->
+                @if (visitaSeleccionada()!.inmuebleTipo === 'LOTE' && visitaSeleccionada()!.lote) {
                 <div class="bg-gray-50 rounded-xl p-5">
                     <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                         <svg class="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -406,6 +411,58 @@
                                 visitaSeleccionada()!.lote?.urbanizacion?.nombre }}</span>
                             <p class="text-xs text-gray-600 mt-1">{{ visitaSeleccionada()!.lote?.urbanizacion?.ubicacion
                                 }}</p>
+                        </div>
+                        }
+                    </div>
+                </div>
+                } @else if (visitaSeleccionada()!.inmuebleTipo === 'PROPIEDAD' && visitaSeleccionada()!.propiedad) {
+                <div class="bg-gray-50 rounded-xl p-5">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                        </svg>
+                        Información de la Propiedad
+                    </h3>
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                            <span class="text-sm font-medium text-gray-500">Nombre:</span>
+                            <span class="text-sm font-semibold text-gray-900">{{
+                                visitaSeleccionada()!.propiedad?.nombre }}</span>
+                        </div>
+                        <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                            <span class="text-sm font-medium text-gray-500">Tipo:</span>
+                            <span class="text-sm text-gray-900">{{ visitaSeleccionada()!.propiedad?.tipo }}</span>
+                        </div>
+                        <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                            <span class="text-sm font-medium text-gray-500">Tamaño:</span>
+                            <span class="text-sm text-gray-900">{{ visitaSeleccionada()!.propiedad?.tamano }} m²</span>
+                        </div>
+                        <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                            <span class="text-sm font-medium text-gray-500">Precio:</span>
+                            <span class="text-sm text-gray-900">$ {{ visitaSeleccionada()!.propiedad?.precio |
+                                number:'1.2-2' }}</span>
+                        </div>
+                        <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                            <span class="text-sm font-medium text-gray-500">Ubicación:</span>
+                            <span class="text-sm text-gray-900">{{ visitaSeleccionada()!.propiedad?.ubicacion }}, {{
+                                visitaSeleccionada()!.propiedad?.ciudad }}</span>
+                        </div>
+                        <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                            <span class="text-sm font-medium text-gray-500">Estado:</span>
+                            <span class="text-sm text-gray-900">{{ visitaSeleccionada()!.propiedad?.estado }}</span>
+                        </div>
+                        @if (visitaSeleccionada()!.propiedad?.habitaciones) {
+                        <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                            <span class="text-sm font-medium text-gray-500">Habitaciones:</span>
+                            <span class="text-sm text-gray-900">{{ visitaSeleccionada()!.propiedad?.habitaciones
+                                }}</span>
+                        </div>
+                        }
+                        @if (visitaSeleccionada()!.propiedad?.banos) {
+                        <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                            <span class="text-sm font-medium text-gray-500">Baños:</span>
+                            <span class="text-sm text-gray-900">{{ visitaSeleccionada()!.propiedad?.banos }}</span>
                         </div>
                         }
                     </div>

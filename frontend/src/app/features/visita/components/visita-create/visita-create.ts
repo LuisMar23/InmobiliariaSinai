@@ -5,8 +5,10 @@ import { RouterModule, Router } from '@angular/router';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { UserDto } from '../../../../core/interfaces/user.interface';
 import { LoteDto } from '../../../../core/interfaces/lote.interface';
+import { PropiedadDto } from '../../../../core/interfaces/propiedad.interface';
 import { VisitaService } from '../../service/visita.service';
 import { LoteService } from '../../../lote/service/lote.service';
+import { PropiedadService } from '../../../propiedad/service/propiedad.service';
 import { AuthService } from '../../../../components/services/auth.service';
 
 @Component({
@@ -20,17 +22,23 @@ export class VisitaCreate implements OnInit {
   enviando = signal<boolean>(false);
   clientes = signal<UserDto[]>([]);
   lotes = signal<LoteDto[]>([]);
+  propiedades = signal<PropiedadDto[]>([]);
 
   searchCliente = signal<string>('');
   searchLote = signal<string>('');
+  searchPropiedad = signal<string>('');
 
   showClientesDropdown = signal<boolean>(false);
   showLotesDropdown = signal<boolean>(false);
+  showPropiedadesDropdown = signal<boolean>(false);
+
+  inmuebleTipoSeleccionado = signal<string>('LOTE');
 
   router = inject(Router);
   private fb = inject(FormBuilder);
   private visitaSvc = inject(VisitaService);
   private loteSvc = inject(LoteService);
+  private propiedadSvc = inject(PropiedadService);
   private notificationService = inject(NotificationService);
   private authService = inject(AuthService);
 
@@ -41,6 +49,7 @@ export class VisitaCreate implements OnInit {
   ngOnInit(): void {
     this.cargarClientes();
     this.cargarLotes();
+    this.cargarPropiedades();
   }
 
   crearFormularioVisita(): FormGroup {
@@ -89,23 +98,57 @@ export class VisitaCreate implements OnInit {
     });
   }
 
+  cargarPropiedades(): void {
+    this.propiedadSvc.getAll().subscribe({
+      next: (propiedades: PropiedadDto[]) => {
+        this.propiedades.set(propiedades);
+      },
+      error: (err: any) => {
+        this.notificationService.showError('No se pudieron cargar las propiedades');
+      },
+    });
+  }
+
+  onTipoInmuebleChange(tipo: string): void {
+    this.inmuebleTipoSeleccionado.set(tipo);
+    this.visitaForm.patchValue({
+      inmuebleTipo: tipo,
+      inmuebleId: '',
+    });
+    this.searchLote.set('');
+    this.searchPropiedad.set('');
+    this.showLotesDropdown.set(false);
+    this.showPropiedadesDropdown.set(false);
+  }
+
   filteredClientes() {
     const search = this.searchCliente().toLowerCase();
     if (!search) return this.clientes();
-
     return this.clientes().filter((cliente) => cliente.fullName?.toLowerCase().includes(search));
   }
 
   filteredLotes() {
     const search = this.searchLote().toLowerCase();
     if (!search) return this.lotes();
-
     return this.lotes().filter(
       (lote) =>
         lote.numeroLote?.toLowerCase().includes(search) ||
         lote.estado?.toLowerCase().includes(search) ||
         lote.precioBase?.toString().includes(search) ||
         lote.urbanizacion?.nombre?.toLowerCase().includes(search)
+    );
+  }
+
+  filteredPropiedades() {
+    const search = this.searchPropiedad().toLowerCase();
+    if (!search) return this.propiedades();
+    return this.propiedades().filter(
+      (propiedad) =>
+        propiedad.nombre?.toLowerCase().includes(search) ||
+        propiedad.tipo?.toLowerCase().includes(search) ||
+        propiedad.ubicacion?.toLowerCase().includes(search) ||
+        propiedad.ciudad?.toLowerCase().includes(search) ||
+        propiedad.precio?.toString().includes(search)
     );
   }
 
@@ -127,17 +170,41 @@ export class VisitaCreate implements OnInit {
     this.showLotesDropdown.set(false);
   }
 
+  selectPropiedad(propiedad: PropiedadDto) {
+    this.visitaForm.patchValue({
+      inmuebleId: propiedad.id.toString(),
+    });
+    this.searchPropiedad.set(
+      `${propiedad.nombre} - ${propiedad.tipo} - ${propiedad.ciudad} - $${propiedad.precio}`
+    );
+    this.showPropiedadesDropdown.set(false);
+  }
+
   toggleClientesDropdown() {
     this.showClientesDropdown.set(!this.showClientesDropdown());
     if (this.showClientesDropdown()) {
       this.showLotesDropdown.set(false);
+      this.showPropiedadesDropdown.set(false);
     }
   }
 
   toggleLotesDropdown() {
-    this.showLotesDropdown.set(!this.showLotesDropdown());
-    if (this.showLotesDropdown()) {
-      this.showClientesDropdown.set(false);
+    if (this.inmuebleTipoSeleccionado() === 'LOTE') {
+      this.showLotesDropdown.set(!this.showLotesDropdown());
+      if (this.showLotesDropdown()) {
+        this.showClientesDropdown.set(false);
+        this.showPropiedadesDropdown.set(false);
+      }
+    }
+  }
+
+  togglePropiedadesDropdown() {
+    if (this.inmuebleTipoSeleccionado() === 'PROPIEDAD') {
+      this.showPropiedadesDropdown.set(!this.showPropiedadesDropdown());
+      if (this.showPropiedadesDropdown()) {
+        this.showClientesDropdown.set(false);
+        this.showLotesDropdown.set(false);
+      }
     }
   }
 
@@ -150,6 +217,12 @@ export class VisitaCreate implements OnInit {
   onLoteBlur() {
     setTimeout(() => {
       this.showLotesDropdown.set(false);
+    }, 200);
+  }
+
+  onPropiedadBlur() {
+    setTimeout(() => {
+      this.showPropiedadesDropdown.set(false);
     }, 200);
   }
 
@@ -166,7 +239,7 @@ export class VisitaCreate implements OnInit {
       ...this.visitaForm.value,
       clienteId: Number(this.visitaForm.value.clienteId),
       inmuebleId: Number(this.visitaForm.value.inmuebleId),
-      inmuebleTipo: 'LOTE',
+      inmuebleTipo: this.inmuebleTipoSeleccionado(),
     };
 
     this.visitaSvc.create(visitaData).subscribe({
@@ -191,7 +264,7 @@ export class VisitaCreate implements OnInit {
           errorMessage =
             'No tienes permisos para crear visitas. Se requiere rol de ASESOR, ADMINISTRADOR o SECRETARIA';
         } else if (err.status === 404) {
-          errorMessage = 'Cliente o lote no encontrado';
+          errorMessage = 'Cliente o inmueble no encontrado';
         }
 
         this.notificationService.showError(errorMessage);
@@ -202,13 +275,5 @@ export class VisitaCreate implements OnInit {
   handleFormSubmit(event: Event): void {
     event.preventDefault();
     this.onSubmit();
-  }
-
-  getClienteNombre(): string {
-    const clienteId = this.visitaForm.get('clienteId')?.value;
-    if (!clienteId) return 'Sin cliente';
-
-    const cliente = this.clientes().find((c) => c.id === Number(clienteId));
-    return cliente ? cliente.fullName : 'No encontrado';
   }
 }

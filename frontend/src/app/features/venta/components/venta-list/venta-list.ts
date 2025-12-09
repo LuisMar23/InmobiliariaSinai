@@ -30,38 +30,23 @@ export class VentaList implements OnInit {
   searchTerm = signal('');
   cargando = signal<boolean>(true);
   error = signal<string | null>(null);
-  ventaSeleccionada = signal<VentaDto | null>(null);
-  mostrarModal = signal<boolean>(false);
-  mostrarFormPago = signal<boolean>(false);
-  enviandoPago = signal<boolean>(false);
+  mostrarUploader = signal(false);
+  ventaSeleccionadaParaArchivos = signal<VentaDto | null>(null);
 
-  // Variables unificadas para manejo de archivos
   archivosSeleccionados = signal<File[]>([]);
   maxArchivos = 6;
   archivosCargando = signal<boolean>(false);
-  ventaIdParaArchivos = signal<number | null>(null);
-  mostrarUploader = signal(false);
-
-  recibosVenta = signal<Recibo[]>([]);
-  recibosCargando = signal<boolean>(true);
-
-  pagoForm: FormGroup;
 
   total = signal(0);
   pageSize = signal(10);
   currentPage = signal(1);
 
-  // Servicios inyectados una sola vez
   private ventaSvc = inject(VentaService);
   private notificationService = inject(NotificationService);
   private fb = inject(FormBuilder);
   private reciboSvc = inject(ReciboService);
   private pdfService = inject(PdfService);
   private archivoService = inject(UploadArchivosService);
-
-  constructor() {
-    this.pagoForm = this.crearPagoForm();
-  }
 
   filteredVentas = computed(() => {
     const term = this.searchTerm().toLowerCase();
@@ -73,6 +58,7 @@ export class VentaList implements OnInit {
           venta.cliente?.fullName?.toLowerCase().includes(term) ||
           venta.asesor?.fullName?.toLowerCase().includes(term) ||
           venta.lote?.numeroLote?.toLowerCase().includes(term) ||
+          venta.propiedad?.nombre?.toLowerCase().includes(term) ||
           venta.estado?.toLowerCase().includes(term) ||
           venta.id?.toString().includes(term)
       );
@@ -83,18 +69,6 @@ export class VentaList implements OnInit {
 
   ngOnInit(): void {
     this.obtenerVentas();
-  }
-
-  crearPagoForm(): FormGroup {
-    const hoy = new Date();
-    const fechaHoy = hoy.toISOString().split('T')[0];
-
-    return this.fb.group({
-      monto: [0, [Validators.required, Validators.min(0.01)]],
-      fecha_pago: [fechaHoy, Validators.required],
-      observacion: [''],
-      metodoPago: ['EFECTIVO', Validators.required],
-    });
   }
 
   obtenerVentas() {
@@ -127,21 +101,6 @@ export class VentaList implements OnInit {
         console.error('Error al cargar ventas:', err);
         this.error.set('No se pudieron cargar las ventas');
         this.cargando.set(false);
-      },
-    });
-  }
-
-  cargarRecibosVenta(ventaId: number): void {
-    this.recibosCargando.set(true);
-    this.reciboSvc.obtenerPorVenta(ventaId).subscribe({
-      next: (recibos) => {
-        console.log(recibos);
-        this.recibosVenta.set(recibos);
-        this.recibosCargando.set(false);
-      },
-      error: (err) => {
-        this.notificationService.showError('No se pudieron cargar los recibos de la venta');
-        this.recibosCargando.set(false);
       },
     });
   }
@@ -188,14 +147,13 @@ export class VentaList implements OnInit {
     return (this.getTotalPagado(venta) / total) * 100;
   }
 
-  // Generar PDF de todas las ventas
   generarPdfVentas() {
     this.pdfService.generarPdfVentas(this.allVentas());
   }
 
   generarPdfVentaIndividual(venta: VentaDto) {
-  this.pdfService.generarPdfVentaIndividual(venta);
-}
+    this.pdfService.generarPdfVentaIndividual(venta);
+  }
 
   totalPages() {
     return Math.ceil(this.filteredVentas().length / this.pageSize());
@@ -245,181 +203,19 @@ export class VentaList implements OnInit {
     this.currentPage.set(1);
   }
 
-  verDetalles(venta: VentaDto) {
-    this.ventaSeleccionada.set(venta);
-    this.mostrarModal.set(true);
-    this.mostrarFormPago.set(false);
-    this.pagoForm.reset();
-    this.archivosSeleccionados.set([]);
-    this.ventaIdParaArchivos.set(venta.id);
-    this.cargarRecibosVenta(venta.id);
-
-    const hoy = new Date();
-    const fechaHoy = hoy.toISOString().split('T')[0];
-    this.pagoForm.patchValue({
-      fecha_pago: fechaHoy,
-      metodoPago: 'EFECTIVO',
-      monto: 0,
-      observacion: '',
-    });
-  }
-
-  cerrarModal() {
-    this.mostrarModal.set(false);
-    this.ventaSeleccionada.set(null);
-    this.mostrarFormPago.set(false);
-    this.pagoForm.reset();
-    this.archivosSeleccionados.set([]);
-    this.ventaIdParaArchivos.set(null);
-    this.recibosVenta.set([]);
-  }
-
-  toggleFormPago(): void {
-    this.mostrarFormPago.set(!this.mostrarFormPago());
-  }
-
-  getMontoMaximoPago(): number {
-    const venta = this.ventaSeleccionada();
-    if (!venta?.planPago) return 0;
-    return this.getSaldoPendiente(venta);
-  }
-
-  registrarPago(): void {
-    if (this.pagoForm.invalid) {
-      this.pagoForm.markAllAsTouched();
-      this.notificationService.showError('Complete todos los campos del pago correctamente.');
-      return;
-    }
-
-    const venta = this.ventaSeleccionada();
-    if (!venta?.planPago) {
-      this.notificationService.showError('No hay plan de pago para esta venta.');
-      return;
-    }
-
-    const monto = Number(this.pagoForm.value.monto);
-    const saldoPendiente = this.getSaldoPendiente(venta);
-
-    if (monto <= 0) {
-      this.notificationService.showError('El monto debe ser mayor a cero.');
-      return;
-    }
-
-    if (monto > saldoPendiente) {
-      this.notificationService.showError(
-        `El monto no puede ser mayor al saldo pendiente (${this.formatPrecio(saldoPendiente)})`
-      );
-      return;
-    }
-
-    const fechaPago = new Date(this.pagoForm.value.fecha_pago);
-    const hoy = new Date();
-    const maxFechaPermitida = new Date(hoy);
-    maxFechaPermitida.setDate(maxFechaPermitida.getDate() + 90);
-
-    if (fechaPago > maxFechaPermitida) {
-      this.notificationService.showError(
-        'La fecha de pago no puede ser más de 90 días en el futuro'
-      );
-      return;
-    }
-
-    this.enviandoPago.set(true);
-
-    const pagoData: RegistrarPagoDto = {
-      plan_pago_id: venta.planPago.id_plan_pago!,
-      monto: monto,
-      fecha_pago: this.pagoForm.value.fecha_pago,
-      observacion: this.pagoForm.value.observacion || '',
-      metodoPago: this.pagoForm.value.metodoPago,
-    };
-
-    this.ventaSvc.crearPagoPlan(pagoData).subscribe({
-      next: (response: any) => {
-        this.enviandoPago.set(false);
-        if (response.success) {
-          this.notificationService.showSuccess('Pago registrado exitosamente!');
-          this.pagoForm.reset();
-          this.mostrarFormPago.set(false);
-
-          this.obtenerVentas();
-
-          if (venta.id) {
-            this.ventaSvc.getById(venta.id).subscribe({
-              next: (ventaActualizada: VentaDto) => {
-                this.ventaSeleccionada.set(ventaActualizada);
-                this.cargarRecibosVenta(venta.id);
-              },
-              error: (err) => {
-                console.error('Error al actualizar venta:', err);
-              },
-            });
-          }
-
-          const hoy = new Date();
-          const fechaHoy = hoy.toISOString().split('T')[0];
-          this.pagoForm.patchValue({
-            fecha_pago: fechaHoy,
-            metodoPago: 'EFECTIVO',
-            monto: 0,
-            observacion: '',
-          });
-        } else {
-          this.notificationService.showError(response.message || 'Error al registrar el pago');
-        }
-      },
-      error: (err: any) => {
-        this.enviandoPago.set(false);
-        let errorMessage = 'Error al registrar el pago';
-        if (err.status === 400) {
-          errorMessage = err.error?.message || 'Datos inválidos para el pago. Verifique la fecha.';
-        } else if (err.error?.message) {
-          errorMessage = err.error.message;
-        }
-        this.notificationService.showError(errorMessage);
-      },
-    });
-  }
-
-  // Métodos unificados para manejo de archivos
   abrirModalSubirArchivos(venta: VentaDto) {
-    this.ventaSeleccionada.set(venta);
+    this.ventaSeleccionadaParaArchivos.set(venta);
     this.mostrarUploader.set(true);
   }
 
   cerrarModalUploader() {
     this.mostrarUploader.set(false);
-    this.ventaSeleccionada.set(null);
+    this.ventaSeleccionadaParaArchivos.set(null);
   }
 
   onSubidaCompleta() {
     this.cerrarModalUploader();
     this.notificationService.showSuccess('Archivos subidos correctamente');
-  }
-
-  descargarRecibo(recibo: Recibo) {
-    this.reciboSvc.descargarRecibo(recibo);
-  }
-
-  eliminarRecibo(recibo: Recibo) {
-    this.notificationService
-      .confirmDelete('¿Está seguro que desea eliminar este archivo?')
-      .then((result) => {
-        if (result.isConfirmed) {
-          this.reciboSvc.eliminarRecibo(recibo.id).subscribe({
-            next: () => {
-              this.notificationService.showSuccess('Archivo eliminado exitosamente.');
-              const ventaId = this.ventaSeleccionada()?.id;
-              if (ventaId) {
-                this.cargarRecibosVenta(ventaId);
-              }
-            },
-            error: (err) => {
-              this.notificationService.showError('No se pudo eliminar el archivo.');
-            },
-          });
-        }
-      });
   }
 
   eliminarVenta(id: number) {
@@ -438,9 +234,6 @@ export class VentaList implements OnInit {
                       this.allVentas.update((list) => list.filter((v) => v.id !== id));
                       this.total.update((total) => total - 1);
                       this.notificationService.showSuccess('Venta eliminada correctamente');
-                      if (this.ventaSeleccionada()?.id === id) {
-                        this.cerrarModal();
-                      }
                     } else {
                       this.notificationService.showError(
                         response.message || 'Error al eliminar la venta'
@@ -474,7 +267,6 @@ export class VentaList implements OnInit {
     });
   }
 
-  // Métodos de utilidad
   getEstadoBadgeClass(estado: string): string {
     const classes: { [key: string]: string } = {
       PENDIENTE: 'px-3 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-700',
@@ -516,21 +308,12 @@ export class VentaList implements OnInit {
     }
   }
 
-  formatFileSize(bytes: number): string {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  }
-
-  formatFecha(fecha: string | Date): string {
-    if (!fecha) return 'N/A';
-    const date = new Date(fecha);
-    return date.toLocaleDateString('es-ES', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    });
+  getInmuebleDisplay(venta: VentaDto): string {
+    if (venta.inmuebleTipo === 'LOTE' && venta.lote) {
+      return `${venta.lote.numeroLote} - ${venta.lote.urbanizacion?.nombre || ''}`;
+    } else if (venta.inmuebleTipo === 'PROPIEDAD' && venta.propiedad) {
+      return `${venta.propiedad.nombre} - ${venta.propiedad.tipo}`;
+    }
+    return '-';
   }
 }

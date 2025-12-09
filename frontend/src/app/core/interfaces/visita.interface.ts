@@ -36,4 +36,20 @@ export interface VisitaDto {
       ubicacion: string;
     };
   };
+  propiedad?: {
+    id: number;
+    uuid: string;
+    tipo: string;
+    nombre: string;
+    tamano: number;
+    ubicacion: string;
+    ciudad: string;
+    descripcion?: string;
+    habitaciones?: number;
+    banos?: number;
+    precio: number;
+    estado: string;
+    estadoPropiedad: string;
+  };
+  inmueble?: any;
 }

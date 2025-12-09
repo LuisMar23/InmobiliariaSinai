@@ -22,6 +22,12 @@ export interface LoteDto {
   estado: string;
   createdAt: string;
   updatedAt: string;
+  encargadoId?: number;
+  encargado?: {
+    id: number;
+    fullName: string;
+    telefono: string;
+  };
   archivos?:any;
   urbanizacion?: {
     id: number;
@@ -60,6 +66,7 @@ export interface CreateLoteDto {
   longitud?: number;
   esIndependiente: boolean;
   estado: string;
+  encargadoId?: number;
 }
 
 export interface UpdateLoteDto {
@@ -74,5 +81,5 @@ export interface UpdateLoteDto {
   longitud?: number;
   esIndependiente?: boolean;
   estado?: string;
+  encargadoId?: number;
 }
-
