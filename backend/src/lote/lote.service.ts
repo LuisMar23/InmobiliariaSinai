@@ -293,6 +293,7 @@ export class LoteService {
       data: loteConPrecio,
     };
   }
+
   async findOneUUID(uuid: string) {
     const lote = await this.prisma.lote.findUnique({
       where: { uuid },
@@ -385,6 +386,7 @@ export class LoteService {
       data: loteConPrecio,
     };
   }
+
   async update(id: number, updateLoteDto: UpdateLoteDto) {
     return this.prisma.$transaction(async (prisma) => {
       const loteExistente = await prisma.lote.findUnique({
@@ -686,7 +688,6 @@ export class LoteService {
     };
   }
 
-  // lote.service.ts
   async obtenerLotesConPromocion() {
     const hoy = new Date();
 
@@ -718,6 +719,77 @@ export class LoteService {
         archivos: true,
         urbanizacion: true,
       },
+    });
+  }
+
+  async asignarEncargado(
+    loteId: number,
+    encargadoId: number,
+    usuarioId?: number,
+  ) {
+    return this.prisma.$transaction(async (prisma) => {
+      const lote = await prisma.lote.findUnique({
+        where: { id: loteId },
+      });
+
+      if (!lote) {
+        throw new NotFoundException(`Lote con ID ${loteId} no encontrado`);
+      }
+
+      const encargado = await prisma.user.findUnique({
+        where: {
+          id: encargadoId,
+          role: { in: ['ASESOR', 'ADMINISTRADOR'] },
+        },
+      });
+
+      if (!encargado) {
+        throw new BadRequestException(
+          'Encargado no encontrado o no tiene permisos (solo ASESOR o ADMINISTRADOR)',
+        );
+      }
+
+      const datosAntes = { ...lote };
+
+      const loteActualizado = await prisma.lote.update({
+        where: { id: loteId },
+        data: {
+          encargadoId: encargadoId,
+        },
+        include: {
+          encargado: {
+            select: {
+              id: true,
+              fullName: true,
+              role: true,
+              telefono: true,
+              email: true,
+            },
+          },
+          urbanizacion: {
+            select: {
+              id: true,
+              nombre: true,
+              ubicacion: true,
+            },
+          },
+        },
+      });
+
+      await this.crearAuditoria(
+        usuarioId,
+        'ASIGNAR_ENCARGADO',
+        'Lote',
+        loteId,
+        datosAntes,
+        loteActualizado,
+      );
+
+      return {
+        success: true,
+        message: 'Encargado asignado correctamente al lote',
+        data: loteActualizado,
+      };
     });
   }
 }

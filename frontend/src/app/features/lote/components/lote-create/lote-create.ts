@@ -6,6 +6,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
 import { LoteService } from '../../service/lote.service';
 import { UrbanizacionService } from '../../../urbanizacion/services/urbanizacion.service';
 import { UrbanizacionDto } from '../../../../core/interfaces/urbanizacion.interface';
+import { UserService } from '../../../users/services/users.service';
 
 @Component({
   selector: 'app-lote-create',
@@ -17,12 +18,14 @@ export class LoteCreate implements OnInit {
   loteForm: FormGroup;
   enviando = signal<boolean>(false);
   urbanizaciones = signal<UrbanizacionDto[]>([]);
+  asesores = signal<any[]>([]);
   searchUrbanizacion = signal<string>('');
   showUrbanizacionDropdown = signal<boolean>(false);
   router = inject(Router);
   private fb = inject(FormBuilder);
   private loteSvc = inject(LoteService);
   private urbanizacionSvc = inject(UrbanizacionService);
+  private userSvc = inject(UserService);
   private notificationService = inject(NotificationService);
 
   constructor() {
@@ -31,6 +34,7 @@ export class LoteCreate implements OnInit {
 
   ngOnInit(): void {
     this.cargarUrbanizaciones();
+    this.cargarAsesores();
     this.setupFormListeners();
   }
 
@@ -45,6 +49,21 @@ export class LoteCreate implements OnInit {
       descripcion: [''],
       ubicacion: [''],
       estado: ['DISPONIBLE'],
+      encargadoId: [''],
+    });
+  }
+
+  cargarAsesores(): void {
+    this.userSvc.getAsesoresYAdministradores().subscribe({
+      next: (response) => {
+        if (response.success && response.data.users) {
+          this.asesores.set(response.data.users);
+        }
+      },
+      error: (err) => {
+        console.error('Error al cargar asesores:', err);
+        this.notificationService.showError('No se pudieron cargar los encargados disponibles');
+      },
     });
   }
 
@@ -167,6 +186,7 @@ export class LoteCreate implements OnInit {
       superficieM2: Number(formValue.superficieM2),
       precioBase: Number(formValue.precioBase),
       esIndependiente: Boolean(formValue.esIndependiente),
+      encargadoId: formValue.encargadoId ? Number(formValue.encargadoId) : undefined,
     };
 
     this.loteSvc.create(loteData).subscribe({

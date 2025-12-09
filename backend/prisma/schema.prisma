@@ -74,7 +74,7 @@ enum MetodoPago {
 
 enum TipoInmueble {
   LOTE
-  URBANIZACION
+  PROPIEDAD
 }
 
 enum PeriodicidadPago {
@@ -110,6 +110,19 @@ enum TipoCierre {
   TOTAL
 }
 
+enum TipoPropiedad {
+  CASA
+  DEPARTAMENTO
+  GARZONIER
+  CUARTO
+}
+
+enum EstadoPropiedad {
+  VENTA
+  ALQUILER
+  ANTICREDITO
+}
+
 model User {
   id            Int       @id @default(autoincrement())
   uuid          String    @unique @default(uuid())
@@ -129,13 +142,11 @@ model User {
   estado        Boolean   @default(true)
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
-  // Campos de seguridad
   failedAttempts       Int       @default(0) @map("failed_attempts")
   lockUntil            DateTime? @map("lock_until")
   resetPasswordToken   String?   @map("reset_password_token")
   resetPasswordExpires DateTime? @map("reset_password_expires")
 
-  // Relaciones
   cotizacionesComoCliente Cotizacion[]     @relation("CotizacionesCliente")
   cotizacionesComoAsesor  Cotizacion[]     @relation("CotizacionesAsesor")
   ventasComoCliente       Venta[]          @relation("VentasCliente")
@@ -153,6 +164,8 @@ model User {
   movimientosCaja         MovimientoCaja[]
   cierresCaja             CierreCaja[]
   recibosCreados          Recibo[]
+  lotesEncargado          Lote[]           @relation("LotesEncargado")
+  propiedadesEncargado    Propiedad[]      @relation("PropiedadesEncargado")
 }
 
 model Urbanizacion {
@@ -169,7 +182,6 @@ model Urbanizacion {
   archivos  Archivo[]
   Promocion Promocion[]
 }
-
 
 model Cotizacion {
   id             Int              @id @default(autoincrement())
@@ -201,13 +213,14 @@ model Venta {
   updatedAt     DateTime     @updatedAt @map("updated_at")
   observaciones String?
 
-  cliente  User      @relation("VentasCliente", fields: [clienteId], references: [id])
-  asesor   User      @relation("VentasAsesor", fields: [asesorId], references: [id])
-  lote     Lote?     @relation("VentasLote", fields: [inmuebleId], references: [id], map: "fk_venta_lote")
-  archivos Archivo[]
-  ingresos Ingreso[]
-  planPago PlanPago?
-  recibos  Recibo[]
+  cliente   User       @relation("VentasCliente", fields: [clienteId], references: [id])
+  asesor    User       @relation("VentasAsesor", fields: [asesorId], references: [id])
+  lote      Lote?      @relation("VentasLote", fields: [inmuebleId], references: [id], map: "fk_venta_lote")
+  propiedad Propiedad? @relation("VentasPropiedad", fields: [inmuebleId], references: [id], map: "fk_venta_propiedad")
+  archivos  Archivo[]
+  ingresos  Ingreso[]
+  planPago  PlanPago?
+  recibos   Recibo[]
 }
 
 model Reserva {
@@ -244,9 +257,10 @@ model Visita {
   createdAt    DateTime     @default(now()) @map("created_at")
   updatedAt    DateTime     @updatedAt @map("updated_at")
 
-  cliente User  @relation("VisitasCliente", fields: [clienteId], references: [id])
-  asesor  User  @relation("VisitasAsesor", fields: [asesorId], references: [id])
-  lote    Lote? @relation("VisitasLote", fields: [inmuebleId], references: [id], map: "fk_visita_lote")
+  cliente   User       @relation("VisitasCliente", fields: [clienteId], references: [id])
+  asesor    User       @relation("VisitasAsesor", fields: [asesorId], references: [id])
+  lote      Lote?      @relation("VisitasLote", fields: [inmuebleId], references: [id], map: "fk_visita_lote")
+  propiedad Propiedad? @relation("VisitasPropiedad", fields: [inmuebleId], references: [id], map: "fk_visita_propiedad")
 }
 
 model Lote {
@@ -263,10 +277,12 @@ model Lote {
   longitud        Decimal?       @db.Decimal(10, 7)
   esIndependiente Boolean        @default(false) @map("es_independiente")
   estado          EstadoInmueble @default(DISPONIBLE)
+  encargadoId     Int?           @map("encargado_id")
   createdAt       DateTime       @default(now()) @map("created_at")
   updatedAt       DateTime       @updatedAt @map("updated_at")
 
   urbanizacion  Urbanizacion?   @relation(fields: [urbanizacionId], references: [id])
+  encargado     User?           @relation("LotesEncargado", fields: [encargadoId], references: [id])
   archivos      Archivo[]
   cotizaciones  Cotizacion[]    @relation("CotizacionesLote")
   ventas        Venta[]         @relation("VentasLote")
@@ -310,6 +326,7 @@ model LotePromocion {
   @@unique([loteId, promocionId])
   @@map("lotes_promocion")
 }
+
 model Ticket {
   id          Int          @id @default(autoincrement())
   uuid        String       @unique @default(uuid())
@@ -324,6 +341,7 @@ model Ticket {
   cliente  User  @relation("TicketsCliente", fields: [clienteId], references: [id])
   atendido User? @relation("TicketsAtendidos", fields: [atendidoPor], references: [id])
 }
+
 model Auditoria {
   id              Int      @id @default(autoincrement())
   uuid            String   @unique @default(uuid())
@@ -341,8 +359,6 @@ model Auditoria {
   usuario User? @relation(fields: [usuarioId], references: [id])
 }
 
-
-
 model PlanPago {
   id_plan_pago      Int              @id @default(autoincrement())
   uuid              String           @unique @default(uuid())
@@ -359,10 +375,7 @@ model PlanPago {
 
   venta   Venta          @relation(fields: [ventaId], references: [id], onDelete: Cascade)
   pagos   PagoPlanPago[]
-
   recibos Recibo[]
-
-
 
   @@map("planes_pago")
 }
@@ -376,14 +389,11 @@ model PagoPlanPago {
   observacion  String?
   creado_en    DateTime @default(now())
 
-  planPago PlanPago @relation(fields: [plan_pago_id], references: [id_plan_pago], onDelete: Cascade)
-  metodoPago   MetodoPago?
+  planPago   PlanPago    @relation(fields: [plan_pago_id], references: [id_plan_pago], onDelete: Cascade)
+  metodoPago MetodoPago?
+
   @@map("pagos_plan_pago")
 }
-
-
-
-
 
 model CategoriaContable {
   id        Int      @id @default(autoincrement())
@@ -440,24 +450,6 @@ model BalanceMensual {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 }
-
-
-
-
-// model PagoPlanPago {
-//   id_pago_plan Int      @id @default(autoincrement())
-//   uuid         String   @unique @default(uuid())
-//   plan_pago_id Int
-//   monto        Decimal  @db.Decimal(12, 2)
-//   fecha_pago   DateTime @default(now())
-//   observacion  String?
-//   creado_en    DateTime @default(now())
-
-//   planPago PlanPago @relation(fields: [plan_pago_id], references: [id_plan_pago], onDelete: Cascade)
-
-//   @@map("pagos_plan_pago")
-// }
-
 
 model Caja {
   id                Int        @id @default(autoincrement())
@@ -517,6 +509,7 @@ model Archivo {
   ventaId        Int?
   reservaId      Int?
   urbanizacionId Int?
+  propiedadId    Int?
   urlArchivo     String
   tipoArchivo    String?
   nombreArchivo  String?
@@ -527,6 +520,7 @@ model Archivo {
   lote           Lote?         @relation(fields: [loteId], references: [id])
   reserva        Reserva?      @relation(fields: [reservaId], references: [id])
   urbanizacion   Urbanizacion? @relation(fields: [urbanizacionId], references: [id])
+  propiedad      Propiedad?    @relation(fields: [propiedadId], references: [id])
 }
 
 model Recibo {
@@ -549,4 +543,29 @@ model Recibo {
   usuarioRegistro User      @relation(fields: [usuarioRegistroId], references: [id])
 
   @@map("recibos")
+}
+
+model Propiedad {
+  id              Int             @id @default(autoincrement())
+  uuid            String          @unique @default(uuid())
+  tipo            TipoPropiedad
+  tipoInmueble    TipoInmueble    @default(PROPIEDAD) @map("tipo_inmueble")
+  nombre          String
+  tamano          Decimal         @db.Decimal(10, 2)
+  ubicacion       String
+  ciudad          String
+  descripcion     String?
+  habitaciones    Int?
+  banos           Int?
+  precio          Decimal         @db.Decimal(12, 2)
+  estado          EstadoInmueble  @default(DISPONIBLE)
+  estadoPropiedad EstadoPropiedad @default(VENTA)
+  encargadoId     Int?            @map("encargado_id")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  archivos  Archivo[]
+  ventas    Venta[]   @relation("VentasPropiedad")
+  visitas   Visita[]  @relation("VisitasPropiedad")
+  encargado User?     @relation("PropiedadesEncargado", fields: [encargadoId], references: [id])
 }

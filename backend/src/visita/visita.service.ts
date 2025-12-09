@@ -77,6 +77,35 @@ export class VisitasService {
     };
   }
 
+  private async getPropiedadInfo(inmuebleId: number) {
+    const propiedad = await this.prisma.propiedad.findUnique({
+      where: { id: inmuebleId },
+      select: {
+        id: true,
+        uuid: true,
+        tipo: true,
+        nombre: true,
+        tamano: true,
+        ubicacion: true,
+        ciudad: true,
+        descripcion: true,
+        habitaciones: true,
+        banos: true,
+        precio: true,
+        estado: true,
+        estadoPropiedad: true,
+      },
+    });
+
+    if (!propiedad) return null;
+
+    return {
+      ...propiedad,
+      precio: Number(propiedad.precio),
+      tamano: Number(propiedad.tamano),
+    };
+  }
+
   private async validateInmueble(
     inmuebleTipo: TipoInmueble,
     inmuebleId: number,
@@ -85,9 +114,15 @@ export class VisitasService {
       const lote = await this.prisma.lote.findUnique({
         where: { id: inmuebleId },
       });
-
       if (!lote) {
         throw new BadRequestException('Lote no encontrado');
+      }
+    } else if (inmuebleTipo === TipoInmueble.PROPIEDAD) {
+      const propiedad = await this.prisma.propiedad.findUnique({
+        where: { id: inmuebleId },
+      });
+      if (!propiedad) {
+        throw new BadRequestException('Propiedad no encontrada');
       }
     }
   }
@@ -239,22 +274,24 @@ export class VisitasService {
         orderBy: { fechaVisita: 'desc' },
       });
 
-      const visitasConLotes = await Promise.all(
+      const visitasConInfo = await Promise.all(
         visitas.map(async (visita) => {
-          let loteInfo: any = null;
+          let inmuebleInfo: any = null;
 
           if (visita.inmuebleTipo === TipoInmueble.LOTE) {
-            loteInfo = await this.getLoteInfo(visita.inmuebleId);
+            inmuebleInfo = await this.getLoteInfo(visita.inmuebleId);
+          } else if (visita.inmuebleTipo === TipoInmueble.PROPIEDAD) {
+            inmuebleInfo = await this.getPropiedadInfo(visita.inmuebleId);
           }
 
           return {
             ...visita,
-            lote: loteInfo,
+            inmueble: inmuebleInfo,
           };
         }),
       );
 
-      return { success: true, data: visitasConLotes };
+      return { success: true, data: visitasConInfo };
     } catch (error) {
       throw new InternalServerErrorException('Error interno del servidor');
     }
@@ -293,17 +330,19 @@ export class VisitasService {
         throw new NotFoundException(`Visita con ID ${id} no encontrada`);
       }
 
-      let loteInfo: any = null;
+      let inmuebleInfo: any = null;
       if (visita.inmuebleTipo === TipoInmueble.LOTE) {
-        loteInfo = await this.getLoteInfo(visita.inmuebleId);
+        inmuebleInfo = await this.getLoteInfo(visita.inmuebleId);
+      } else if (visita.inmuebleTipo === TipoInmueble.PROPIEDAD) {
+        inmuebleInfo = await this.getPropiedadInfo(visita.inmuebleId);
       }
 
-      const visitaConLote = {
+      const visitaConInmueble = {
         ...visita,
-        lote: loteInfo,
+        inmueble: inmuebleInfo,
       };
 
-      return { success: true, data: visitaConLote };
+      return { success: true, data: visitaConInmueble };
     } catch (error) {
       if (error instanceof NotFoundException) {
         throw error;
@@ -506,24 +545,26 @@ export class VisitasService {
         orderBy: { fechaVisita: 'desc' },
       });
 
-      const visitasConLotes = await Promise.all(
+      const visitasConInfo = await Promise.all(
         visitas.map(async (visita) => {
-          let loteInfo: any = null;
+          let inmuebleInfo: any = null;
 
           if (visita.inmuebleTipo === TipoInmueble.LOTE) {
-            loteInfo = await this.getLoteInfo(visita.inmuebleId);
+            inmuebleInfo = await this.getLoteInfo(visita.inmuebleId);
+          } else if (visita.inmuebleTipo === TipoInmueble.PROPIEDAD) {
+            inmuebleInfo = await this.getPropiedadInfo(visita.inmuebleId);
           }
 
           return {
             ...visita,
-            lote: loteInfo,
+            inmueble: inmuebleInfo,
           };
         }),
       );
 
       return {
         success: true,
-        data: { cliente, visitas: visitasConLotes },
+        data: { cliente, visitas: visitasConInfo },
       };
     } catch (error) {
       if (error instanceof NotFoundException) {
@@ -559,24 +600,26 @@ export class VisitasService {
         orderBy: { fechaVisita: 'desc' },
       });
 
-      const visitasConLotes = await Promise.all(
+      const visitasConInfo = await Promise.all(
         visitas.map(async (visita) => {
-          let loteInfo: any = null;
+          let inmuebleInfo: any = null;
 
           if (visita.inmuebleTipo === TipoInmueble.LOTE) {
-            loteInfo = await this.getLoteInfo(visita.inmuebleId);
+            inmuebleInfo = await this.getLoteInfo(visita.inmuebleId);
+          } else if (visita.inmuebleTipo === TipoInmueble.PROPIEDAD) {
+            inmuebleInfo = await this.getPropiedadInfo(visita.inmuebleId);
           }
 
           return {
             ...visita,
-            lote: loteInfo,
+            inmueble: inmuebleInfo,
           };
         }),
       );
 
       return {
         success: true,
-        data: { asesor, visitas: visitasConLotes },
+        data: { asesor, visitas: visitasConInfo },
       };
     } catch (error) {
       if (error instanceof NotFoundException) {

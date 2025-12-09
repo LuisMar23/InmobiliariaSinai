@@ -8,13 +8,18 @@ export class CreateArchivoDto {
   @IsOptional()
   @IsInt()
   reservaId?: number;
-  @IsOptional()
-  @IsInt()
-  loteId?:number
 
   @IsOptional()
   @IsInt()
-  urbanizacionId?:number
+  loteId?: number;
+
+  @IsOptional()
+  @IsInt()
+  urbanizacionId?: number;
+
+  @IsOptional()
+  @IsInt()
+  propiedadId?: number; 
 
   @IsString()
   urlArchivo: string;
@@ -26,7 +31,4 @@ export class CreateArchivoDto {
   @IsOptional()
   @IsString()
   nombreArchivo?: string;
-
-
-
 }

@@ -1,6 +1,4 @@
-<form
-  class="bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-lg border border-gray-100 p-6"
->
+<form class="bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-lg border border-gray-100 p-6">
   <div class="flex items-center gap-2 mb-5">
     <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -15,14 +13,9 @@
     <div class="relative">
       <label class="block text-xs font-medium text-gray-600 mb-1.5">Ciudad</label>
       <div class="relative">
-        <input
-          type="text"
-          placeholder="Ej: La Paz"
-          [(ngModel)]="filtros.ciudad"
-          (ngModelChange)="onCambioTexto()"
+        <input type="text" placeholder="Ej: La Paz" [(ngModel)]="filtros.ciudad" (ngModelChange)="onCambioTexto()"
           name="ciudad"
-          class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition outline-none text-sm"
-        />
+          class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition outline-none text-sm" />
       </div>
     </div>
 
@@ -30,14 +23,9 @@
     <div class="relative">
       <label class="block text-xs font-medium text-gray-600 mb-1.5">Precio mín.</label>
       <div class="relative">
-        <input
-          type="number"
-          placeholder="0"
-          [(ngModel)]="filtros.precioMin"
-     (ngModelChange)="onCambioTexto()"
+        <input type="number" placeholder="0" [(ngModel)]="filtros.precioMin" (ngModelChange)="onCambioTexto()"
           name="precioMin"
-          class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition outline-none text-sm"
-        />
+          class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition outline-none text-sm" />
       </div>
     </div>
 
@@ -45,14 +33,9 @@
     <div class="relative">
       <label class="block text-xs font-medium text-gray-600 mb-1.5">Precio máx.</label>
       <div class="relative">
-        <input
-          type="number"
-          placeholder="9,999,999"
-          [(ngModel)]="filtros.precioMax"
-        (ngModelChange)="onCambioTexto()"
+        <input type="number" placeholder="9,999,999" [(ngModel)]="filtros.precioMax" (ngModelChange)="onCambioTexto()"
           name="precioMax"
-          class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition outline-none text-sm"
-        />
+          class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition outline-none text-sm" />
       </div>
     </div>
 
@@ -60,12 +43,8 @@
     <div class="relative">
       <label class="block text-xs font-medium text-gray-600 mb-1.5">Estado</label>
       <div class="relative">
-        <select
-          [(ngModel)]="filtros.estado"
-         (ngModelChange)="onCambioTexto()"
-          name="estado"
-          class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition outline-none text-sm"
-        >
+        <select [(ngModel)]="filtros.estado" (ngModelChange)="onCambioTexto()" name="estado"
+          class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition outline-none text-sm">
           <option value="">Todos</option>
           <option value="DISPONIBLE">Disponible</option>
           <option value="RESERVADO">Reservado</option>

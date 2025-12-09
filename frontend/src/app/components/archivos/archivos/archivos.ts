@@ -1,23 +1,24 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { UploadArchivosService } from '../../services/archivos.service';
+
 interface PreviewArchivo {
   url: string;
   nombre: string;
   tipo: 'imagen' | 'archivo';
 }
+
 @Component({
   selector: 'app-archivos',
   imports: [],
   templateUrl: './archivos.html',
-  styleUrl: './archivos.css'
+  styleUrl: './archivos.css',
 })
-
-
 export class ArchivosComponent {
   @Input() ventaId?: number;
   @Input() reservaId?: number;
   @Input() loteId?: number;
   @Input() urbanizacionId?: number;
+  @Input() propiedadId?: number;
   @Input() modo: 'crear' | 'actualizar' = 'crear';
   @Output() subidaCompleta = new EventEmitter<any>();
 
@@ -27,45 +28,47 @@ export class ArchivosComponent {
 
   constructor(private uploadService: UploadArchivosService) {}
 
-onSeleccionarArchivos(event: Event): void {
-  const input = event.target as HTMLInputElement;
-  const files = input.files;
-  if (!files || files.length === 0) return;
-  const nuevosArchivos = Array.from(files);
-  nuevosArchivos.forEach((file) => {
-    const esImagen = file.type.startsWith('image/');
+  onSeleccionarArchivos(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const files = input.files;
+    if (!files || files.length === 0) return;
+    const nuevosArchivos = Array.from(files);
+    nuevosArchivos.forEach((file) => {
+      const esImagen = file.type.startsWith('image/');
 
-    if (esImagen) {
-      const objectUrl = URL.createObjectURL(file);
+      if (esImagen) {
+        const objectUrl = URL.createObjectURL(file);
 
-      this.previsualizaciones.push({
-        url: objectUrl,
-        nombre: file.name,
-        tipo: 'imagen',
-      });
-    } else {
+        this.previsualizaciones.push({
+          url: objectUrl,
+          nombre: file.name,
+          tipo: 'imagen',
+        });
+      } else {
+        this.previsualizaciones.push({
+          url: '',
+          nombre: file.name,
+          tipo: 'archivo',
+        });
+      }
+    });
 
-      this.previsualizaciones.push({
-        url: '',
-        nombre: file.name,
-        tipo: 'archivo',
-      });
-    }
-  });
+    this.archivosSeleccionados.push(...nuevosArchivos);
 
-  this.archivosSeleccionados.push(...nuevosArchivos);
-
-  input.value = '';
-}
+    input.value = '';
+  }
 
   eliminarPrevisualizacion(index: number): void {
-    if (this.previsualizaciones[index].tipo === 'imagen' && 
-        this.previsualizaciones[index].url.startsWith('blob:')) {
+    if (
+      this.previsualizaciones[index].tipo === 'imagen' &&
+      this.previsualizaciones[index].url.startsWith('blob:')
+    ) {
       URL.revokeObjectURL(this.previsualizaciones[index].url);
     }
     this.previsualizaciones.splice(index, 1);
     this.archivosSeleccionados.splice(index, 1);
   }
+
   subirArchivos(): void {
     if (this.archivosSeleccionados.length === 0) return;
 
@@ -76,6 +79,7 @@ onSeleccionarArchivos(event: Event): void {
       reservaId: this.reservaId,
       loteId: this.loteId,
       urbanizacionId: this.urbanizacionId,
+      propiedadId: this.propiedadId,
     };
 
     const request =
@@ -97,7 +101,7 @@ onSeleccionarArchivos(event: Event): void {
   }
 
   limpiarSeleccion(): void {
-    this.previsualizaciones.forEach(preview => {
+    this.previsualizaciones.forEach((preview) => {
       if (preview.tipo === 'imagen' && preview.url.startsWith('blob:')) {
         URL.revokeObjectURL(preview.url);
       }

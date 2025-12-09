@@ -7,7 +7,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
 import { VisitaService } from '../../service/visita.service';
 
 interface ColumnConfig {
-  key: keyof VisitaDto;
+  key: keyof VisitaDto | 'inmuebleInfo';
   label: string;
   sortable?: boolean;
 }
@@ -27,14 +27,15 @@ export class VisitaList implements OnInit {
   visitaSeleccionada = signal<VisitaDto | null>(null);
   mostrarModal = signal<boolean>(false);
 
-  sortColumn = signal<keyof VisitaDto>('id');
+  sortColumn = signal<keyof VisitaDto | 'inmuebleInfo'>('id');
   sortDirection = signal<'asc' | 'desc'>('desc');
 
   columns: ColumnConfig[] = [
     { key: 'id', label: 'ID', sortable: true },
     { key: 'cliente', label: 'Cliente', sortable: true },
     { key: 'asesor', label: 'Asesor', sortable: true },
-    { key: 'lote', label: 'Lote', sortable: true },
+    { key: 'inmuebleTipo', label: 'Tipo Inmueble', sortable: true },
+    { key: 'inmuebleInfo', label: 'Inmueble', sortable: true },
     { key: 'fechaVisita', label: 'Fecha Visita', sortable: true },
     { key: 'estado', label: 'Estado', sortable: true },
   ];
@@ -55,8 +56,9 @@ export class VisitaList implements OnInit {
         (visita: VisitaDto) =>
           visita.cliente?.fullName?.toLowerCase().includes(term) ||
           visita.asesor?.fullName?.toLowerCase().includes(term) ||
-          visita.lote?.numeroLote?.toLowerCase().includes(term) ||
-          visita.estado?.toLowerCase().includes(term)
+          this.getInmuebleNombre(visita).toLowerCase().includes(term) ||
+          visita.estado?.toLowerCase().includes(term) ||
+          visita.inmuebleTipo?.toLowerCase().includes(term)
       );
     }
 
@@ -66,21 +68,8 @@ export class VisitaList implements OnInit {
     if (!column) return visitas;
 
     return [...visitas].sort((a, b) => {
-      let aValue: any = a[column];
-      let bValue: any = b[column];
-
-      if (column === 'cliente') {
-        aValue = a.cliente?.fullName;
-        bValue = b.cliente?.fullName;
-      }
-      if (column === 'asesor') {
-        aValue = a.asesor?.fullName;
-        bValue = b.asesor?.fullName;
-      }
-      if (column === 'lote') {
-        aValue = a.lote?.numeroLote;
-        bValue = b.lote?.numeroLote;
-      }
+      let aValue: any = this.getSortValue(a, column);
+      let bValue: any = this.getSortValue(b, column);
 
       if (aValue === undefined || aValue === null) aValue = '';
       if (bValue === undefined || bValue === null) bValue = '';
@@ -121,7 +110,42 @@ export class VisitaList implements OnInit {
     });
   }
 
-  cambiarOrden(columna: keyof VisitaDto) {
+  private getSortValue(visita: VisitaDto, column: keyof VisitaDto | 'inmuebleInfo'): any {
+    if (column === 'inmuebleInfo') {
+      return this.getInmuebleNombre(visita);
+    }
+
+    if (column === 'cliente') {
+      return visita.cliente?.fullName;
+    }
+    if (column === 'asesor') {
+      return visita.asesor?.fullName;
+    }
+
+    return visita[column as keyof VisitaDto];
+  }
+
+  getInmuebleNombre(visita: VisitaDto): string {
+    if (visita.inmuebleTipo === 'LOTE' && visita.lote) {
+      return `Lote ${visita.lote.numeroLote}`;
+    } else if (visita.inmuebleTipo === 'PROPIEDAD' && visita.propiedad) {
+      return `${visita.propiedad.nombre} - ${visita.propiedad.tipo}`;
+    }
+    return 'No especificado';
+  }
+
+  getInmuebleInfo(visita: VisitaDto): string {
+    if (visita.inmuebleTipo === 'LOTE' && visita.lote) {
+      return `Lote ${visita.lote.numeroLote} - ${
+        visita.lote.urbanizacion?.nombre || 'Sin urbanización'
+      }`;
+    } else if (visita.inmuebleTipo === 'PROPIEDAD' && visita.propiedad) {
+      return `${visita.propiedad.nombre} - ${visita.propiedad.tipo} - ${visita.propiedad.ciudad}`;
+    }
+    return 'No especificado';
+  }
+
+  cambiarOrden(columna: keyof VisitaDto | 'inmuebleInfo') {
     if (this.sortColumn() === columna) {
       this.sortDirection.set(this.sortDirection() === 'asc' ? 'desc' : 'asc');
     } else {
@@ -130,7 +154,7 @@ export class VisitaList implements OnInit {
     }
   }
 
-  getClaseFlecha(columna: keyof VisitaDto): string {
+  getClaseFlecha(columna: keyof VisitaDto | 'inmuebleInfo'): string {
     if (this.sortColumn() !== columna) {
       return 'opacity-30';
     }
@@ -188,6 +212,22 @@ export class VisitaList implements OnInit {
       CANCELADA: 'Cancelada',
     };
     return estados[estado as keyof typeof estados] || estado;
+  }
+
+  getTipoInmuebleBadgeClass(tipo: string): string {
+    const classes = {
+      LOTE: 'px-2 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700',
+      PROPIEDAD: 'px-2 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-700',
+    };
+    return classes[tipo as keyof typeof classes] || classes['LOTE'];
+  }
+
+  getTipoInmuebleText(tipo: string): string {
+    const tipos = {
+      LOTE: 'Lote',
+      PROPIEDAD: 'Propiedad',
+    };
+    return tipos[tipo as keyof typeof tipos] || tipo;
   }
 
   formatFecha(fecha: string): string {

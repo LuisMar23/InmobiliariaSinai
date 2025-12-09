@@ -210,14 +210,32 @@ export class VentasService {
           `El lote no está disponible para venta. Estado actual: ${lote.estado}`,
         );
       }
-    } else if (tipoInmueble === TipoInmueble.URBANIZACION) {
-      const urbanizacion = await prisma.urbanizacion.findUnique({
+    } else if (tipoInmueble === TipoInmueble.PROPIEDAD) {
+      const propiedad = await prisma.propiedad.findUnique({
         where: { id: inmuebleId },
       });
-      if (!urbanizacion)
+      if (!propiedad)
         throw new NotFoundException(
-          `Urbanización con ID ${inmuebleId} no encontrada`,
+          `Propiedad con ID ${inmuebleId} no encontrada`,
         );
+      if (
+        propiedad.estado !== 'DISPONIBLE' &&
+        propiedad.estado !== 'CON_OFERTA'
+      ) {
+        throw new BadRequestException(
+          `La propiedad no está disponible para venta. Estado actual: ${propiedad.estado}`,
+        );
+      }
+      if (propiedad.tipo !== 'CASA' && propiedad.tipo !== 'DEPARTAMENTO') {
+        throw new BadRequestException(
+          `Solo se pueden vender propiedades de tipo CASA y DEPARTAMENTO. Tipo actual: ${propiedad.tipo}`,
+        );
+      }
+      if (propiedad.estadoPropiedad !== 'VENTA') {
+        throw new BadRequestException(
+          `La propiedad no está disponible para venta. Estado de propiedad: ${propiedad.estadoPropiedad}`,
+        );
+      }
     }
   }
 
@@ -400,6 +418,11 @@ export class VentasService {
             where: { id: createVentaDto.inmuebleId },
             data: { estado: 'VENDIDO' },
           });
+        } else if (createVentaDto.inmuebleTipo === TipoInmueble.PROPIEDAD) {
+          await prisma.propiedad.update({
+            where: { id: createVentaDto.inmuebleId },
+            data: { estado: 'VENDIDO' },
+          });
         }
 
         await this.crearAuditoria(
@@ -429,6 +452,10 @@ export class VentasService {
             lote:
               createVentaDto.inmuebleTipo === TipoInmueble.LOTE
                 ? { include: { urbanizacion: true } }
+                : false,
+            propiedad:
+              createVentaDto.inmuebleTipo === TipoInmueble.PROPIEDAD
+                ? true
                 : false,
             planPago: { include: { pagos: true } },
             archivos: true,
@@ -486,6 +513,7 @@ export class VentasService {
                 },
               },
             },
+            propiedad: true,
             planPago: {
               include: { pagos: { orderBy: { fecha_pago: 'desc' } } },
             },
@@ -540,6 +568,7 @@ export class VentasService {
               },
             },
           },
+          propiedad: true,
           planPago: { include: { pagos: { orderBy: { fecha_pago: 'desc' } } } },
           archivos: true,
         },
@@ -634,6 +663,7 @@ export class VentasService {
             cliente: true,
             asesor: true,
             lote: { include: { urbanizacion: true } },
+            propiedad: true,
             planPago: { include: { pagos: true } },
             archivos: true,
           },
@@ -873,6 +903,11 @@ export class VentasService {
         }
         if (venta.inmuebleTipo === TipoInmueble.LOTE) {
           await prisma.lote.update({
+            where: { id: venta.inmuebleId },
+            data: { estado: 'DISPONIBLE' },
+          });
+        } else if (venta.inmuebleTipo === TipoInmueble.PROPIEDAD) {
+          await prisma.propiedad.update({
             where: { id: venta.inmuebleId },
             data: { estado: 'DISPONIBLE' },
           });
@@ -1429,6 +1464,7 @@ export class VentasService {
               urbanizacion: { select: { nombre: true, ubicacion: true } },
             },
           },
+          propiedad: true,
         },
       });
 
@@ -1455,6 +1491,7 @@ export class VentasService {
             cliente: venta.cliente,
             asesor: venta.asesor,
             lote: venta.lote,
+            propiedad: venta.propiedad,
             observaciones: venta.observaciones,
           },
           planPago,
@@ -1507,6 +1544,7 @@ export class VentasService {
                     urbanizacion: { select: { nombre: true, ubicacion: true } },
                   },
                 },
+                propiedad: true,
               },
             },
             pagos: { orderBy: { fecha_pago: 'desc' } },
@@ -1586,6 +1624,7 @@ export class VentasService {
               urbanizacion: { select: { nombre: true, ubicacion: true } },
             },
           },
+          propiedad: true,
           planPago: { include: { pagos: { orderBy: { fecha_pago: 'desc' } } } },
         },
         orderBy: { createdAt: 'desc' },

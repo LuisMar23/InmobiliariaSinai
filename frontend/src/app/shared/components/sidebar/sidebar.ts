@@ -35,7 +35,7 @@ import {
   faHomeUser,
   faTag,
   faCashRegister,
-
+  faHouse, // Icono para Propiedades
 } from '@fortawesome/free-solid-svg-icons';
 import { AuthService } from '../../../components/services/auth.service';
 
@@ -64,7 +64,7 @@ export class Sidebar implements OnInit {
   faHomeUser = faHomeUser;
   faCog = faCog;
   faTag = faTag;
-  
+  faHouse = faHouse; // Icono para Propiedades
 
   @Output() sidebarToggled = new EventEmitter<boolean>();
 
@@ -79,6 +79,7 @@ export class Sidebar implements OnInit {
     { label: 'Dashboard', icon: faTachometerAlt, route: '/dashboard' },
     { label: 'Urbanizaciones', icon: faCity, route: '/urbanizaciones' },
     { label: 'Lotes', icon: faMapMarkedAlt, route: '/lotes' },
+    { label: 'Propiedades', icon: faHouse, route: '/propiedades' }, // Nueva opción agregada
     // Usuarios se agrega dinámicamente según el rol
     { label: 'Clientes', icon: faHomeUser, route: '/clientes' },
     { label: 'Cotizaciones', icon: faFileInvoiceDollar, route: '/cotizaciones' },
@@ -101,11 +102,11 @@ export class Sidebar implements OnInit {
   private filterMenuByRole() {
     // SOLO agregar "Usuarios" si el rol es ADMINISTRADOR o SECRETARIA
     if (this.currentUser && ['ADMINISTRADOR', 'SECRETARIA'].includes(this.currentUser.role)) {
-      // Insertar "Usuarios" después de "Lotes"
-      this.menu.splice(3, 0, {
+      // Insertar "Usuarios" después de "Propiedades" (posición 4)
+      this.menu.splice(4, 0, {
         label: 'Usuarios',
         icon: faUsers,
-        route: '/usuarios'
+        route: '/usuarios',
       });
     }
   }

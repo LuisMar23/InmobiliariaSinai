@@ -5,8 +5,10 @@ import { RouterModule, Router } from '@angular/router';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { UserDto } from '../../../../core/interfaces/user.interface';
 import { LoteDto } from '../../../../core/interfaces/lote.interface';
+import { PropiedadDto } from '../../../../core/interfaces/propiedad.interface';
 import { Caja } from '../../../../core/interfaces/caja.interface';
 import { LoteService } from '../../../lote/service/lote.service';
+import { PropiedadService } from '../../../propiedad/service/propiedad.service';
 import { AuthService } from '../../../../components/services/auth.service';
 import { VentaService } from '../../service/venta.service';
 
@@ -22,21 +24,27 @@ export class VentaCreate implements OnInit {
   enviando = signal<boolean>(false);
   clientes = signal<UserDto[]>([]);
   lotes = signal<LoteDto[]>([]);
+  propiedades = signal<PropiedadDto[]>([]);
   cajas = signal<Caja[]>([]);
   fechaVencimientoCalculada = signal<string>('');
 
   searchCliente = signal<string>('');
   searchLote = signal<string>('');
+  searchPropiedad = signal<string>('');
   searchCaja = signal<string>('');
   showClientesDropdown = signal<boolean>(false);
   showLotesDropdown = signal<boolean>(false);
+  showPropiedadesDropdown = signal<boolean>(false);
   showCajasDropdown = signal<boolean>(false);
+
+  inmuebleTipoSeleccionado = signal<string>('LOTE');
 
   authService = inject(AuthService);
   router = inject(Router);
   private fb = inject(FormBuilder);
   private ventaSvc = inject(VentaService);
   private loteSvc = inject(LoteService);
+  private propiedadSvc = inject(PropiedadService);
   private notificationService = inject(NotificationService);
 
   constructor() {
@@ -47,6 +55,7 @@ export class VentaCreate implements OnInit {
   ngOnInit(): void {
     this.cargarClientes();
     this.cargarLotes();
+    this.cargarPropiedades();
     this.cargarCajasActivas();
     this.setupFormListeners();
   }
@@ -54,6 +63,7 @@ export class VentaCreate implements OnInit {
   crearFormularioVenta(): FormGroup {
     return this.fb.group({
       clienteId: ['', Validators.required],
+      inmuebleTipo: ['LOTE', Validators.required],
       inmuebleId: ['', Validators.required],
       precioFinal: [0, [Validators.required, Validators.min(0.01)]],
       cajaId: ['', Validators.required],
@@ -89,6 +99,13 @@ export class VentaCreate implements OnInit {
 
     this.planPagoForm.get('periodicidad')?.valueChanges.subscribe(() => {
       this.calcularFechaVencimiento();
+    });
+
+    this.ventaForm.get('inmuebleTipo')?.valueChanges.subscribe((tipo) => {
+      this.inmuebleTipoSeleccionado.set(tipo);
+      this.ventaForm.patchValue({ inmuebleId: '', precioFinal: 0 });
+      this.searchLote.set('');
+      this.searchPropiedad.set('');
     });
   }
 
@@ -129,6 +146,23 @@ export class VentaCreate implements OnInit {
     });
   }
 
+  cargarPropiedades(): void {
+    this.propiedadSvc.getAll().subscribe({
+      next: (propiedades: PropiedadDto[]) => {
+        const propiedadesParaVenta = propiedades.filter(
+          (propiedad) =>
+            propiedad.estadoPropiedad === 'VENTA' &&
+            (propiedad.tipo === 'CASA' || propiedad.tipo === 'DEPARTAMENTO') &&
+            (propiedad.estado === 'DISPONIBLE' || propiedad.estado === 'CON_OFERTA')
+        );
+        this.propiedades.set(propiedadesParaVenta);
+      },
+      error: (err: any) => {
+        this.notificationService.showError('No se pudieron cargar las propiedades');
+      },
+    });
+  }
+
   cargarCajasActivas(): void {
     this.ventaSvc.obtenerCajasActivas().subscribe({
       next: (cajas: Caja[]) => {
@@ -164,6 +198,20 @@ export class VentaCreate implements OnInit {
     );
   }
 
+  filteredPropiedades() {
+    const search = this.searchPropiedad().toLowerCase();
+    if (!search) return this.propiedades();
+
+    return this.propiedades().filter(
+      (propiedad) =>
+        propiedad.nombre?.toLowerCase().includes(search) ||
+        propiedad.ubicacion?.toLowerCase().includes(search) ||
+        propiedad.ciudad?.toLowerCase().includes(search) ||
+        propiedad.tipo?.toLowerCase().includes(search) ||
+        propiedad.precio?.toString().includes(search)
+    );
+  }
+
   filteredCajas() {
     const search = this.searchCaja().toLowerCase();
     if (!search) return this.cajas();
@@ -192,6 +240,15 @@ export class VentaCreate implements OnInit {
     this.showLotesDropdown.set(false);
   }
 
+  selectPropiedad(propiedad: PropiedadDto) {
+    this.ventaForm.patchValue({
+      inmuebleId: propiedad.id.toString(),
+      precioFinal: propiedad.precio,
+    });
+    this.searchPropiedad.set(this.getPropiedadDisplayText(propiedad));
+    this.showPropiedadesDropdown.set(false);
+  }
+
   selectCaja(caja: Caja) {
     this.ventaForm.patchValue({
       cajaId: caja.id.toString(),
@@ -203,6 +260,12 @@ export class VentaCreate implements OnInit {
   getLoteDisplayText(lote: LoteDto): string {
     return `${lote.numeroLote} - ${lote.urbanizacion?.nombre} - $${this.formatNumber(
       lote.precioBase
+    )}`;
+  }
+
+  getPropiedadDisplayText(propiedad: PropiedadDto): string {
+    return `${propiedad.nombre} - ${propiedad.tipo} - ${propiedad.ubicacion} - $${this.formatNumber(
+      propiedad.precio
     )}`;
   }
 
@@ -220,6 +283,7 @@ export class VentaCreate implements OnInit {
     this.showClientesDropdown.set(!this.showClientesDropdown());
     if (this.showClientesDropdown()) {
       this.showLotesDropdown.set(false);
+      this.showPropiedadesDropdown.set(false);
       this.showCajasDropdown.set(false);
     }
   }
@@ -228,6 +292,16 @@ export class VentaCreate implements OnInit {
     this.showLotesDropdown.set(!this.showLotesDropdown());
     if (this.showLotesDropdown()) {
       this.showClientesDropdown.set(false);
+      this.showPropiedadesDropdown.set(false);
+      this.showCajasDropdown.set(false);
+    }
+  }
+
+  togglePropiedadesDropdown() {
+    this.showPropiedadesDropdown.set(!this.showPropiedadesDropdown());
+    if (this.showPropiedadesDropdown()) {
+      this.showClientesDropdown.set(false);
+      this.showLotesDropdown.set(false);
       this.showCajasDropdown.set(false);
     }
   }
@@ -237,6 +311,7 @@ export class VentaCreate implements OnInit {
     if (this.showCajasDropdown()) {
       this.showClientesDropdown.set(false);
       this.showLotesDropdown.set(false);
+      this.showPropiedadesDropdown.set(false);
     }
   }
 
@@ -249,6 +324,12 @@ export class VentaCreate implements OnInit {
   onLoteBlur() {
     setTimeout(() => {
       this.showLotesDropdown.set(false);
+    }, 200);
+  }
+
+  onPropiedadBlur() {
+    setTimeout(() => {
+      this.showPropiedadesDropdown.set(false);
     }, 200);
   }
 
@@ -318,9 +399,10 @@ export class VentaCreate implements OnInit {
     const clienteId = this.ventaForm.get('clienteId')?.value;
     const inmuebleId = this.ventaForm.get('inmuebleId')?.value;
     const cajaId = this.ventaForm.get('cajaId')?.value;
+    const inmuebleTipo = this.ventaForm.get('inmuebleTipo')?.value;
 
-    if (!clienteId || !inmuebleId || !cajaId) {
-      this.notificationService.showError('Debe seleccionar un cliente, un lote y una caja');
+    if (!clienteId || !inmuebleId || !cajaId || !inmuebleTipo) {
+      this.notificationService.showError('Debe seleccionar un cliente, un inmueble y una caja');
       return;
     }
 
@@ -328,7 +410,7 @@ export class VentaCreate implements OnInit {
 
     const ventaData: any = {
       clienteId: Number(clienteId),
-      inmuebleTipo: 'LOTE',
+      inmuebleTipo: inmuebleTipo,
       inmuebleId: Number(inmuebleId),
       precioFinal: Number(this.ventaForm.value.precioFinal),
       cajaId: Number(cajaId),
@@ -364,7 +446,7 @@ export class VentaCreate implements OnInit {
         } else if (err.status === 403) {
           errorMessage = 'No tienes permisos para crear ventas';
         } else if (err.status === 404) {
-          errorMessage = 'Cliente, lote o caja no encontrado';
+          errorMessage = 'Cliente, inmueble o caja no encontrado';
         }
         this.notificationService.showError(errorMessage);
       },

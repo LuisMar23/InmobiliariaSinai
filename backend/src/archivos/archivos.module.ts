@@ -5,6 +5,6 @@ import { PrismaService } from 'src/config/prisma.service';
 
 @Module({
   controllers: [ArchivosController],
-  providers: [ArchivosService,PrismaService],
+  providers: [ArchivosService, PrismaService],
 })
 export class ArchivosModule {}

@@ -18,7 +18,7 @@ export enum EstadoReserva {
 
 export enum TipoInmueble {
   LOTE = 'LOTE',
-  URBANIZACION = 'URBANIZACION',
+  PROPIEDAD = 'PROPIEDAD',
 }
 
 export enum UserRole {

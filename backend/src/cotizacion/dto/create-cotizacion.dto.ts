@@ -16,7 +16,7 @@ export enum EstadoCotizacion {
 
 export enum TipoInmueble {
   LOTE = 'LOTE',
-  URBANIZACION = 'URBANIZACION',
+  PROPIEDAD = 'PROPIEDAD',
 }
 
 export class CreateCotizacionDto {

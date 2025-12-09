@@ -21,7 +21,7 @@ export enum EstadoInmueble {
 
 export enum TipoInmueble {
   LOTE = 'LOTE',
-  URBANIZACION = 'URBANIZACION',
+  PROPIEDAD = 'PROPIEDAD',
 }
 
 export enum EstadoVenta {
