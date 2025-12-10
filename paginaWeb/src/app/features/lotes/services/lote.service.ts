@@ -14,7 +14,7 @@ export class LoteService {
 
   getAll(): Observable<Lote[]> {
     return this.http.get<{success: boolean, data: Lote[]}>(this.baseUrl).pipe(
-      map(response => response.data) // ✅ Extrae solo el array
+      map(response => response.data)
     );
   }
 
@@ -26,7 +26,7 @@ export class LoteService {
 
   filtrar(filtros: any): Observable<Lote[]> {
     return this.http.post<{success: boolean, data: Lote[]}>(`${this.baseUrl}/filtrar`, filtros).pipe(
-      map(response => response.data) // ✅ Extrae solo el array
+      map(response => response.data)
     );
   }
 

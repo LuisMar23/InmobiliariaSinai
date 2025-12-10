@@ -37,14 +37,13 @@ export class Navbar {
   isUserMenuOpen: boolean = false;
 
   _authService = inject(AuthService);
-  currentUser = {
-    username: 'Admin',
-  };
 
-  notifications = [
-    { id: 1, message: 'Nuevo pedido recibido' },
-    { id: 2, message: 'Pago confirmado' },
-  ];
+  currentUser:any
+ngOnInit(){
+ this.currentUser=this._authService.getCurrentUser()
+  console.log(this.currentUser)
+}
+
 
   toggleUserMenu() {
     this.isUserMenuOpen = !this.isUserMenuOpen;

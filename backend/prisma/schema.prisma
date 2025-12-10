@@ -5,7 +5,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-
+  url      = env("DATABASE_URL")
 }
 
 enum UserRole {
@@ -167,7 +167,33 @@ model User {
   lotesEncargado          Lote[]           @relation("LotesEncargado")
   propiedadesEncargado    Propiedad[]      @relation("PropiedadesEncargado")
 }
+model Lote {
+  id              Int            @id @default(autoincrement())
+  uuid            String         @unique @default(uuid())
+  urbanizacionId  Int?
+  numeroLote      String         @map("numero_lote")
+  superficieM2    Decimal        @map("superficie_m2") @db.Decimal(10, 2)
+  precioBase      Decimal        @map("precio_base") @db.Decimal(12, 2)
+  descripcion     String?
+  ubicacion       String?
+  ciudad          String
+  latitud         Decimal?       @db.Decimal(10, 7)
+  longitud        Decimal?       @db.Decimal(10, 7)
+  esIndependiente Boolean        @default(false) @map("es_independiente")
+  estado          EstadoInmueble @default(DISPONIBLE)
+  encargadoId     Int?           @map("encargado_id")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
 
+  urbanizacion  Urbanizacion?   @relation(fields: [urbanizacionId], references: [id])
+  encargado     User?           @relation("LotesEncargado", fields: [encargadoId], references: [id])
+  archivos      Archivo[]
+  cotizaciones  Cotizacion[]    @relation("CotizacionesLote")
+  ventas        Venta[]         @relation("VentasLote")
+  reservas      Reserva[]       @relation("ReservasLote")
+  visitas       Visita[]        @relation("VisitasLote")
+  LotePromocion LotePromocion[]
+}
 model Urbanizacion {
   id          Int      @id @default(autoincrement())
   uuid        String   @unique @default(uuid())
@@ -263,33 +289,7 @@ model Visita {
   propiedad Propiedad? @relation("VisitasPropiedad", fields: [inmuebleId], references: [id], map: "fk_visita_propiedad")
 }
 
-model Lote {
-  id              Int            @id @default(autoincrement())
-  uuid            String         @unique @default(uuid())
-  urbanizacionId  Int?
-  numeroLote      String         @map("numero_lote")
-  superficieM2    Decimal        @map("superficie_m2") @db.Decimal(10, 2)
-  precioBase      Decimal        @map("precio_base") @db.Decimal(12, 2)
-  descripcion     String?
-  ubicacion       String?
-  ciudad          String
-  latitud         Decimal?       @db.Decimal(10, 7)
-  longitud        Decimal?       @db.Decimal(10, 7)
-  esIndependiente Boolean        @default(false) @map("es_independiente")
-  estado          EstadoInmueble @default(DISPONIBLE)
-  encargadoId     Int?           @map("encargado_id")
-  createdAt       DateTime       @default(now()) @map("created_at")
-  updatedAt       DateTime       @updatedAt @map("updated_at")
 
-  urbanizacion  Urbanizacion?   @relation(fields: [urbanizacionId], references: [id])
-  encargado     User?           @relation("LotesEncargado", fields: [encargadoId], references: [id])
-  archivos      Archivo[]
-  cotizaciones  Cotizacion[]    @relation("CotizacionesLote")
-  ventas        Venta[]         @relation("VentasLote")
-  reservas      Reserva[]       @relation("ReservasLote")
-  visitas       Visita[]        @relation("VisitasLote")
-  LotePromocion LotePromocion[]
-}
 
 model Promocion {
   id             Int      @id @default(autoincrement())

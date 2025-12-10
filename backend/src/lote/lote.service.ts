@@ -83,6 +83,7 @@ export class LoteService {
           superficieM2: createLoteDto.superficieM2,
           precioBase: createLoteDto.precioBase,
           estado: createLoteDto.estado || EstadoInmueble.DISPONIBLE,
+          encargadoId: createLoteDto.encargadoId,
           descripcion: createLoteDto.descripcion,
           ubicacion: createLoteDto.ubicacion,
           ciudad: createLoteDto.ciudad,
@@ -357,6 +358,17 @@ export class LoteService {
             },
           },
         },
+      encargado: {
+        select: {
+          id: true,
+          uuid: true,
+          fullName: true,
+          email: true,
+          telefono: true,
+          avatarUrl: true,
+          role: true,
+        },
+      },
       },
     });
 
@@ -438,23 +450,30 @@ export class LoteService {
         }
       }
 
+      const dataToUpdate: any = {
+        numeroLote: updateLoteDto.numeroLote,
+        superficieM2: updateLoteDto.superficieM2,
+        precioBase: updateLoteDto.precioBase,
+        estado: updateLoteDto.estado,
+        descripcion: updateLoteDto.descripcion,
+        ubicacion: updateLoteDto.ubicacion,
+        ciudad: updateLoteDto.ciudad,
+        latitud: updateLoteDto.latitud,
+        longitud: updateLoteDto.longitud,
+        esIndependiente: updateLoteDto.esIndependiente,
+        urbanizacionId: updateLoteDto.esIndependiente
+          ? null
+          : updateLoteDto.urbanizacionId,
+      };
+
+      // Manejar encargadoId solo si viene en el DTO
+      if ('encargadoId' in updateLoteDto) {
+        dataToUpdate.encargadoId = updateLoteDto.encargadoId;
+      }
+
       const loteActualizado = await prisma.lote.update({
         where: { id },
-        data: {
-          urbanizacionId: updateLoteDto.esIndependiente
-            ? null
-            : updateLoteDto.urbanizacionId,
-          numeroLote: updateLoteDto.numeroLote,
-          superficieM2: updateLoteDto.superficieM2,
-          precioBase: updateLoteDto.precioBase,
-          estado: updateLoteDto.estado,
-          descripcion: updateLoteDto.descripcion,
-          ubicacion: updateLoteDto.ubicacion,
-          ciudad: updateLoteDto.ciudad,
-          latitud: updateLoteDto.latitud,
-          longitud: updateLoteDto.longitud,
-          esIndependiente: updateLoteDto.esIndependiente,
-        },
+        data: dataToUpdate,
         include: {
           urbanizacion: {
             select: {
@@ -464,6 +483,7 @@ export class LoteService {
               ciudad: true,
             },
           },
+          encargado: true,
         },
       });
 
