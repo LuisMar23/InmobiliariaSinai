@@ -86,8 +86,7 @@ export const routes: Routes = [
 @NgModule({
   imports: [
     RouterModule.forRoot(routes, {
-      // Configuración optimizada para lazy loading
-      preloadingStrategy: false, // Desactivar preloading para evitar conflictos
+      preloadingStrategy: false, 
       enableTracing: false,
       scrollPositionRestoration: 'enabled',
     }),

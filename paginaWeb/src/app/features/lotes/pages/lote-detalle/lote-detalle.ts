@@ -19,26 +19,23 @@ import { environment } from '../../../../../environments/environment';
 import { DomSanitizer } from '@angular/platform-browser';
 import { SafeUrlPipe } from './safe-url.pipe';
 
-
 @Component({
   selector: 'app-lote-detalle',
 
-  imports: [CommonModule, ReactiveFormsModule, RouterModule,SafeUrlPipe],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, SafeUrlPipe],
   templateUrl: './lote-detalle.html',
   styleUrl: './lote-detalle.css',
-
 })
 export class LoteDetalle {
   lote = signal<Lote | null>(null);
   cargando = signal(true);
   lightboxOpen = signal(false);
   selectedImage = signal<string | null>(null);
-@ViewChild('swiperEl') swiperEl!: ElementRef;
+  @ViewChild('swiperEl') swiperEl!: ElementRef;
   urlServer = environment.fileServer;
   contactoForm!: FormGroup;
   currentIndex = 0;
   totalImages = 0;
-
 
   constructor(
     private route: ActivatedRoute,
@@ -58,8 +55,9 @@ export class LoteDetalle {
     if (uuid) {
       this.loteSvc.getByUuid(uuid).subscribe({
         next: (data) => {
+          console.log(data);
           this.lote.set(data);
-             this.totalImages = data.archivos?.length || 0;
+          this.totalImages = data.archivos?.length || 0;
           this.cargando.set(false);
         },
         error: () => this.cargando.set(false),
@@ -78,22 +76,30 @@ export class LoteDetalle {
   }
   private platformId = inject(PLATFORM_ID);
 
-
   closeLightbox() {
     this.lightboxOpen.set(false);
     this.selectedImage.set(null);
   }
-
   enviarWhatsApp() {
-
     if (!isPlatformBrowser(this.platformId)) return;
 
-    if (this.contactoForm.invalid || !this.lote()) return;
+    const lote = this.lote();
+
+    if (this.contactoForm.invalid || !lote) return;
 
     const { nombre, telefono, mensaje } = this.contactoForm.value;
-    const lote = this.lote()!;
+
+    let telefonoDestino = lote.encargado?.telefono || '74537051';
+
+    telefonoDestino = telefonoDestino.replace(/\D/g, '');
+
+    if (!telefonoDestino.startsWith('591')) {
+      telefonoDestino = '591' + telefonoDestino;
+    }
+
     const texto = `Hola, soy ${nombre}.\nTeléfono: ${telefono}\n\n${mensaje}\n\nEstoy interesado en el lote ${lote.numeroLote} en ${lote.ciudad}.`;
-    const url = `https://wa.me/59174537051?text=${encodeURIComponent(texto)}`;
+
+    const url = `https://wa.me/${telefonoDestino}?text=${encodeURIComponent(texto)}`;
 
     window.open(url, '_blank');
   }
@@ -117,7 +123,6 @@ export class LoteDetalle {
       // Usamos lat/lng para embed
       return `https://www.google.com/maps?q=${loteData.latitud},${loteData.longitud}&output=embed`;
     } else if (loteData?.ubicacion) {
-  
       return loteData.ubicacion;
     }
 
@@ -129,30 +134,24 @@ export class LoteDetalle {
     return !!(loteData?.latitud && loteData?.longitud);
   }
 
-
-
-
   prevImage() {
     if (!this.lote()?.archivos?.length) return;
     this.currentIndex =
-      (this.currentIndex - 1 + this.lote()?.archivos.length) %
-      this.lote()?.archivos.length;
+      (this.currentIndex - 1 + this.lote()?.archivos.length) % this.lote()?.archivos.length;
   }
 
   nextImage() {
     if (!this.lote()?.archivos?.length) return;
-    this.currentIndex =
-      (this.currentIndex + 1) % this.lote()?.archivos.length;
+    this.currentIndex = (this.currentIndex + 1) % this.lote()?.archivos.length;
   }
 
-zoomOpen = signal(false); // <-- inicializado en falso
+  zoomOpen = signal(false); 
 
-openZoom() {
-  this.zoomOpen.set(true);
-}
+  openZoom() {
+    this.zoomOpen.set(true);
+  }
 
-closeZoom() {
-  this.zoomOpen.set(false);
-}
-
+  closeZoom() {
+    this.zoomOpen.set(false);
+  }
 }

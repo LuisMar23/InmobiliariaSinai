@@ -103,19 +103,23 @@ export class UsersComponent implements OnInit {
   }
 
   deleteUser(user: any) {
-    if (confirm(`¿Estás seguro de eliminar al usuario ${user.username}?`)) {
-      this.userService.delete(user.id).subscribe({
-        next: (response: any) => {
-          this.notificationService.showSuccess(
-            response.message || 'Usuario eliminado correctamente'
-          );
-          this.loadUsers();
-        },
-        error: (err: any) => {
-          this.notificationService.showError('Error al eliminar usuario');
-        },
+    this.notificationService
+      .confirmDelete(`¿Estás seguro de eliminar al usuario ${user.username}?`)
+      .then((result) => {
+        if (result.isConfirmed) {
+          this.userService.delete(user.id).subscribe({
+            next: (response: any) => {
+              this.notificationService.showSuccess(
+                response.message || 'Usuario eliminado correctamente'
+              );
+              this.loadUsers();
+            },
+            error: (err: any) => {
+              this.notificationService.showError('Error al eliminar usuario');
+            },
+          });
+        }
       });
-    }
   }
 
   getRoleClass(role: string): string {

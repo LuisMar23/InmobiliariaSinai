@@ -217,19 +217,19 @@ export class LoteEdit implements OnInit {
     this.enviando.set(true);
 
     const formValue = this.loteForm.value;
-    const dataActualizada: any = {
-      esIndependiente: formValue.esIndependiente,
-      urbanizacionId: formValue.esIndependiente ? null : Number(formValue.urbanizacionId),
-      numeroLote: formValue.numeroLote,
-      superficieM2: Number(formValue.superficieM2),
-      precioBase: Number(formValue.precioBase),
-      ciudad: formValue.ciudad,
-      descripcion: formValue.descripcion,
-      ubicacion: formValue.ubicacion,
-      estado: formValue.estado,
-      encargadoId: formValue.encargadoId ? Number(formValue.encargadoId) : undefined,
-    };
-
+const dataActualizada: any = {
+  esIndependiente: formValue.esIndependiente,
+  urbanizacionId: formValue.esIndependiente ? null : Number(formValue.urbanizacionId),
+  numeroLote: formValue.numeroLote,
+  superficieM2: Number(formValue.superficieM2),
+  precioBase: Number(formValue.precioBase),
+  ciudad: formValue.ciudad,
+  descripcion: formValue.descripcion,
+  ubicacion: formValue.ubicacion,
+  estado: formValue.estado,
+  ...(formValue.encargadoId && { encargadoId: Number(formValue.encargadoId) }),
+};
+    console.log(dataActualizada)
     this.loteSvc.update(this.loteId, dataActualizada).subscribe({
       next: (response: any) => {
         this.enviando.set(false);

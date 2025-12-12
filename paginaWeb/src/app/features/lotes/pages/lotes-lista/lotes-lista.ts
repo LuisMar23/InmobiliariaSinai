@@ -39,6 +39,7 @@ export class LotesLista {
     this.cargando.set(true);
     this.loteSvc.getAll().subscribe({
       next: (data) => {
+        console.log(data)
         this.lotes.set([...data]);
         this.lotesFiltrados.set([...data]);
         this.cargando.set(false);

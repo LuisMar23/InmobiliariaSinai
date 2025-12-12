@@ -86,6 +86,7 @@ export interface Lote {
   urbanizacion?: Urbanizacion;
   archivos?: any;
   LotePromocion?: LotePromocion[];
+  encargado?:any
 }
 
 export interface Propiedad {
