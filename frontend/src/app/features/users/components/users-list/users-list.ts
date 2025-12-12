@@ -42,13 +42,11 @@ export class UsersComponent implements OnInit {
   faUserShield = faUserShield;
   faIdCard = faIdCard;
 
-  // USANDO SIGNALS COMO URBANIZACIÓN
   users = signal<any[]>([]);
   allUsers = signal<any[]>([]);
   searchTerm = signal('');
   isLoading = signal(false);
 
-  // Computed para búsqueda - IGUAL QUE URBANIZACIÓN
   filteredUsers = computed(() => {
     const term = this.searchTerm().toLowerCase();
     const users = this.allUsers();
@@ -68,19 +66,16 @@ export class UsersComponent implements OnInit {
   private notificationService = inject(NotificationService);
   private route = inject(ActivatedRoute);
 
-  // CONSTRUCTOR CON CARGA INMEDIATA - IGUAL QUE URBANIZACIÓN
   constructor() {
     this.loadUsers();
   }
 
   ngOnInit() {
-    // Recargar cuando cambie la ruta
     this.route.url.subscribe(() => {
       this.loadUsers();
     });
   }
 
-  // CARGA DIRECTA EN CONSTRUCTOR - IGUAL QUE URBANIZACIÓN
   loadUsers() {
     this.isLoading.set(true);
     this.userService.getAll().subscribe({
@@ -105,8 +100,6 @@ export class UsersComponent implements OnInit {
   }
 
   applyFilter() {
-    // No necesita hacer nada porque filteredUsers es computed
-    // Se actualiza automáticamente cuando searchTerm cambia
   }
 
   deleteUser(user: any) {
