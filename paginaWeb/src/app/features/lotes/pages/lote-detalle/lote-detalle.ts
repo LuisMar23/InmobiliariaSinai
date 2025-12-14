@@ -64,7 +64,30 @@ export class LoteDetalle {
       });
     }
   }
-
+get mapIframeUrl(): string {
+  const loteData = this.lote();
+  let lat = -21.5153775;
+  let lon = -64.73239;
+  let zoom = 15;
+  
+  if (loteData?.ubicacion) {
+    // Extrae coordenadas de cualquier formato
+    const match1 = loteData.ubicacion.match(/@(-?\d+\.\d+),(-?\d+\.\d+),?(\d+)?z?/);
+    const match2 = loteData.ubicacion.match(/3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
+    
+    if (match1) {
+      lat = parseFloat(match1[1]);
+      lon = parseFloat(match1[2]);
+      zoom = match1[3] ? parseInt(match1[3]) : 15;
+    } else if (match2) {
+      lat = parseFloat(match2[1]);
+      lon = parseFloat(match2[2]);
+    }
+  }
+  
+  // URL simple de Google Maps Embed API
+  return `https://maps.google.com/maps?q=${lat},${lon}&z=${zoom}&output=embed`;
+}
   obtenerEstadoClase(estado: string) {
     return (
       {

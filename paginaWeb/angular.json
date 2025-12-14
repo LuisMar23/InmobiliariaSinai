@@ -30,11 +30,6 @@
               "src/styles.css",
               "node_modules/lightgallery/css/lightgallery-bundle.css"
             ],
-            "server": "src/main.server.ts",
-            "outputMode": "server",
-            "ssr": {
-              "entry": "src/server.ts"
-            },
             "externalDependencies": ["leaflet"]
           },
           "configurations": {
