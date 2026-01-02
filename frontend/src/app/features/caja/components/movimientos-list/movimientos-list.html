@@ -33,7 +33,7 @@
           <div class="flex items-center justify-between">
             <div>
               <p class="text-sm font-semibold">Total Ingresos</p>
-              <p class="text-xl sm:text-2xl font-bold">$ {{ getTotalIngresos() | number:'1.0-2' }}</p>
+              <p class="text-xl sm:text-2xl font-bold">{{ getTotalIngresos() | number:'1.0-2' }} Bs.</p>
             </div>
             <svg class="w-6 h-6 sm:w-8 sm:h-8 text-white opacity-80" fill="none" stroke="currentColor"
               viewBox="0 0 24 24">
@@ -46,7 +46,7 @@
           <div class="flex items-center justify-between">
             <div>
               <p class="text-sm font-semibold">Total Egresos</p>
-              <p class="text-xl sm:text-2xl font-bold">$ {{ getTotalEgresos() | number:'1.0-2' }}</p>
+              <p class="text-xl sm:text-2xl font-bold">{{ getTotalEgresos() | number:'1.0-2' }} Bs.</p>
             </div>
             <svg class="w-6 h-6 sm:w-8 sm:h-8 text-white opacity-80" fill="none" stroke="currentColor"
               viewBox="0 0 24 24">
@@ -59,7 +59,7 @@
           <div class="flex items-center justify-between">
             <div>
               <p class="text-sm font-semibold">Balance</p>
-              <p class="text-xl sm:text-2xl font-bold">$ {{ getBalance() | number:'1.0-2' }}</p>
+              <p class="text-xl sm:text-2xl font-bold">{{ getBalance() | number:'1.0-2' }} Bs.</p>
             </div>
             <svg class="w-6 h-6 sm:w-8 sm:h-8 text-white opacity-80" fill="none" stroke="currentColor"
               viewBox="0 0 24 24">
@@ -168,7 +168,7 @@
                 <td class="px-4 py-4 whitespace-nowrap">
                   <span class="text-lg font-bold" [class.text-green-600]="movimiento.tipo === 'INGRESO'"
                     [class.text-red-600]="movimiento.tipo === 'EGRESO'">
-                    {{ movimiento.tipo === 'INGRESO' ? '+' : '-' }} $ {{ movimiento.monto | number:'1.0-2' }}
+                    {{ movimiento.tipo === 'INGRESO' ? '+' : '-' }} {{ movimiento.monto | number:'1.0-2' }} Bs.
                   </span>
                 </td>
                 <td class="px-4 py-4 whitespace-nowrap">
@@ -228,7 +228,7 @@
             <div class="flex justify-between items-center">
               <span class="text-xl sm:text-2xl font-bold" [class.text-green-600]="movimiento.tipo === 'INGRESO'"
                 [class.text-red-600]="movimiento.tipo === 'EGRESO'">
-                {{ movimiento.tipo === 'INGRESO' ? '+' : '-' }} $ {{ movimiento.monto | number:'1.0-2' }}
+                {{ movimiento.tipo === 'INGRESO' ? '+' : '-' }} {{ movimiento.monto | number:'1.0-2' }} Bs.
               </span>
             </div>
             <div class="flex items-center gap-2 text-sm">

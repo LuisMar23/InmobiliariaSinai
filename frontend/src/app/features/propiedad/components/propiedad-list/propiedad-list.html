@@ -116,7 +116,7 @@
                                     {{ propiedad.tamano }} m²
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap text-gray-600 font-semibold text-sm">
-                                    $ {{ propiedad.precio | number : '1.2-2' }}
+                                    Bs. {{ propiedad.precio | number : '1.2-2' }}
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap">
                                     <span [class]="getEstadoBadgeClass(propiedad.estado)" class="text-xs">
@@ -258,7 +258,7 @@
                                     <span>Precio</span>
                                 </div>
                                 <p class="text-gray-900 font-semibold text-sm">
-                                    ${{ propiedad.precio | number : '1.2-2' }}
+                                    Bs.{{ propiedad.precio | number : '1.2-2' }}
                                 </p>
                             </div>
                             <div class="space-y-1">

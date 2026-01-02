@@ -1,5 +1,6 @@
 <div class="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-emerald-50 py-4 px-2 sm:px-4 lg:px-8">
     <div class="max-w-full mx-auto">
+        <!-- Header -->
         <div class="bg-emerald-500 rounded-t-2xl shadow-lg p-4 sm:p-6">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div class="flex items-center gap-3">
@@ -143,13 +144,13 @@
 
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    Precio Base ($) <span class="text-red-500">*</span>
+                                    Precio Base (Bs.) <span class="text-red-500">*</span>
                                 </label>
                                 <div class="relative">
                                     <span
-                                        class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">$</span>
+                                        class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">Bs.</span>
                                     <input type="number" step="0.01" formControlName="precioBase"
-                                        class="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm sm:text-base"
+                                        class="w-full pl-12 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm sm:text-base"
                                         placeholder="0.00" min="0.01"
                                         [class.border-red-500]="loteForm.get('precioBase')?.invalid && loteForm.get('precioBase')?.touched" />
                                 </div>
@@ -184,7 +185,8 @@
                                     </option>
                                     }
                                 </select>
-                                <p class="mt-1 text-xs text-gray-500">Solo se muestran usuarios con rol ASESOR o ADMINISTRADOR</p>
+                                <p class="mt-1 text-xs text-gray-500">Solo se muestran usuarios con rol ASESOR o
+                                    ADMINISTRADOR</p>
                             </div>
                         </div>
                     </div>

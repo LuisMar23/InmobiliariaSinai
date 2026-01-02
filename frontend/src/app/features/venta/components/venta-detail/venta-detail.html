@@ -78,7 +78,7 @@
                             </div>
                             <div class="flex justify-between items-center py-2 border-b border-gray-200">
                                 <span class="text-sm font-medium text-gray-500">Precio Final:</span>
-                                <span class="text-sm font-bold text-gray-900">$ {{
+                                <span class="text-sm font-bold text-gray-900">Bs. {{
                                     formatPrecio(ventaData()!.precioFinal) }}</span>
                             </div>
                             <div class="flex justify-between items-center py-2 border-b border-gray-200">
@@ -170,17 +170,17 @@
                         <div class="grid grid-cols-2 gap-4 mb-4">
                             <div class="text-center">
                                 <p class="text-sm text-gray-500">Total a Pagar</p>
-                                <p class="text-lg font-bold text-gray-900">$ {{
+                                <p class="text-lg font-bold text-gray-900">Bs. {{
                                     formatPrecio(ventaData()!.planPago!.total) }}</p>
                             </div>
                             <div class="text-center">
                                 <p class="text-sm text-gray-500">Total Pagado</p>
-                                <p class="text-lg font-bold text-gray-700">$ {{ formatPrecio(totalPagado()) }}</p>
+                                <p class="text-lg font-bold text-gray-700">Bs. {{ formatPrecio(totalPagado()) }}</p>
                             </div>
                         </div>
                         <div class="text-center mb-4">
                             <p class="text-sm text-gray-500">Saldo Pendiente</p>
-                            <p class="text-xl font-bold text-blue-600">$ {{ formatPrecio(saldoPendiente()) }}</p>
+                            <p class="text-xl font-bold text-blue-600">Bs. {{ formatPrecio(saldoPendiente()) }}</p>
                         </div>
                         <div class="w-full bg-gray-200 rounded-full h-2 mb-2">
                             <div class="bg-emerald-600 h-2 rounded-full" [style.width]="porcentajePagado() + '%'"></div>
@@ -195,7 +195,7 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div class="bg-white rounded-lg p-3 shadow-sm">
                             <p class="text-xs text-gray-500 mb-1">Monto Inicial</p>
-                            <p class="text-sm font-semibold text-gray-900">$ {{
+                            <p class="text-sm font-semibold text-gray-900">Bs. {{
                                 formatPrecio(ventaData()!.planPago!.monto_inicial) }}</p>
                         </div>
                         <div class="bg-white rounded-lg p-3 shadow-sm">
@@ -245,17 +245,17 @@
                             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">
-                                        Monto ($) <span class="text-red-500">*</span>
+                                        Monto (Bs.) <span class="text-red-500">*</span>
                                     </label>
                                     <div class="relative">
                                         <span
-                                            class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                                            class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">Bs.</span>
                                         <input type="number" step="0.01" formControlName="monto"
                                             class="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm"
                                             placeholder="0.00" [max]="montoMaximoPago()" />
                                     </div>
                                     <p class="mt-1 text-xs text-gray-500">
-                                        Máximo: $ {{ formatPrecio(montoMaximoPago()) }}
+                                        Máximo: Bs. {{ formatPrecio(montoMaximoPago()) }}
                                     </p>
                                 </div>
 
@@ -322,7 +322,7 @@
                             <div class="flex justify-between items-start mb-2">
                                 <div>
                                     <p class="font-semibold text-gray-900 text-sm">
-                                        $ {{ formatPrecio(pago.monto) }}
+                                        Bs. {{ formatPrecio(pago.monto) }}
                                     </p>
                                     <p class="text-xs text-gray-500">{{ formatDate(pago.fecha_pago) }}</p>
                                 </div>
