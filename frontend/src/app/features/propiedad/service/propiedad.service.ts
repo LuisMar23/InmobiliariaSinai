@@ -57,6 +57,8 @@ export class PropiedadService {
   }
 
   create(propiedad: CreatePropiedadDto): Observable<any> {
+
+    console.log(propiedad)
     const propiedadData = {
       ...propiedad,
       tamano: Number(propiedad.tamano),

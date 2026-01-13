@@ -60,7 +60,7 @@ export class PropiedadCreate {
       precio: [0, [Validators.required, Validators.min(0.01)]],
       estado: ['DISPONIBLE', [Validators.required]],
       estadoPropiedad: ['VENTA', [Validators.required]],
-      encargadoId: [''],
+      encargadoId: [],
     });
   }
 

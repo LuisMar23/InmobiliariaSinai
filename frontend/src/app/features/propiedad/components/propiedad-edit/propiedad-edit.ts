@@ -137,6 +137,7 @@ export class PropiedadEdit implements OnInit {
       estadoPropiedad: propiedad.estadoPropiedad || 'VENTA',
       encargadoId: propiedad.encargadoId || '',
     });
+    console.log(this.propiedadForm.getRawValue())
   }
 
   formatDate(date: any): string {

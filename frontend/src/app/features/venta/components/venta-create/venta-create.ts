@@ -146,22 +146,47 @@ export class VentaCreate implements OnInit {
     });
   }
 
-  cargarPropiedades(): void {
-    this.propiedadSvc.getAll().subscribe({
-      next: (propiedades: PropiedadDto[]) => {
-        const propiedadesParaVenta = propiedades.filter(
-          (propiedad) =>
+cargarPropiedades(): void {
+  this.propiedadSvc.getAll().subscribe({
+    next: (propiedades: PropiedadDto[]) => {
+      // DEBUG: Mostrar todas las propiedades recibidas
+      console.log('Todas las propiedades recibidas:', propiedades);
+      console.log('Cantidad total:', propiedades.length);
+      
+      // Mostrar estado de cada propiedad para debug
+      propiedades.forEach((propiedad, index) => {
+        console.log(`Propiedad ${index}:`, {
+          id: propiedad.id,
+          nombre: propiedad.nombre,
+          tipo: propiedad.tipo,
+          estadoPropiedad: propiedad.estadoPropiedad,
+          estado: propiedad.estado,
+          filtroAplica: (
             propiedad.estadoPropiedad === 'VENTA' &&
             (propiedad.tipo === 'CASA' || propiedad.tipo === 'DEPARTAMENTO') &&
             (propiedad.estado === 'DISPONIBLE' || propiedad.estado === 'CON_OFERTA')
-        );
-        this.propiedades.set(propiedadesParaVenta);
-      },
-      error: (err: any) => {
-        this.notificationService.showError('No se pudieron cargar las propiedades');
-      },
-    });
-  }
+          )
+        });
+      });
+
+      const propiedadesParaVenta = propiedades.filter(
+        (propiedad) =>
+          propiedad.estadoPropiedad === 'VENTA' &&
+          (propiedad.tipo === 'CASA' || propiedad.tipo === 'DEPARTAMENTO') &&
+          (propiedad.estado === 'DISPONIBLE' || propiedad.estado === 'CON_OFERTA')
+      );
+      
+      console.log('Propiedades filtradas para venta:', propiedadesParaVenta);
+      console.log('Cantidad filtrada:', propiedadesParaVenta.length);
+      
+      this.propiedades.set(propiedadesParaVenta);
+    },
+    error: (err: any) => {
+      console.error('Error al cargar propiedades:', err);
+      this.notificationService.showError('No se pudieron cargar las propiedades');
+    },
+  });
+}
 
   cargarCajasActivas(): void {
     this.ventaSvc.obtenerCajasActivas().subscribe({
@@ -423,7 +448,15 @@ export class VentaCreate implements OnInit {
         fecha_inicio: this.planPagoForm.value.fecha_inicio,
       },
     };
-
+  if (inmuebleTipo === 'LOTE') {
+      ventaData.loteId = Number(inmuebleId);
+      // PropiedadId debe ser null o no enviarse
+      ventaData.propiedadId = null;
+    } else if (inmuebleTipo === 'PROPIEDAD') {
+      ventaData.propiedadId = Number(inmuebleId);
+      // LoteId debe ser null o no enviarse
+      ventaData.loteId = null;
+    }
     this.ventaSvc.create(ventaData).subscribe({
       next: (response: any) => {
         this.enviando.set(false);

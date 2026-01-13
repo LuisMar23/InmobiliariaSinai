@@ -199,15 +199,16 @@
             </span>
           </div>
         </div>
-
-        <div class="absolute bottom-3 left-3">
-          <div class="flex items-center gap-2">
-            <div class="bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-lg shadow-lg border border-white/50">
-              <p class="text-[10px] font-medium text-gray-600">Lote</p>
-              <p class="text-lg font-black text-emerald-700">{{ lote.numeroLote }}</p>
-            </div>
-          </div>
-        </div>
+<div class="absolute bottom-3 left-3">
+  <div class="flex items-center gap-2">
+    <div class="bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-lg shadow-lg border border-white/50 max-w-xs">
+      <p class="text-[10px] font-medium text-gray-600">Lote</p>
+      <p class="text-lg font-black text-emerald-700 truncate">
+        Lorem ipsum dolor sit amet consectetur, adipisicing elit. Quasi repellendus eveniet a. Omnis, obcaecati est suscipit quia sed, dignissimos et voluptate quidem, minus amet alias eligendi voluptas ullam optio tempore.
+      </p>
+    </div>
+  </div>
+</div>
       </div>
 
       <div class="p-6 bg-gray-50">
@@ -228,7 +229,7 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-3 mb-4">
+        <div class="grid grid-cols-1 gap-3 mb-4">
           <div
             class="bg-gray-50 rounded-xl p-3 border border-gray-200 transition-all duration-300 hover:border-emerald-300 hover:shadow-md">
             <div class="flex items-center gap-2 mb-1">
@@ -241,23 +242,10 @@
               </div>
               <p class="text-xs font-medium text-gray-500">Superficie</p>
             </div>
-            <p class="text-lg font-black text-gray-900">{{ lote.superficieM2 }}<span
+            <p class="text-lg font-black text-gray-900 text-center">{{ lote.superficieM2 }}<span
                 class="text-sm font-normal text-gray-600"> m²</span></p>
           </div>
 
-          <div
-            class="bg-gray-50 rounded-xl p-3 border border-gray-200 transition-all duration-300 hover:border-emerald-300 hover:shadow-md">
-            <div class="flex items-center gap-2 mb-1">
-              <div class="p-1.5 bg-teal-100 rounded-lg">
-                <svg class="w-3.5 h-3.5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-              </div>
-              <p class="text-xs font-medium text-gray-500">Estado</p>
-            </div>
-            <p class="text-sm font-bold text-gray-900">Verificado</p>
-          </div>
         </div>
 
         <div class="relative mb-4">

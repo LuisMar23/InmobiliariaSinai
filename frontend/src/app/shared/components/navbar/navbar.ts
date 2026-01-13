@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, HostListener, inject, ViewChild } from '@angular/core';
+import { Component, ElementRef, HostListener, inject, OnInit, ViewChild } from '@angular/core';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import {
   faBars,
@@ -12,22 +12,18 @@ import {
   faSignOutAlt,
   faTimes,
   faUser,
-  faUserCircle,
-  faUsers,
 } from '@fortawesome/free-solid-svg-icons';
 import { AuthService } from '../../../components/services/auth.service';
-import { AppRoutingModule } from "../../../app.routes";
 import { RouterModule } from '@angular/router';
+
 
 @Component({
   selector: 'app-navbar',
-  imports: [FontAwesomeModule, CommonModule,RouterModule],
+  imports: [FontAwesomeModule, CommonModule, RouterModule],
   templateUrl: './navbar.html',
   styleUrl: './navbar.css',
 })
-export class Navbar {
-  faBell = faBell;
-  faUserCircle = faUserCircle;
+export class Navbar implements OnInit {
   faChevronDown = faChevronDown;
   faSignOutAlt = faSignOutAlt;
   faUser = faUser;
@@ -40,7 +36,7 @@ export class Navbar {
 faBars = faBars;  // De @fortawesome/free-solid-svg-icons
 faTimes = faTimes
   isUserMenuOpen: boolean = false;
-
+  showLogoutConfirmation: boolean = false;
   _authService = inject(AuthService);
 isMobileMenuOpen = false;
   currentUser:any
@@ -73,6 +69,15 @@ toggleMobileMenu(): void {
   }
   toggleUserMenu() {
     this.isUserMenuOpen = !this.isUserMenuOpen;
+    this.showLogoutConfirmation = false;
+  }
+
+  confirmLogout() {
+    this.showLogoutConfirmation = true;
+  }
+
+  cancelLogout() {
+    this.showLogoutConfirmation = false;
   }
 
   logout() {

@@ -60,6 +60,7 @@ export class PropiedadService {
         nombre: createPropiedadDto.nombre,
         tamano: createPropiedadDto.tamano,
         ubicacion: createPropiedadDto.ubicacion,
+        encargadoId: createPropiedadDto.encargadoId,
         ciudad: createPropiedadDto.ciudad,
         descripcion: createPropiedadDto.descripcion,
         habitaciones: createPropiedadDto.habitaciones,
@@ -369,6 +370,7 @@ export class PropiedadService {
           banos: updatePropiedadDto.banos,
           precio: updatePropiedadDto.precio,
           estado: updatePropiedadDto.estado,
+          encargadoId:updatePropiedadDto.encargadoId,
           estadoPropiedad: updatePropiedadDto.estadoPropiedad,
         },
         include: {

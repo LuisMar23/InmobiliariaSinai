@@ -93,7 +93,6 @@ export class UsersEditComponent implements OnInit {
         if (response.success && response.data) {
           const user = response.data.user || response.data;
 
-          // Validar que NO sea un cliente
           if (user && user.role === 'CLIENTE') {
             this.notificationService.showError('No se puede editar clientes desde esta sección');
             this.router.navigate(['/usuarios']);

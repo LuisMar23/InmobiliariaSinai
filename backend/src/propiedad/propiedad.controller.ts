@@ -27,6 +27,7 @@ export class PropiedadController {
 
   @Post()
   create(@Body() createPropiedadDto: CreatePropiedadDto) {
+    console.log(createPropiedadDto)
     return this.propiedadService.create(createPropiedadDto);
   }
 

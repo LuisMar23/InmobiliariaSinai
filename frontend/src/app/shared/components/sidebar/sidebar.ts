@@ -75,21 +75,40 @@ export class Sidebar implements OnInit {
   isMobileOpen = false;
 
   // Menú - SOLO modificar la opción de Usuarios
-  menu: { label: string; icon: IconDefinition; route: string }[] = [
-    { label: 'Dashboard', icon: faTachometerAlt, route: '/dashboard' },
-    { label: 'Urbanizaciones', icon: faCity, route: '/urbanizaciones' },
-    { label: 'Lotes', icon: faMapMarkedAlt, route: '/lotes' },
-    { label: 'Propiedades', icon: faHouse, route: '/propiedades' }, // Nueva opción agregada
-    // Usuarios se agrega dinámicamente según el rol
-    { label: 'Clientes', icon: faHomeUser, route: '/clientes' },
-    { label: 'Cotizaciones', icon: faFileInvoiceDollar, route: '/cotizaciones' },
-    { label: 'Ventas', icon: faReceipt, route: '/ventas' },
-    { label: 'Reservas', icon: faCalendarCheck, route: '/reservas' },
-    { label: 'Visitas', icon: faEye, route: '/visitas' },
-    { label: 'Caja', icon: faCashRegister, route: '/caja' },
-    { label: 'Promociones', icon: faTag, route: '/promociones' },
+menuItems: { 
+    label: string; 
+    icon: IconDefinition; 
+    route: string;
+    roles: string[]; // Roles que tienen acceso a este item
+  }[] = [
+    // Acceso para todos los roles
+    { label: 'Dashboard', icon: faTachometerAlt, route: '/dashboard', roles: ['ADMINISTRADOR', 'SECRETARIA', 'ASESOR'] },
+    
+    // Gestión de Propiedades y Urbanizaciones (Admin y Secretaria)
+    { label: 'Urbanizaciones', icon: faCity, route: '/urbanizaciones', roles: ['ADMINISTRADOR', 'SECRETARIA'] },
+    { label: 'Lotes', icon: faMapMarkedAlt, route: '/lotes', roles: ['ADMINISTRADOR', 'SECRETARIA', 'ASESOR'] },
+    { label: 'Propiedades', icon: faHouse, route: '/propiedades', roles: ['ADMINISTRADOR', 'SECRETARIA', 'ASESOR'] },
+    
+    // Gestión de Clientes (todos)
+    { label: 'Clientes', icon: faHomeUser, route: '/clientes', roles: ['ADMINISTRADOR', 'SECRETARIA', 'ASESOR'] },
+    
+    // Gestión Comercial
+    { label: 'Cotizaciones', icon: faFileInvoiceDollar, route: '/cotizaciones', roles: ['ADMINISTRADOR', 'SECRETARIA', 'ASESOR'] },
+    { label: 'Ventas', icon: faReceipt, route: '/ventas', roles: ['ADMINISTRADOR', 'SECRETARIA', 'ASESOR'] },
+    { label: 'Reservas', icon: faCalendarCheck, route: '/reservas', roles: ['ADMINISTRADOR', 'SECRETARIA', 'ASESOR'] },
+    { label: 'Visitas', icon: faEye, route: '/visitas', roles: ['ADMINISTRADOR', 'SECRETARIA', 'ASESOR'] },
+    
+    // Gestión Financiera y Operativa
+    { label: 'Caja', icon: faCashRegister, route: '/caja', roles: ['ADMINISTRADOR', 'SECRETARIA'] },
+    { label: 'Promociones', icon: faTag, route: '/promociones', roles: ['ADMINISTRADOR', 'SECRETARIA'] },
+    
+    // Gestión de Usuarios (solo Admin)
+    { label: 'Usuarios', icon: faUsers, route: '/usuarios', roles: ['ADMINISTRADOR'] },
+    
+    // Configuración (solo Admin)
+    { label: 'Configuración', icon: faCog, route: '/configuracion', roles: ['ADMINISTRADOR'] },
   ];
-
+  filteredMenu: any[] = [];
   constructor(private authService: AuthService) {
     this.imagen = 'assets/logoSinai.jpg';
   }
@@ -100,15 +119,15 @@ export class Sidebar implements OnInit {
   }
 
   private filterMenuByRole() {
-    // SOLO agregar "Usuarios" si el rol es ADMINISTRADOR o SECRETARIA
-    if (this.currentUser && ['ADMINISTRADOR', 'SECRETARIA'].includes(this.currentUser.role)) {
-      // Insertar "Usuarios" después de "Propiedades" (posición 4)
-      this.menu.splice(4, 0, {
-        label: 'Usuarios',
-        icon: faUsers,
-        route: '/usuarios',
-      });
+    if (!this.currentUser) {
+      this.filteredMenu = [];
+      return;
     }
+
+    // Filtrar menú según el rol del usuario
+    this.filteredMenu = this.menuItems.filter(item => 
+      item.roles.includes(this.currentUser.role)
+    );
   }
 
   toggleSidebar() {

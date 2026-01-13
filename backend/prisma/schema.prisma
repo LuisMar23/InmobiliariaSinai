@@ -232,17 +232,18 @@ model Venta {
   clienteId     Int
   asesorId      Int
   inmuebleTipo  TipoInmueble @default(LOTE)
-  inmuebleId    Int
+
   precioFinal   Decimal      @map("precio_final") @db.Decimal(12, 2)
   estado        EstadoVenta  @default(PENDIENTE)
   createdAt     DateTime     @default(now()) @map("created_at")
   updatedAt     DateTime     @updatedAt @map("updated_at")
   observaciones String?
-
+  loteId        Int?         @map("lote_id")
+  propiedadId   Int?         @map("propiedad_id")
   cliente   User       @relation("VentasCliente", fields: [clienteId], references: [id])
   asesor    User       @relation("VentasAsesor", fields: [asesorId], references: [id])
-  lote      Lote?      @relation("VentasLote", fields: [inmuebleId], references: [id], map: "fk_venta_lote")
-  propiedad Propiedad? @relation("VentasPropiedad", fields: [inmuebleId], references: [id], map: "fk_venta_propiedad")
+  lote      Lote?      @relation("VentasLote", fields: [loteId], references: [id], map: "fk_venta_lote")
+  propiedad Propiedad? @relation("VentasPropiedad", fields: [propiedadId], references: [id], map: "fk_venta_propiedad")
   archivos  Archivo[]
   ingresos  Ingreso[]
   planPago  PlanPago?

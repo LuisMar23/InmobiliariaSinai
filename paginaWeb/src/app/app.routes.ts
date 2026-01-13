@@ -3,13 +3,18 @@ import { MainLayout } from './shared/main-layout/main-layout';
 import { NgModule } from '@angular/core';
 import { Contacto } from './features/contacto/contacto/contacto';
 import { LotesPromocionComponent } from './features/promocion/promocion-list/promocion-list';
+import { Inicio } from './features/inicio/inicio';
 
 export const routes: Routes = [
   {
     path: '',
     component: MainLayout,
     children: [
-      { path: '', redirectTo: 'lotes', pathMatch: 'full' },
+      { path: '', redirectTo: 'inicio', pathMatch: 'full' },
+      {
+        path:'inicio',
+        component:Inicio
+      },
       {
         path: 'lotes',
         loadChildren: () =>

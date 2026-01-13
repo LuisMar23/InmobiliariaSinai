@@ -1020,234 +1020,35 @@ export class PdfService {
     }
   }
 
-  generarPdfVentas(ventas: any[]): void {
-    try {
-      if (!ventas || ventas.length === 0) {
-        return;
-      }
-      const fechaHora = new Date().toLocaleString('es-BO');
-      const fechaGeneracion = new Date().toLocaleDateString('es-BO');
-      const tableBody: any[] = [];
-
-      tableBody.push([
-        { text: 'N°', style: 'tableHeader', alignment: 'center' },
-        { text: 'VENTA', style: 'tableHeader', alignment: 'center' },
-        { text: 'CLIENTE', style: 'tableHeader', alignment: 'left' },
-        { text: 'TIPO INMUEBLE', style: 'tableHeader', alignment: 'center' },
-        { text: 'INMUEBLE', style: 'tableHeader', alignment: 'center' },
-        { text: 'FECHA VENTA', style: 'tableHeader', alignment: 'center' },
-        { text: 'TOTAL', style: 'tableHeader', alignment: 'right' },
-        { text: 'PAGADO', style: 'tableHeader', alignment: 'right' },
-        { text: 'SALDO', style: 'tableHeader', alignment: 'right' },
-        { text: 'AVANCE', style: 'tableHeader', alignment: 'center' },
-      ]);
-
-      ventas.forEach((venta: any, index: number) => {
-        const planPago = venta.planPago || venta.plan_pago;
-        const totalPagado = planPago
-          ? Number(planPago.total_pagado || planPago.monto_pagado || 0)
-          : 0;
-        const totalVenta = Number(venta.precioFinal || venta.total || 0);
-        const saldoPendiente = totalVenta - totalPagado;
-        const porcentajePagado = totalVenta > 0 ? (totalPagado / totalVenta) * 100 : 0;
-        const fechaVenta =
-          venta.fecha_venta || (planPago ? planPago.fecha_inicio : venta.createdAt);
-
-        // Determinar información del inmueble según el tipo
-        let inmuebleInfo = 'N/A';
-        if (venta.inmuebleTipo === 'LOTE' && venta.lote) {
-          inmuebleInfo = venta.lote.numeroLote;
-        } else if (venta.inmuebleTipo === 'PROPIEDAD' && venta.propiedad) {
-          inmuebleInfo = venta.propiedad.nombre;
-        }
-
-        tableBody.push([
-          { text: (index + 1).toString(), style: 'tableCell', alignment: 'center' },
-          { text: `#${venta.id}`, style: 'tableCellBold', alignment: 'center' },
-          { text: venta.cliente?.fullName || 'N/A', style: 'tableCell' },
-          {
-            text: venta.inmuebleTipo === 'LOTE' ? 'LOTE' : 'PROPIEDAD',
-            style: 'tableCell',
-            alignment: 'center',
-          },
-          { text: inmuebleInfo, style: 'tableCell', alignment: 'center' },
-          { text: this.formatDate(fechaVenta), style: 'tableCell', alignment: 'center' },
-          { text: this.formatCurrency(totalVenta), style: 'tableCellBold', alignment: 'right' },
-          { text: this.formatCurrency(totalPagado), style: 'tableCell', alignment: 'right' },
-          {
-            text: this.formatCurrency(saldoPendiente),
-            style: saldoPendiente > 0 ? 'deudaWarning' : 'tableCell',
-            alignment: 'right',
-          },
-          { text: `${porcentajePagado.toFixed(1)}%`, style: 'tableCell', alignment: 'center' },
-        ]);
-      });
-
-      const docDefinition: any = {
-        pageSize: 'A4',
-        pageOrientation: 'landscape',
-        pageMargins: [20, 150, 20, 60],
-        header: {
-          stack: [
-            {
-              canvas: [
-                {
-                  type: 'rect',
-                  x: 0,
-                  y: 0,
-                  w: 595.28,
-                  h: 120,
-                  color: this.headerBg,
-                },
-              ],
-            },
-            {
-              stack: [
-                {
-                  text: 'GESTIÓN INMOBILIARIA',
-                  style: 'companyName',
-                  margin: [0, 15, 0, 0],
-                },
-                {
-                  text: 'REPORTE DE VENTAS',
-                  style: 'mainHeader',
-                  margin: [0, 10, 0, 0],
-                },
-                {
-                  text: `Planes de Pago y Estado Financiero`,
-                  style: 'headerSubtitle',
-                  margin: [0, 5, 0, 0],
-                },
-                {
-                  text: `Generado el ${fechaHora}`,
-                  style: 'headerDate',
-                  margin: [0, 10, 0, 0],
-                },
-              ],
-              alignment: 'center',
-              margin: [20, -110, 20, 0],
-            },
-          ],
-        },
-        footer: (currentPage: number, pageCount: number) => {
-          return {
-            stack: [
-              {
-                canvas: [
-                  {
-                    type: 'rect',
-                    x: 0,
-                    y: 0,
-                    w: 595.28,
-                    h: 40,
-                    color: this.lightBg,
-                  },
-                ],
-              },
-              {
-                columns: [
-                  {
-                    text: 'Sistema de Gestión Inmobiliaria - Todos los derechos reservados',
-                    style: 'footer',
-                    alignment: 'left',
-                    margin: [20, -30, 0, 0],
-                  },
-                  {
-                    text: `Página ${currentPage} de ${pageCount}`,
-                    style: 'footer',
-                    alignment: 'right',
-                    margin: [0, -30, 20, 0],
-                  },
-                ],
-              },
-            ],
-          };
-        },
-        content: [
-          {
-            table: {
-              headerRows: 1,
-              widths: ['3%', '5%', '18%', '8%', '12%', '10%', '12%', '12%', '12%', '8%'],
-              body: tableBody,
-            },
-            layout: {
-              fillColor: (rowIndex: number) => (rowIndex === 0 ? this.primaryDark : null),
-              hLineWidth: (i: number) => (i === 0 ? 2 : 0.5),
-              vLineWidth: () => 0.5,
-              hLineColor: () => this.primaryDark,
-              vLineColor: () => this.borderColor,
-              paddingTop: (i: number) => (i === 0 ? 10 : 8),
-              paddingBottom: (i: number) => (i === 0 ? 10 : 8),
-            },
-          },
-        ],
-        styles: {
-          companyName: {
-            fontSize: 12,
-            bold: true,
-            color: '#E5E7EB',
-            alignment: 'center',
-          },
-          mainHeader: {
-            fontSize: 20,
-            bold: true,
-            color: this.headerTextColor,
-            alignment: 'center',
-          },
-          headerSubtitle: {
-            fontSize: 12,
-            color: '#E5E7EB',
-            alignment: 'center',
-          },
-          headerDate: {
-            fontSize: 10,
-            color: '#E5E7EB',
-            alignment: 'center',
-          },
-          footer: {
-            fontSize: 8,
-            color: this.primaryDark,
-            bold: true,
-          },
-          tableHeader: {
-            fontSize: 7,
-            bold: true,
-            color: this.headerTextColor,
-          },
-          tableCell: {
-            fontSize: 7,
-            color: this.textColor,
-          },
-          tableCellBold: {
-            fontSize: 7,
-            color: this.textColor,
-            bold: true,
-          },
-          deudaWarning: {
-            fontSize: 7,
-            bold: true,
-            color: this.errorColor,
-          },
-        },
-        defaultStyle: {
-          font: 'Roboto',
-          color: this.textColor,
-        },
-      };
-
-      const fileName = `Ventas_${fechaGeneracion.replace(/\//g, '-')}.pdf`;
-      pdfMake.createPdf(docDefinition).download(fileName);
-    } catch (error) {
-      console.error('Error generando PDF de ventas:', error);
+generarPdfVentas(ventas: any[]): void {
+  try {
+    if (!ventas || ventas.length === 0) {
+      return;
     }
-  }
+    
+    const fechaHora = new Date().toLocaleString('es-BO');
+    const fechaGeneracion = new Date().toLocaleDateString('es-BO');
+    const tableBody: any[] = [];
 
-  generarPdfVentaIndividual(venta: any): void {
-    try {
-      if (!venta) {
-        return;
-      }
-      const fechaHora = new Date().toLocaleString('es-BO');
+    // Calcular totales generales
+    let totalGeneral = 0;
+    let totalPagadoGeneral = 0;
+    let totalSaldoGeneral = 0;
+
+    tableBody.push([
+      { text: 'N°', style: 'tableHeader', alignment: 'center' },
+      { text: 'ID', style: 'tableHeader', alignment: 'center' },
+      { text: 'CLIENTE', style: 'tableHeader', alignment: 'left' },
+      { text: 'TIPO', style: 'tableHeader', alignment: 'center' },
+      { text: 'INMUEBLE', style: 'tableHeader', alignment: 'left' },
+      { text: 'FECHA', style: 'tableHeader', alignment: 'center' },
+      { text: 'TOTAL', style: 'tableHeader', alignment: 'right' },
+      { text: 'PAGADO', style: 'tableHeader', alignment: 'right' },
+      { text: 'SALDO', style: 'tableHeader', alignment: 'right' },
+      { text: 'AVANCE', style: 'tableHeader', alignment: 'center' },
+    ]);
+
+    ventas.forEach((venta: any, index: number) => {
       const planPago = venta.planPago || venta.plan_pago;
       const totalPagado = planPago
         ? Number(planPago.total_pagado || planPago.monto_pagado || 0)
@@ -1257,310 +1058,757 @@ export class PdfService {
       const porcentajePagado = totalVenta > 0 ? (totalPagado / totalVenta) * 100 : 0;
       const fechaVenta = venta.fecha_venta || (planPago ? planPago.fecha_inicio : venta.createdAt);
 
-      // Construir tabla de detalles del inmueble según el tipo
-      const detalleInmuebleTable = this.buildDetalleInmuebleTable(venta);
+      // Acumular totales
+      totalGeneral += totalVenta;
+      totalPagadoGeneral += totalPagado;
+      totalSaldoGeneral += saldoPendiente;
 
-      const docDefinition: any = {
-        pageSize: 'A4',
-        pageMargins: [40, 160, 40, 60],
-        header: {
+      // Determinar información del inmueble según el tipo
+      let inmuebleInfo = 'N/A';
+      let tipoCorto = 'N/A';
+      
+      if (venta.inmuebleTipo === 'LOTE' && venta.lote) {
+        inmuebleInfo = `Lote ${venta.lote.numeroLote}`;
+        if (venta.lote.urbanizacion?.nombre) {
+          inmuebleInfo += ` - ${venta.lote.urbanizacion.nombre}`;
+        }
+        tipoCorto = 'LOTE';
+      } else if (venta.inmuebleTipo === 'PROPIEDAD' && venta.propiedad) {
+        inmuebleInfo = venta.propiedad.nombre;
+        if (venta.propiedad.tipo) {
+          inmuebleInfo += ` (${venta.propiedad.tipo})`;
+        }
+        tipoCorto = 'PROP';
+      }
+
+      // Determinar color del saldo según el avance
+      let saldoColor = '#1F2937'; // Negro normal
+      if (porcentajePagado === 100) {
+        saldoColor = '#059669'; // Verde
+      } else if (porcentajePagado < 30) {
+        saldoColor = '#DC2626'; // Rojo
+      }
+
+      tableBody.push([
+        { text: (index + 1).toString(), style: 'tableCell', alignment: 'center' },
+        { text: `#${venta.id}`, style: 'tableCellMedium', alignment: 'center' },
+        { text: venta.cliente?.fullName || 'N/A', style: 'tableCell' },
+        { text: tipoCorto, style: 'tableCell', alignment: 'center' },
+        { text: inmuebleInfo, style: 'tableCell', fontSize: 6 },
+        { text: this.formatDate(fechaVenta), style: 'tableCell', alignment: 'center' },
+        { text: this.formatCurrency(totalVenta), style: 'tableCellBold', alignment: 'right' },
+        { text: this.formatCurrency(totalPagado), style: 'tableCell', alignment: 'right' },
+        { 
+          text: this.formatCurrency(saldoPendiente), 
+          style: 'tableCell', 
+          alignment: 'right',
+          color: saldoColor 
+        },
+        { 
+          text: `${porcentajePagado.toFixed(0)}%`, 
+          style: 'tableCell', 
+          alignment: 'center',
+          bold: porcentajePagado === 100
+        },
+      ]);
+    });
+
+    // Fila de totales
+    tableBody.push([
+      { text: '', border: [false, true, false, false] },
+      { text: '', border: [false, true, false, false] },
+      { text: '', border: [false, true, false, false] },
+      { text: '', border: [false, true, false, false] },
+      { text: '', border: [false, true, false, false] },
+      { text: 'TOTALES:', style: 'totalLabel', alignment: 'right', border: [false, true, false, false] },
+      { text: this.formatCurrency(totalGeneral), style: 'totalValue', alignment: 'right', border: [false, true, false, false] },
+      { text: this.formatCurrency(totalPagadoGeneral), style: 'totalValue', alignment: 'right', border: [false, true, false, false] },
+      { text: this.formatCurrency(totalSaldoGeneral), style: 'totalValue', alignment: 'right', border: [false, true, false, false] },
+      { text: '', border: [false, true, false, false] },
+    ]);
+
+    const docDefinition: any = {
+      pageSize: 'A4',
+      pageOrientation: 'landscape',
+      pageMargins: [30, 100, 30, 50],
+      
+      header: {
+        margin: [30, 20, 30, 0],
+        columns: [
+          {
+            stack: [
+              {
+                text: 'GESTIÓN INMOBILIARIA SINAÍ',
+                style: 'companyName',
+              },
+              {
+                text: 'NIT: 123456789',
+                style: 'companyInfo',
+                margin: [0, 2, 0, 0],
+              },
+            ],
+            width: '60%',
+          },
+          {
+            stack: [
+              {
+                text: 'REPORTE DE VENTAS',
+                style: 'reportTitle',
+                alignment: 'right',
+              },
+              {
+                text: `Fecha: ${fechaGeneracion}`,
+                style: 'reportDate',
+                alignment: 'right',
+                margin: [0, 2, 0, 0],
+              },
+              {
+                text: `Generado: ${fechaHora}`,
+                style: 'reportDate',
+                alignment: 'right',
+                margin: [0, 1, 0, 0],
+              },
+            ],
+            width: '40%',
+          },
+        ],
+      },
+
+      footer: (currentPage: number, pageCount: number) => {
+        return {
+          margin: [30, 0, 30, 20],
+          columns: [
+            {
+              text: '© 2025 Gestión Inmobiliaria Sinaí. Todos los derechos reservados.',
+              style: 'footer',
+              alignment: 'left',
+            },
+            {
+              text: `Página ${currentPage} de ${pageCount}`,
+              style: 'footer',
+              alignment: 'right',
+            },
+          ],
+        };
+      },
+
+      content: [
+        // Línea separadora
+        {
+          canvas: [
+            {
+              type: 'line',
+              x1: 0,
+              y1: 0,
+              x2: 781.89 - 60,
+              y2: 0,
+              lineWidth: 1,
+              lineColor: '#E5E7EB',
+            },
+          ],
+          margin: [0, 0, 0, 15],
+        },
+
+        // Resumen ejecutivo
+        {
+          columns: [
+            {
+              width: '25%',
+              stack: [
+                { text: 'TOTAL VENTAS', style: 'summaryLabel' },
+                { text: ventas.length.toString(), style: 'summaryValue' },
+              ],
+            },
+            {
+              width: '25%',
+              stack: [
+                { text: 'MONTO TOTAL', style: 'summaryLabel' },
+                { text: this.formatCurrency(totalGeneral), style: 'summaryValue' },
+              ],
+            },
+            {
+              width: '25%',
+              stack: [
+                { text: 'TOTAL PAGADO', style: 'summaryLabel' },
+                { text: this.formatCurrency(totalPagadoGeneral), style: 'summaryValue', color: '#059669' },
+              ],
+            },
+            {
+              width: '25%',
+              stack: [
+                { text: 'SALDO PENDIENTE', style: 'summaryLabel' },
+                { text: this.formatCurrency(totalSaldoGeneral), style: 'summaryValue', color: totalSaldoGeneral > 0 ? '#DC2626' : '#059669' },
+              ],
+            },
+          ],
+          margin: [0, 0, 0, 20],
+        },
+
+        // Tabla de ventas
+        {
+          table: {
+            headerRows: 1,
+            widths: ['3%', '5%', '18%', '5%', '17%', '9%', '11%', '11%', '11%', '6%'],
+            body: tableBody,
+          },
+          layout: {
+            fillColor: (rowIndex: number) => {
+              if (rowIndex === 0) return '#F9FAFB'; // Header
+              if (rowIndex === tableBody.length - 1) return '#F3F4F6'; // Totales
+              return rowIndex % 2 === 0 ? '#FFFFFF' : '#F9FAFB'; // Alternado
+            },
+            hLineWidth: (i: number, node: any) => {
+              if (i === 0 || i === 1) return 1.5; // Línea después del header
+              if (i === node.table.body.length - 1) return 1.5; // Línea antes de totales
+              if (i === node.table.body.length) return 1.5; // Línea después de totales
+              return 0.5;
+            },
+            vLineWidth: () => 0,
+            hLineColor: (i: number, node: any) => {
+              if (i === 0 || i === 1 || i === node.table.body.length - 1 || i === node.table.body.length) {
+                return '#9CA3AF';
+              }
+              return '#E5E7EB';
+            },
+            paddingTop: () => 6,
+            paddingBottom: () => 6,
+            paddingLeft: () => 8,
+            paddingRight: () => 8,
+          },
+        },
+      ],
+
+      styles: {
+        companyName: {
+          fontSize: 14,
+          bold: true,
+          color: '#1F2937',
+        },
+        companyInfo: {
+          fontSize: 8,
+          color: '#6B7280',
+        },
+        reportTitle: {
+          fontSize: 16,
+          bold: true,
+          color: '#1F2937',
+        },
+        reportDate: {
+          fontSize: 8,
+          color: '#6B7280',
+        },
+        summaryLabel: {
+          fontSize: 7,
+          color: '#6B7280',
+          bold: true,
+          margin: [0, 0, 0, 3],
+        },
+        summaryValue: {
+          fontSize: 12,
+          bold: true,
+          color: '#1F2937',
+        },
+        tableHeader: {
+          fontSize: 7,
+          bold: true,
+          color: '#374151',
+        },
+        tableCell: {
+          fontSize: 7,
+          color: '#1F2937',
+        },
+        tableCellMedium: {
+          fontSize: 7,
+          color: '#1F2937',
+          bold: true,
+        },
+        tableCellBold: {
+          fontSize: 7,
+          color: '#1F2937',
+          bold: true,
+        },
+        totalLabel: {
+          fontSize: 8,
+          bold: true,
+          color: '#374151',
+        },
+        totalValue: {
+          fontSize: 8,
+          bold: true,
+          color: '#1F2937',
+        },
+        footer: {
+          fontSize: 7,
+          color: '#6B7280',
+        },
+      },
+
+      defaultStyle: {
+        font: 'Roboto',
+        color: '#1F2937',
+      },
+    };
+
+    const fileName = `Reporte_Ventas_${fechaGeneracion.replace(/\//g, '-')}.pdf`;
+    pdfMake.createPdf(docDefinition).download(fileName);
+  } catch (error) {
+    console.error('Error generando PDF de ventas:', error);
+  }
+}
+
+ generarPdfVentaIndividual(venta: any): void {
+  try {
+    if (!venta) {
+      return;
+    }
+    
+    const fechaHora = new Date().toLocaleString('es-BO');
+    const planPago = venta.planPago || venta.plan_pago;
+    const totalPagado = planPago
+      ? Number(planPago.total_pagado || planPago.monto_pagado || 0)
+      : 0;
+    const totalVenta = Number(venta.precioFinal || venta.total || 0);
+    const saldoPendiente = totalVenta - totalPagado;
+    const porcentajePagado = totalVenta > 0 ? (totalPagado / totalVenta) * 100 : 0;
+    const fechaVenta = venta.fecha_venta || (planPago ? planPago.fecha_inicio : venta.createdAt);
+
+    // Construir tabla de detalles del inmueble según el tipo
+    const detalleInmuebleTable = this.buildDetalleInmuebleTable(venta);
+
+    const docDefinition: any = {
+      pageSize: 'LETTER',
+      pageOrientation: 'portrait',
+      pageMargins: [40, 120, 40, 50],
+      
+      header: {
+        margin: [40, 30, 40, 0],
+        stack: [
+          {
+            columns: [
+              {
+                width: '70%',
+                stack: [
+                  {
+                    text: 'GESTIÓN INMOBILIARIA SINAÍ',
+                    style: 'companyName',
+                  },
+                  {
+                    text: 'NIT: 123456789',
+                    style: 'companyInfo',
+                    margin: [0, 2, 0, 0],
+                  },
+                  {
+                    text: 'Dirección: Av. Principal #123, Ciudad',
+                    style: 'companyInfo',
+                    margin: [0, 1, 0, 0],
+                  },
+                ],
+              },
+              {
+                width: '30%',
+                stack: [
+                  {
+                    text: `VENTA #${venta.id}`,
+                    style: 'ventaNumber',
+                    alignment: 'right',
+                  },
+                  {
+                    text: this.formatDate(fechaVenta),
+                    style: 'ventaDate',
+                    alignment: 'right',
+                    margin: [0, 2, 0, 0],
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            canvas: [
+              {
+                type: 'line',
+                x1: 0,
+                y1: 10,
+                x2: 535,
+                y2: 10,
+                lineWidth: 1,
+                lineColor: '#E5E7EB',
+              },
+            ],
+            margin: [0, 10, 0, 0],
+          },
+        ],
+      },
+
+      footer: (currentPage: number, pageCount: number) => {
+        return {
+          margin: [40, 0, 40, 20],
           stack: [
             {
               canvas: [
                 {
-                  type: 'rect',
-                  x: 0,
-                  y: 0,
-                  w: 595.28,
-                  h: 130,
-                  color: this.headerBg,
+                  type: 'line',
+                  x1: 0,
+                  y1: 0,
+                  x2: 535,
+                  y2: 0,
+                  lineWidth: 0.5,
+                  lineColor: '#E5E7EB',
                 },
               ],
             },
             {
-              stack: [
+              columns: [
                 {
-                  text: 'GESTIÓN INMOBILIARIA',
-                  style: 'companyName',
-                  margin: [0, 15, 0, 0],
-                },
-                {
-                  text: 'DETALLE COMPLETO DE VENTA',
-                  style: 'mainHeader',
-                  margin: [0, 10, 0, 0],
-                },
-                {
-                  text: `Venta #${venta.id}`,
-                  style: 'headerSubtitle',
+                  text: `Generado el ${fechaHora}`,
+                  style: 'footer',
+                  alignment: 'left',
                   margin: [0, 5, 0, 0],
                 },
                 {
-                  text: `Generado el ${fechaHora}`,
-                  style: 'headerDate',
-                  margin: [0, 10, 0, 0],
+                  text: `Página ${currentPage} de ${pageCount}`,
+                  style: 'footer',
+                  alignment: 'right',
+                  margin: [0, 5, 0, 0],
                 },
               ],
-              alignment: 'center',
-              margin: [40, -120, 40, 0],
+            },
+          ],
+        };
+      },
+
+      content: [
+        // Título del documento
+        {
+          text: 'DETALLE DE VENTA',
+          style: 'documentTitle',
+          alignment: 'center',
+          margin: [0, 0, 0, 20],
+        },
+
+        // Sección: Información del Cliente y Asesor
+        {
+          columns: [
+            {
+              width: '50%',
+              stack: [
+                {
+                  text: 'DATOS DEL CLIENTE',
+                  style: 'sectionTitle',
+                  margin: [0, 0, 0, 8],
+                },
+                {
+                  table: {
+                    widths: ['35%', '65%'],
+                    body: [
+                      [
+                        { text: 'Nombre:', style: 'labelCell' },
+                        { text: venta.cliente?.fullName || 'N/A', style: 'valueCell' },
+                      ],
+                      [
+                        { text: 'CI:', style: 'labelCell' },
+                        { text: venta.cliente?.ci || 'N/A', style: 'valueCell' },
+                      ],
+                      [
+                        { text: 'Teléfono:', style: 'labelCell' },
+                        { text: venta.cliente?.telefono || 'N/A', style: 'valueCell' },
+                      ],
+                      [
+                        { text: 'Dirección:', style: 'labelCell' },
+                        { text: venta.cliente?.direccion || 'N/A', style: 'valueCell' },
+                      ],
+                    ],
+                  },
+                  layout: {
+                    fillColor: (rowIndex: number) => (rowIndex % 2 === 0 ? '#F9FAFB' : null),
+                    hLineWidth: () => 0.5,
+                    vLineWidth: () => 0,
+                    hLineColor: () => '#E5E7EB',
+                    paddingTop: () => 5,
+                    paddingBottom: () => 5,
+                  },
+                },
+              ],
+            },
+            {
+              width: '50%',
+              stack: [
+                {
+                  text: 'DATOS DEL ASESOR',
+                  style: 'sectionTitle',
+                  margin: [0, 0, 0, 8],
+                },
+                {
+                  table: {
+                    widths: ['35%', '65%'],
+                    body: [
+                      [
+                        { text: 'Nombre:', style: 'labelCell' },
+                        { text: venta.asesor?.fullName || 'N/A', style: 'valueCell' },
+                      ],
+                      [
+                        { text: 'Email:', style: 'labelCell' },
+                        { text: venta.asesor?.email || 'N/A', style: 'valueCell' },
+                      ],
+                      [
+                        { text: 'Teléfono:', style: 'labelCell' },
+                        { text: venta.asesor?.telefono || 'N/A', style: 'valueCell' },
+                      ],
+                    ],
+                  },
+                  layout: {
+                    fillColor: (rowIndex: number) => (rowIndex % 2 === 0 ? '#F9FAFB' : null),
+                    hLineWidth: () => 0.5,
+                    vLineWidth: () => 0,
+                    hLineColor: () => '#E5E7EB',
+                    paddingTop: () => 5,
+                    paddingBottom: () => 5,
+                  },
+                },
+              ],
+            },
+          ],
+          margin: [0, 0, 0, 20],
+        },
+
+        // Sección: Información del Inmueble
+        {
+          text: 'INFORMACIÓN DEL INMUEBLE',
+          style: 'sectionTitle',
+          margin: [0, 0, 0, 8],
+        },
+        detalleInmuebleTable,
+
+        // Sección: Estado de la Venta
+        {
+          text: 'ESTADO DE LA VENTA',
+          style: 'sectionTitle',
+          margin: [0, 20, 0, 8],
+        },
+        {
+          table: {
+            widths: ['30%', '70%'],
+            body: [
+              [
+                { text: 'Estado:', style: 'labelCell' },
+                {
+                  text: venta.estado?.toUpperCase() || 'N/A',
+                  style: this.getEstadoVentaStyle(venta.estado),
+                },
+              ],
+              [
+                { text: 'Tipo Inmueble:', style: 'labelCell' },
+                {
+                  text: venta.inmuebleTipo === 'LOTE' ? 'LOTE' : 'PROPIEDAD',
+                  style: 'valueCell',
+                },
+              ],
+              [
+                { text: 'Observaciones:', style: 'labelCell' },
+                {
+                  text: venta.observaciones || 'Sin observaciones',
+                  style: 'valueCell',
+                },
+              ],
+            ],
+          },
+          layout: {
+            fillColor: (rowIndex: number) => (rowIndex % 2 === 0 ? '#F9FAFB' : null),
+            hLineWidth: () => 0.5,
+            vLineWidth: () => 0,
+            hLineColor: () => '#E5E7EB',
+            paddingTop: () => 5,
+            paddingBottom: () => 5,
+          },
+        },
+
+        // Sección: Resumen Financiero (destacado)
+        {
+          text: 'RESUMEN FINANCIERO',
+          style: 'sectionTitle',
+          margin: [0, 20, 0, 8],
+        },
+        {
+          table: {
+            widths: ['60%', '40%'],
+            body: [
+              [
+                { text: 'Precio Total de Venta:', style: 'financialLabel', fillColor: '#F9FAFB' },
+                {
+                  text: this.formatCurrency(totalVenta),
+                  style: 'financialValue',
+                  alignment: 'right',
+                  fillColor: '#F9FAFB',
+                },
+              ],
+              [
+                { text: 'Total Pagado:', style: 'financialLabel' },
+                {
+                  text: this.formatCurrency(totalPagado),
+                  style: 'financialSuccess',
+                  alignment: 'right',
+                },
+              ],
+              [
+                { text: 'Saldo Pendiente:', style: 'financialLabel', fillColor: '#F9FAFB' },
+                {
+                  text: this.formatCurrency(saldoPendiente),
+                  style: saldoPendiente > 0 ? 'financialWarning' : 'financialSuccess',
+                  alignment: 'right',
+                  fillColor: '#F9FAFB',
+                },
+              ],
+              [
+                { text: 'Porcentaje de Avance:', style: 'financialLabelBold', bold: true },
+                {
+                  text: `${porcentajePagado.toFixed(1)}%`,
+                  style: 'financialValueBold',
+                  alignment: 'right',
+                  bold: true,
+                },
+              ],
+            ],
+          },
+          layout: {
+            hLineWidth: (i: number, node: any) => {
+              if (i === 0 || i === node.table.body.length) return 1.5;
+              return 0.5;
+            },
+            vLineWidth: () => 0,
+            hLineColor: (i: number, node: any) => {
+              if (i === 0 || i === node.table.body.length) return '#9CA3AF';
+              return '#E5E7EB';
+            },
+            paddingTop: () => 8,
+            paddingBottom: () => 8,
+          },
+        },
+
+        // Barra de progreso visual
+        {
+          margin: [0, 10, 0, 0],
+          canvas: [
+            {
+              type: 'rect',
+              x: 0,
+              y: 0,
+              w: 535,
+              h: 20,
+              color: '#F3F4F6',
+              r: 4,
+            },
+            {
+              type: 'rect',
+              x: 2,
+              y: 2,
+              w: Math.max(0, (porcentajePagado / 100) * 531),
+              h: 16,
+              color: porcentajePagado === 100 ? '#059669' : porcentajePagado > 50 ? '#3B82F6' : '#F59E0B',
+              r: 3,
             },
           ],
         },
-        footer: (currentPage: number, pageCount: number) => {
-          return {
-            stack: [
-              {
-                canvas: [
-                  {
-                    type: 'rect',
-                    x: 0,
-                    y: 0,
-                    w: 595.28,
-                    h: 40,
-                    color: this.lightBg,
-                  },
-                ],
-              },
-              {
-                columns: [
-                  {
-                    text: `Generado: ${fechaHora}`,
-                    style: 'footer',
-                    alignment: 'left',
-                    margin: [40, -30, 0, 0],
-                  },
-                  {
-                    text: `Página ${currentPage} de ${pageCount}`,
-                    style: 'footer',
-                    alignment: 'right',
-                    margin: [0, -30, 40, 0],
-                  },
-                ],
-              },
-            ],
-          };
-        },
-        content: [
-          {
-            columns: [
-              {
-                width: '50%',
-                stack: [
-                  {
-                    text: 'INFORMACIÓN DE VENTA',
-                    style: 'sectionTitle',
-                    background: this.lightBg,
-                    margin: [0, 0, 0, 10],
-                  },
-                  {
-                    table: {
-                      widths: ['35%', '65%'],
-                      body: [
-                        [
-                          { text: 'Fecha Venta:', style: 'labelCell' },
-                          { text: this.formatDate(fechaVenta), style: 'valueCell' },
-                        ],
-                        [
-                          { text: 'Estado:', style: 'labelCell' },
-                          {
-                            text: venta.estado?.toUpperCase() || 'N/A',
-                            style: this.getEstadoVentaStyle(venta.estado),
-                          },
-                        ],
-                        [
-                          { text: 'Tipo Inmueble:', style: 'labelCell' },
-                          {
-                            text: venta.inmuebleTipo === 'LOTE' ? 'LOTE' : 'PROPIEDAD',
-                            style: 'valueCellBold',
-                          },
-                        ],
-                      ],
-                    },
-                    layout: 'noBorders',
-                  },
-                ],
-              },
-              {
-                width: '50%',
-                stack: [
-                  {
-                    text: 'CLIENTE',
-                    style: 'sectionTitle',
-                    background: this.lightBg,
-                    margin: [0, 0, 0, 10],
-                  },
-                  {
-                    table: {
-                      widths: ['100%'],
-                      body: [
-                        [
-                          {
-                            stack: [
-                              { text: venta.cliente?.fullName || 'N/A', style: 'clientName' },
-                              {
-                                text: venta.cliente?.telefono || 'Sin teléfono',
-                                style: 'clientDetail',
-                              },
-                            ],
-                          },
-                        ],
-                      ],
-                    },
-                    layout: {
-                      hLineWidth: () => 2,
-                      vLineWidth: () => 2,
-                      hLineColor: () => this.headerBg,
-                      vLineColor: () => this.headerBg,
-                    },
-                  },
-                ],
-              },
-            ],
-            margin: [0, 0, 0, 25],
-          },
-          {
-            text: 'DETALLE DEL INMUEBLE',
-            style: 'sectionTitle',
-            background: this.lightBg,
-            margin: [0, 0, 0, 10],
-          },
-          detalleInmuebleTable,
-          {
-            text: 'RESUMEN FINANCIERO',
-            style: 'sectionTitle',
-            background: this.lightBg,
-            margin: [0, 25, 0, 10],
-          },
-          {
-            table: {
-              widths: ['60%', '40%'],
-              body: [
-                [
-                  { text: 'Total Venta:', style: 'financialLabel' },
-                  {
-                    text: this.formatCurrency(totalVenta),
-                    style: 'financialValue',
-                    alignment: 'right',
-                  },
-                ],
-                [
-                  { text: 'Total Pagado:', style: 'financialLabel' },
-                  {
-                    text: this.formatCurrency(totalPagado),
-                    style: 'financialValue',
-                    alignment: 'right',
-                  },
-                ],
-                [
-                  { text: 'Saldo Pendiente:', style: 'financialLabel' },
-                  {
-                    text: this.formatCurrency(saldoPendiente),
-                    style: saldoPendiente > 0 ? 'financialWarning' : 'financialValue',
-                    alignment: 'right',
-                  },
-                ],
-                [
-                  { text: 'Porcentaje Pagado:', style: 'financialLabel' },
-                  {
-                    text: `${porcentajePagado.toFixed(1)}%`,
-                    style: 'financialValue',
-                    alignment: 'right',
-                  },
-                ],
-              ],
-            },
-            layout: {
-              hLineWidth: (i: number) => (i === 0 || i === 3 ? 2 : 0.5),
-              vLineWidth: () => 0.5,
-              hLineColor: (i: number) => (i === 0 || i === 3 ? this.primaryDark : this.borderColor),
-              vLineColor: () => this.borderColor,
-            },
-          },
-          ...this.buildDetallePagos(planPago),
-        ],
-        styles: {
-          companyName: {
-            fontSize: 12,
-            bold: true,
-            color: '#E5E7EB',
-            alignment: 'center',
-          },
-          mainHeader: {
-            fontSize: 18,
-            bold: true,
-            color: this.headerTextColor,
-            alignment: 'center',
-          },
-          headerSubtitle: {
-            fontSize: 14,
-            color: '#E5E7EB',
-            alignment: 'center',
-          },
-          headerDate: {
-            fontSize: 10,
-            color: '#E5E7EB',
-            alignment: 'center',
-          },
-          footer: {
-            fontSize: 8,
-            color: this.primaryDark,
-            bold: true,
-          },
-          sectionTitle: {
-            fontSize: 14,
-            bold: true,
-            color: this.primaryDark,
-            padding: [10, 5, 10, 5],
-          },
-          labelCell: {
-            fontSize: 10,
-            bold: true,
-            color: this.textColor,
-          },
-          valueCell: {
-            fontSize: 10,
-            color: this.textColor,
-          },
-          valueCellBold: {
-            fontSize: 10,
-            color: this.textColor,
-            bold: true,
-          },
-          clientName: {
-            fontSize: 12,
-            bold: true,
-            color: this.primaryDark,
-          },
-          clientDetail: {
-            fontSize: 10,
-            color: this.textColor,
-          },
-          financialLabel: {
-            fontSize: 11,
-            color: this.textColor,
-          },
-          financialValue: {
-            fontSize: 11,
-            color: this.textColor,
-          },
-          financialWarning: {
-            fontSize: 11,
-            bold: true,
-            color: this.errorColor,
-          },
-        },
-        defaultStyle: {
-          font: 'Roboto',
-          color: this.textColor,
-        },
-      };
 
-      const fileName = `Venta_${venta.id}_${new Date().toISOString().split('T')[0]}.pdf`;
-      pdfMake.createPdf(docDefinition).download(fileName);
-    } catch (error) {
-      console.error('Error generando PDF individual de venta:', error);
-    }
+        // Detalles del Plan de Pago
+        ...this.buildDetallePagos(planPago),
+
+        // Nota al pie
+        {
+          text: [
+            { text: 'Nota: ', bold: true, fontSize: 8, color: '#6B7280' },
+            {
+              text: 'Este documento es un resumen detallado de la venta. Para más información contacte a su asesor.',
+              fontSize: 8,
+              color: '#6B7280',
+            },
+          ],
+          margin: [0, 20, 0, 0],
+        },
+      ],
+
+      styles: {
+        companyName: {
+          fontSize: 14,
+          bold: true,
+          color: '#1F2937',
+        },
+        companyInfo: {
+          fontSize: 8,
+          color: '#6B7280',
+        },
+        ventaNumber: {
+          fontSize: 16,
+          bold: true,
+          color: '#1F2937',
+        },
+        ventaDate: {
+          fontSize: 9,
+          color: '#6B7280',
+        },
+        documentTitle: {
+          fontSize: 18,
+          bold: true,
+          color: '#1F2937',
+        },
+        sectionTitle: {
+          fontSize: 11,
+          bold: true,
+          color: '#374151',
+        },
+        labelCell: {
+          fontSize: 9,
+          color: '#6B7280',
+          bold: true,
+        },
+        valueCell: {
+          fontSize: 9,
+          color: '#1F2937',
+        },
+        financialLabel: {
+          fontSize: 10,
+          color: '#374151',
+        },
+        financialLabelBold: {
+          fontSize: 10,
+          color: '#1F2937',
+          bold: true,
+        },
+        financialValue: {
+          fontSize: 10,
+          color: '#1F2937',
+        },
+        financialValueBold: {
+          fontSize: 11,
+          color: '#1F2937',
+          bold: true,
+        },
+        financialSuccess: {
+          fontSize: 10,
+          color: '#059669',
+          bold: true,
+        },
+        financialWarning: {
+          fontSize: 10,
+          color: '#DC2626',
+          bold: true,
+        },
+        footer: {
+          fontSize: 7,
+          color: '#6B7280',
+        },
+      },
+
+      defaultStyle: {
+        font: 'Roboto',
+        color: '#1F2937',
+      },
+    };
+
+    const fileName = `Venta_${venta.id}_${new Date().toISOString().split('T')[0]}.pdf`;
+    pdfMake.createPdf(docDefinition).download(fileName);
+  } catch (error) {
+    console.error('Error generando PDF individual de venta:', error);
   }
-
+}
   private buildDetalleInmuebleTable(venta: any): any {
     if (venta.inmuebleTipo === 'LOTE' && venta.lote) {
       return {
