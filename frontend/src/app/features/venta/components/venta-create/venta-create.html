@@ -120,7 +120,7 @@
                                         class="px-4 py-3 hover:bg-emerald-50 cursor-pointer border-b border-gray-100 last:border-b-0">
                                         <div class="font-medium text-gray-900">{{ lote.numeroLote }} - {{
                                             lote.urbanizacion?.nombre }}</div>
-                                        <div class="text-sm text-gray-600">${{ formatNumber(lote.precioBase) }} - {{
+                                        <div class="text-sm text-gray-600">Bs.{{ formatNumber(lote.precioBase) }} - {{
                                             lote.estado }}</div>
                                     </div>
                                     }
@@ -165,7 +165,7 @@
                                         class="px-4 py-3 hover:bg-emerald-50 cursor-pointer border-b border-gray-100 last:border-b-0">
                                         <div class="font-medium text-gray-900">{{ propiedad.nombre }} - {{
                                             propiedad.tipo }}</div>
-                                        <div class="text-sm text-gray-600">${{ formatNumber(propiedad.precio) }} - {{
+                                        <div class="text-sm text-gray-600">Bs.{{ formatNumber(propiedad.precio) }} - {{
                                             propiedad.ubicacion }}</div>
                                     </div>
                                     }
@@ -208,7 +208,8 @@
                                     <div (click)="selectCaja(caja)"
                                         class="px-4 py-3 hover:bg-emerald-50 cursor-pointer border-b border-gray-100 last:border-b-0">
                                         <div class="font-medium text-gray-900">{{ caja.nombre }}</div>
-                                        <div class="text-sm text-gray-600">Saldo: ${{ formatNumber(caja.saldoActual) }}
+                                        <div class="text-sm text-gray-600">Saldo: Bs.{{ formatNumber(caja.saldoActual)
+                                            }}
                                             - {{ caja.usuarioApertura?.fullName }}</div>
                                     </div>
                                     }
@@ -225,11 +226,11 @@
 
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    Precio Final ($) <span class="text-red-500">*</span>
+                                    Precio Final (Bs.) <span class="text-red-500">*</span>
                                 </label>
                                 <div class="relative">
                                     <span
-                                        class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">$</span>
+                                        class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">Bs.</span>
                                     <input type="number" step="0.01" formControlName="precioFinal"
                                         class="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm sm:text-base"
                                         placeholder="0.00" min="0.01" />
@@ -266,11 +267,11 @@
                             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">
-                                        Monto Inicial ($) <span class="text-red-500">*</span>
+                                        Monto Inicial (Bs.) <span class="text-red-500">*</span>
                                     </label>
                                     <div class="relative">
                                         <span
-                                            class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">$</span>
+                                            class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">Bs.</span>
                                         <input type="number" step="0.01" formControlName="monto_inicial"
                                             class="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm sm:text-base"
                                             placeholder="0.00" min="0" [max]="getMontoMaximoInicial()" />
@@ -279,7 +280,7 @@
                                     planPagoForm.get('monto_inicial')?.touched) {
                                     <p class="mt-1 text-xs text-red-600">El monto inicial es requerido</p>
                                     }
-                                    <p class="mt-1 text-xs text-gray-500">Máximo: $ {{ getMontoMaximoInicial() |
+                                    <p class="mt-1 text-xs text-gray-500">Máximo: Bs. {{ getMontoMaximoInicial() |
                                         number:'1.2-2' }}</p>
                                 </div>
 
@@ -340,17 +341,17 @@
                             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
                                 <div class="text-center">
                                     <p class="text-emerald-600 font-medium">Precio Final</p>
-                                    <p class="text-lg font-bold text-emerald-800">$ {{
+                                    <p class="text-lg font-bold text-emerald-800">Bs. {{
                                         (ventaForm.get('precioFinal')?.value || 0) | number:'1.2-2' }}</p>
                                 </div>
                                 <div class="text-center">
                                     <p class="text-green-600 font-medium">Monto Inicial</p>
-                                    <p class="text-lg font-bold text-green-800">$ {{
+                                    <p class="text-lg font-bold text-green-800">Bs. {{
                                         (planPagoForm.get('monto_inicial')?.value || 0) | number:'1.2-2' }}</p>
                                 </div>
                                 <div class="text-center">
                                     <p class="text-orange-600 font-medium">Saldo a Financiar</p>
-                                    <p class="text-lg font-bold text-orange-800">$ {{ getSaldoFinanciar() |
+                                    <p class="text-lg font-bold text-orange-800">Bs. {{ getSaldoFinanciar() |
                                         number:'1.2-2' }}</p>
                                 </div>
                             </div>

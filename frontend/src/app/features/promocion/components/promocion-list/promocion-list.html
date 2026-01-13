@@ -194,7 +194,7 @@
                             </span>
                         </div>
                     </div>
-                    <div class="p-4 space-y-3">
+                    <div class="p-4 space-y=3">
                         <div class="flex items-center gap-2 text-sm">
                             <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -273,7 +273,7 @@
                 }
             </div>
 
-            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mt-6 gap-4 px-2">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mt-6 gap=4 px-2">
                 <div class="text-sm text-gray-600 text-center sm:text-left">
                     Mostrando {{ rangeStart() }} a {{ rangeEnd() }} de {{ total() }} promociones
                 </div>
@@ -347,7 +347,7 @@
                 @if (modoRemover()) {
                 <!-- MODO REMOVER -->
                 <div class="space-y-6">
-                    <div class="bg-red-50 border border-red-200 rounded-xl p-4">
+                    <div class="bg-red-50 border border-red-200 rounded-xl p=4">
                         <div class="flex items-center gap-3">
                             <svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -366,11 +366,11 @@
                             <h4 class="font-semibold text-gray-900">Lotes con Promoción Activa</h4>
                             <div class="flex gap-2">
                                 <button type="button" (click)="seleccionarTodosLotes()"
-                                    class="px-3 py-2 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600">
+                                    class="px=3 py-2 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600">
                                     Seleccionar Todos
                                 </button>
                                 <button type="button" (click)="deseleccionarTodosLotes()"
-                                    class="px-3 py-2 bg-gray-500 text-white rounded-lg text-sm hover:bg-gray-600">
+                                    class="px=3 py=2 bg-gray-500 text-white rounded-lg text-sm hover:bg-gray-600">
                                     Deseleccionar Todos
                                 </button>
                             </div>
@@ -393,10 +393,10 @@
                                         </div>
                                         <div class="text-right">
                                             <p class="text-sm font-semibold text-red-600">
-                                                Precio original: ${{ lote.precioOriginal | number:'1.2-2' }}
+                                                Precio original: {{ lote.precioOriginal | number:'1.2-2' }} Bs.
                                             </p>
                                             <p class="text-xs text-gray-500">
-                                                Con descuento: ${{ lote.precioConDescuento | number:'1.2-2' }}
+                                                Con descuento: {{ lote.precioConDescuento | number:'1.2-2' }} Bs.
                                             </p>
                                         </div>
                                     </div>
@@ -415,7 +415,7 @@
                 </div>
                 } @else {
                 <!-- MODO ASIGNAR -->
-                <div class="space-y-6">
+                <div class="space-y=6">
                     <div class="flex items-center gap-3 cursor-pointer"
                         (click)="asignarATodos.set(true); onAsignarATodosChange()">
                         <input type="radio" name="asignacion" [checked]="asignarATodos()"
@@ -442,11 +442,11 @@
                                     <input type="text" [ngModel]="busquedaUrbanizaciones()"
                                         (ngModelChange)="busquedaUrbanizaciones.set($event)"
                                         placeholder="Buscar urbanización..."
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 mb-2">
+                                        class="w-full px=3 py=2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 mb-2">
                                 </div>
                                 <select [ngModel]="urbanizacionSeleccionada()"
                                     (ngModelChange)="urbanizacionSeleccionada.set($event)"
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                                    class="w-full px=3 py=2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
                                     <option value="">Seleccione urbanización...</option>
                                     @for (urbanizacion of urbanizacionesFiltradas(); track urbanizacion.id) {
                                     <option [value]="urbanizacion.id">{{ urbanizacion.nombre }}</option>
@@ -473,15 +473,15 @@
                                         <input type="text" [ngModel]="busquedaLotes()"
                                             (ngModelChange)="busquedaLotes.set($event)"
                                             placeholder="Buscar lote por número o urbanización..."
-                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                                            class="w-full px=3 py=2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
                                     </div>
                                     <div class="flex gap-2">
                                         <button type="button" (click)="seleccionarTodosLotes()"
-                                            class="px-3 py-2 bg-emerald-500 text-white rounded-lg text-sm hover:bg-emerald-600">
+                                            class="px=3 py=2 bg-emerald-500 text-white rounded-lg text-sm hover:bg-emerald-600">
                                             Todos
                                         </button>
                                         <button type="button" (click)="deseleccionarTodosLotes()"
-                                            class="px-3 py-2 bg-gray-500 text-white rounded-lg text-sm hover:bg-gray-600">
+                                            class="px=3 py=2 bg-gray-500 text-white rounded-lg text-sm hover:bg-gray-600">
                                             Ninguno
                                         </button>
                                     </div>
@@ -490,7 +490,7 @@
                                 <div class="border border-gray-200 rounded-lg max-h-48 overflow-y-auto">
                                     @for (lote of lotesFiltrados(); track lote.id) {
                                     <label
-                                        class="flex items-center gap-3 p-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 cursor-pointer">
+                                        class="flex items-center gap=3 p-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 cursor-pointer">
                                         <input type="checkbox" [checked]="estaLoteSeleccionado(lote.id)"
                                             (change)="toggleLoteSeleccionado(lote.id)"
                                             class="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500">
@@ -507,8 +507,8 @@
                                                     }
                                                 </div>
                                                 <div class="text-right">
-                                                    <p class="text-sm font-semibold text-emerald-600">${{
-                                                        lote.precioBase | number:'1.2-2' }}</p>
+                                                    <p class="text-sm font-semibold text-emerald-600">{{
+                                                        lote.precioBase | number:'1.2-2' }} Bs.</p>
                                                     <p class="text-xs text-gray-500">{{ lote.superficieM2 }} m²</p>
                                                     @if (lote.tienePromocionActiva) {
                                                     <p class="text-xs text-orange-600">Ya tiene promoción activa</p>

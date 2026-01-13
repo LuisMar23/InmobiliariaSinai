@@ -64,7 +64,7 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm font-semibold">Total en Cajas</p>
-                            <p class="text-2xl sm:text-3xl font-bold">$ {{ getTotalEnCajas() | number:'1.0-2' }}</p>
+                            <p class="text-2xl sm:text-3xl font-bold">{{ getTotalEnCajas() | number:'1.0-2' }} Bs.</p>
                         </div>
                         <svg class="w-8 h-8 text-white opacity-80" fill="none" stroke="currentColor"
                             viewBox="0 0 24 24">
@@ -96,7 +96,7 @@
                         }
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Monto Inicial ($)</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Monto Inicial (Bs)</label>
                         <input formControlName="montoInicial" type="number" step="0.01" min="0"
                             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm sm:text-base"
                             placeholder="0.00">
@@ -205,11 +205,11 @@
                                 </td>
                                 <td
                                     class="px-4 py-4 whitespace-nowrap text-gray-600 font-semibold text-sm sm:text-base">
-                                    $ {{ caja.montoInicial | number:'1.0-2' }}
+                                    {{ caja.montoInicial | number:'1.0-2' }} Bs.
                                 </td>
                                 <td
                                     class="px-4 py-4 whitespace-nowrap text-gray-600 font-semibold text-sm sm:text-base">
-                                    $ {{ caja.saldoActual | number:'1.0-2' }}
+                                    {{ caja.saldoActual | number:'1.0-2' }} Bs.
                                 </td>
                                 <td class="px-4 py-4 whitespace-nowrap">
                                     <div>
@@ -304,15 +304,11 @@
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <p class="text-xs text-gray-500 mb-1">Monto Inicial</p>
-                                <p class="text-sm font-semibold text-gray-900">$ {{ caja.montoInicial | number:'1.0-2'
-                                    }}
-                                </p>
+                                <p class="text-sm font-semibold text-gray-900">{{ caja.montoInicial | number:'1.0-2'}} Bs.</p>
                             </div>
                             <div>
                                 <p class="text-xs text-gray-500 mb-1">Saldo Actual</p>
-                                <p class="text-sm font-semibold text-emerald-600">$ {{ caja.saldoActual | number:'1.0-2'
-                                    }}
-                                </p>
+                                <p class="text-sm font-semibold text-emerald-600">{{ caja.saldoActual | number:'1.0-2' }} Bs.</p>
                             </div>
                         </div>
                         <div class="flex flex-wrap justify-end gap-2 mt-3 pt-3 border-t border-gray-100">
@@ -405,7 +401,7 @@
 
         <form [formGroup]="formAbrirCaja" (ngSubmit)="confirmarAbrirCaja()" class="p-6 space-y-4">
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Monto Inicial ($)</label>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Monto Inicial (Bs)</label>
                 <input formControlName="montoInicial" type="number" step="0.01" min="0"
                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                     placeholder="0.00">
