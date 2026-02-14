@@ -41,6 +41,7 @@ export class UrbanizacionEdit implements OnInit {
       ubicacion: ['', [Validators.required]],
       ciudad: ['', [Validators.required]],
       descripcion: [''],
+      maps: [''],
     });
   }
 
@@ -77,6 +78,7 @@ export class UrbanizacionEdit implements OnInit {
       ubicacion: urbanizacion.ubicacion || '',
       ciudad: urbanizacion.ciudad || '',
       descripcion: urbanizacion.descripcion || '',
+      maps: urbanizacion.maps || '',
     });
   }
 
@@ -106,7 +108,7 @@ export class UrbanizacionEdit implements OnInit {
           }, 1500);
         } else {
           this.notificationService.showError(
-            response.message || 'Error al actualizar la urbanización'
+            response.message || 'Error al actualizar la urbanización',
           );
         }
       },

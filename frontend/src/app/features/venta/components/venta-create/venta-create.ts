@@ -133,12 +133,21 @@ export class VentaCreate implements OnInit {
   }
 
   cargarLotes(): void {
+    const currentUser = this.authService.getCurrentUser();
+
     this.loteSvc.getAll().subscribe({
       next: (lotes: LoteDto[]) => {
+        // Primero filtramos por estado
         const lotesDisponibles = lotes.filter(
-          (lote) => lote.estado === 'DISPONIBLE' || lote.estado === 'CON_OFERTA'
+          (lote) => lote.estado === 'DISPONIBLE' || lote.estado === 'CON_OFERTA',
         );
-        this.lotes.set(lotesDisponibles);
+
+        // Filtramos por encargado para todos los usuarios (incluyendo administradores)
+        let lotesFiltrados = lotesDisponibles.filter(
+          (lote) => lote.encargadoId === currentUser?.id,
+        );
+
+        this.lotes.set(lotesFiltrados);
       },
       error: (err: any) => {
         this.notificationService.showError('No se pudieron cargar los lotes');
@@ -146,47 +155,46 @@ export class VentaCreate implements OnInit {
     });
   }
 
-cargarPropiedades(): void {
-  this.propiedadSvc.getAll().subscribe({
-    next: (propiedades: PropiedadDto[]) => {
-      // DEBUG: Mostrar todas las propiedades recibidas
-      console.log('Todas las propiedades recibidas:', propiedades);
-      console.log('Cantidad total:', propiedades.length);
-      
-      // Mostrar estado de cada propiedad para debug
-      propiedades.forEach((propiedad, index) => {
-        console.log(`Propiedad ${index}:`, {
-          id: propiedad.id,
-          nombre: propiedad.nombre,
-          tipo: propiedad.tipo,
-          estadoPropiedad: propiedad.estadoPropiedad,
-          estado: propiedad.estado,
-          filtroAplica: (
+  cargarPropiedades(): void {
+    this.propiedadSvc.getAll().subscribe({
+      next: (propiedades: PropiedadDto[]) => {
+        // DEBUG: Mostrar todas las propiedades recibidas
+        console.log('Todas las propiedades recibidas:', propiedades);
+        console.log('Cantidad total:', propiedades.length);
+
+        // Mostrar estado de cada propiedad para debug
+        propiedades.forEach((propiedad, index) => {
+          console.log(`Propiedad ${index}:`, {
+            id: propiedad.id,
+            nombre: propiedad.nombre,
+            tipo: propiedad.tipo,
+            estadoPropiedad: propiedad.estadoPropiedad,
+            estado: propiedad.estado,
+            filtroAplica:
+              propiedad.estadoPropiedad === 'VENTA' &&
+              (propiedad.tipo === 'CASA' || propiedad.tipo === 'DEPARTAMENTO') &&
+              (propiedad.estado === 'DISPONIBLE' || propiedad.estado === 'CON_OFERTA'),
+          });
+        });
+
+        const propiedadesParaVenta = propiedades.filter(
+          (propiedad) =>
             propiedad.estadoPropiedad === 'VENTA' &&
             (propiedad.tipo === 'CASA' || propiedad.tipo === 'DEPARTAMENTO') &&
-            (propiedad.estado === 'DISPONIBLE' || propiedad.estado === 'CON_OFERTA')
-          )
-        });
-      });
+            (propiedad.estado === 'DISPONIBLE' || propiedad.estado === 'CON_OFERTA'),
+        );
 
-      const propiedadesParaVenta = propiedades.filter(
-        (propiedad) =>
-          propiedad.estadoPropiedad === 'VENTA' &&
-          (propiedad.tipo === 'CASA' || propiedad.tipo === 'DEPARTAMENTO') &&
-          (propiedad.estado === 'DISPONIBLE' || propiedad.estado === 'CON_OFERTA')
-      );
-      
-      console.log('Propiedades filtradas para venta:', propiedadesParaVenta);
-      console.log('Cantidad filtrada:', propiedadesParaVenta.length);
-      
-      this.propiedades.set(propiedadesParaVenta);
-    },
-    error: (err: any) => {
-      console.error('Error al cargar propiedades:', err);
-      this.notificationService.showError('No se pudieron cargar las propiedades');
-    },
-  });
-}
+        console.log('Propiedades filtradas para venta:', propiedadesParaVenta);
+        console.log('Cantidad filtrada:', propiedadesParaVenta.length);
+
+        this.propiedades.set(propiedadesParaVenta);
+      },
+      error: (err: any) => {
+        console.error('Error al cargar propiedades:', err);
+        this.notificationService.showError('No se pudieron cargar las propiedades');
+      },
+    });
+  }
 
   cargarCajasActivas(): void {
     this.ventaSvc.obtenerCajasActivas().subscribe({
@@ -207,7 +215,7 @@ cargarPropiedades(): void {
       (cliente) =>
         cliente.fullName?.toLowerCase().includes(search) ||
         (cliente.ci && cliente.ci.toLowerCase().includes(search)) ||
-        (cliente.email && cliente.email.toLowerCase().includes(search))
+        (cliente.email && cliente.email.toLowerCase().includes(search)),
     );
   }
 
@@ -219,7 +227,7 @@ cargarPropiedades(): void {
       (lote) =>
         lote.numeroLote?.toLowerCase().includes(search) ||
         (lote.urbanizacion?.nombre && lote.urbanizacion.nombre.toLowerCase().includes(search)) ||
-        lote.precioBase?.toString().includes(search)
+        lote.precioBase?.toString().includes(search),
     );
   }
 
@@ -233,7 +241,7 @@ cargarPropiedades(): void {
         propiedad.ubicacion?.toLowerCase().includes(search) ||
         propiedad.ciudad?.toLowerCase().includes(search) ||
         propiedad.tipo?.toLowerCase().includes(search) ||
-        propiedad.precio?.toString().includes(search)
+        propiedad.precio?.toString().includes(search),
     );
   }
 
@@ -244,7 +252,7 @@ cargarPropiedades(): void {
     return this.cajas().filter(
       (caja) =>
         caja.nombre?.toLowerCase().includes(search) ||
-        caja.usuarioApertura?.fullName?.toLowerCase().includes(search)
+        caja.usuarioApertura?.fullName?.toLowerCase().includes(search),
     );
   }
 
@@ -284,19 +292,19 @@ cargarPropiedades(): void {
 
   getLoteDisplayText(lote: LoteDto): string {
     return `${lote.numeroLote} - ${lote.urbanizacion?.nombre} - $${this.formatNumber(
-      lote.precioBase
+      lote.precioBase,
     )}`;
   }
 
   getPropiedadDisplayText(propiedad: PropiedadDto): string {
     return `${propiedad.nombre} - ${propiedad.tipo} - ${propiedad.ubicacion} - $${this.formatNumber(
-      propiedad.precio
+      propiedad.precio,
     )}`;
   }
 
   getCajaDisplayText(caja: Caja): string {
     return `${caja.nombre} - ${caja.usuarioApertura?.fullName} - $${this.formatNumber(
-      caja.saldoActual
+      caja.saldoActual,
     )}`;
   }
 
@@ -416,7 +424,7 @@ cargarPropiedades(): void {
     if (this.planPagoForm.invalid) {
       this.planPagoForm.markAllAsTouched();
       this.notificationService.showError(
-        'Complete todos los campos del plan de pago correctamente.'
+        'Complete todos los campos del plan de pago correctamente.',
       );
       return;
     }
@@ -448,7 +456,7 @@ cargarPropiedades(): void {
         fecha_inicio: this.planPagoForm.value.fecha_inicio,
       },
     };
-  if (inmuebleTipo === 'LOTE') {
+    if (inmuebleTipo === 'LOTE') {
       ventaData.loteId = Number(inmuebleId);
       // PropiedadId debe ser null o no enviarse
       ventaData.propiedadId = null;

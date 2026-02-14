@@ -143,7 +143,6 @@ export class ArchivosService {
 
   async remove(id: number) {
     const archivo = await this.prisma.archivo.findUnique({ where: { id } });
-    console.log(archivo);
     if (!archivo) throw new NotFoundException('Archivo no encontrado');
 
     if (archivo.urlArchivo) {
@@ -151,11 +150,8 @@ export class ArchivosService {
       try {
         if (fs.existsSync(filePath)) {
           fs.unlinkSync(filePath);
-          console.log(`Archivo eliminado: ${filePath}`);
         }
-      } catch (err) {
-        console.error('Error eliminando archivo:', err);
-      }
+      } catch (err) {}
     }
     return this.prisma.archivo.delete({ where: { id } });
   }

@@ -6,6 +6,7 @@ import { PropiedadDto } from '../../../../core/interfaces/propiedad.interface';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { PropiedadService } from '../../service/propiedad.service';
 import { ArchivosComponent } from '../../../../components/archivos/archivos/archivos';
+import { AuthService } from '../../../../components/services/auth.service';
 
 interface ColumnConfig {
   key: keyof PropiedadDto;
@@ -47,7 +48,9 @@ export class PropiedadList implements OnInit {
   currentPage = signal(1);
 
   private propiedadSvc = inject(PropiedadService);
+  private authService = inject(AuthService);
   private notificationService = inject(NotificationService);
+  currentUser = this.authService.getCurrentUser();
 
   filteredPropiedades = computed(() => {
     const term = this.searchTerm().toLowerCase();
@@ -102,8 +105,12 @@ export class PropiedadList implements OnInit {
     this.error.set(null);
     this.propiedadSvc.getAll().subscribe({
       next: (propiedades) => {
-        this.propiedades.set(propiedades);
-        this.allPropiedades.set(propiedades);
+        const propiedadesConIndicador = propiedades.map(propiedad => ({
+          ...propiedad,
+          esMiPropiedad: propiedad.encargadoId === this.currentUser?.id
+        }));
+        this.propiedades.set(propiedadesConIndicador);
+        this.allPropiedades.set(propiedadesConIndicador);
         this.total.set(propiedades.length);
         this.cargando.set(false);
       },
@@ -113,6 +120,30 @@ export class PropiedadList implements OnInit {
         this.cargando.set(false);
       },
     });
+  }
+
+  getEncargadoBadgeClass(propiedad: PropiedadDto): string {
+    if (propiedad.encargadoId === this.currentUser?.id) {
+      return 'px-2 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-700 border border-blue-200';
+    }
+    if (!propiedad.encargadoId) {
+      return 'px-2 py-0.5 rounded-full text-xs font-bold bg-gray-100 text-gray-700 border border-gray-200';
+    }
+    return 'px-2 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-700 border border-purple-200';
+  }
+
+  getEncargadoText(propiedad: PropiedadDto): string {
+    if (propiedad.encargadoId === this.currentUser?.id) {
+      return '👤 Mi propiedad';
+    }
+    if (!propiedad.encargadoId) {
+      return '📦 Sin encargado';
+    }
+    return '👥 Otro asesor';
+  }
+
+  puedeAsignarEncargado(propiedad: PropiedadDto): boolean {
+    return propiedad.tipo === 'CASA' || propiedad.tipo === 'DEPARTAMENTO';
   }
 
   cambiarOrden(columna: keyof PropiedadDto) {

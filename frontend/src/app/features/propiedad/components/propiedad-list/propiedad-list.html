@@ -119,6 +119,11 @@
                 <th
                   class="px-4 py-3 text-center text-xs font-bold text-white uppercase tracking-wider"
                 >
+                  Encargado
+                </th>
+                <th
+                  class="px-4 py-3 text-center text-xs font-bold text-white uppercase tracking-wider"
+                >
                   Ubicación
                 </th>
                 <th
@@ -197,7 +202,12 @@
                   </span>
                 </td>
 
-                <!-- Columna separada para Ubicación -->
+                <td class="px-4 py-3 whitespace-nowrap text-center">
+                  <span [class]="getEncargadoBadgeClass(propiedad)" class="inline-block">
+                    {{ getEncargadoText(propiedad) }}
+                  </span>
+                </td>
+
                 <td class="px-4 py-3 whitespace-nowrap text-center">
                   @if (tieneUbicacion(propiedad)) {
                   <button
@@ -227,11 +237,10 @@
                     <span class="hidden xs:inline">Mapa</span>
                   </button>
                   } @else {
-                  <span class="text-gray-400 text-sm">Sin ubicación</span>
+                  <span class="text-gray-400 text-sm">-</span>
                   }
                 </td>
 
-                <!-- Columna separada para Acciones -->
                 <td class="px-4 py-3 whitespace-nowrap text-center">
                   <div class="flex justify-center gap-1">
                     <button
@@ -304,7 +313,7 @@
               </tr>
               } @if (filteredPropiedades().length === 0 && !cargando()) {
               <tr>
-                <td colspan="9" class="px-4 py-8 text-center">
+                <td colspan="10" class="px-4 py-8 text-center">
                   <div class="flex flex-col items-center gap-2 text-gray-500">
                     <svg
                       class="w-12 h-12 text-gray-300"
@@ -330,7 +339,6 @@
         </div>
       </div>
 
-      <!-- Vista móvil -->
       <div class="lg:hidden space-y-3">
         @for (propiedad of getPropiedadesPaginadas(); track propiedad.id) {
         <div
@@ -342,12 +350,15 @@
                 <h3 class="font-bold text-white text-sm sm:text-base truncate">
                   {{ propiedad.nombre }}
                 </h3>
-                <div class="flex gap-2 mt-1">
+                <div class="flex flex-wrap gap-1 mt-1">
                   <span [class]="getTipoBadgeClass(propiedad.tipo)" class="text-xs">
                     {{ propiedad.tipo }}
                   </span>
                   <span [class]="getEstadoBadgeClass(propiedad.estado)" class="text-xs">
                     {{ propiedad.estado }}
+                  </span>
+                  <span [class]="getEncargadoBadgeClass(propiedad)" class="text-xs">
+                    {{ getEncargadoText(propiedad) }}
                   </span>
                 </div>
               </div>
@@ -465,7 +476,6 @@
             </div>
             }
 
-            <!-- Sección separada para Ubicación en móvil -->
             @if (tieneUbicacion(propiedad)) {
             <div class="pt-2 border-t border-gray-100">
               <button
@@ -491,7 +501,6 @@
             </div>
             }
 
-            <!-- Sección separada para Acciones en móvil -->
             <div class="flex flex-wrap gap-1 pt-2 border-t border-gray-100">
               <button
                 class="flex items-center justify-center gap-1 bg-blue-500 hover:bg-blue-600 text-white px-2 py-1.5 rounded text-xs font-medium shadow-sm transition flex-1 min-w-[70px]"

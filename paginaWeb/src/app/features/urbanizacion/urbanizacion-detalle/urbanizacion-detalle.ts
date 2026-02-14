@@ -3,9 +3,7 @@ import { UrbanizacionService } from '../services/urbanizacion.service';
 import { Lote, Urbanizacion } from '../../../core/interfaces/datos.interface';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
-
 import Swiper from 'swiper';
-import { BreadcrumbComponent } from "../../../components/breadcrumb/breadcrumb";
 import { environment } from '../../../../environments/environment';
 
 @Component({
@@ -13,15 +11,14 @@ import { environment } from '../../../../environments/environment';
   imports: [CommonModule, RouterModule],
   templateUrl: './urbanizacion-detalle.html',
   styleUrl: './urbanizacion-detalle.css',
-   schemas: [CUSTOM_ELEMENTS_SCHEMA],
+  schemas: [CUSTOM_ELEMENTS_SCHEMA],
 })
 export class UrbanizacionDetalle {
-  // urbanizacion?: Urbanizacion & { lotes: Lote[] };
-    urbanizacion = signal<Urbanizacion|null>(null);
+  urbanizacion = signal<Urbanizacion|null>(null);
   filtroEstado: 'DISPONIBLE' | 'RESERVADO' | 'VENDIDO' | '' = '';
-    lightboxOpen = false;
+  lightboxOpen = false;
   selectedImage: string | null = null;
-  urlServer=environment.fileServer
+  urlServer = environment.fileServer;
 
   constructor(
     private route: ActivatedRoute,
@@ -30,24 +27,22 @@ export class UrbanizacionDetalle {
 
   ngOnInit(): void {
     const uuid = this.route.snapshot.paramMap.get('uuid');
-    console.log(uuid)
     if (uuid) {
       this.urbanizacionService.getByUuid(uuid).subscribe({
-        next: (data) => {this.urbanizacion.set(data.data);
-          console.log("datos")
-          console.log(this.urbanizacion())
+        next: (data) => {
+          this.urbanizacion.set(data.data);
         },
         error: (err) => console.error(err),
       });
     }
   }
+
   lotesFiltrados() {
     if (!this.filtroEstado || !this.urbanizacion()) return this.urbanizacion()?.lotes;
-    return this.urbanizacion()?.lotes.filter((l:any) => l.estado === this.filtroEstado);
+    return this.urbanizacion()?.lotes.filter((l: any) => l.estado === this.filtroEstado);
   }
-  
+
   ngAfterViewInit(): void {
-    // Inicializa Swiper en el contenedor
     new Swiper('.swiper-container', {
       slidesPerView: 1,
       spaceBetween: 10,
@@ -61,8 +56,8 @@ export class UrbanizacionDetalle {
       },
     });
   }
-    openLightbox(url: string) {
-      console.log(url)
+
+  openLightbox(url: string) {
     this.selectedImage = url;
     this.lightboxOpen = true;
   }
@@ -72,4 +67,14 @@ export class UrbanizacionDetalle {
     this.lightboxOpen = false;
   }
 
+  tieneMaps(): boolean {
+    return !!this.urbanizacion()?.maps && this.urbanizacion()!.maps!.trim().length > 0;
+  }
+
+  abrirMaps() {
+    const maps = this.urbanizacion()?.maps;
+    if (maps) {
+      window.open(maps, '_blank', 'noopener,noreferrer');
+    }
+  }
 }

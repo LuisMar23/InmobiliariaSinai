@@ -6,6 +6,8 @@ import {
 import { PrismaService } from 'src/config/prisma.service';
 import { CreateUrbanizacionDto } from './dto/create-urbanizacion.dto';
 import { UpdateUrbanizacionDto } from './dto/update-urbanizacion.dto';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Injectable()
 export class UrbanizacionService {
@@ -53,6 +55,7 @@ export class UrbanizacionService {
           ubicacion: createUrbanizacionDto.ubicacion,
           ciudad: createUrbanizacionDto.ciudad,
           descripcion: createUrbanizacionDto.descripcion,
+          maps: createUrbanizacionDto.maps,
         },
       });
 
@@ -108,7 +111,6 @@ export class UrbanizacionService {
   }
 
   async findOne(id: number) {
-    console.log(id);
     const urbanizacion = await this.prisma.urbanizacion.findUnique({
       where: { id },
       include: {
@@ -149,8 +151,8 @@ export class UrbanizacionService {
       data: urbanizacion,
     };
   }
-  async findOneUUID(uuid:string) {
 
+  async findOneUUID(uuid: string) {
     const urbanizacion = await this.prisma.urbanizacion.findUnique({
       where: { uuid },
       include: {
@@ -164,14 +166,14 @@ export class UrbanizacionService {
         },
         lotes: {
           include: {
-                   archivos: {
-          select: {
-            id: true,
-            urlArchivo: true,
-            tipoArchivo: true,
-            nombreArchivo: true,
-          },
-        },
+            archivos: {
+              select: {
+                id: true,
+                urlArchivo: true,
+                tipoArchivo: true,
+                nombreArchivo: true,
+              },
+            },
             _count: {
               select: {
                 cotizaciones: true,
@@ -199,6 +201,7 @@ export class UrbanizacionService {
       data: urbanizacion,
     };
   }
+
   async update(id: number, updateUrbanizacionDto: UpdateUrbanizacionDto) {
     return this.prisma.$transaction(async (prisma) => {
       const urbanizacionExistente = await prisma.urbanizacion.findUnique({
@@ -244,6 +247,10 @@ export class UrbanizacionService {
         dataToUpdate.descripcion = updateUrbanizacionDto.descripcion;
       }
 
+      if (updateUrbanizacionDto.maps !== undefined) {
+        dataToUpdate.maps = updateUrbanizacionDto.maps;
+      }
+
       const urbanizacionActualizada = await prisma.urbanizacion.update({
         where: { id },
         data: dataToUpdate,
@@ -271,15 +278,13 @@ export class UrbanizacionService {
       const urbanizacion = await prisma.urbanizacion.findUnique({
         where: { id },
         include: {
+          archivos: true,
           lotes: {
             include: {
-              _count: {
-                select: {
-                  cotizaciones: true,
-                  ventas: true,
-                  reservas: true,
-                },
-              },
+              archivos: true,
+              cotizaciones: true,
+              ventas: true,
+              reservas: true,
             },
           },
         },
@@ -291,11 +296,52 @@ export class UrbanizacionService {
 
       const datosAntes = { ...urbanizacion };
 
-      if (urbanizacion.lotes.length > 0) {
-        throw new BadRequestException(
-          'No se puede eliminar la urbanización porque tiene lotes asociados',
-        );
+      for (const lote of urbanizacion.lotes) {
+        const puedeEliminar = lote.estado === 'DISPONIBLE' || lote.estado === 'CON_OFERTA';
+        const tieneOperaciones = lote.cotizaciones.length > 0 || lote.ventas.length > 0 || lote.reservas.length > 0;
+
+        if (!puedeEliminar || tieneOperaciones) {
+          continue;
+        }
+
+        for (const archivo of lote.archivos) {
+          if (archivo.urlArchivo) {
+            const filePath = path.join(process.cwd(), archivo.urlArchivo);
+            try {
+              if (fs.existsSync(filePath)) {
+                fs.unlinkSync(filePath);
+              }
+            } catch (err) {}
+          }
+        }
+
+        await prisma.archivo.deleteMany({
+          where: { loteId: lote.id },
+        });
+
+        await prisma.lotePromocion.deleteMany({
+          where: { loteId: lote.id },
+        });
+
+        await prisma.lote.delete({
+          where: { id: lote.id },
+        });
       }
+
+      for (const archivo of urbanizacion.archivos) {
+        if (archivo.urlArchivo) {
+          const filePath = path.join(process.cwd(), archivo.urlArchivo);
+          try {
+            if (fs.existsSync(filePath)) {
+              fs.unlinkSync(filePath);
+            }
+          } catch (err) {}
+        }
+      }
+
+      await prisma.archivo.deleteMany({
+        where: { urbanizacionId: id },
+      });
 
       await prisma.urbanizacion.delete({
         where: { id },

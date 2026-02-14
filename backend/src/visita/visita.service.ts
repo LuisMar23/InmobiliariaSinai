@@ -4,6 +4,7 @@ import {
   BadRequestException,
   ForbiddenException,
   InternalServerErrorException,
+  Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../config/prisma.service';
 import {
@@ -15,6 +16,8 @@ import {
 
 @Injectable()
 export class VisitasService {
+  private readonly logger = new Logger(VisitasService.name);
+
   constructor(private prisma: PrismaService) {}
 
   private getCurrentTimeLaPaz(): Date {
@@ -43,11 +46,10 @@ export class VisitasService {
           datosDespues: datosDespues ? JSON.stringify(datosDespues) : null,
           ip: '127.0.0.1',
           dispositivo: 'API',
-          createdAt: this.getCurrentTimeLaPaz(),
         },
       });
     } catch (error) {
-      console.error('Error creando auditoría:', error);
+      // Silenciar error de auditoría
     }
   }
 
@@ -117,6 +119,9 @@ export class VisitasService {
       if (!lote) {
         throw new BadRequestException('Lote no encontrado');
       }
+      if (lote.estado !== 'DISPONIBLE' && lote.estado !== 'CON_OFERTA') {
+        throw new BadRequestException('El lote no está disponible para visita');
+      }
     } else if (inmuebleTipo === TipoInmueble.PROPIEDAD) {
       const propiedad = await this.prisma.propiedad.findUnique({
         where: { id: inmuebleId },
@@ -124,14 +129,29 @@ export class VisitasService {
       if (!propiedad) {
         throw new BadRequestException('Propiedad no encontrada');
       }
+      if (
+        propiedad.estado !== 'DISPONIBLE' &&
+        propiedad.estado !== 'CON_OFERTA'
+      ) {
+        throw new BadRequestException(
+          'La propiedad no está disponible para visita',
+        );
+      }
+    } else {
+      throw new BadRequestException('Tipo de inmueble no válido');
     }
   }
 
   async create(createVisitaDto: CreateVisitaDto, usuarioId: number) {
-    try {
-      return await this.prisma.$transaction(async (prisma) => {
+    return this.prisma.$transaction(async (prisma) => {
+      try {
         const usuario = await prisma.user.findFirst({
           where: { id: usuarioId, isActive: true },
+          select: {
+            id: true,
+            role: true,
+            isActive: true,
+          },
         });
 
         if (!usuario) {
@@ -151,6 +171,7 @@ export class VisitasService {
             isActive: true,
             role: 'CLIENTE',
           },
+          select: { id: true, isActive: true, role: true },
         });
 
         if (!cliente) {
@@ -173,6 +194,21 @@ export class VisitasService {
           );
         }
 
+        const visitaExistente = await prisma.visita.findFirst({
+          where: {
+            clienteId: createVisitaDto.clienteId,
+            inmuebleTipo: createVisitaDto.inmuebleTipo,
+            inmuebleId: createVisitaDto.inmuebleId,
+            fechaVisita: fechaVisita,
+          },
+        });
+
+        if (visitaExistente) {
+          throw new BadRequestException(
+            'Ya existe una visita programada para este inmueble en la misma fecha',
+          );
+        }
+
         const visita = await prisma.visita.create({
           data: {
             clienteId: createVisitaDto.clienteId,
@@ -183,25 +219,30 @@ export class VisitasService {
             estado: createVisitaDto.estado || EstadoVisita.PENDIENTE,
             comentarios: createVisitaDto.comentarios || null,
           },
-          include: {
+          select: {
+            id: true,
+            uuid: true,
+            clienteId: true,
+            asesorId: true,
+            inmuebleTipo: true,
+            inmuebleId: true,
+            fechaVisita: true,
+            estado: true,
+            comentarios: true,
+            createdAt: true,
+            updatedAt: true,
             cliente: {
               select: {
                 id: true,
                 fullName: true,
                 ci: true,
                 telefono: true,
-                direccion: true,
-                role: true,
-                createdAt: true,
               },
             },
             asesor: {
               select: {
                 id: true,
-                username: true,
-                email: true,
                 fullName: true,
-                role: true,
               },
             },
           },
@@ -213,15 +254,7 @@ export class VisitasService {
           'Visita',
           visita.id,
           null,
-          {
-            clienteId: visita.clienteId,
-            asesorId: visita.asesorId,
-            inmuebleTipo: visita.inmuebleTipo,
-            inmuebleId: visita.inmuebleId,
-            fechaVisita: visita.fechaVisita,
-            estado: visita.estado,
-            comentarios: visita.comentarios,
-          },
+          visita,
         );
 
         return {
@@ -229,16 +262,17 @@ export class VisitasService {
           message: 'Visita creada correctamente',
           data: visita,
         };
-      });
-    } catch (error) {
-      if (
-        error instanceof ForbiddenException ||
-        error instanceof BadRequestException
-      ) {
-        throw error;
+      } catch (error) {
+        if (
+          error instanceof ForbiddenException ||
+          error instanceof BadRequestException
+        ) {
+          throw error;
+        }
+        this.logger.error(`Error al crear visita: ${error.message}`);
+        throw new InternalServerErrorException('Error al crear la visita');
       }
-      throw new InternalServerErrorException('Error interno del servidor');
-    }
+    });
   }
 
   async findAll(clienteId?: number, estado?: string) {
@@ -250,24 +284,30 @@ export class VisitasService {
 
       const visitas = await this.prisma.visita.findMany({
         where,
-        include: {
+        select: {
+          id: true,
+          uuid: true,
+          clienteId: true,
+          asesorId: true,
+          inmuebleTipo: true,
+          inmuebleId: true,
+          fechaVisita: true,
+          estado: true,
+          comentarios: true,
+          createdAt: true,
+          updatedAt: true,
           cliente: {
             select: {
               id: true,
               fullName: true,
               ci: true,
               telefono: true,
-              direccion: true,
-              role: true,
             },
           },
           asesor: {
             select: {
               id: true,
-              username: true,
-              email: true,
               fullName: true,
-              role: true,
             },
           },
         },
@@ -293,7 +333,8 @@ export class VisitasService {
 
       return { success: true, data: visitasConInfo };
     } catch (error) {
-      throw new InternalServerErrorException('Error interno del servidor');
+      this.logger.error(`Error al obtener visitas: ${error.message}`);
+      throw new InternalServerErrorException('Error al obtener las visitas');
     }
   }
 
@@ -301,7 +342,18 @@ export class VisitasService {
     try {
       const visita = await this.prisma.visita.findUnique({
         where: { id },
-        include: {
+        select: {
+          id: true,
+          uuid: true,
+          clienteId: true,
+          asesorId: true,
+          inmuebleTipo: true,
+          inmuebleId: true,
+          fechaVisita: true,
+          estado: true,
+          comentarios: true,
+          createdAt: true,
+          updatedAt: true,
           cliente: {
             select: {
               id: true,
@@ -309,18 +361,13 @@ export class VisitasService {
               ci: true,
               telefono: true,
               direccion: true,
-              observaciones: true,
-              role: true,
             },
           },
           asesor: {
             select: {
               id: true,
-              username: true,
-              email: true,
               fullName: true,
               telefono: true,
-              role: true,
             },
           },
         },
@@ -347,7 +394,8 @@ export class VisitasService {
       if (error instanceof NotFoundException) {
         throw error;
       }
-      throw new InternalServerErrorException('Error interno del servidor');
+      this.logger.error(`Error al obtener visita: ${error.message}`);
+      throw new InternalServerErrorException('Error al obtener la visita');
     }
   }
 
@@ -356,10 +404,11 @@ export class VisitasService {
     updateVisitaDto: UpdateVisitaDto,
     usuarioId: number,
   ) {
-    try {
-      return await this.prisma.$transaction(async (prisma) => {
+    return this.prisma.$transaction(async (prisma) => {
+      try {
         const usuario = await prisma.user.findFirst({
           where: { id: usuarioId, isActive: true },
+          select: { id: true, role: true, isActive: true },
         });
 
         if (!usuario) {
@@ -390,6 +439,7 @@ export class VisitasService {
               isActive: true,
               role: 'CLIENTE',
             },
+            select: { id: true, isActive: true, role: true },
           });
           if (!cliente) {
             throw new BadRequestException(
@@ -419,23 +469,30 @@ export class VisitasService {
         const visitaActualizada = await prisma.visita.update({
           where: { id },
           data: updateVisitaDto,
-          include: {
+          select: {
+            id: true,
+            uuid: true,
+            clienteId: true,
+            asesorId: true,
+            inmuebleTipo: true,
+            inmuebleId: true,
+            fechaVisita: true,
+            estado: true,
+            comentarios: true,
+            createdAt: true,
+            updatedAt: true,
             cliente: {
               select: {
                 id: true,
                 fullName: true,
                 ci: true,
                 telefono: true,
-                role: true,
               },
             },
             asesor: {
               select: {
                 id: true,
-                username: true,
-                email: true,
                 fullName: true,
-                role: true,
               },
             },
           },
@@ -455,24 +512,26 @@ export class VisitasService {
           message: 'Visita actualizada correctamente',
           data: visitaActualizada,
         };
-      });
-    } catch (error) {
-      if (
-        error instanceof ForbiddenException ||
-        error instanceof NotFoundException ||
-        error instanceof BadRequestException
-      ) {
-        throw error;
+      } catch (error) {
+        if (
+          error instanceof ForbiddenException ||
+          error instanceof NotFoundException ||
+          error instanceof BadRequestException
+        ) {
+          throw error;
+        }
+        this.logger.error(`Error al actualizar visita: ${error.message}`);
+        throw new InternalServerErrorException('Error al actualizar la visita');
       }
-      throw new InternalServerErrorException('Error interno del servidor');
-    }
+    });
   }
 
   async remove(id: number, usuarioId: number) {
-    try {
-      return await this.prisma.$transaction(async (prisma) => {
+    return this.prisma.$transaction(async (prisma) => {
+      try {
         const usuario = await prisma.user.findFirst({
           where: { id: usuarioId, isActive: true },
+          select: { id: true, role: true, isActive: true },
         });
 
         if (!usuario) {
@@ -508,22 +567,30 @@ export class VisitasService {
         );
 
         return { success: true, message: 'Visita eliminada correctamente' };
-      });
-    } catch (error) {
-      if (
-        error instanceof ForbiddenException ||
-        error instanceof NotFoundException
-      ) {
-        throw error;
+      } catch (error) {
+        if (
+          error instanceof ForbiddenException ||
+          error instanceof NotFoundException
+        ) {
+          throw error;
+        }
+        this.logger.error(`Error al eliminar visita: ${error.message}`);
+        throw new InternalServerErrorException('Error al eliminar la visita');
       }
-      throw new InternalServerErrorException('Error interno del servidor');
-    }
+    });
   }
 
   async getVisitasPorCliente(clienteId: number) {
     try {
       const cliente = await this.prisma.user.findFirst({
         where: { id: clienteId, isActive: true, role: 'CLIENTE' },
+        select: {
+          id: true,
+          fullName: true,
+          ci: true,
+          telefono: true,
+          direccion: true,
+        },
       });
 
       if (!cliente) {
@@ -532,13 +599,19 @@ export class VisitasService {
 
       const visitas = await this.prisma.visita.findMany({
         where: { clienteId: clienteId },
-        include: {
+        select: {
+          id: true,
+          uuid: true,
+          inmuebleTipo: true,
+          inmuebleId: true,
+          fechaVisita: true,
+          estado: true,
+          comentarios: true,
           asesor: {
             select: {
               id: true,
               fullName: true,
               telefono: true,
-              role: true,
             },
           },
         },
@@ -570,7 +643,10 @@ export class VisitasService {
       if (error instanceof NotFoundException) {
         throw error;
       }
-      throw new InternalServerErrorException('Error interno del servidor');
+      this.logger.error(
+        `Error al obtener visitas por cliente: ${error.message}`,
+      );
+      throw new InternalServerErrorException('Error al obtener las visitas');
     }
   }
 
@@ -578,6 +654,12 @@ export class VisitasService {
     try {
       const asesor = await this.prisma.user.findFirst({
         where: { id: asesorId, isActive: true, role: 'ASESOR' },
+        select: {
+          id: true,
+          fullName: true,
+          telefono: true,
+          email: true,
+        },
       });
 
       if (!asesor) {
@@ -586,14 +668,20 @@ export class VisitasService {
 
       const visitas = await this.prisma.visita.findMany({
         where: { asesorId: asesorId },
-        include: {
+        select: {
+          id: true,
+          uuid: true,
+          inmuebleTipo: true,
+          inmuebleId: true,
+          fechaVisita: true,
+          estado: true,
+          comentarios: true,
           cliente: {
             select: {
               id: true,
               fullName: true,
               ci: true,
               telefono: true,
-              role: true,
             },
           },
         },
@@ -625,7 +713,10 @@ export class VisitasService {
       if (error instanceof NotFoundException) {
         throw error;
       }
-      throw new InternalServerErrorException('Error interno del servidor');
+      this.logger.error(
+        `Error al obtener visitas por asesor: ${error.message}`,
+      );
+      throw new InternalServerErrorException('Error al obtener las visitas');
     }
   }
 }

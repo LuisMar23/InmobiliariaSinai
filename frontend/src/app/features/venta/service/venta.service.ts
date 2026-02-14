@@ -43,7 +43,7 @@ export class VentaService {
     clienteId?: number,
     asesorId?: number,
     page: number = 1,
-    limit: number = 10
+    limit: number = 10,
   ): Observable<{ ventas: VentaDto[]; pagination: any }> {
     let url = this.apiUrl;
     const params = [];
@@ -71,7 +71,7 @@ export class VentaService {
       catchError((error) => {
         console.error('Error loading sales:', error);
         return throwError(() => error);
-      })
+      }),
     );
   }
 
@@ -86,7 +86,7 @@ export class VentaService {
       catchError((error) => {
         console.error('Error loading sale:', error);
         return throwError(() => error);
-      })
+      }),
     );
   }
 
@@ -117,7 +117,7 @@ export class VentaService {
       catchError((error) => {
         console.error('Error creating sale:', error);
         return throwError(() => error);
-      })
+      }),
     );
   }
 
@@ -125,8 +125,6 @@ export class VentaService {
     const updateData: any = {};
 
     if (venta.clienteId !== undefined) updateData.clienteId = Number(venta.clienteId);
-    if (venta.inmuebleTipo !== undefined) updateData.inmuebleTipo = venta.inmuebleTipo;
-    if (venta.inmuebleId !== undefined) updateData.inmuebleId = Number(venta.inmuebleId);
     if (venta.precioFinal !== undefined) updateData.precioFinal = Number(venta.precioFinal);
     if (venta.estado !== undefined) updateData.estado = venta.estado;
     if (venta.observaciones !== undefined) updateData.observaciones = venta.observaciones;
@@ -141,7 +139,7 @@ export class VentaService {
       catchError((error) => {
         console.error('Error updating sale:', error);
         return throwError(() => error);
-      })
+      }),
     );
   }
 
@@ -166,14 +164,14 @@ export class VentaService {
       catchError((error) => {
         console.error('Error updating payment plan:', error);
         return throwError(() => error);
-      })
+      }),
     );
   }
 
   actualizarMontoInicialPlanPago(
     ventaId: number,
     nuevoMontoInicial: number,
-    cajaId: number
+    cajaId: number,
   ): Observable<any> {
     return this.http
       .patch<ApiResponse<any>>(`${this.apiUrl}/plan-pago/${ventaId}/monto-inicial`, {
@@ -190,7 +188,7 @@ export class VentaService {
         catchError((error) => {
           console.error('Error updating initial amount:', error);
           return throwError(() => error);
-        })
+        }),
       );
   }
 
@@ -209,7 +207,7 @@ export class VentaService {
         catchError((error) => {
           console.error('Error deleting sale:', error);
           return throwError(() => error);
-        })
+        }),
       );
   }
 
@@ -234,7 +232,7 @@ export class VentaService {
         catchError((error) => {
           console.error('Error creating payment:', error);
           return throwError(() => error);
-        })
+        }),
       );
   }
 
@@ -249,7 +247,7 @@ export class VentaService {
       catchError((error) => {
         console.error('Error updating payment:', error);
         return throwError(() => error);
-      })
+      }),
     );
   }
 
@@ -268,7 +266,7 @@ export class VentaService {
         catchError((error) => {
           console.error('Error deleting payment:', error);
           return throwError(() => error);
-        })
+        }),
       );
   }
 
@@ -283,7 +281,7 @@ export class VentaService {
       catchError((error) => {
         console.error('Error loading payments:', error);
         return throwError(() => error);
-      })
+      }),
     );
   }
 
@@ -298,7 +296,7 @@ export class VentaService {
       catchError((error) => {
         console.error('Error loading payment summary:', error);
         return throwError(() => error);
-      })
+      }),
     );
   }
 
@@ -315,7 +313,7 @@ export class VentaService {
         catchError((error) => {
           console.error('Error loading active payment plans:', error);
           return throwError(() => error);
-        })
+        }),
       );
   }
 
@@ -332,7 +330,7 @@ export class VentaService {
         catchError((error) => {
           console.error('Error checking delinquency:', error);
           return throwError(() => error);
-        })
+        }),
       );
   }
 
@@ -349,7 +347,7 @@ export class VentaService {
         catchError((error) => {
           console.error('Error loading client sales:', error);
           return throwError(() => error);
-        })
+        }),
       );
   }
 
@@ -364,7 +362,7 @@ export class VentaService {
       catchError((error) => {
         console.error('Error loading active boxes:', error);
         return throwError(() => error);
-      })
+      }),
     );
   }
 

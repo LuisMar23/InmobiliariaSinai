@@ -31,13 +31,12 @@ export class CotizacionController {
 
   @Get()
   findAll(
-    @Query('clienteId') clienteId?: string,
+    @Query('nombreCliente') nombreCliente?: string,
+    @Query('contactoCliente') contactoCliente?: string,
     @Query('estado') estado?: string,
+    @Query('detalle') detalle?: string,
   ) {
-    return this.cotizacionService.findAll(
-      clienteId ? +clienteId : undefined,
-      estado,
-    );
+    return this.cotizacionService.findAll(nombreCliente, contactoCliente, estado, detalle);
   }
 
   @Get(':id')

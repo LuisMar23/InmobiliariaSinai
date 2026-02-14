@@ -1,4 +1,3 @@
-// src/app/core/interfaces/urbanizacion.interface.ts
 export interface UrbanizacionDto {
   id?: number;
   uuid?: string;
@@ -6,9 +5,10 @@ export interface UrbanizacionDto {
   ubicacion: string;
   ciudad: string;
   descripcion?: string;
+  maps?: string; // URL de Google Maps
   createdAt?: Date;
   updatedAt?: Date;
-  archivos?:any;
+  archivos?: any;
   _count?: {
     lotes: number;
   };
@@ -19,6 +19,7 @@ export interface CreateUrbanizacionDto {
   ubicacion: string;
   ciudad: string;
   descripcion?: string;
+  maps?: string; // URL de Google Maps
 }
 
 export interface UpdateUrbanizacionDto {
@@ -26,4 +27,5 @@ export interface UpdateUrbanizacionDto {
   ubicacion?: string;
   ciudad?: string;
   descripcion?: string;
+  maps?: string; // URL de Google Maps
 }

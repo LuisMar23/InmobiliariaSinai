@@ -33,7 +33,7 @@ export class CotizacionList implements OnInit {
 
   columns: ColumnConfig[] = [
     { key: 'id', label: 'ID', sortable: true },
-    { key: 'cliente', label: 'Cliente', sortable: true },
+    { key: 'nombreCliente', label: 'Cliente', sortable: true },
     { key: 'asesor', label: 'Asesor', sortable: true },
     { key: 'lote', label: 'Lote', sortable: true },
     { key: 'precioOfertado', label: 'Precio Ofertado', sortable: true },
@@ -55,10 +55,12 @@ export class CotizacionList implements OnInit {
     if (term) {
       cotizaciones = cotizaciones.filter(
         (cotizacion: CotizacionDto) =>
-          cotizacion.cliente?.fullName?.toLowerCase().includes(term) ||
+          cotizacion.nombreCliente?.toLowerCase().includes(term) ||
+          cotizacion.contactoCliente?.toLowerCase().includes(term) ||
+          cotizacion.detalle?.toLowerCase().includes(term) ||
           cotizacion.asesor?.fullName?.toLowerCase().includes(term) ||
           cotizacion.lote?.numeroLote?.toLowerCase().includes(term) ||
-          cotizacion.estado?.toLowerCase().includes(term)
+          cotizacion.estado?.toLowerCase().includes(term),
       );
     }
 
@@ -71,10 +73,6 @@ export class CotizacionList implements OnInit {
       let aValue: any = a[column];
       let bValue: any = b[column];
 
-      if (column === 'cliente') {
-        aValue = a.cliente?.fullName;
-        bValue = b.cliente?.fullName;
-      }
       if (column === 'asesor') {
         aValue = a.asesor?.fullName;
         bValue = b.asesor?.fullName;
@@ -111,14 +109,12 @@ export class CotizacionList implements OnInit {
     this.error.set(null);
     this.cotizacionSvc.getAll().subscribe({
       next: (cotizaciones) => {
-        console.log('Cotizaciones cargadas:', cotizaciones); // Debug
         this.cotizaciones.set(cotizaciones);
         this.allCotizaciones.set(cotizaciones);
         this.total.set(cotizaciones.length);
         this.cargando.set(false);
       },
       error: (err) => {
-        console.error('Error al cargar cotizaciones:', err); // Debug
         this.error.set('No se pudieron cargar las cotizaciones');
         this.cargando.set(false);
       },
@@ -157,7 +153,7 @@ export class CotizacionList implements OnInit {
 
     if (!currentUser || !rolesPermitidos.includes(currentUser.role)) {
       this.notificationService.showError(
-        'Solo los asesores, administradores y secretarias pueden eliminar cotizaciones'
+        'Solo los asesores, administradores y secretarias pueden eliminar cotizaciones',
       );
       return;
     }

@@ -3,7 +3,6 @@ import {
   IsNumber,
   IsEnum,
   IsOptional,
-  IsInt,
   Min,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -20,47 +19,28 @@ export enum TipoInmueble {
 }
 
 export class CreateCotizacionDto {
-  @IsInt()
-  @Min(1)
-  clienteId: number;
+  @IsString()
+  nombreCliente: string;
+
+  @IsString()
+  contactoCliente: string;
+
+  @IsOptional()
+  @IsString()
+  detalle?: string;
 
   @IsEnum(TipoInmueble)
   inmuebleTipo: TipoInmueble;
 
-  @IsInt()
+  @IsNumber({ maxDecimalPlaces: 0 })
   @Min(1)
+  @Type(() => Number)
   inmuebleId: number;
 
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0.01)
   @Type(() => Number)
   precioOfertado: number;
-
-  @IsOptional()
-  @IsEnum(EstadoCotizacion)
-  estado?: EstadoCotizacion;
-}
-
-export class UpdateCotizacionDto {
-  @IsOptional()
-  @IsInt()
-  @Min(1)
-  clienteId?: number;
-
-  @IsOptional()
-  @IsEnum(TipoInmueble)
-  inmuebleTipo?: TipoInmueble;
-
-  @IsOptional()
-  @IsInt()
-  @Min(1)
-  inmuebleId?: number;
-
-  @IsOptional()
-  @IsNumber({ maxDecimalPlaces: 2 })
-  @Min(0.01)
-  @Type(() => Number)
-  precioOfertado?: number;
 
   @IsOptional()
   @IsEnum(EstadoCotizacion)

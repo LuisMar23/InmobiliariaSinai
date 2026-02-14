@@ -71,6 +71,9 @@
                 </th>
                 }
                 <th class="px-4 py-3 text-center text-xs font-bold text-white uppercase tracking-wider">
+                  Encargado
+                </th>
+                <th class="px-4 py-3 text-center text-xs font-bold text-white uppercase tracking-wider">
                   Ubicación
                 </th>
                 <th class="px-4 py-3 text-center text-xs font-bold text-white uppercase tracking-wider">
@@ -80,157 +83,143 @@
             </thead>
             <tbody class="bg-white divide-y divide-gray-100">
               @for (lote of getLotesPaginados(); track lote.id) {
-        <tr class="hover:bg-gray-50 transition-colors">
-            <!-- Celda principal - Siempre visible -->
-            <td class="px-4 py-3">
-              <div class="flex items-start gap-2">
-                <!-- Ícono -->
-                <div class="w-6 h-6 bg-emerald-100 rounded flex items-center justify-center flex-shrink-0">
-                  <svg class="w-3 h-3 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                  </svg>
-                </div>
+              <tr class="hover:bg-gray-50 transition-colors">
+                <td class="px-4 py-3">
+                  <div class="flex items-start gap-2">
+                    <div class="w-6 h-6 bg-emerald-100 rounded flex items-center justify-center flex-shrink-0">
+                      <svg class="w-3 h-3 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                      </svg>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                      <p class="font-medium text-gray-900 text-sm truncate">
+                        {{ lote.numeroLote }}
+                      </p>
+                      <div class="sm:hidden space-y-1 mt-1">
+                        @if (lote.urbanizacion) {
+                        <p class="text-xs text-gray-500">
+                          {{ lote.urbanizacion.nombre }}
+                        </p>
+                        }
+                        <p class="text-xs text-gray-500">{{ lote.ciudad }}</p>
+                        <p class="text-xs font-semibold text-gray-600">{{ lote.superficieM2 }} m²</p>
+                      </div>
+                      <div class="mt-1">
+                        <span [class]="getTipoLoteBadgeClass(lote.esIndependiente)" 
+                              class="text-xs inline-flex items-center px-2 py-0.5 rounded-full">
+                          {{ getTipoLoteText(lote.esIndependiente) }}
+                        </span>
+                      </div>
+                      @if (lote.descripcion) {
+                      <p class="mt-1 text-xs text-gray-500 break-words max-w-full line-clamp-2">
+                        {{ lote.descripcion }}
+                      </p>
+                      }
+                    </div>
+                  </div>
+                </td>
                 
-                <!-- Contenido -->
-                <div class="min-w-0 flex-1">
-                  <!-- Número de lote -->
-                  <p class="font-medium text-gray-900 text-sm truncate" x-tooltip="lote.numeroLote">
-                    {{ lote.numeroLote }}
-                  </p>
-                  
-                  <!-- Información para móviles -->
-                  <div class="sm:hidden space-y-1 mt-1">
-                    @if (lote.urbanizacion) {
-                    <p class="text-xs text-gray-500">
-                      {{ lote.urbanizacion.nombre }}
+                <td class="px-4 py-3 whitespace-nowrap hidden sm:table-cell">
+                  @if (lote.urbanizacion) {
+                  <div>
+                    <p class="text-gray-900 font-medium text-sm truncate">{{ lote.urbanizacion.nombre }}</p>
+                    <p class="text-xs text-gray-500 truncate">
+                      {{ lote.urbanizacion.ubicacion || 'Sin ubicación' }}
                     </p>
-                    }
-                    <p class="text-xs text-gray-500">{{ lote.ciudad }}</p>
-                    <p class="text-xs font-semibold text-gray-600">{{ lote.superficieM2 }} m²</p>
                   </div>
-                  
-                  <!-- Tipo de lote -->
-                  <div class="mt-1">
-                    <span [class]="getTipoLoteBadgeClass(lote.esIndependiente)" 
-                          class="text-xs inline-flex items-center px-2 py-0.5 rounded-full">
-                      {{ getTipoLoteText(lote.esIndependiente) }}
-                    </span>
-                  </div>
-                  
-                  <!-- Descripción optimizada -->
-                  @if (lote.descripcion) {
-                  <p class="mt-1 text-xs text-gray-500 break-words max-w-full line-clamp-2"
-                     x-tooltip="lote.descripcion">
-                    {{ lote.descripcion }}
-                  </p>
+                  } @else {
+                  <span class="text-gray-400 text-sm">-</span>
                   }
-                </div>
-              </div>
-            </td>
-            
-            <!-- Urbanización - Oculto en móvil -->
-            <td class="px-4 py-3 whitespace-nowrap hidden sm:table-cell">
-              @if (lote.urbanizacion) {
-              <div>
-                <p class="text-gray-900 font-medium text-sm truncate">{{ lote.urbanizacion.nombre }}</p>
-                <p class="text-xs text-gray-500 truncate">
-                  {{ lote.urbanizacion.ubicacion || 'Sin ubicación' }}
-                </p>
-              </div>
-              } @else {
-              <span class="text-gray-400 text-sm">-</span>
-              }
-            </td>
-            
-            <!-- Ciudad - Oculto en tablet pequeña -->
-            <td class="px-4 py-3 whitespace-nowrap hidden md:table-cell">
-              <p class="text-gray-900 font-medium text-sm truncate">{{ lote.ciudad }}</p>
-            </td>
-            
-            <!-- Superficie - Siempre visible -->
-            <td class="px-4 py-3 whitespace-nowrap">
-              <p class="text-gray-900 font-semibold text-sm hidden sm:block">{{ lote.superficieM2 }} m²</p>
-            </td>
-            
-            <!-- Precio - Oculto en pantallas pequeñas -->
-            <td class="px-4 py-3 whitespace-nowrap hidden lg:table-cell">
-              <p class="text-gray-600 font-semibold text-sm">$ {{ lote.precioBase | number : '1.2-2' }}</p>
-            </td>
-            
-            <!-- Estado - Siempre visible -->
-            <td class="px-4 py-3 whitespace-nowrap">
-              <span [class]="getEstadoBadgeClass(lote.estado)" 
-                    class="text-xs inline-block px-2 py-1 rounded-full">
-                {{ lote.estado }}
-              </span>
-            </td>
-            
-            <!-- Ubicación (Mapa) -->
-            <td class="px-4 py-3 whitespace-nowrap text-center">
-              @if (tieneUbicacion(lote)) {
-              <button
-                class="flex items-center justify-center gap-2 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg shadow-md transition-all duration-200 font-medium text-xs sm:text-sm mx-auto"
-                (click)="abrirMapa(lote)"
-                title="Ver Ubicación en Mapa">
-                <svg class="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                <span class="hidden xs:inline">Mapa</span>
-              </button>
-              } @else {
-              <span class="text-gray-400 text-sm">-</span>
-              }
-            </td>
-            
-            <!-- Acciones - Adaptadas para móvil -->
-            <td class="px-4 py-3 whitespace-nowrap">
-              <div class="flex justify-center gap-1">
-                <button
-                  class="p-1 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
-                  [routerLink]="['/lotes/editar', lote.id]"
-                  title="Editar">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                </button>
+                </td>
                 
-                <button
-                  class="p-1 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors"
-                  [routerLink]="['/lotes/detalle', lote.id]"
-                  title="Ver Detalles">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                  </svg>
-                </button>
+                <td class="px-4 py-3 whitespace-nowrap hidden md:table-cell">
+                  <p class="text-gray-900 font-medium text-sm truncate">{{ lote.ciudad }}</p>
+                </td>
                 
-                <!-- Los botones menos importantes pueden estar en menú desplegable en móvil -->
-                <div class="hidden sm:flex gap-1">
+                <td class="px-4 py-3 whitespace-nowrap">
+                  <p class="text-gray-900 font-semibold text-sm hidden sm:block">{{ lote.superficieM2 }} m²</p>
+                </td>
+                
+                <td class="px-4 py-3 whitespace-nowrap hidden lg:table-cell">
+                  <p class="text-gray-600 font-semibold text-sm">$ {{ lote.precioBase | number : '1.2-2' }}</p>
+                </td>
+                
+                <td class="px-4 py-3 whitespace-nowrap">
+                  <span [class]="getEstadoBadgeClass(lote.estado)" 
+                        class="text-xs inline-block px-2 py-1 rounded-full">
+                    {{ lote.estado }}
+                  </span>
+                </td>
+                
+                <td class="px-4 py-3 whitespace-nowrap text-center">
+                  <span [class]="getEncargadoBadgeClass(lote)" class="inline-block">
+                    {{ getEncargadoText(lote) }}
+                  </span>
+                </td>
+                
+                <td class="px-4 py-3 whitespace-nowrap text-center">
+                  @if (tieneUbicacion(lote)) {
                   <button
-                    class="p-1 rounded-lg bg-teal-50 text-teal-600 hover:bg-teal-100 transition-colors"
-                    (click)="abrirModalSubirArchivos(lote)"
-                    title="Subir Archivos">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v16h16V4H4zm4 8h8m-4-4v8" />
+                    class="flex items-center justify-center gap-2 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg shadow-md transition-all duration-200 font-medium text-xs sm:text-sm mx-auto"
+                    (click)="abrirMapa(lote)"
+                    title="Ver Ubicación en Mapa">
+                    <svg class="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
+                    <span class="hidden xs:inline">Mapa</span>
                   </button>
-                  
-                  <button
-                    class="p-1 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
-                    (click)="eliminarLote(lote.id)"
-                    title="Eliminar">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-            </td>
-          </tr>
+                  } @else {
+                  <span class="text-gray-400 text-sm">-</span>
+                  }
+                </td>
+                
+                <td class="px-4 py-3 whitespace-nowrap">
+                  <div class="flex justify-center gap-1">
+                    <button
+                      class="p-1 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+                      [routerLink]="['/lotes/editar', lote.id]"
+                      title="Editar">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
+                    
+                    <button
+                      class="p-1 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors"
+                      [routerLink]="['/lotes/detalle', lote.id]"
+                      title="Ver Detalles">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                    </button>
+                    
+                    <div class="hidden sm:flex gap-1">
+                      <button
+                        class="p-1 rounded-lg bg-teal-50 text-teal-600 hover:bg-teal-100 transition-colors"
+                        (click)="abrirModalSubirArchivos(lote)"
+                        title="Subir Archivos">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v16h16V4H4zm4 8h8m-4-4v8" />
+                        </svg>
+                      </button>
+                      
+                      <button
+                        class="p-1 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+                        (click)="eliminarLote(lote.id)"
+                        title="Eliminar">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                </td>
+              </tr>
               } @if (filteredLotes().length === 0 && !cargando()) {
               <tr>
-                <td colspan="8" class="px-4 py-8 text-center">
+                <td colspan="9" class="px-4 py-8 text-center">
                   <div class="flex flex-col items-center gap-2 text-gray-500">
                     <svg class="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -246,28 +235,32 @@
           </table>
         </div>
       </div>
+      
       <div class="lg:hidden space-y-3">
         @for (lote of getLotesPaginados(); track lote.id) {
-        <div
-          class="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden w-full max-w-full">
+        <div class="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden w-full max-w-full">
           <div class="bg-gradient-to-r from-emerald-500 to-emerald-600 p-3">
             <div class="flex justify-between items-start gap-2">
               <div class="flex-1 min-w-0">
                 <h3 class="font-bold text-white text-sm sm:text-base truncate">
                   Lote {{ lote.numeroLote }}
                 </h3>
-                <div class="flex gap-2 mt-1">
+                <div class="flex flex-wrap gap-1 mt-1">
                   <span [class]="getTipoLoteBadgeClass(lote.esIndependiente)" class="text-xs">
                     {{ getTipoLoteText(lote.esIndependiente) }}
                   </span>
                   <span [class]="getEstadoBadgeClass(lote.estado)" class="text-xs">
                     {{ lote.estado }}
                   </span>
+                  <span [class]="getEncargadoBadgeClass(lote)" class="text-xs">
+                    {{ getEncargadoText(lote) }}
+                  </span>
                 </div>
               </div>
             </div>
           </div>
-          <div class="p-3 space-y=2">
+          
+          <div class="p-3 space-y-2">
             <div class="grid grid-cols-2 gap-3 text-xs">
               <div class="space-y-1">
                 <div class="flex items-center gap-1 text-gray-500">
@@ -324,7 +317,6 @@
             </div>
             }
 
-            <!-- Sección separada para Ubicación en móvil -->
             @if (tieneUbicacion(lote)) {
             <div class="pt-2 border-t border-gray-100">
               <button
@@ -341,7 +333,6 @@
             </div>
             }
 
-            <!-- Sección separada para Acciones en móvil -->
             <div class="flex flex-wrap gap-1 pt-2 border-t border-gray-100">
               <button
                 class="flex items-center justify-center gap-1 bg-blue-500 hover:bg-blue-600 text-white px-2 py-1.5 rounded text-xs font-medium shadow-sm transition flex-1 min-w-[70px]"
@@ -432,6 +423,7 @@
     </div>
   </div>
 </div>
+
 @if (mostrarUploader() && loteSeleccionado()) {
 <div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
   <div class="bg-white rounded-xl p-6 shadow-lg w-[400px] relative">

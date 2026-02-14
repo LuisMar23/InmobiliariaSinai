@@ -6,6 +6,8 @@ import {
 import { PrismaService } from 'src/config/prisma.service';
 import { CreateLoteDto, EstadoInmueble } from './dto/create-lote.dto';
 import { UpdateLoteDto } from './dto/update-lote.dto';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Injectable()
 export class LoteService {
@@ -120,8 +122,17 @@ export class LoteService {
     });
   }
 
-  async findAll(urbanizacionId?: number) {
-    const where = urbanizacionId ? { urbanizacionId } : {};
+  async findAll(urbanizacionId?: number, usuarioId?: number) {
+    const where: any = {};
+
+    if (urbanizacionId) {
+      where.urbanizacionId = urbanizacionId;
+    }
+
+    where.OR = [
+      { encargadoId: usuarioId },
+      { encargadoId: null }
+    ];
 
     const lotes = await this.prisma.lote.findMany({
       where,
@@ -244,14 +255,14 @@ export class LoteService {
           },
         },
         cotizaciones: {
-          include: {
-            cliente: {
-              select: {
-                id: true,
-                fullName: true,
-                email: true,
-              },
-            },
+          select: {
+            id: true,
+            uuid: true,
+            nombreCliente: true,
+            contactoCliente: true,
+            precioOfertado: true,
+            estado: true,
+            createdAt: true,
           },
         },
         visitas: {
@@ -337,14 +348,14 @@ export class LoteService {
           },
         },
         cotizaciones: {
-          include: {
-            cliente: {
-              select: {
-                id: true,
-                fullName: true,
-                email: true,
-              },
-            },
+          select: {
+            id: true,
+            uuid: true,
+            nombreCliente: true,
+            contactoCliente: true,
+            precioOfertado: true,
+            estado: true,
+            createdAt: true,
           },
         },
         visitas: {
@@ -358,17 +369,17 @@ export class LoteService {
             },
           },
         },
-      encargado: {
-        select: {
-          id: true,
-          uuid: true,
-          fullName: true,
-          email: true,
-          telefono: true,
-          avatarUrl: true,
-          role: true,
+        encargado: {
+          select: {
+            id: true,
+            uuid: true,
+            fullName: true,
+            email: true,
+            telefono: true,
+            avatarUrl: true,
+            role: true,
+          },
         },
-      },
       },
     });
 
@@ -466,7 +477,6 @@ export class LoteService {
           : updateLoteDto.urbanizacionId,
       };
 
-      // Manejar encargadoId solo si viene en el DTO
       if ('encargadoId' in updateLoteDto) {
         dataToUpdate.encargadoId = updateLoteDto.encargadoId;
       }
@@ -504,46 +514,63 @@ export class LoteService {
     });
   }
 
-  async remove(id: number) {
+  async remove(id: number, usuarioId?: number) {
     return this.prisma.$transaction(async (prisma) => {
       const lote = await prisma.lote.findUnique({
         where: { id },
-        include: {
-          cotizaciones: true,
-          ventas: true,
-          reservas: true,
-          visitas: true,
-          archivos: true,
-          LotePromocion: true,
-        },
       });
 
       if (!lote) {
         throw new NotFoundException(`Lote con ID ${id} no encontrado`);
       }
 
-      const tieneRelaciones =
-        lote.cotizaciones.length > 0 ||
-        lote.ventas.length > 0 ||
-        lote.reservas.length > 0 ||
-        lote.visitas.length > 0 ||
-        lote.archivos.length > 0 ||
-        lote.LotePromocion.length > 0;
+      const datosAntes = { ...lote };
 
-      if (tieneRelaciones) {
-        throw new BadRequestException(
-          'No se puede eliminar el lote porque tiene relaciones activas',
-        );
+      const archivos = await prisma.archivo.findMany({
+        where: { loteId: id },
+      });
+
+      for (const archivo of archivos) {
+        if (archivo.urlArchivo) {
+          const filePath = path.join(process.cwd(), archivo.urlArchivo);
+          try {
+            if (fs.existsSync(filePath)) {
+              fs.unlinkSync(filePath);
+            }
+          } catch (err) {}
+        }
       }
 
-      const datosAntes = { ...lote };
+      await prisma.archivo.deleteMany({
+        where: { loteId: id },
+      });
+
+      await prisma.lotePromocion.deleteMany({
+        where: { loteId: id },
+      });
+
+      await prisma.cotizacion.deleteMany({
+        where: { lote: { id: id } },
+      });
+
+      await prisma.venta.deleteMany({
+        where: { lote: { id: id } },
+      });
+
+      await prisma.reserva.deleteMany({
+        where: { lote: { id: id } },
+      });
+
+      await prisma.visita.deleteMany({
+        where: { lote: { id: id } },
+      });
 
       await prisma.lote.delete({
         where: { id },
       });
 
       await this.crearAuditoria(
-        undefined,
+        usuarioId,
         'ELIMINAR',
         'Lote',
         id,
