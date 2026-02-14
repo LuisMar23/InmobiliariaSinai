@@ -504,59 +504,48 @@ export class LoteService {
     });
   }
 
-  async remove(id: number) {
-    return this.prisma.$transaction(async (prisma) => {
-      const lote = await prisma.lote.findUnique({
-        where: { id },
-        include: {
-          cotizaciones: true,
-          ventas: true,
-          reservas: true,
-          visitas: true,
-          archivos: true,
-          LotePromocion: true,
-        },
-      });
-
-      if (!lote) {
-        throw new NotFoundException(`Lote con ID ${id} no encontrado`);
-      }
-
-      const tieneRelaciones =
-        lote.cotizaciones.length > 0 ||
-        lote.ventas.length > 0 ||
-        lote.reservas.length > 0 ||
-        lote.visitas.length > 0 ||
-        lote.archivos.length > 0 ||
-        lote.LotePromocion.length > 0;
-
-      if (tieneRelaciones) {
-        throw new BadRequestException(
-          'No se puede eliminar el lote porque tiene relaciones activas',
-        );
-      }
-
-      const datosAntes = { ...lote };
-
-      await prisma.lote.delete({
-        where: { id },
-      });
-
-      await this.crearAuditoria(
-        undefined,
-        'ELIMINAR',
-        'Lote',
-        id,
-        datosAntes,
-        null,
-      );
-
-      return {
-        success: true,
-        message: 'Lote eliminado correctamente',
-      };
+async remove(id: number) {
+  return this.prisma.$transaction(async (prisma) => {
+    const lote = await prisma.lote.findUnique({
+      where: { id },
     });
-  }
+
+    if (!lote) {
+      throw new NotFoundException(`Lote con ID ${id} no encontrado`);
+    }
+
+    const datosAntes = { ...lote };
+
+    // Eliminar todas las relaciones manualmente
+    await prisma.lotePromocion.deleteMany({ where: { loteId: id } });
+    await prisma.archivo.deleteMany({ where: { loteId: id } });
+    await prisma.visita.deleteMany({ where: { inmuebleId: id, inmuebleTipo: 'LOTE' } });
+    await prisma.reserva.deleteMany({ where: { inmuebleId: id, inmuebleTipo: 'LOTE' } });
+    await prisma.cotizacion.deleteMany({ where: { inmuebleId: id, inmuebleTipo: 'LOTE' } });
+    
+    // Las ventas son más delicadas - considera soft delete o validación adicional
+    await prisma.venta.deleteMany({ where: { loteId: id } });
+
+    // Finalmente eliminar el lote
+    await prisma.lote.delete({
+      where: { id },
+    });
+
+    await this.crearAuditoria(
+      undefined,
+      'ELIMINAR',
+      'Lote',
+      id,
+      datosAntes,
+      null,
+    );
+
+    return {
+      success: true,
+      message: 'Lote y todas sus relaciones eliminados correctamente',
+    };
+  });
+}
 
   async getLotesParaCotizacion() {
     const lotes = await this.prisma.lote.findMany({

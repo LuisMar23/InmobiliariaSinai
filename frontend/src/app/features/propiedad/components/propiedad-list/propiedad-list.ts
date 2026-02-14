@@ -34,7 +34,6 @@ export class PropiedadList implements OnInit {
   columns: ColumnConfig[] = [
     { key: 'nombre', label: 'Propiedad', sortable: true },
     { key: 'tipo', label: 'Tipo', sortable: true },
-    { key: 'tipoInmueble', label: 'Tipo Inmueble', sortable: true },
     { key: 'ciudad', label: 'Ciudad', sortable: true },
     { key: 'tamano', label: 'Tamaño', sortable: true },
     { key: 'precio', label: 'Precio', sortable: true },
