@@ -88,9 +88,16 @@ export class VisitaCreate implements OnInit {
   }
 
   cargarLotes(): void {
+    const currentUser = this.authService.getCurrentUser();
+
     this.loteSvc.getAll().subscribe({
       next: (lotes: LoteDto[]) => {
-        this.lotes.set(lotes);
+        const lotesFiltrados = lotes.filter(
+          (lote) => 
+            lote.encargadoId === currentUser?.id && 
+            (lote.estado === 'DISPONIBLE' || lote.estado === 'CON_OFERTA')
+        );
+        this.lotes.set(lotesFiltrados);
       },
       error: (err: any) => {
         this.notificationService.showError('No se pudieron cargar los lotes');
@@ -99,9 +106,16 @@ export class VisitaCreate implements OnInit {
   }
 
   cargarPropiedades(): void {
+    const currentUser = this.authService.getCurrentUser();
+
     this.propiedadSvc.getAll().subscribe({
       next: (propiedades: PropiedadDto[]) => {
-        this.propiedades.set(propiedades);
+        const propiedadesFiltradas = propiedades.filter(
+          (propiedad) => 
+            propiedad.encargadoId === currentUser?.id && 
+            (propiedad.estado === 'DISPONIBLE' || propiedad.estado === 'CON_OFERTA')
+        );
+        this.propiedades.set(propiedadesFiltradas);
       },
       error: (err: any) => {
         this.notificationService.showError('No se pudieron cargar las propiedades');
@@ -154,7 +168,7 @@ export class VisitaCreate implements OnInit {
 
   selectCliente(cliente: UserDto) {
     this.visitaForm.patchValue({
-      clienteId: cliente.id.toString(),
+      clienteId: cliente.id,
     });
     this.searchCliente.set(cliente.fullName || '');
     this.showClientesDropdown.set(false);
@@ -162,17 +176,17 @@ export class VisitaCreate implements OnInit {
 
   selectLote(lote: LoteDto) {
     this.visitaForm.patchValue({
-      inmuebleId: lote.id.toString(),
+      inmuebleId: lote.id,
     });
     this.searchLote.set(
-      `${lote.numeroLote} - ${lote.urbanizacion?.nombre} - ${lote.estado} - $${lote.precioBase}`
+      `${lote.numeroLote} - ${lote.urbanizacion?.nombre || 'Sin urbanización'} - $${lote.precioBase}`
     );
     this.showLotesDropdown.set(false);
   }
 
   selectPropiedad(propiedad: PropiedadDto) {
     this.visitaForm.patchValue({
-      inmuebleId: propiedad.id.toString(),
+      inmuebleId: propiedad.id,
     });
     this.searchPropiedad.set(
       `${propiedad.nombre} - ${propiedad.tipo} - ${propiedad.ciudad} - $${propiedad.precio}`
@@ -236,33 +250,35 @@ export class VisitaCreate implements OnInit {
     this.enviando.set(true);
 
     const visitaData = {
-      ...this.visitaForm.value,
-      clienteId: Number(this.visitaForm.value.clienteId),
-      inmuebleId: Number(this.visitaForm.value.inmuebleId),
+      clienteId: this.visitaForm.value.clienteId,
       inmuebleTipo: this.inmuebleTipoSeleccionado(),
+      inmuebleId: this.visitaForm.value.inmuebleId,
+      fechaVisita: this.visitaForm.value.fechaVisita,
+      estado: this.visitaForm.value.estado,
+      comentarios: this.visitaForm.value.comentarios,
     };
 
     this.visitaSvc.create(visitaData).subscribe({
       next: (response: any) => {
         this.enviando.set(false);
-        if (response.success) {
+        if (response && response.success) {
           this.notificationService.showSuccess('Visita creada exitosamente!');
           setTimeout(() => {
             this.router.navigate(['/visitas/lista']);
           }, 1000);
         } else {
-          this.notificationService.showError(response.message || 'Error al crear la visita');
+          this.notificationService.showError(response?.message || 'Error al crear la visita');
         }
       },
       error: (err: any) => {
         this.enviando.set(false);
         let errorMessage = 'Error al crear la visita';
-        if (err.status === 400) {
-          errorMessage =
-            err.error?.message || 'Datos inválidos. Verifique la información ingresada.';
+        if (err.error?.message) {
+          errorMessage = err.error.message;
+        } else if (err.status === 400) {
+          errorMessage = 'Datos inválidos. Verifique la información ingresada.';
         } else if (err.status === 403) {
-          errorMessage =
-            'No tienes permisos para crear visitas. Se requiere rol de ASESOR, ADMINISTRADOR o SECRETARIA';
+          errorMessage = 'No tienes permisos para crear visitas o no eres el encargado del inmueble';
         } else if (err.status === 404) {
           errorMessage = 'Cliente o inmueble no encontrado';
         }

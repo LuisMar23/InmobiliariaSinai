@@ -27,7 +27,7 @@ export class VisitaList implements OnInit {
   visitaSeleccionada = signal<VisitaDto | null>(null);
   mostrarModal = signal<boolean>(false);
 
-  sortColumn = signal<keyof VisitaDto | 'inmuebleInfo'>('id');
+  sortColumn = signal<keyof VisitaDto | 'inmuebleInfo'>('fechaVisita');
   sortDirection = signal<'asc' | 'desc'>('desc');
 
   columns: ColumnConfig[] = [
@@ -116,31 +116,33 @@ export class VisitaList implements OnInit {
     }
 
     if (column === 'cliente') {
-      return visita.cliente?.fullName;
+      return visita.cliente?.fullName || '';
     }
     if (column === 'asesor') {
-      return visita.asesor?.fullName;
+      return visita.asesor?.fullName || '';
     }
 
     return visita[column as keyof VisitaDto];
   }
 
   getInmuebleNombre(visita: VisitaDto): string {
-    if (visita.inmuebleTipo === 'LOTE' && visita.lote) {
-      return `Lote ${visita.lote.numeroLote}`;
-    } else if (visita.inmuebleTipo === 'PROPIEDAD' && visita.propiedad) {
-      return `${visita.propiedad.nombre} - ${visita.propiedad.tipo}`;
+    if (visita.inmuebleTipo === 'LOTE' && visita.inmueble && 'numeroLote' in visita.inmueble) {
+      const lote = visita.inmueble as any;
+      return `Lote ${lote.numeroLote || ''}`;
+    } else if (visita.inmuebleTipo === 'PROPIEDAD' && visita.inmueble && 'nombre' in visita.inmueble) {
+      const propiedad = visita.inmueble as any;
+      return `${propiedad.nombre || ''} - ${propiedad.tipo || ''}`;
     }
     return 'No especificado';
   }
 
   getInmuebleInfo(visita: VisitaDto): string {
-    if (visita.inmuebleTipo === 'LOTE' && visita.lote) {
-      return `Lote ${visita.lote.numeroLote} - ${
-        visita.lote.urbanizacion?.nombre || 'Sin urbanización'
-      }`;
-    } else if (visita.inmuebleTipo === 'PROPIEDAD' && visita.propiedad) {
-      return `${visita.propiedad.nombre} - ${visita.propiedad.tipo} - ${visita.propiedad.ciudad}`;
+    if (visita.inmuebleTipo === 'LOTE' && visita.inmueble && 'numeroLote' in visita.inmueble) {
+      const lote = visita.inmueble as any;
+      return `Lote ${lote.numeroLote || ''} - ${lote.urbanizacion?.nombre || 'Sin urbanización'}`;
+    } else if (visita.inmuebleTipo === 'PROPIEDAD' && visita.inmueble && 'nombre' in visita.inmueble) {
+      const propiedad = visita.inmueble as any;
+      return `${propiedad.nombre || ''} - ${propiedad.tipo || ''} - ${propiedad.ciudad || ''}`;
     }
     return 'No especificado';
   }
@@ -178,7 +180,7 @@ export class VisitaList implements OnInit {
         if (result.isConfirmed) {
           this.visitaSvc.delete(id).subscribe({
             next: (response: any) => {
-              if (response.success) {
+              if (response && response.success) {
                 this.visitas.update((list) => list.filter((v) => v.id !== id));
                 this.allVisitas.update((list) => list.filter((v) => v.id !== id));
                 this.total.update((total) => total - 1);
@@ -186,10 +188,12 @@ export class VisitaList implements OnInit {
                 if (this.visitaSeleccionada()?.id === id) {
                   this.cerrarModal();
                 }
+              } else {
+                this.notificationService.showError(response?.message || 'Error al eliminar la visita');
               }
             },
             error: (err) => {
-              this.notificationService.showError('No se pudo eliminar la visita');
+              this.notificationService.showError(err.error?.message || 'No se pudo eliminar la visita');
             },
           });
         }
@@ -197,47 +201,52 @@ export class VisitaList implements OnInit {
   }
 
   getEstadoBadgeClass(estado: string): string {
-    const classes = {
+    const classes: { [key: string]: string } = {
       PENDIENTE: 'px-3 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-700',
       REALIZADA: 'px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700',
       CANCELADA: 'px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700',
     };
-    return classes[estado as keyof typeof classes] || classes['PENDIENTE'];
+    return classes[estado] || classes['PENDIENTE'];
   }
 
   getEstadoText(estado: string): string {
-    const estados = {
+    const estados: { [key: string]: string } = {
       PENDIENTE: 'Pendiente',
       REALIZADA: 'Realizada',
       CANCELADA: 'Cancelada',
     };
-    return estados[estado as keyof typeof estados] || estado;
+    return estados[estado] || estado;
   }
 
   getTipoInmuebleBadgeClass(tipo: string): string {
-    const classes = {
+    const classes: { [key: string]: string } = {
       LOTE: 'px-2 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700',
       PROPIEDAD: 'px-2 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-700',
     };
-    return classes[tipo as keyof typeof classes] || classes['LOTE'];
+    return classes[tipo] || classes['LOTE'];
   }
 
   getTipoInmuebleText(tipo: string): string {
-    const tipos = {
+    const tipos: { [key: string]: string } = {
       LOTE: 'Lote',
       PROPIEDAD: 'Propiedad',
     };
-    return tipos[tipo as keyof typeof tipos] || tipo;
+    return tipos[tipo] || tipo;
   }
 
   formatFecha(fecha: string): string {
-    return new Date(fecha).toLocaleDateString('es-ES', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    if (!fecha) return 'N/A';
+    try {
+      return new Date(fecha).toLocaleDateString('es-ES', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return 'N/A';
+    }
   }
 
   nextPage() {

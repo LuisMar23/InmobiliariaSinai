@@ -11,6 +11,8 @@ import { LoteService } from '../../../lote/service/lote.service';
 import { PropiedadService } from '../../../propiedad/service/propiedad.service';
 import { AuthService } from '../../../../components/services/auth.service';
 import { VentaService } from '../../service/venta.service';
+import { VentaDto } from '../../../../core/interfaces/venta.interface';
+import { AnticipoPdfService } from '../../../../core/services/pdf-anticipo.service';
 
 @Component({
   selector: 'app-venta-create',
@@ -27,6 +29,8 @@ export class VentaCreate implements OnInit {
   propiedades = signal<PropiedadDto[]>([]);
   cajas = signal<Caja[]>([]);
   fechaVencimientoCalculada = signal<string>('');
+  mostrarModalPdf = signal<boolean>(false);
+  ventaCreada = signal<VentaDto | null>(null);
 
   searchCliente = signal<string>('');
   searchLote = signal<string>('');
@@ -46,6 +50,7 @@ export class VentaCreate implements OnInit {
   private loteSvc = inject(LoteService);
   private propiedadSvc = inject(PropiedadService);
   private notificationService = inject(NotificationService);
+  private anticipoPdfService = inject(AnticipoPdfService);
 
   constructor() {
     this.ventaForm = this.crearFormularioVenta();
@@ -137,13 +142,11 @@ export class VentaCreate implements OnInit {
 
     this.loteSvc.getAll().subscribe({
       next: (lotes: LoteDto[]) => {
-        // Primero filtramos por estado
         const lotesDisponibles = lotes.filter(
           (lote) => lote.estado === 'DISPONIBLE' || lote.estado === 'CON_OFERTA',
         );
 
-        // Filtramos por encargado para todos los usuarios (incluyendo administradores)
-        let lotesFiltrados = lotesDisponibles.filter(
+        const lotesFiltrados = lotesDisponibles.filter(
           (lote) => lote.encargadoId === currentUser?.id,
         );
 
@@ -156,41 +159,21 @@ export class VentaCreate implements OnInit {
   }
 
   cargarPropiedades(): void {
+    const currentUser = this.authService.getCurrentUser();
+
     this.propiedadSvc.getAll().subscribe({
       next: (propiedades: PropiedadDto[]) => {
-        // DEBUG: Mostrar todas las propiedades recibidas
-        console.log('Todas las propiedades recibidas:', propiedades);
-        console.log('Cantidad total:', propiedades.length);
-
-        // Mostrar estado de cada propiedad para debug
-        propiedades.forEach((propiedad, index) => {
-          console.log(`Propiedad ${index}:`, {
-            id: propiedad.id,
-            nombre: propiedad.nombre,
-            tipo: propiedad.tipo,
-            estadoPropiedad: propiedad.estadoPropiedad,
-            estado: propiedad.estado,
-            filtroAplica:
-              propiedad.estadoPropiedad === 'VENTA' &&
-              (propiedad.tipo === 'CASA' || propiedad.tipo === 'DEPARTAMENTO') &&
-              (propiedad.estado === 'DISPONIBLE' || propiedad.estado === 'CON_OFERTA'),
-          });
-        });
-
         const propiedadesParaVenta = propiedades.filter(
           (propiedad) =>
             propiedad.estadoPropiedad === 'VENTA' &&
             (propiedad.tipo === 'CASA' || propiedad.tipo === 'DEPARTAMENTO') &&
-            (propiedad.estado === 'DISPONIBLE' || propiedad.estado === 'CON_OFERTA'),
+            (propiedad.estado === 'DISPONIBLE' || propiedad.estado === 'CON_OFERTA') &&
+            propiedad.encargadoId === currentUser?.id,
         );
-
-        console.log('Propiedades filtradas para venta:', propiedadesParaVenta);
-        console.log('Cantidad filtrada:', propiedadesParaVenta.length);
 
         this.propiedades.set(propiedadesParaVenta);
       },
       error: (err: any) => {
-        console.error('Error al cargar propiedades:', err);
         this.notificationService.showError('No se pudieron cargar las propiedades');
       },
     });
@@ -458,11 +441,9 @@ export class VentaCreate implements OnInit {
     };
     if (inmuebleTipo === 'LOTE') {
       ventaData.loteId = Number(inmuebleId);
-      // PropiedadId debe ser null o no enviarse
       ventaData.propiedadId = null;
     } else if (inmuebleTipo === 'PROPIEDAD') {
       ventaData.propiedadId = Number(inmuebleId);
-      // LoteId debe ser null o no enviarse
       ventaData.loteId = null;
     }
     this.ventaSvc.create(ventaData).subscribe({
@@ -470,9 +451,21 @@ export class VentaCreate implements OnInit {
         this.enviando.set(false);
         if (response.success) {
           this.notificationService.showSuccess('Venta creada exitosamente!');
-          setTimeout(() => {
-            this.router.navigate(['/ventas/lista']);
-          }, 1000);
+          if (response.data) {
+            this.ventaCreada.set(response.data);
+            // CORRECCIÓN: Solo mostrar modal de PDF si es un LOTE
+            if (inmuebleTipo === 'LOTE') {
+              this.mostrarModalPdf.set(true);
+            } else {
+              setTimeout(() => {
+                this.router.navigate(['/ventas/lista']);
+              }, 1000);
+            }
+          } else {
+            setTimeout(() => {
+              this.router.navigate(['/ventas/lista']);
+            }, 1000);
+          }
         } else {
           this.notificationService.showError(response.message || 'Error al crear la venta');
         }
@@ -492,6 +485,18 @@ export class VentaCreate implements OnInit {
         this.notificationService.showError(errorMessage);
       },
     });
+  }
+
+  descargarAnticipo(): void {
+    const venta = this.ventaCreada();
+    if (venta) {
+      this.anticipoPdfService.generarAnticipoPdf(venta);
+    }
+  }
+
+  cerrarModalYRedirigir(): void {
+    this.mostrarModalPdf.set(false);
+    this.router.navigate(['/ventas/lista']);
   }
 
   handleFormSubmit(event: Event): void {

@@ -94,9 +94,16 @@ export class VisitaEdit implements OnInit {
   }
 
   cargarLotes(): void {
+    const currentUser = this.authService.getCurrentUser();
+
     this.loteSvc.getAll().subscribe({
       next: (lotes: LoteDto[]) => {
-        this.lotes.set(lotes);
+        const lotesFiltrados = lotes.filter(
+          (lote) => 
+            lote.encargadoId === currentUser?.id && 
+            (lote.estado === 'DISPONIBLE' || lote.estado === 'CON_OFERTA')
+        );
+        this.lotes.set(lotesFiltrados);
       },
       error: (err: any) => {
         this.notificationService.showError('No se pudieron cargar los lotes');
@@ -105,9 +112,16 @@ export class VisitaEdit implements OnInit {
   }
 
   cargarPropiedades(): void {
+    const currentUser = this.authService.getCurrentUser();
+
     this.propiedadSvc.getAll().subscribe({
       next: (propiedades: PropiedadDto[]) => {
-        this.propiedades.set(propiedades);
+        const propiedadesFiltradas = propiedades.filter(
+          (propiedad) => 
+            propiedad.encargadoId === currentUser?.id && 
+            (propiedad.estado === 'DISPONIBLE' || propiedad.estado === 'CON_OFERTA')
+        );
+        this.propiedades.set(propiedadesFiltradas);
       },
       error: (err: any) => {
         this.notificationService.showError('No se pudieron cargar las propiedades');
@@ -160,7 +174,7 @@ export class VisitaEdit implements OnInit {
 
   selectCliente(cliente: UserDto) {
     this.visitaForm.patchValue({
-      clienteId: cliente.id.toString(),
+      clienteId: cliente.id,
     });
     this.searchCliente.set(cliente.fullName || '');
     this.showClientesDropdown.set(false);
@@ -168,17 +182,17 @@ export class VisitaEdit implements OnInit {
 
   selectLote(lote: LoteDto) {
     this.visitaForm.patchValue({
-      inmuebleId: lote.id.toString(),
+      inmuebleId: lote.id,
     });
     this.searchLote.set(
-      `${lote.numeroLote} - ${lote.urbanizacion?.nombre} - ${lote.estado} - $${lote.precioBase}`
+      `${lote.numeroLote} - ${lote.urbanizacion?.nombre || 'Sin urbanización'} - $${lote.precioBase}`
     );
     this.showLotesDropdown.set(false);
   }
 
   selectPropiedad(propiedad: PropiedadDto) {
     this.visitaForm.patchValue({
-      inmuebleId: propiedad.id.toString(),
+      inmuebleId: propiedad.id,
     });
     this.searchPropiedad.set(
       `${propiedad.nombre} - ${propiedad.tipo} - ${propiedad.ciudad} - $${propiedad.precio}`
@@ -245,7 +259,9 @@ export class VisitaEdit implements OnInit {
       next: (visita: any) => {
         if (visita) {
           this.visitaData = visita;
-          this.cargarDatosFormulario(visita);
+          setTimeout(() => {
+            this.cargarDatosFormulario(visita);
+          }, 500);
         } else {
           this.error.set('No se encontró la visita');
         }
@@ -267,10 +283,18 @@ export class VisitaEdit implements OnInit {
     const inmuebleTipo = visita.inmuebleTipo || 'LOTE';
     this.inmuebleTipoSeleccionado.set(inmuebleTipo);
 
+    // Determinar el inmuebleId correcto
+    let inmuebleId = '';
+    if (inmuebleTipo === 'LOTE' && visita.loteId) {
+      inmuebleId = visita.loteId;
+    } else if (inmuebleTipo === 'PROPIEDAD' && visita.propiedadId) {
+      inmuebleId = visita.propiedadId;
+    }
+
     this.visitaForm.patchValue({
-      clienteId: visita.clienteId?.toString() || '',
+      clienteId: visita.clienteId,
       inmuebleTipo: inmuebleTipo,
-      inmuebleId: visita.inmuebleId?.toString() || '',
+      inmuebleId: inmuebleId,
       fechaVisita: fechaFormateada,
       estado: visita.estado || 'PENDIENTE',
       comentarios: visita.comentarios || '',
@@ -280,21 +304,23 @@ export class VisitaEdit implements OnInit {
       this.searchCliente.set(clienteSeleccionado.fullName || '');
     }
 
-    if (inmuebleTipo === 'LOTE') {
-      const loteSeleccionado = this.lotes().find((l) => l.id === visita.inmuebleId);
-      if (loteSeleccionado) {
-        this.searchLote.set(
-          `${loteSeleccionado.numeroLote} - ${loteSeleccionado.urbanizacion?.nombre} - ${loteSeleccionado.estado} - $${loteSeleccionado.precioBase}`
-        );
+    setTimeout(() => {
+      if (inmuebleTipo === 'LOTE') {
+        const loteSeleccionado = this.lotes().find((l) => l.id === visita.loteId);
+        if (loteSeleccionado) {
+          this.searchLote.set(
+            `${loteSeleccionado.numeroLote} - ${loteSeleccionado.urbanizacion?.nombre || 'Sin urbanización'} - $${loteSeleccionado.precioBase}`
+          );
+        }
+      } else if (inmuebleTipo === 'PROPIEDAD') {
+        const propiedadSeleccionada = this.propiedades().find((p) => p.id === visita.propiedadId);
+        if (propiedadSeleccionada) {
+          this.searchPropiedad.set(
+            `${propiedadSeleccionada.nombre} - ${propiedadSeleccionada.tipo} - ${propiedadSeleccionada.ciudad} - $${propiedadSeleccionada.precio}`
+          );
+        }
       }
-    } else if (inmuebleTipo === 'PROPIEDAD') {
-      const propiedadSeleccionada = this.propiedades().find((p) => p.id === visita.inmuebleId);
-      if (propiedadSeleccionada) {
-        this.searchPropiedad.set(
-          `${propiedadSeleccionada.nombre} - ${propiedadSeleccionada.tipo} - ${propiedadSeleccionada.ciudad} - $${propiedadSeleccionada.precio}`
-        );
-      }
-    }
+    }, 500);
   }
 
   onSubmit(): void {
@@ -312,33 +338,35 @@ export class VisitaEdit implements OnInit {
     this.enviando.set(true);
 
     const dataActualizada = {
-      ...this.visitaForm.value,
-      clienteId: Number(this.visitaForm.value.clienteId),
-      inmuebleId: Number(this.visitaForm.value.inmuebleId),
+      clienteId: this.visitaForm.value.clienteId,
       inmuebleTipo: this.inmuebleTipoSeleccionado(),
+      inmuebleId: this.visitaForm.value.inmuebleId,
+      fechaVisita: this.visitaForm.value.fechaVisita,
+      estado: this.visitaForm.value.estado,
+      comentarios: this.visitaForm.value.comentarios,
     };
 
     this.visitaSvc.update(this.visitaId, dataActualizada).subscribe({
       next: (response: any) => {
         this.enviando.set(false);
-        if (response.success) {
+        if (response && response.success) {
           this.notificationService.showSuccess('Visita actualizada exitosamente!');
           setTimeout(() => {
             this.router.navigate(['/visitas/lista']);
           }, 1000);
         } else {
-          this.notificationService.showError(response.message || 'Error al actualizar la visita');
+          this.notificationService.showError(response?.message || 'Error al actualizar la visita');
         }
       },
       error: (err: any) => {
         this.enviando.set(false);
         let errorMessage = 'Error al actualizar la visita';
-        if (err.status === 400) {
-          errorMessage =
-            err.error?.message || 'Datos inválidos. Verifique la información ingresada.';
+        if (err.error?.message) {
+          errorMessage = err.error.message;
+        } else if (err.status === 400) {
+          errorMessage = 'Datos inválidos. Verifique la información ingresada.';
         } else if (err.status === 403) {
-          errorMessage =
-            'No tienes permisos para actualizar visitas. Se requiere rol de ASESOR, ADMINISTRADOR o SECRETARIA';
+          errorMessage = 'No tienes permisos para actualizar visitas o no eres el encargado del inmueble';
         } else if (err.status === 404) {
           errorMessage = 'Visita no encontrada.';
         }

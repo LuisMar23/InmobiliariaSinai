@@ -38,9 +38,7 @@ export class CotizacionService {
           dispositivo: 'API',
         },
       });
-    } catch (error) {
-      console.error('Error creando auditoría:', error);
-    }
+    } catch (error) {}
   }
 
   async create(createCotizacionDto: CreateCotizacionDto, usuarioId: number) {
@@ -54,19 +52,16 @@ export class CotizacionService {
           throw new ForbiddenException('Usuario no encontrado o inactivo');
         }
 
-        const rolesPermitidos = ['ASESOR', 'ADMINISTRADOR', 'SECRETARIA'];
-        if (!rolesPermitidos.includes(usuario.role)) {
-          throw new ForbiddenException(
-            'No tienes permisos para crear cotizaciones. Se requiere rol de ASESOR, ADMINISTRADOR o SECRETARIA',
-          );
-        }
-
         let loteInfo: any = null;
         let precioReferencia: number = 0;
 
         if (createCotizacionDto.inmuebleTipo === TipoInmueble.LOTE) {
-          const lote = await prisma.lote.findUnique({
-            where: { id: createCotizacionDto.inmuebleId },
+          const lote = await prisma.lote.findFirst({
+            where: {
+              id: createCotizacionDto.inmuebleId,
+              estado: { in: ['DISPONIBLE', 'CON_OFERTA'] },
+              encargadoId: usuarioId,
+            },
             include: {
               urbanizacion: {
                 select: {
@@ -98,13 +93,7 @@ export class CotizacionService {
           });
 
           if (!lote) {
-            throw new BadRequestException('Lote no encontrado');
-          }
-
-          if (lote.estado !== 'DISPONIBLE' && lote.estado !== 'CON_OFERTA') {
-            throw new BadRequestException(
-              'El lote no está disponible para cotización',
-            );
+            throw new BadRequestException('Lote no encontrado, no está disponible o no eres el encargado');
           }
 
           const promocionActiva = lote.LotePromocion[0];
@@ -473,13 +462,6 @@ export class CotizacionService {
           throw new ForbiddenException('Usuario no encontrado o inactivo');
         }
 
-        const rolesPermitidos = ['ASESOR', 'ADMINISTRADOR', 'SECRETARIA'];
-        if (!rolesPermitidos.includes(usuario.role)) {
-          throw new ForbiddenException(
-            'No tienes permisos para actualizar cotizaciones. Se requiere rol de ASESOR, ADMINISTRADOR o SECRETARIA',
-          );
-        }
-
         const cotizacionExistente = await prisma.cotizacion.findUnique({
           where: { id },
           include: {
@@ -597,13 +579,6 @@ export class CotizacionService {
           throw new ForbiddenException('Usuario no encontrado o inactivo');
         }
 
-        const rolesPermitidos = ['ASESOR', 'ADMINISTRADOR', 'SECRETARIA'];
-        if (!rolesPermitidos.includes(usuario.role)) {
-          throw new ForbiddenException(
-            'No tienes permisos para eliminar cotizaciones. Se requiere rol de ASESOR, ADMINISTRADOR o SECRETARIA',
-          );
-        }
-
         const cotizacion = await prisma.cotizacion.findUnique({
           where: { id },
         });
@@ -656,11 +631,16 @@ export class CotizacionService {
     }
   }
 
-  async getLotesDisponiblesParaCotizacion() {
+  async getLotesDisponiblesParaCotizacion(usuarioId: number) {
     try {
+      const usuario = await this.prisma.user.findFirst({
+        where: { id: usuarioId, isActive: true },
+      });
+
       const lotes = await this.prisma.lote.findMany({
         where: {
           estado: { in: ['DISPONIBLE', 'CON_OFERTA'] },
+          encargadoId: usuarioId,
         },
         include: {
           urbanizacion: {

@@ -13,6 +13,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
 import { VentaService } from '../../service/venta.service';
 import { ReciboService, Recibo } from '../../../../core/services/recibo.service';
 import { PdfService } from '../../../../core/services/pdf.service';
+import { AnticipoPdfService } from '../../../../core/services/pdf-anticipo.service';
 
 @Component({
   selector: 'app-venta-detail',
@@ -47,6 +48,7 @@ export class VentaDetail implements OnInit {
   private reciboSvc = inject(ReciboService);
   private pdfService = inject(PdfService);
   private datePipe = inject(DatePipe);
+  private anticipoPdfService = inject(AnticipoPdfService);
 
   constructor() {
     this.pagoForm = this.crearPagoForm();
@@ -172,7 +174,7 @@ export class VentaDetail implements OnInit {
 
     if (monto > saldoPendiente) {
       this.notificationService.showError(
-        `El monto no puede ser mayor al saldo pendiente (${this.formatPrecio(saldoPendiente)})`
+        `El monto no puede ser mayor al saldo pendiente (${this.formatPrecio(saldoPendiente)})`,
       );
       return;
     }
@@ -184,7 +186,7 @@ export class VentaDetail implements OnInit {
 
     if (fechaPago > maxFechaPermitida) {
       this.notificationService.showError(
-        'La fecha de pago no puede ser más de 90 días en el futuro'
+        'La fecha de pago no puede ser más de 90 días en el futuro',
       );
       return;
     }
@@ -257,7 +259,7 @@ export class VentaDetail implements OnInit {
                     this.router.navigate(['/ventas/lista']);
                   } else {
                     this.notificationService.showError(
-                      response.message || 'Error al eliminar la venta'
+                      response.message || 'Error al eliminar la venta',
                     );
                   }
                 },
@@ -289,6 +291,14 @@ export class VentaDetail implements OnInit {
     const venta = this.ventaData();
     if (venta) {
       this.pdfService.generarPdfVentaIndividual(venta);
+    }
+  }
+
+  descargarAnticipo() {
+    const venta = this.ventaData();
+    // CORRECCIÓN: Verificar explícitamente que sea un LOTE
+    if (venta && venta.lote) {
+      this.anticipoPdfService.generarAnticipoPdf(venta);
     }
   }
 

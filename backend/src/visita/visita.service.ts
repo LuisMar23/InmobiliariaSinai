@@ -48,9 +48,7 @@ export class VisitasService {
           dispositivo: 'API',
         },
       });
-    } catch (error) {
-      // Silenciar error de auditoría
-    }
+    } catch (error) {}
   }
 
   private async getLoteInfo(inmuebleId: number) {
@@ -111,6 +109,7 @@ export class VisitasService {
   private async validateInmueble(
     inmuebleTipo: TipoInmueble,
     inmuebleId: number,
+    usuarioId?: number,
   ) {
     if (inmuebleTipo === TipoInmueble.LOTE) {
       const lote = await this.prisma.lote.findUnique({
@@ -121,6 +120,9 @@ export class VisitasService {
       }
       if (lote.estado !== 'DISPONIBLE' && lote.estado !== 'CON_OFERTA') {
         throw new BadRequestException('El lote no está disponible para visita');
+      }
+      if (usuarioId && lote.encargadoId !== usuarioId) {
+        throw new ForbiddenException('No eres el encargado de este lote');
       }
     } else if (inmuebleTipo === TipoInmueble.PROPIEDAD) {
       const propiedad = await this.prisma.propiedad.findUnique({
@@ -136,6 +138,9 @@ export class VisitasService {
         throw new BadRequestException(
           'La propiedad no está disponible para visita',
         );
+      }
+      if (usuarioId && propiedad.encargadoId !== usuarioId) {
+        throw new ForbiddenException('No eres el encargado de esta propiedad');
       }
     } else {
       throw new BadRequestException('Tipo de inmueble no válido');
@@ -158,13 +163,6 @@ export class VisitasService {
           throw new ForbiddenException('Usuario no encontrado o inactivo');
         }
 
-        const rolesPermitidos = ['ASESOR', 'ADMINISTRADOR', 'SECRETARIA'];
-        if (!rolesPermitidos.includes(usuario.role)) {
-          throw new ForbiddenException(
-            'No tienes permisos para crear visitas. Se requiere rol de ASESOR, ADMINISTRADOR o SECRETARIA',
-          );
-        }
-
         const cliente = await prisma.user.findFirst({
           where: {
             id: createVisitaDto.clienteId,
@@ -183,6 +181,7 @@ export class VisitasService {
         await this.validateInmueble(
           createVisitaDto.inmuebleTipo,
           createVisitaDto.inmuebleId,
+          usuarioId,
         );
 
         const fechaVisita = new Date(createVisitaDto.fechaVisita);
@@ -198,8 +197,10 @@ export class VisitasService {
           where: {
             clienteId: createVisitaDto.clienteId,
             inmuebleTipo: createVisitaDto.inmuebleTipo,
-            inmuebleId: createVisitaDto.inmuebleId,
             fechaVisita: fechaVisita,
+            ...(createVisitaDto.inmuebleTipo === TipoInmueble.LOTE 
+              ? { loteId: createVisitaDto.inmuebleId } 
+              : { propiedadId: createVisitaDto.inmuebleId })
           },
         });
 
@@ -209,23 +210,31 @@ export class VisitasService {
           );
         }
 
+        const data: any = {
+          clienteId: createVisitaDto.clienteId,
+          asesorId: usuarioId,
+          inmuebleTipo: createVisitaDto.inmuebleTipo,
+          fechaVisita: fechaVisita,
+          estado: createVisitaDto.estado || EstadoVisita.PENDIENTE,
+          comentarios: createVisitaDto.comentarios || null,
+        };
+
+        if (createVisitaDto.inmuebleTipo === TipoInmueble.LOTE) {
+          data.loteId = createVisitaDto.inmuebleId;
+        } else {
+          data.propiedadId = createVisitaDto.inmuebleId;
+        }
+
         const visita = await prisma.visita.create({
-          data: {
-            clienteId: createVisitaDto.clienteId,
-            asesorId: usuarioId,
-            inmuebleTipo: createVisitaDto.inmuebleTipo,
-            inmuebleId: createVisitaDto.inmuebleId,
-            fechaVisita: fechaVisita,
-            estado: createVisitaDto.estado || EstadoVisita.PENDIENTE,
-            comentarios: createVisitaDto.comentarios || null,
-          },
+          data,
           select: {
             id: true,
             uuid: true,
             clienteId: true,
             asesorId: true,
             inmuebleTipo: true,
-            inmuebleId: true,
+            loteId: true,
+            propiedadId: true,
             fechaVisita: true,
             estado: true,
             comentarios: true,
@@ -275,12 +284,13 @@ export class VisitasService {
     });
   }
 
-  async findAll(clienteId?: number, estado?: string) {
+  async findAll(clienteId?: number, estado?: string, usuarioId?: number) {
     try {
       const where: any = {};
 
       if (clienteId) where.clienteId = clienteId;
       if (estado) where.estado = estado;
+      if (usuarioId) where.asesorId = usuarioId;
 
       const visitas = await this.prisma.visita.findMany({
         where,
@@ -290,7 +300,8 @@ export class VisitasService {
           clienteId: true,
           asesorId: true,
           inmuebleTipo: true,
-          inmuebleId: true,
+          loteId: true,
+          propiedadId: true,
           fechaVisita: true,
           estado: true,
           comentarios: true,
@@ -318,10 +329,10 @@ export class VisitasService {
         visitas.map(async (visita) => {
           let inmuebleInfo: any = null;
 
-          if (visita.inmuebleTipo === TipoInmueble.LOTE) {
-            inmuebleInfo = await this.getLoteInfo(visita.inmuebleId);
-          } else if (visita.inmuebleTipo === TipoInmueble.PROPIEDAD) {
-            inmuebleInfo = await this.getPropiedadInfo(visita.inmuebleId);
+          if (visita.inmuebleTipo === TipoInmueble.LOTE && visita.loteId) {
+            inmuebleInfo = await this.getLoteInfo(visita.loteId);
+          } else if (visita.inmuebleTipo === TipoInmueble.PROPIEDAD && visita.propiedadId) {
+            inmuebleInfo = await this.getPropiedadInfo(visita.propiedadId);
           }
 
           return {
@@ -348,7 +359,8 @@ export class VisitasService {
           clienteId: true,
           asesorId: true,
           inmuebleTipo: true,
-          inmuebleId: true,
+          loteId: true,
+          propiedadId: true,
           fechaVisita: true,
           estado: true,
           comentarios: true,
@@ -378,10 +390,10 @@ export class VisitasService {
       }
 
       let inmuebleInfo: any = null;
-      if (visita.inmuebleTipo === TipoInmueble.LOTE) {
-        inmuebleInfo = await this.getLoteInfo(visita.inmuebleId);
-      } else if (visita.inmuebleTipo === TipoInmueble.PROPIEDAD) {
-        inmuebleInfo = await this.getPropiedadInfo(visita.inmuebleId);
+      if (visita.inmuebleTipo === TipoInmueble.LOTE && visita.loteId) {
+        inmuebleInfo = await this.getLoteInfo(visita.loteId);
+      } else if (visita.inmuebleTipo === TipoInmueble.PROPIEDAD && visita.propiedadId) {
+        inmuebleInfo = await this.getPropiedadInfo(visita.propiedadId);
       }
 
       const visitaConInmueble = {
@@ -415,13 +427,6 @@ export class VisitasService {
           throw new ForbiddenException('Usuario no encontrado o inactivo');
         }
 
-        const rolesPermitidos = ['ASESOR', 'ADMINISTRADOR', 'SECRETARIA'];
-        if (!rolesPermitidos.includes(usuario.role)) {
-          throw new ForbiddenException(
-            'No tienes permisos para actualizar visitas. Se requiere rol de ASESOR, ADMINISTRADOR o SECRETARIA',
-          );
-        }
-
         const visitaExistente = await prisma.visita.findUnique({
           where: { id },
         });
@@ -452,6 +457,7 @@ export class VisitasService {
           await this.validateInmueble(
             updateVisitaDto.inmuebleTipo,
             updateVisitaDto.inmuebleId,
+            usuarioId,
           );
         }
 
@@ -466,16 +472,29 @@ export class VisitasService {
           }
         }
 
+        const data: any = { ...updateVisitaDto };
+        
+        if (updateVisitaDto.inmuebleTipo && updateVisitaDto.inmuebleId) {
+          if (updateVisitaDto.inmuebleTipo === TipoInmueble.LOTE) {
+            data.loteId = updateVisitaDto.inmuebleId;
+            data.propiedadId = null;
+          } else {
+            data.propiedadId = updateVisitaDto.inmuebleId;
+            data.loteId = null;
+          }
+        }
+
         const visitaActualizada = await prisma.visita.update({
           where: { id },
-          data: updateVisitaDto,
+          data,
           select: {
             id: true,
             uuid: true,
             clienteId: true,
             asesorId: true,
             inmuebleTipo: true,
-            inmuebleId: true,
+            loteId: true,
+            propiedadId: true,
             fechaVisita: true,
             estado: true,
             comentarios: true,
@@ -538,13 +557,6 @@ export class VisitasService {
           throw new ForbiddenException('Usuario no encontrado o inactivo');
         }
 
-        const rolesPermitidos = ['ASESOR', 'ADMINISTRADOR', 'SECRETARIA'];
-        if (!rolesPermitidos.includes(usuario.role)) {
-          throw new ForbiddenException(
-            'No tienes permisos para eliminar visitas. Se requiere rol de ASESOR, ADMINISTRADOR o SECRETARIA',
-          );
-        }
-
         const visita = await prisma.visita.findUnique({
           where: { id },
         });
@@ -603,7 +615,8 @@ export class VisitasService {
           id: true,
           uuid: true,
           inmuebleTipo: true,
-          inmuebleId: true,
+          loteId: true,
+          propiedadId: true,
           fechaVisita: true,
           estado: true,
           comentarios: true,
@@ -622,10 +635,10 @@ export class VisitasService {
         visitas.map(async (visita) => {
           let inmuebleInfo: any = null;
 
-          if (visita.inmuebleTipo === TipoInmueble.LOTE) {
-            inmuebleInfo = await this.getLoteInfo(visita.inmuebleId);
-          } else if (visita.inmuebleTipo === TipoInmueble.PROPIEDAD) {
-            inmuebleInfo = await this.getPropiedadInfo(visita.inmuebleId);
+          if (visita.inmuebleTipo === TipoInmueble.LOTE && visita.loteId) {
+            inmuebleInfo = await this.getLoteInfo(visita.loteId);
+          } else if (visita.inmuebleTipo === TipoInmueble.PROPIEDAD && visita.propiedadId) {
+            inmuebleInfo = await this.getPropiedadInfo(visita.propiedadId);
           }
 
           return {
@@ -653,7 +666,7 @@ export class VisitasService {
   async getVisitasPorAsesor(asesorId: number) {
     try {
       const asesor = await this.prisma.user.findFirst({
-        where: { id: asesorId, isActive: true, role: 'ASESOR' },
+        where: { id: asesorId, isActive: true },
         select: {
           id: true,
           fullName: true,
@@ -672,7 +685,8 @@ export class VisitasService {
           id: true,
           uuid: true,
           inmuebleTipo: true,
-          inmuebleId: true,
+          loteId: true,
+          propiedadId: true,
           fechaVisita: true,
           estado: true,
           comentarios: true,
@@ -692,10 +706,10 @@ export class VisitasService {
         visitas.map(async (visita) => {
           let inmuebleInfo: any = null;
 
-          if (visita.inmuebleTipo === TipoInmueble.LOTE) {
-            inmuebleInfo = await this.getLoteInfo(visita.inmuebleId);
-          } else if (visita.inmuebleTipo === TipoInmueble.PROPIEDAD) {
-            inmuebleInfo = await this.getPropiedadInfo(visita.inmuebleId);
+          if (visita.inmuebleTipo === TipoInmueble.LOTE && visita.loteId) {
+            inmuebleInfo = await this.getLoteInfo(visita.loteId);
+          } else if (visita.inmuebleTipo === TipoInmueble.PROPIEDAD && visita.propiedadId) {
+            inmuebleInfo = await this.getPropiedadInfo(visita.propiedadId);
           }
 
           return {

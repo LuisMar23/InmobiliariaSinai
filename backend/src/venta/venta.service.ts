@@ -283,11 +283,12 @@ export class VentasService {
             where: {
               id: createVentaDto.inmuebleId,
               estado: { in: ['DISPONIBLE', 'CON_OFERTA'] },
+              encargadoId: asesorId,
             },
           });
           if (!propiedad) {
             throw new BadRequestException(
-              `La propiedad con ID ${createVentaDto.inmuebleId} no existe o no está disponible`,
+              `La propiedad con ID ${createVentaDto.inmuebleId} no existe, no está disponible o no eres el encargado`,
             );
           }
         }
@@ -496,7 +497,9 @@ export class VentasService {
                 },
               },
             },
-            propiedad: true,
+            propiedad: {
+              where: usuarioId ? { encargadoId: usuarioId } : {},
+            },
             planPago: {
               include: { pagos: { orderBy: { fecha_pago: 'desc' } } },
             },

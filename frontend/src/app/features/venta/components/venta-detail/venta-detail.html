@@ -15,14 +15,27 @@
                             seleccionada</p>
                     </div>
                 </div>
-                <button [routerLink]="['/ventas/lista']"
-                    class="flex items-center gap-2 bg-white text-emerald-500 font-semibold px-4 py-2 rounded-lg shadow-md hover:bg-emerald-50 transition-all text-sm sm:text-base w-full sm:w-auto justify-center">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                    </svg>
-                    Volver al Listado
-                </button>
+                <div class="flex flex-col sm:flex-row gap-2">
+                    <!-- CORRECCIÓN: Botón de Anticipo solo visible si es LOTE -->
+                    @if (ventaData()?.lote) {
+                    <button (click)="descargarAnticipo()"
+                        class="flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold px-4 py-2 rounded-lg shadow-md transition-all text-sm sm:text-base w-full sm:w-auto">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        Descargar Anticipo
+                    </button>
+                    }
+                    <button [routerLink]="['/ventas/lista']"
+                        class="flex items-center justify-center gap-2 bg-white text-emerald-500 font-semibold px-4 py-2 rounded-lg shadow-md hover:bg-emerald-50 transition-all text-sm sm:text-base w-full sm:w-auto">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                        </svg>
+                        Volver al Listado
+                    </button>
+                </div>
             </div>
         </div>
 
