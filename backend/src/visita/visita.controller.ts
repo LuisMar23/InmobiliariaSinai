@@ -30,12 +30,15 @@ export class VisitasController {
 
   @Get()
   findAll(
+    @Request() req,
     @Query('clienteId') clienteId?: string,
     @Query('estado') estado?: string,
   ) {
+    const usuarioId = req.user.id;
     return this.visitasService.findAll(
       clienteId ? +clienteId : undefined,
       estado,
+      usuarioId,
     );
   }
 

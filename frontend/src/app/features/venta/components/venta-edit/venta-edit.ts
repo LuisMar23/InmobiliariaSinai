@@ -252,12 +252,15 @@ export class VentaEdit implements OnInit {
   }
 
   cargarPropiedades(): void {
+    const currentUser = this.authService.getCurrentUser();
+
     this.propiedadSvc.getAll().subscribe({
       next: (propiedades: PropiedadDto[]) => {
         const propiedadesParaVenta = propiedades.filter(
           (propiedad) =>
             propiedad.estadoPropiedad === 'VENTA' &&
-            (propiedad.tipo === 'CASA' || propiedad.tipo === 'DEPARTAMENTO'),
+            (propiedad.tipo === 'CASA' || propiedad.tipo === 'DEPARTAMENTO') &&
+            propiedad.encargadoId === currentUser?.id,
         );
         this.propiedades.set(propiedadesParaVenta);
         const venta = this.ventaData();

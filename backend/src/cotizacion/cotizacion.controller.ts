@@ -61,7 +61,8 @@ export class CotizacionController {
   }
 
   @Get('lotes-disponibles')
-  getLotesDisponibles() {
-    return this.cotizacionService.getLotesDisponiblesParaCotizacion();
+  getLotesDisponibles(@Request() req) {
+    const usuarioId = req.user.id;
+    return this.cotizacionService.getLotesDisponiblesParaCotizacion(usuarioId);
   }
 }

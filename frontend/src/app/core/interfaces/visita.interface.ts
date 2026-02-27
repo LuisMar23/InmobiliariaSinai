@@ -4,7 +4,8 @@ export interface VisitaDto {
   clienteId: number;
   asesorId: number;
   inmuebleTipo: string;
-  inmuebleId: number;
+  loteId?: number;
+  propiedadId?: number;
   fechaVisita: string;
   estado: string;
   comentarios?: string;

@@ -282,7 +282,8 @@ model Visita {
   clienteId    Int
   asesorId     Int
   inmuebleTipo TipoInmueble @default(LOTE)
-  inmuebleId   Int
+  loteId       Int?         @map("lote_id")
+  propiedadId  Int?         @map("propiedad_id")
   fechaVisita  DateTime     @map("fecha_visita")
   estado       EstadoVisita @default(PENDIENTE)
   comentarios  String?
@@ -291,8 +292,10 @@ model Visita {
 
   cliente   User       @relation("VisitasCliente", fields: [clienteId], references: [id])
   asesor    User       @relation("VisitasAsesor", fields: [asesorId], references: [id])
-  lote      Lote?      @relation("VisitasLote", fields: [inmuebleId], references: [id], map: "fk_visita_lote")
-  propiedad Propiedad? @relation("VisitasPropiedad", fields: [inmuebleId], references: [id], map: "fk_visita_propiedad")
+  lote      Lote?      @relation("VisitasLote", fields: [loteId], references: [id])
+  propiedad Propiedad? @relation("VisitasPropiedad", fields: [propiedadId], references: [id])
+
+  @@map("visitas")
 }
 
 

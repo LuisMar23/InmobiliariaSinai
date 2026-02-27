@@ -231,6 +231,7 @@ export class VentasService {
     return usuario;
   }
 
+<<<<<<< HEAD
 async create(
   createVentaDto: CreateVentaDto,
   asesorId: number,
@@ -251,6 +252,110 @@ async create(
       if (!asesor)
         throw new ForbiddenException(
           'Solo los asesores, administradores y secretarias pueden crear ventas',
+=======
+  async create(
+    createVentaDto: CreateVentaDto,
+    asesorId: number,
+    ip?: string,
+    userAgent?: string,
+  ) {
+    try {
+      return await this.prisma.$transaction(async (prisma) => {
+        const asesor = await prisma.user.findFirst({
+          where: {
+            id: asesorId,
+            isActive: true,
+            role: { in: ['ASESOR', 'ADMINISTRADOR'] },
+          },
+        });
+        if (!asesor)
+          throw new ForbiddenException(
+            'Solo los asesores y administradores pueden crear ventas',
+          );
+
+        const cliente = await prisma.user.findFirst({
+          where: {
+            id: createVentaDto.clienteId,
+            isActive: true,
+            role: 'CLIENTE',
+          },
+        });
+        if (!cliente)
+          throw new BadRequestException(
+            'Cliente no encontrado o no tiene rol de CLIENTE',
+          );
+
+        await this.verificarCajaActiva(createVentaDto.cajaId, prisma);
+
+        if (createVentaDto.inmuebleTipo === TipoInmueble.LOTE) {
+          const lote = await prisma.lote.findFirst({
+            where: {
+              id: createVentaDto.inmuebleId,
+              estado: { in: ['DISPONIBLE', 'CON_OFERTA'] },
+              encargadoId: asesorId,
+            },
+          });
+          if (!lote) {
+            throw new BadRequestException(
+              `El lote con ID ${createVentaDto.inmuebleId} no existe, no está disponible o no eres el encargado`,
+            );
+          }
+        } else if (createVentaDto.inmuebleTipo === TipoInmueble.PROPIEDAD) {
+          const propiedad = await prisma.propiedad.findFirst({
+            where: {
+              id: createVentaDto.inmuebleId,
+              estado: { in: ['DISPONIBLE', 'CON_OFERTA'] },
+              encargadoId: asesorId,
+            },
+          });
+          if (!propiedad) {
+            throw new BadRequestException(
+              `La propiedad con ID ${createVentaDto.inmuebleId} no existe, no está disponible o no eres el encargado`,
+            );
+          }
+        }
+
+        if (
+          createVentaDto.plan_pago.monto_inicial > createVentaDto.precioFinal
+        ) {
+          throw new BadRequestException(
+            'El monto inicial no puede ser mayor al precio final de la venta',
+          );
+        }
+
+        if (
+          !Object.values(PeriodicidadPago).includes(
+            createVentaDto.plan_pago.periodicidad,
+          )
+        ) {
+          throw new BadRequestException('Periodicidad de pago inválida');
+        }
+
+        const ventaData: any = {
+          clienteId: createVentaDto.clienteId,
+          asesorId,
+          inmuebleTipo: createVentaDto.inmuebleTipo,
+          precioFinal: createVentaDto.precioFinal,
+          estado: createVentaDto.estado || EstadoVenta.PENDIENTE,
+          observaciones: createVentaDto.observaciones || null,
+          cajaId: createVentaDto.cajaId,
+        };
+
+        if (createVentaDto.inmuebleTipo === TipoInmueble.LOTE) {
+          ventaData.loteId = createVentaDto.inmuebleId;
+        } else if (createVentaDto.inmuebleTipo === TipoInmueble.PROPIEDAD) {
+          ventaData.propiedadId = createVentaDto.inmuebleId;
+        }
+
+        const venta = await prisma.venta.create({
+          data: ventaData,
+        });
+
+        const fechaVencimiento = this.calcularFechaVencimiento(
+          createVentaDto.plan_pago.fecha_inicio,
+          createVentaDto.plan_pago.plazo,
+          createVentaDto.plan_pago.periodicidad,
+>>>>>>> 8561c8a5f74741dbdc7117b13dbe74b57e32169d
         );
 
       const cliente = await prisma.user.findFirst({
@@ -509,7 +614,9 @@ async create(
                 },
               },
             },
-            propiedad: true,
+            propiedad: {
+              where: usuarioId ? { encargadoId: usuarioId } : {},
+            },
             planPago: {
               include: { pagos: { orderBy: { fecha_pago: 'desc' } } },
             },
