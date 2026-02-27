@@ -6,6 +6,7 @@ import { LoteDto } from '../../../../core/interfaces/lote.interface';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { LoteService } from '../../service/lote.service';
 import { ArchivosComponent } from '../../../../components/archivos/archivos/archivos';
+import { AuthService } from '../../../../components/services/auth.service';
 
 interface ColumnConfig {
   key: keyof LoteDto;
@@ -45,7 +46,9 @@ export class LoteList implements OnInit {
   currentPage = signal(1);
 
   private loteSvc = inject(LoteService);
+  private authService = inject(AuthService);
   private notificationService = inject(NotificationService);
+  currentUser = this.authService.getCurrentUser();
 
   filteredLotes = computed(() => {
     const term = this.searchTerm().toLowerCase();
@@ -103,8 +106,12 @@ export class LoteList implements OnInit {
     this.error.set(null);
     this.loteSvc.getAll().subscribe({
       next: (lotes) => {
-        this.lotes.set(lotes);
-        this.allLotes.set(lotes);
+        const lotesConIndicador = lotes.map(lote => ({
+          ...lote,
+          esMiLote: lote.encargadoId === this.currentUser?.id
+        }));
+        this.lotes.set(lotesConIndicador);
+        this.allLotes.set(lotesConIndicador);
         this.total.set(lotes.length);
         this.cargando.set(false);
       },
@@ -114,6 +121,26 @@ export class LoteList implements OnInit {
         this.cargando.set(false);
       },
     });
+  }
+
+  getEncargadoBadgeClass(lote: LoteDto): string {
+    if (lote.encargadoId === this.currentUser?.id) {
+      return 'px-2 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-700 border border-blue-200';
+    }
+    if (!lote.encargadoId) {
+      return 'px-2 py-0.5 rounded-full text-xs font-bold bg-gray-100 text-gray-700 border border-gray-200';
+    }
+    return 'px-2 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-700 border border-purple-200';
+  }
+
+  getEncargadoText(lote: LoteDto): string {
+    if (lote.encargadoId === this.currentUser?.id) {
+      return '👤 Mi lote';
+    }
+    if (!lote.encargadoId) {
+      return '📦 Sin encargado';
+    }
+    return '👥 Otro asesor';
   }
 
   cambiarOrden(columna: keyof LoteDto) {

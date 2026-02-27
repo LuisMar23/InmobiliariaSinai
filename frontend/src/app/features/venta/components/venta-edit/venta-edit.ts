@@ -72,7 +72,7 @@ export class VentaEdit implements OnInit {
       (cliente) =>
         cliente.fullName?.toLowerCase().includes(search) ||
         (cliente.ci && cliente.ci.toLowerCase().includes(search)) ||
-        (cliente.email && cliente.email.toLowerCase().includes(search))
+        (cliente.email && cliente.email.toLowerCase().includes(search)),
     );
   });
 
@@ -84,7 +84,7 @@ export class VentaEdit implements OnInit {
       (lote) =>
         lote.numeroLote?.toLowerCase().includes(search) ||
         (lote.urbanizacion?.nombre && lote.urbanizacion.nombre.toLowerCase().includes(search)) ||
-        lote.precioBase?.toString().includes(search)
+        lote.precioBase?.toString().includes(search),
     );
   });
 
@@ -98,7 +98,7 @@ export class VentaEdit implements OnInit {
         propiedad.ubicacion?.toLowerCase().includes(search) ||
         propiedad.ciudad?.toLowerCase().includes(search) ||
         propiedad.tipo?.toLowerCase().includes(search) ||
-        propiedad.precio?.toString().includes(search)
+        propiedad.precio?.toString().includes(search),
     );
   });
 
@@ -233,9 +233,12 @@ export class VentaEdit implements OnInit {
   }
 
   cargarLotes(): void {
+    const currentUser = this.authService.getCurrentUser();
+
     this.loteSvc.getAll().subscribe({
       next: (lotes: LoteDto[]) => {
-        this.lotes.set(lotes);
+        let lotesFiltrados = lotes.filter((lote) => lote.encargadoId === currentUser?.id);
+        this.lotes.set(lotesFiltrados);
         const venta = this.ventaData();
         if (venta) {
           this.setupSearchValues(venta);
@@ -254,7 +257,7 @@ export class VentaEdit implements OnInit {
         const propiedadesParaVenta = propiedades.filter(
           (propiedad) =>
             propiedad.estadoPropiedad === 'VENTA' &&
-            (propiedad.tipo === 'CASA' || propiedad.tipo === 'DEPARTAMENTO')
+            (propiedad.tipo === 'CASA' || propiedad.tipo === 'DEPARTAMENTO'),
         );
         this.propiedades.set(propiedadesParaVenta);
         const venta = this.ventaData();
@@ -295,13 +298,13 @@ export class VentaEdit implements OnInit {
 
   getLoteDisplayText(lote: LoteDto): string {
     return `${lote.numeroLote} - ${lote.urbanizacion?.nombre} - $${this.formatNumber(
-      lote.precioBase
+      lote.precioBase,
     )}`;
   }
 
   getPropiedadDisplayText(propiedad: PropiedadDto): string {
     return `${propiedad.nombre} - ${propiedad.tipo} - ${propiedad.ubicacion} - $${this.formatNumber(
-      propiedad.precio
+      propiedad.precio,
     )}`;
   }
 
@@ -431,7 +434,7 @@ export class VentaEdit implements OnInit {
 
       if (archivosFinales.length > this.maxArchivos) {
         this.notificationService.showError(
-          `Solo puedes subir un máximo de ${this.maxArchivos} archivos.`
+          `Solo puedes subir un máximo de ${this.maxArchivos} archivos.`,
         );
         return;
       }
@@ -483,7 +486,7 @@ export class VentaEdit implements OnInit {
         error: (error) => {
           this.archivosCargando.set(false);
           this.notificationService.showError(
-            'Error al subir los archivos: ' + (error?.error?.message || 'Error desconocido')
+            'Error al subir los archivos: ' + (error?.error?.message || 'Error desconocido'),
           );
         },
       });
@@ -629,7 +632,7 @@ export class VentaEdit implements OnInit {
                     this.obtenerVenta();
                   } else {
                     this.notificationService.showError(
-                      response.message || 'Error al eliminar el pago'
+                      response.message || 'Error al eliminar el pago',
                     );
                   }
                 },
@@ -700,7 +703,7 @@ export class VentaEdit implements OnInit {
           this.obtenerVenta();
         } else {
           this.notificationService.showError(
-            response.message || 'Error al actualizar el monto inicial'
+            response.message || 'Error al actualizar el monto inicial',
           );
         }
       },
@@ -746,7 +749,7 @@ export class VentaEdit implements OnInit {
 
     if (monto > saldoPendiente) {
       this.notificationService.showError(
-        `El monto no puede ser mayor al saldo pendiente (${this.formatPrecio(saldoPendiente)})`
+        `El monto no puede ser mayor al saldo pendiente (${this.formatPrecio(saldoPendiente)})`,
       );
       return;
     }
@@ -758,7 +761,7 @@ export class VentaEdit implements OnInit {
 
     if (fechaPago > maxFechaPermitida) {
       this.notificationService.showError(
-        'La fecha de pago no puede ser más de 90 días en el futuro'
+        'La fecha de pago no puede ser más de 90 días en el futuro',
       );
       return;
     }
@@ -834,45 +837,46 @@ export class VentaEdit implements OnInit {
       this.notificationService.showError('Complete todos los campos requeridos correctamente.');
       return;
     }
+
     const id = this.ventaId();
     if (!id) {
       this.notificationService.showError('ID de venta no válido.');
       return;
     }
-    const clienteId = this.ventaForm.get('clienteId')?.value;
-    const inmuebleId = this.ventaForm.get('inmuebleId')?.value;
-    const inmuebleTipo = this.ventaForm.get('inmuebleTipo')?.value;
-    if (!clienteId || !inmuebleId || !inmuebleTipo) {
-      this.notificationService.showError('Debe seleccionar un cliente y un inmueble');
-      return;
-    }
+
     this.enviando.set(true);
-    const ventaActual = this.ventaData();
+
     const dataActualizada: UpdateVentaDto = {};
-    if (Number(clienteId) !== ventaActual?.clienteId) {
-      dataActualizada.clienteId = Number(clienteId);
+
+    const clienteId = Number(this.ventaForm.get('clienteId')?.value);
+    const precioFinal = Number(this.ventaForm.get('precioFinal')?.value);
+    const estado = this.ventaForm.get('estado')?.value;
+    const observaciones = this.ventaForm.get('observaciones')?.value;
+
+    const ventaActual = this.ventaData();
+
+    if (clienteId !== ventaActual?.clienteId) {
+      dataActualizada.clienteId = clienteId;
     }
-    if (
-      Number(inmuebleId) !== ventaActual?.inmuebleId ||
-      inmuebleTipo !== ventaActual?.inmuebleTipo
-    ) {
-      dataActualizada.inmuebleTipo = inmuebleTipo;
-      dataActualizada.inmuebleId = Number(inmuebleId);
+
+    if (precioFinal !== ventaActual?.precioFinal) {
+      dataActualizada.precioFinal = precioFinal;
     }
-    if (Number(this.ventaForm.value.precioFinal) !== ventaActual?.precioFinal) {
-      dataActualizada.precioFinal = Number(this.ventaForm.value.precioFinal);
+
+    if (estado !== ventaActual?.estado) {
+      dataActualizada.estado = estado;
     }
-    if (this.ventaForm.value.estado !== ventaActual?.estado) {
-      dataActualizada.estado = this.ventaForm.value.estado;
+
+    if (observaciones !== ventaActual?.observaciones) {
+      dataActualizada.observaciones = observaciones;
     }
-    if (this.ventaForm.value.observaciones !== ventaActual?.observaciones) {
-      dataActualizada.observaciones = this.ventaForm.value.observaciones;
-    }
+
     if (Object.keys(dataActualizada).length === 0) {
       this.notificationService.showInfo('No se detectaron cambios para actualizar.');
       this.enviando.set(false);
       return;
     }
+
     this.ventaSvc.update(id, dataActualizada).subscribe({
       next: (response: any) => {
         this.enviando.set(false);
@@ -925,7 +929,7 @@ export class VentaEdit implements OnInit {
                     this.router.navigate(['/ventas/lista']);
                   } else {
                     this.notificationService.showError(
-                      response.message || 'Error al eliminar la venta'
+                      response.message || 'Error al eliminar la venta',
                     );
                   }
                 },

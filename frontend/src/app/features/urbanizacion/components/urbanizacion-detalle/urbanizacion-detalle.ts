@@ -3,14 +3,14 @@ import { UrbanizacionDto } from '../../../../core/interfaces/urbanizacion.interf
 import { UrbanizacionService } from '../../services/urbanizacion.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { ActivatedRoute, RouterModule } from '@angular/router';
-import { Galeria } from "../../../../components/galeria/galeria";
+import { Galeria } from '../../../../components/galeria/galeria';
 import { environment } from '../../../../../environments/environment';
 import { UploadArchivosService } from '../../../../components/services/archivos.service';
 import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-urbanizacion-detalle',
-  imports: [RouterModule, Galeria,CommonModule],
+  imports: [RouterModule, Galeria, CommonModule],
   templateUrl: './urbanizacion-detalle.html',
   styleUrl: './urbanizacion-detalle.css',
 })
@@ -19,8 +19,9 @@ export class UrbanizacionDetalle {
   urlServer = environment.fileServer;
   private urbanizacionSvc = inject(UrbanizacionService);
   private notificationService = inject(NotificationService);
-  private archivoService=inject(UploadArchivosService)
+  private archivoService = inject(UploadArchivosService);
   private route = inject(ActivatedRoute);
+
   ngOnInit(): void {
     this.route.paramMap.subscribe((params) => {
       const id = params.get('id');
@@ -33,18 +34,16 @@ export class UrbanizacionDetalle {
   private cargarUrbanizacion(id: number): void {
     this.urbanizacionSvc.getById(id).subscribe({
       next: (resp) => {
-        console.log("lo qnecesito")
-        console.log(resp);
         this.urbanizacionSeleccionada.set(resp);
       },
       error: (err) => {
-        console.error('Error al cargar lote:', err);
-        this.notificationService.showError('Error al cargar el lote');
+        console.error('Error al cargar urbanización:', err);
+        this.notificationService.showError('Error al cargar la urbanización');
       },
     });
   }
-    eliminarImagen(id: number| undefined) {
-    console.log(id);
+
+  eliminarImagen(id: number | undefined) {
     if (!id) return;
 
     this.notificationService
@@ -54,9 +53,9 @@ export class UrbanizacionDetalle {
           this.archivoService.eliminarArchivo(id).subscribe({
             next: (resp) => {
               this.notificationService.showSuccess(`Se ha eliminado correctamente el archivo`);
-              const loteActual = this.urbanizacionSeleccionada();
-              if (loteActual?.id) {
-                this.cargarUrbanizacion(loteActual.id);
+              const urbanizacionActual = this.urbanizacionSeleccionada();
+              if (urbanizacionActual?.id) {
+                this.cargarUrbanizacion(urbanizacionActual.id);
               }
             },
             error: (err) => {
@@ -65,5 +64,21 @@ export class UrbanizacionDetalle {
           });
         }
       });
+  }
+
+  tieneMaps(): boolean {
+    return (
+      !!this.urbanizacionSeleccionada()?.maps &&
+      this.urbanizacionSeleccionada()!.maps!.trim().length > 0
+    );
+  }
+
+  abrirMaps() {
+    const maps = this.urbanizacionSeleccionada()?.maps;
+    if (maps) {
+      window.open(maps, '_blank', 'noopener,noreferrer');
+    } else {
+      this.notificationService.showWarning('Esta urbanización no tiene ubicación en Google Maps');
+    }
   }
 }

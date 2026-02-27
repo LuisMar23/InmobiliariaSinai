@@ -16,4 +16,8 @@ export class CreateUrbanizacionDto {
   @IsString()
   @IsOptional()
   descripcion?: string;
+
+  @IsString()
+  @IsOptional()
+  maps?: string; 
 }

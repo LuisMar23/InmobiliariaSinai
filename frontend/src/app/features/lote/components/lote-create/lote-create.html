@@ -59,7 +59,7 @@
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     Urbanización <span class="text-red-500">*</span>
                                 </label>
-                                <div class="relative">
+                                <!-- <div class="relative">
                                     <input type="text" [value]="searchUrbanizacion()"
                                         (input)="searchUrbanizacion.set($any($event.target).value)"
                                         (focus)="toggleUrbanizacionDropdown()" (blur)="onUrbanizacionBlur()"
@@ -73,8 +73,23 @@
                                                 d="M19 9l-7 7-7-7" />
                                         </svg>
                                     </div>
-                                </div>
+                                </div> -->
+  <div class="flex gap-2">
+    <input type="text" [value]="searchUrbanizacion()" readonly
+      placeholder="Seleccione una urbanización..."
+      class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg bg-gray-50 text-sm cursor-pointer"
+      [class.border-red-500]="loteForm.get('urbanizacionId')?.invalid && loteForm.get('urbanizacionId')?.touched"
+      (click)="urbanizacionModal.open()" />
+    <button type="button" (click)="urbanizacionModal.open()"
+      class="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-3 rounded-lg transition-colors">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+      </svg>
+    </button>
+  </div>
 
+<!-- 
                                 @if (showUrbanizacionDropdown()) {
                                 <div
                                     class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
@@ -91,7 +106,7 @@
                                     </div>
                                     }
                                 </div>
-                                }
+                                } -->
 
                                 @if (loteForm.get('urbanizacionId')?.invalid && loteForm.get('urbanizacionId')?.touched)
                                 {
@@ -159,6 +174,16 @@
                                 }
                             </div>
 
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Manzano 
+                                </label>
+                                <input type="text" step="0.01" formControlName="manzano"
+                                    class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm sm:text-base"
+                            
+                                />
+         
+                            </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     Estado
@@ -246,3 +271,10 @@
         </div>
     </div>
 </div>
+
+<app-selection-modal
+  #urbanizacionModal
+  [config]="urbanizacionModalConfig"
+  [items]="urbanizaciones()"
+  (selected)="selectUrbanizacion($event)">
+</app-selection-modal>

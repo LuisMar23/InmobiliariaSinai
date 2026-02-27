@@ -26,6 +26,7 @@ export interface Urbanizacion {
   ubicacion: string;
   ciudad: string;
   descripcion?: string;
+  maps?: string; // NUEVO: URL de Google Maps
   archivos?: any;
   createdAt: Date;
   updatedAt: Date;
@@ -86,7 +87,7 @@ export interface Lote {
   urbanizacion?: Urbanizacion;
   archivos?: any;
   LotePromocion?: LotePromocion[];
-  encargado?:any
+  encargado?: any;
 }
 
 export interface Propiedad {

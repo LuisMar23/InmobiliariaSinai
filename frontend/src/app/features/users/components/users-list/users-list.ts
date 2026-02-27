@@ -17,6 +17,7 @@ import {
   faMapMarkerAlt,
   faUserShield,
   faIdCard,
+  faUserPlus,
 } from '@fortawesome/free-solid-svg-icons';
 import { UserService } from '../../services/users.service';
 import { NotificationService } from '../../../../core/services/notification.service';
@@ -42,6 +43,8 @@ export class UsersComponent implements OnInit {
   faUserShield = faUserShield;
   faIdCard = faIdCard;
 
+
+faUserPlus = faUserPlus; // Agregar esta propiedad
   users = signal<any[]>([]);
   allUsers = signal<any[]>([]);
   searchTerm = signal('');

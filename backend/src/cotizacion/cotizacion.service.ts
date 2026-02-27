@@ -10,8 +10,8 @@ import {
   CreateCotizacionDto,
   EstadoCotizacion,
   TipoInmueble,
-  UpdateCotizacionDto,
 } from './dto/create-cotizacion.dto';
+import { UpdateCotizacionDto } from './dto/update-cotizacion.dto';
 
 @Injectable()
 export class CotizacionService {
@@ -58,20 +58,6 @@ export class CotizacionService {
         if (!rolesPermitidos.includes(usuario.role)) {
           throw new ForbiddenException(
             'No tienes permisos para crear cotizaciones. Se requiere rol de ASESOR, ADMINISTRADOR o SECRETARIA',
-          );
-        }
-
-        const cliente = await prisma.user.findFirst({
-          where: {
-            id: createCotizacionDto.clienteId,
-            isActive: true,
-            role: 'CLIENTE',
-          },
-        });
-
-        if (!cliente) {
-          throw new BadRequestException(
-            'Cliente no encontrado o no tiene rol de CLIENTE',
           );
         }
 
@@ -154,7 +140,9 @@ export class CotizacionService {
 
         const cotizacion = await prisma.cotizacion.create({
           data: {
-            clienteId: createCotizacionDto.clienteId,
+            nombreCliente: createCotizacionDto.nombreCliente,
+            contactoCliente: createCotizacionDto.contactoCliente,
+            detalle: createCotizacionDto.detalle,
             asesorId: usuarioId,
             inmuebleTipo: createCotizacionDto.inmuebleTipo,
             inmuebleId: createCotizacionDto.inmuebleId,
@@ -162,16 +150,6 @@ export class CotizacionService {
             estado: createCotizacionDto.estado || EstadoCotizacion.PENDIENTE,
           },
           include: {
-            cliente: {
-              select: {
-                id: true,
-                fullName: true,
-                ci: true,
-                telefono: true,
-                direccion: true,
-                role: true,
-              },
-            },
             asesor: {
               select: {
                 id: true,
@@ -258,26 +236,18 @@ export class CotizacionService {
     }
   }
 
-  async findAll(clienteId?: number, estado?: string) {
+  async findAll(nombreCliente?: string, contactoCliente?: string, estado?: string, detalle?: string) {
     try {
       const where: any = {};
 
-      if (clienteId) where.clienteId = clienteId;
+      if (nombreCliente) where.nombreCliente = { contains: nombreCliente, mode: 'insensitive' };
+      if (contactoCliente) where.contactoCliente = { contains: contactoCliente };
       if (estado) where.estado = estado;
+      if (detalle) where.detalle = { contains: detalle, mode: 'insensitive' };
 
       const cotizaciones = await this.prisma.cotizacion.findMany({
         where,
         include: {
-          cliente: {
-            select: {
-              id: true,
-              fullName: true,
-              ci: true,
-              telefono: true,
-              direccion: true,
-              role: true,
-            },
-          },
           asesor: {
             select: {
               id: true,
@@ -384,17 +354,6 @@ export class CotizacionService {
       const cotizacion = await this.prisma.cotizacion.findUnique({
         where: { id },
         include: {
-          cliente: {
-            select: {
-              id: true,
-              fullName: true,
-              ci: true,
-              telefono: true,
-              direccion: true,
-              observaciones: true,
-              role: true,
-            },
-          },
           asesor: {
             select: {
               id: true,
@@ -555,21 +514,6 @@ export class CotizacionService {
 
         const datosAntes = { ...cotizacionExistente };
 
-        if (updateCotizacionDto.clienteId) {
-          const cliente = await prisma.user.findFirst({
-            where: {
-              id: updateCotizacionDto.clienteId,
-              isActive: true,
-              role: 'CLIENTE',
-            },
-          });
-          if (!cliente) {
-            throw new BadRequestException(
-              'Cliente no encontrado o no tiene rol de CLIENTE',
-            );
-          }
-        }
-
         if (
           updateCotizacionDto.precioOfertado !== undefined &&
           cotizacionExistente.inmuebleTipo === TipoInmueble.LOTE &&
@@ -591,15 +535,6 @@ export class CotizacionService {
           where: { id },
           data: updateCotizacionDto,
           include: {
-            cliente: {
-              select: {
-                id: true,
-                fullName: true,
-                ci: true,
-                telefono: true,
-                role: true,
-              },
-            },
             asesor: {
               select: {
                 id: true,

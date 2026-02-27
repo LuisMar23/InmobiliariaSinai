@@ -147,7 +147,6 @@ model User {
   resetPasswordToken   String?   @map("reset_password_token")
   resetPasswordExpires DateTime? @map("reset_password_expires")
 
-  cotizacionesComoCliente Cotizacion[]     @relation("CotizacionesCliente")
   cotizacionesComoAsesor  Cotizacion[]     @relation("CotizacionesAsesor")
   ventasComoCliente       Venta[]          @relation("VentasCliente")
   ventasComoAsesor        Venta[]          @relation("VentasAsesor")
@@ -176,6 +175,7 @@ model Lote {
   precioBase      Decimal        @map("precio_base") @db.Decimal(12, 2)
   descripcion     String?
   ubicacion       String?
+  manzano         String?
   ciudad          String
   latitud         Decimal?       @db.Decimal(10, 7)
   longitud        Decimal?       @db.Decimal(10, 7)
@@ -201,6 +201,7 @@ model Urbanizacion {
   ubicacion   String
   ciudad      String
   descripcion String?
+  maps        String?  
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
@@ -212,7 +213,9 @@ model Urbanizacion {
 model Cotizacion {
   id             Int              @id @default(autoincrement())
   uuid           String           @unique @default(uuid())
-  clienteId      Int
+  nombreCliente  String           @map("nombre_cliente")
+  contactoCliente String          @map("contacto_cliente")
+  detalle        String?          @map("detalle")
   asesorId       Int
   inmuebleTipo   TipoInmueble     @default(LOTE)
   inmuebleId     Int
@@ -221,9 +224,8 @@ model Cotizacion {
   createdAt      DateTime         @default(now()) @map("created_at")
   updatedAt      DateTime         @updatedAt @map("updated_at")
 
-  cliente User  @relation("CotizacionesCliente", fields: [clienteId], references: [id])
-  asesor  User  @relation("CotizacionesAsesor", fields: [asesorId], references: [id])
-  lote    Lote? @relation("CotizacionesLote", fields: [inmuebleId], references: [id], map: "fk_cotizacion_lote")
+  asesor User  @relation("CotizacionesAsesor", fields: [asesorId], references: [id])
+  lote   Lote? @relation("CotizacionesLote", fields: [inmuebleId], references: [id], map: "fk_cotizacion_lote")
 }
 
 model Venta {
@@ -240,10 +242,13 @@ model Venta {
   observaciones String?
   loteId        Int?         @map("lote_id")
   propiedadId   Int?         @map("propiedad_id")
+  cajaId        Int?         @map("caja_id")
+  
   cliente   User       @relation("VentasCliente", fields: [clienteId], references: [id])
   asesor    User       @relation("VentasAsesor", fields: [asesorId], references: [id])
   lote      Lote?      @relation("VentasLote", fields: [loteId], references: [id], map: "fk_venta_lote")
   propiedad Propiedad? @relation("VentasPropiedad", fields: [propiedadId], references: [id], map: "fk_venta_propiedad")
+  caja      Caja?      @relation(fields: [cajaId], references: [id])
   archivos  Archivo[]
   ingresos  Ingreso[]
   planPago  PlanPago?
@@ -466,6 +471,7 @@ model Caja {
 
   movimientos MovimientoCaja[]
   cierreCaja  CierreCaja[]
+  ventas      Venta[]
 
   @@map("cajas")
 }

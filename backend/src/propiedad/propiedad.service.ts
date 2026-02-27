@@ -1,3 +1,4 @@
+// src/propiedad/propiedad.service.ts
 import {
   Injectable,
   NotFoundException,
@@ -134,8 +135,16 @@ export class PropiedadService {
     });
   }
 
-  async findAll() {
+  async findAll(usuarioId: number) {
+    const where: any = {
+      OR: [
+        { encargadoId: usuarioId },
+        { encargadoId: null }
+      ]
+    };
+
     const propiedades = await this.prisma.propiedad.findMany({
+      where,
       include: {
         archivos: {
           select: {
@@ -370,7 +379,7 @@ export class PropiedadService {
           banos: updatePropiedadDto.banos,
           precio: updatePropiedadDto.precio,
           estado: updatePropiedadDto.estado,
-          encargadoId:updatePropiedadDto.encargadoId,
+          encargadoId: updatePropiedadDto.encargadoId,
           estadoPropiedad: updatePropiedadDto.estadoPropiedad,
         },
         include: {
@@ -429,7 +438,7 @@ export class PropiedadService {
     });
   }
 
-  async remove(id: number) {
+  async remove(id: number, usuarioId?: number) {
     return this.prisma.$transaction(async (prisma) => {
       const propiedad = await prisma.propiedad.findUnique({
         where: { id },
@@ -461,7 +470,7 @@ export class PropiedadService {
       });
 
       await this.crearAuditoria(
-        undefined,
+        usuarioId,
         'ELIMINAR',
         'Propiedad',
         id,

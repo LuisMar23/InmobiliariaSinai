@@ -1,3 +1,4 @@
+// src/propiedad/propiedad.controller.ts
 import {
   Controller,
   Get,
@@ -9,7 +10,8 @@ import {
   UsePipes,
   ValidationPipe,
   ParseIntPipe,
-  ParseEnumPipe,
+  UseGuards,
+  Request,
 } from '@nestjs/common';
 import { PropiedadService } from './propiedad.service';
 import {
@@ -19,21 +21,23 @@ import {
   EstadoInmueble,
 } from './dto/create-propiedad.dto';
 import { UpdatePropiedadDto } from './dto/update-propiedad.dto';
+import { AuthGuard } from '@nestjs/passport';
 
 @Controller('propiedades')
 @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
+@UseGuards(AuthGuard('jwt'))
 export class PropiedadController {
   constructor(private readonly propiedadService: PropiedadService) {}
 
   @Post()
-  create(@Body() createPropiedadDto: CreatePropiedadDto) {
-    console.log(createPropiedadDto)
+  create(@Body() createPropiedadDto: CreatePropiedadDto, @Request() req) {
+    createPropiedadDto.usuarioId = req.user.id;
     return this.propiedadService.create(createPropiedadDto);
   }
 
   @Get()
-  findAll() {
-    return this.propiedadService.findAll();
+  findAll(@Request() req) {
+    return this.propiedadService.findAll(req.user.id);
   }
 
   @Get('para-cotizacion')
@@ -70,12 +74,27 @@ export class PropiedadController {
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updatePropiedadDto: UpdatePropiedadDto,
+    @Request() req,
   ) {
+    updatePropiedadDto.usuarioId = req.user.id;
     return this.propiedadService.update(id, updatePropiedadDto);
   }
 
   @Delete(':id')
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.propiedadService.remove(id);
+  remove(@Param('id', ParseIntPipe) id: number, @Request() req) {
+    return this.propiedadService.remove(id, req.user.id);
+  }
+
+  @Patch(':id/asignar-encargado')
+  asignarEncargado(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { encargadoId: number },
+    @Request() req,
+  ) {
+    return this.propiedadService.asignarEncargado(
+      id,
+      body.encargadoId,
+      req.user.id,
+    );
   }
 }

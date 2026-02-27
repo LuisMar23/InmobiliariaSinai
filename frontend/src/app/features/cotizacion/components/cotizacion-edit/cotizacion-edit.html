@@ -1,6 +1,5 @@
 <div class="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-emerald-50 py-4 px-2 sm:px-4 lg:px-8">
     <div class="max-w-full mx-auto">
-        <!-- Header -->
         <div class="bg-emerald-500 rounded-t-2xl shadow-lg p-4 sm:p-6">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div class="flex items-center gap-3">
@@ -26,9 +25,7 @@
             </div>
         </div>
 
-        <!-- Contenido -->
         <div class="bg-white rounded-b-2xl shadow-xl p-4 sm:p-6 lg:p-8">
-            <!-- Estado de carga -->
             @if (cargando()) {
             <div class="text-center py-12">
                 <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mx-auto"></div>
@@ -36,7 +33,6 @@
             </div>
             }
 
-            <!-- Error al cargar -->
             @if (error() && !cargando()) {
             <div class="text-center py-12 text-gray-500">
                 <svg class="w-16 h-16 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -51,7 +47,6 @@
             </div>
             }
 
-            <!-- Formulario para editar cotización -->
             @if (cotizacionData && !cargando()) {
             <form [formGroup]="cotizacionForm" (submit)="handleFormSubmit($event)">
                 <div class="mb-8">
@@ -64,53 +59,43 @@
                     </h2>
                     <div class="bg-white border-2 border-gray-200 rounded-xl p-4 sm:p-6">
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                            <!-- Cliente con buscador -->
-                            <div class="relative">
+                            <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    Cliente <span class="text-red-500">*</span>
+                                    Nombre del Cliente <span class="text-red-500">*</span>
                                 </label>
-                                <div class="relative">
-                                    <input type="text" [value]="searchCliente()"
-                                        (input)="searchCliente.set($any($event.target).value)"
-                                        (focus)="toggleClientesDropdown()" (blur)="onClienteBlur()"
-                                        placeholder="Buscar cliente por nombre, cédula o email..."
-                                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm sm:text-base pr-10"
-                                        [class.border-red-500]="cotizacionForm.get('clienteId')?.invalid && cotizacionForm.get('clienteId')?.touched" />
-                                    <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor"
-                                            viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M19 9l-7 7-7-7" />
-                                        </svg>
-                                    </div>
-                                </div>
-
-                                <!-- Dropdown de clientes -->
-                                @if (showClientesDropdown()) {
-                                <div
-                                    class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                                    @for (cliente of filteredClientes(); track cliente.id) {
-                                    <div (click)="selectCliente(cliente)"
-                                        class="px-4 py-3 hover:bg-emerald-50 cursor-pointer border-b border-gray-100 last:border-b-0">
-                                        <div class="font-medium text-gray-900">{{ cliente.fullName }}</div>
-                                        <div class="text-sm text-gray-600">{{ cliente.ci }} - {{ cliente.email }}</div>
-                                    </div>
-                                    }
-                                    @if (filteredClientes().length === 0) {
-                                    <div class="px-4 py-3 text-gray-500 text-center">
-                                        No se encontraron clientes
-                                    </div>
-                                    }
-                                </div>
-                                }
-
-                                @if (cotizacionForm.get('clienteId')?.invalid &&
-                                cotizacionForm.get('clienteId')?.touched) {
-                                <p class="mt-1 text-xs text-red-600">El cliente es requerido</p>
+                                <input type="text" formControlName="nombreCliente"
+                                    class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm sm:text-base"
+                                    placeholder="Ingrese el nombre del cliente"
+                                    [class.border-red-500]="cotizacionForm.get('nombreCliente')?.invalid && cotizacionForm.get('nombreCliente')?.touched" />
+                                @if (cotizacionForm.get('nombreCliente')?.invalid &&
+                                cotizacionForm.get('nombreCliente')?.touched) {
+                                <p class="mt-1 text-xs text-red-600">El nombre del cliente es requerido</p>
                                 }
                             </div>
 
-                            <!-- Lote con buscador -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Contacto del Cliente <span class="text-red-500">*</span>
+                                </label>
+                                <input type="text" formControlName="contactoCliente"
+                                    class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm sm:text-base"
+                                    placeholder="Teléfono o email de contacto"
+                                    [class.border-red-500]="cotizacionForm.get('contactoCliente')?.invalid && cotizacionForm.get('contactoCliente')?.touched" />
+                                @if (cotizacionForm.get('contactoCliente')?.invalid &&
+                                cotizacionForm.get('contactoCliente')?.touched) {
+                                <p class="mt-1 text-xs text-red-600">El contacto del cliente es requerido</p>
+                                }
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Detalle (Opcional)
+                                </label>
+                                <input type="text" formControlName="detalle"
+                                    class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm sm:text-base"
+                                    placeholder="Detalles adicionales" />
+                            </div>
+
                             <div class="relative">
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     Lote <span class="text-red-500">*</span>
@@ -131,7 +116,6 @@
                                     </div>
                                 </div>
 
-                                <!-- Dropdown de lotes -->
                                 @if (showLotesDropdown()) {
                                 <div
                                     class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
@@ -163,7 +147,6 @@
                                 }
                             </div>
 
-                            <!-- Precio Ofertado -->
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     Precio Ofertado (Bs.) <span class="text-red-500">*</span>
@@ -182,7 +165,6 @@
                                 }
                             </div>
 
-                            <!-- Estado -->
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     Estado
@@ -195,7 +177,6 @@
                                 </select>
                             </div>
 
-                            <!-- Tipo de Inmueble (OCULTO) -->
                             <div class="hidden">
                                 <select formControlName="inmuebleTipo"
                                     class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 text-sm sm:text-base">
@@ -205,7 +186,7 @@
                         </div>
                     </div>
                 </div>
-                <!-- Botones de acción -->
+
                 <div class="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 pt-6 border-t border-gray-200">
                     <button type="button" (click)="volverAlListado()"
                         class="flex items-center justify-center gap-2 bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg shadow-md transition-all duration-200 font-semibold w-full sm:w-auto">

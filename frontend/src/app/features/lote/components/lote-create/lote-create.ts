@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, inject, signal, OnInit, ViewChild } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
@@ -7,11 +7,12 @@ import { LoteService } from '../../service/lote.service';
 import { UrbanizacionService } from '../../../urbanizacion/services/urbanizacion.service';
 import { UrbanizacionDto } from '../../../../core/interfaces/urbanizacion.interface';
 import { UserService } from '../../../users/services/users.service';
+import { ModalConfig, SeleccionModalComponent } from "../../../../components/seleccion-modal/seleccion-modal";
 
 @Component({
   selector: 'app-lote-create',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, SeleccionModalComponent],
   templateUrl: './lote-create.html',
 })
 export class LoteCreate implements OnInit {
@@ -48,6 +49,7 @@ export class LoteCreate implements OnInit {
       ciudad: [''],
       descripcion: [''],
       ubicacion: [''],
+      manzano:[''],
       estado: ['DISPONIBLE'],
       encargadoId: [''],
     });
@@ -141,13 +143,13 @@ export class LoteCreate implements OnInit {
     this.generarNumeroLoteAutomatico();
   }
 
-  filteredUrbanizaciones() {
-    const search = this.searchUrbanizacion().toLowerCase();
-    if (!search) return this.urbanizaciones();
-    return this.urbanizaciones().filter((urbanizacion) =>
-      urbanizacion.nombre?.toLowerCase().includes(search)
-    );
-  }
+  // filteredUrbanizaciones() {
+  //   const search = this.searchUrbanizacion().toLowerCase();
+  //   if (!search) return this.urbanizaciones();
+  //   return this.urbanizaciones().filter((urbanizacion) =>
+  //     urbanizacion.nombre?.toLowerCase().includes(search)
+  //   );
+  // }
 
   selectUrbanizacion(urbanizacion: UrbanizacionDto) {
     if (urbanizacion.id) {
@@ -161,15 +163,15 @@ export class LoteCreate implements OnInit {
     }
   }
 
-  toggleUrbanizacionDropdown() {
-    this.showUrbanizacionDropdown.set(!this.showUrbanizacionDropdown());
-  }
+  // toggleUrbanizacionDropdown() {
+  //   this.showUrbanizacionDropdown.set(!this.showUrbanizacionDropdown());
+  // }
 
-  onUrbanizacionBlur() {
-    setTimeout(() => {
-      this.showUrbanizacionDropdown.set(false);
-    }, 200);
-  }
+  // onUrbanizacionBlur() {
+  //   setTimeout(() => {
+  //     this.showUrbanizacionDropdown.set(false);
+  //   }, 200);
+  // }
 
   onSubmit(): void {
     if (this.loteForm.invalid) {
@@ -185,10 +187,11 @@ export class LoteCreate implements OnInit {
       urbanizacionId: formValue.esIndependiente ? null : Number(formValue.urbanizacionId),
       superficieM2: Number(formValue.superficieM2),
       precioBase: Number(formValue.precioBase),
+  
       esIndependiente: Boolean(formValue.esIndependiente),
       encargadoId: formValue.encargadoId ? Number(formValue.encargadoId) : undefined,
     };
-
+    console.log(loteData)
     this.loteSvc.create(loteData).subscribe({
       next: (response: any) => {
         this.enviando.set(false);
@@ -237,4 +240,19 @@ export class LoteCreate implements OnInit {
     this.searchUrbanizacion.set('');
     this.loteForm.patchValue({ urbanizacionId: '' });
   }
+
+
+  @ViewChild('urbanizacionModal') urbanizacionModal!: SeleccionModalComponent;
+urbanizacionModalConfig: ModalConfig = {
+  title: 'Seleccionar Urbanización',
+  searchPlaceholder: 'Buscar por nombre, ciudad, ubicación...',
+  searchKeys: ['nombre', 'ciudad', 'ubicacion'],
+  columns: [
+    { key: 'nombre', label: 'Nombre' },
+    { key: 'ciudad', label: 'Ciudad' },
+    { key: 'ubicacion', label: 'Ubicación' },
+  ]
+};
+
+
 }

@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, inject, signal, OnInit, ViewChild } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
@@ -11,11 +11,12 @@ import { LoteService } from '../../../lote/service/lote.service';
 import { PropiedadService } from '../../../propiedad/service/propiedad.service';
 import { AuthService } from '../../../../components/services/auth.service';
 import { VentaService } from '../../service/venta.service';
+import { ModalConfig, SeleccionModalComponent } from '../../../../components/seleccion-modal/seleccion-modal';
 
 @Component({
   selector: 'app-venta-create',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, SeleccionModalComponent],
   templateUrl: './venta-create.html',
 })
 export class VentaCreate implements OnInit {
@@ -92,7 +93,9 @@ export class VentaCreate implements OnInit {
     this.planPagoForm.get('fecha_inicio')?.valueChanges.subscribe(() => {
       this.calcularFechaVencimiento();
     });
-
+    this.ventaForm.get('estado')?.valueChanges.subscribe((estado) => {
+      this.onEstadoChange(estado);
+    });
     this.planPagoForm.get('plazo')?.valueChanges.subscribe(() => {
       this.calcularFechaVencimiento();
     });
@@ -108,7 +111,35 @@ export class VentaCreate implements OnInit {
       this.searchPropiedad.set('');
     });
   }
+ onEstadoChange(estado: string): void {
+    const precioFinal = this.ventaForm.get('precioFinal')?.value || 0;
 
+    if (estado === 'PAGADO') {
+      // Si está pagado, el monto inicial = precio final (pago completo)
+      this.planPagoForm.patchValue({
+        monto_inicial: precioFinal,
+        plazo: 1,
+        periodicidad: 'DIAS',
+      });
+
+      // Deshabilitar los campos de plan de pago
+      this.planPagoForm.get('monto_inicial')?.disable();
+      this.planPagoForm.get('plazo')?.disable();
+      this.planPagoForm.get('periodicidad')?.disable();
+    } else {
+      // Si no está pagado, habilitar los campos
+      this.planPagoForm.get('monto_inicial')?.enable();
+      this.planPagoForm.get('plazo')?.enable();
+      this.planPagoForm.get('periodicidad')?.enable();
+      
+      // Resetear el monto inicial a 0 o mantener el valor actual
+      if (this.planPagoForm.get('monto_inicial')?.value === precioFinal) {
+        this.planPagoForm.patchValue({
+          monto_inicial: 0,
+        });
+      }
+    }
+  }
   cargarClientes(): void {
     this.authService.getClientes().subscribe({
       next: (response: any) => {
@@ -132,61 +163,83 @@ export class VentaCreate implements OnInit {
     });
   }
 
-  cargarLotes(): void {
-    this.loteSvc.getAll().subscribe({
-      next: (lotes: LoteDto[]) => {
-        const lotesDisponibles = lotes.filter(
-          (lote) => lote.estado === 'DISPONIBLE' || lote.estado === 'CON_OFERTA'
-        );
-        this.lotes.set(lotesDisponibles);
-      },
-      error: (err: any) => {
-        this.notificationService.showError('No se pudieron cargar los lotes');
-      },
-    });
-  }
+cargarLotes(): void {
+  const currentUser = this.authService.getCurrentUser();
+  
+  console.log('currentUser lotes:', currentUser);
+  console.log('rol exacto:', currentUser?.rol);
 
-cargarPropiedades(): void {
-  this.propiedadSvc.getAll().subscribe({
-    next: (propiedades: PropiedadDto[]) => {
-      // DEBUG: Mostrar todas las propiedades recibidas
-      console.log('Todas las propiedades recibidas:', propiedades);
-      console.log('Cantidad total:', propiedades.length);
+  const rolesFullAccess = ['ADMINISTRADOR', 'SECRETARIA'];
+
+  this.loteSvc.getAll().subscribe({
+    next: (lotes: LoteDto[]) => {
+      console.log('lotes recibidos:', lotes);
       
-      // Mostrar estado de cada propiedad para debug
-      propiedades.forEach((propiedad, index) => {
-        console.log(`Propiedad ${index}:`, {
-          id: propiedad.id,
-          nombre: propiedad.nombre,
-          tipo: propiedad.tipo,
-          estadoPropiedad: propiedad.estadoPropiedad,
-          estado: propiedad.estado,
-          filtroAplica: (
-            propiedad.estadoPropiedad === 'VENTA' &&
-            (propiedad.tipo === 'CASA' || propiedad.tipo === 'DEPARTAMENTO') &&
-            (propiedad.estado === 'DISPONIBLE' || propiedad.estado === 'CON_OFERTA')
-          )
-        });
-      });
-
-      const propiedadesParaVenta = propiedades.filter(
-        (propiedad) =>
-          propiedad.estadoPropiedad === 'VENTA' &&
-          (propiedad.tipo === 'CASA' || propiedad.tipo === 'DEPARTAMENTO') &&
-          (propiedad.estado === 'DISPONIBLE' || propiedad.estado === 'CON_OFERTA')
+      const lotesDisponibles = lotes.filter(
+        (lote) => lote.estado === 'DISPONIBLE' || lote.estado === 'CON_OFERTA',
       );
-      
-      console.log('Propiedades filtradas para venta:', propiedadesParaVenta);
-      console.log('Cantidad filtrada:', propiedadesParaVenta.length);
-      
-      this.propiedades.set(propiedadesParaVenta);
+
+      console.log('incluye rol?:', rolesFullAccess.includes(currentUser?.rol));
+
+      if (rolesFullAccess.includes(currentUser?.role)) {
+        this.lotes.set(lotesDisponibles);
+        return;
+      }
+
+      const lotesFiltrados = lotesDisponibles.filter(
+        (lote) => {
+          console.log(`encargadoId: ${lote.encargadoId} === userId: ${currentUser?.id}`);
+          return lote.encargadoId?.toString() === currentUser?.id?.toString();
+        }
+      );
+
+      this.lotes.set(lotesFiltrados);
     },
     error: (err: any) => {
-      console.error('Error al cargar propiedades:', err);
-      this.notificationService.showError('No se pudieron cargar las propiedades');
+      this.notificationService.showError('No se pudieron cargar los lotes');
     },
   });
 }
+  cargarPropiedades(): void {
+    this.propiedadSvc.getAll().subscribe({
+      next: (propiedades: PropiedadDto[]) => {
+        // DEBUG: Mostrar todas las propiedades recibidas
+        console.log('Todas las propiedades recibidas:', propiedades);
+        console.log('Cantidad total:', propiedades.length);
+
+        // Mostrar estado de cada propiedad para debug
+        propiedades.forEach((propiedad, index) => {
+          console.log(`Propiedad ${index}:`, {
+            id: propiedad.id,
+            nombre: propiedad.nombre,
+            tipo: propiedad.tipo,
+            estadoPropiedad: propiedad.estadoPropiedad,
+            estado: propiedad.estado,
+            filtroAplica:
+              propiedad.estadoPropiedad === 'VENTA' &&
+              (propiedad.tipo === 'CASA' || propiedad.tipo === 'DEPARTAMENTO') &&
+              (propiedad.estado === 'DISPONIBLE' || propiedad.estado === 'CON_OFERTA'),
+          });
+        });
+
+        const propiedadesParaVenta = propiedades.filter(
+          (propiedad) =>
+            propiedad.estadoPropiedad === 'VENTA' &&
+            (propiedad.tipo === 'CASA' || propiedad.tipo === 'DEPARTAMENTO') &&
+            (propiedad.estado === 'DISPONIBLE' || propiedad.estado === 'CON_OFERTA'),
+        );
+
+        console.log('Propiedades filtradas para venta:', propiedadesParaVenta);
+        console.log('Cantidad filtrada:', propiedadesParaVenta.length);
+
+        this.propiedades.set(propiedadesParaVenta);
+      },
+      error: (err: any) => {
+        console.error('Error al cargar propiedades:', err);
+        this.notificationService.showError('No se pudieron cargar las propiedades');
+      },
+    });
+  }
 
   cargarCajasActivas(): void {
     this.ventaSvc.obtenerCajasActivas().subscribe({
@@ -207,7 +260,7 @@ cargarPropiedades(): void {
       (cliente) =>
         cliente.fullName?.toLowerCase().includes(search) ||
         (cliente.ci && cliente.ci.toLowerCase().includes(search)) ||
-        (cliente.email && cliente.email.toLowerCase().includes(search))
+        (cliente.email && cliente.email.toLowerCase().includes(search)),
     );
   }
 
@@ -219,7 +272,7 @@ cargarPropiedades(): void {
       (lote) =>
         lote.numeroLote?.toLowerCase().includes(search) ||
         (lote.urbanizacion?.nombre && lote.urbanizacion.nombre.toLowerCase().includes(search)) ||
-        lote.precioBase?.toString().includes(search)
+        lote.precioBase?.toString().includes(search),
     );
   }
 
@@ -233,7 +286,7 @@ cargarPropiedades(): void {
         propiedad.ubicacion?.toLowerCase().includes(search) ||
         propiedad.ciudad?.toLowerCase().includes(search) ||
         propiedad.tipo?.toLowerCase().includes(search) ||
-        propiedad.precio?.toString().includes(search)
+        propiedad.precio?.toString().includes(search),
     );
   }
 
@@ -244,7 +297,7 @@ cargarPropiedades(): void {
     return this.cajas().filter(
       (caja) =>
         caja.nombre?.toLowerCase().includes(search) ||
-        caja.usuarioApertura?.fullName?.toLowerCase().includes(search)
+        caja.usuarioApertura?.fullName?.toLowerCase().includes(search),
     );
   }
 
@@ -284,19 +337,19 @@ cargarPropiedades(): void {
 
   getLoteDisplayText(lote: LoteDto): string {
     return `${lote.numeroLote} - ${lote.urbanizacion?.nombre} - $${this.formatNumber(
-      lote.precioBase
+      lote.precioBase,
     )}`;
   }
 
   getPropiedadDisplayText(propiedad: PropiedadDto): string {
     return `${propiedad.nombre} - ${propiedad.tipo} - ${propiedad.ubicacion} - $${this.formatNumber(
-      propiedad.precio
+      propiedad.precio,
     )}`;
   }
 
   getCajaDisplayText(caja: Caja): string {
     return `${caja.nombre} - ${caja.usuarioApertura?.fullName} - $${this.formatNumber(
-      caja.saldoActual
+      caja.saldoActual,
     )}`;
   }
 
@@ -367,7 +420,14 @@ cargarPropiedades(): void {
   onPrecioFinalChange(): void {
     const precioFinal = this.ventaForm.get('precioFinal')?.value || 0;
     const montoInicial = this.planPagoForm.get('monto_inicial')?.value || 0;
-    if (montoInicial > precioFinal) {
+    const estado = this.ventaForm.get('estado')?.value;
+
+
+    if (estado === 'PAGADO') {
+      this.planPagoForm.patchValue({
+        monto_inicial: precioFinal,
+      });
+    } else if (montoInicial > precioFinal) {
       this.planPagoForm.get('monto_inicial')?.setValue(precioFinal);
     }
   }
@@ -412,12 +472,22 @@ cargarPropiedades(): void {
       this.notificationService.showError('Complete todos los campos requeridos correctamente.');
       return;
     }
-
+    const estado = this.ventaForm.get('estado')?.value;
+    if (estado === 'PAGADO') {
+      this.planPagoForm.get('monto_inicial')?.enable();
+      this.planPagoForm.get('plazo')?.enable();
+      this.planPagoForm.get('periodicidad')?.enable();
+    }
     if (this.planPagoForm.invalid) {
       this.planPagoForm.markAllAsTouched();
       this.notificationService.showError(
-        'Complete todos los campos del plan de pago correctamente.'
+        'Complete todos los campos del plan de pago correctamente.',
       );
+            if (estado === 'PAGADO') {
+        this.planPagoForm.get('monto_inicial')?.disable();
+        this.planPagoForm.get('plazo')?.disable();
+        this.planPagoForm.get('periodicidad')?.disable();
+      }
       return;
     }
 
@@ -441,14 +511,15 @@ cargarPropiedades(): void {
       cajaId: Number(cajaId),
       estado: this.ventaForm.value.estado,
       observaciones: this.ventaForm.value.observaciones,
-      plan_pago: {
-        monto_inicial: Number(this.planPagoForm.value.monto_inicial),
-        plazo: Number(this.planPagoForm.value.plazo),
-        periodicidad: this.planPagoForm.value.periodicidad,
-        fecha_inicio: this.planPagoForm.value.fecha_inicio,
+    plan_pago: {
+      
+        monto_inicial: Number(this.planPagoForm.getRawValue().monto_inicial),
+        plazo: Number(this.planPagoForm.getRawValue().plazo),
+        periodicidad: this.planPagoForm.getRawValue().periodicidad,
+        fecha_inicio: this.planPagoForm.getRawValue().fecha_inicio,
       },
     };
-  if (inmuebleTipo === 'LOTE') {
+    if (inmuebleTipo === 'LOTE') {
       ventaData.loteId = Number(inmuebleId);
       // PropiedadId debe ser null o no enviarse
       ventaData.propiedadId = null;
@@ -504,4 +575,45 @@ cargarPropiedades(): void {
         return '';
     }
   }
+
+// Agregar en el componente
+clienteModalConfig: ModalConfig = {
+  title: 'Seleccionar Cliente',
+  searchPlaceholder: 'Buscar por nombre, CI',
+  searchKeys: ['fullName', 'ci', 'email'],
+  columns: [
+    { key: 'fullName', label: 'Nombre' },
+    { key: 'ci', label: 'CI' },
+  ]
+};
+
+loteModalConfig: ModalConfig = {
+  title: 'Seleccionar Lote',
+  searchPlaceholder: 'Buscar por número, urbanización...',
+  searchKeys: ['numeroLote'],
+  columns: [
+    { key: 'numeroLote', label: 'N° Lote' },
+    { key: 'estado', label: 'Estado' },
+    { key: 'precioBase', label: 'Precio (Bs.)', format: (v) => v?.toLocaleString('es-BO') },
+  ]
+};
+
+propiedadModalConfig: ModalConfig = {
+  title: 'Seleccionar Propiedad',
+  searchPlaceholder: 'Buscar por nombre, tipo, ciudad...',
+  searchKeys: ['nombre', 'tipo', 'ciudad'],
+  columns: [
+    { key: 'nombre', label: 'Nombre' },
+    { key: 'tipo', label: 'Tipo' },
+    { key: 'ciudad', label: 'Ciudad' },
+    { key: 'precio', label: 'Precio (Bs.)', format: (v) => Number(v)?.toLocaleString('es-BO') },
+  ]
+};
+
+// Referencias a los modales
+@ViewChild('clienteModal') clienteModal!: SeleccionModalComponent;
+@ViewChild('loteModal') loteModal!: SeleccionModalComponent;
+@ViewChild('propiedadModal') propiedadModal!: SeleccionModalComponent;
+
+
 }

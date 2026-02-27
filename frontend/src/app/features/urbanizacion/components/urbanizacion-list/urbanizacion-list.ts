@@ -13,16 +13,21 @@ import { UrbanizacionService } from '../../services/urbanizacion.service';
 
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 
-import { ArchivosComponent } from "../../../../components/archivos/archivos/archivos";
-
+import { ArchivosComponent } from '../../../../components/archivos/archivos/archivos';
 
 import { UrbanizacionDto } from '../../../../core/interfaces/urbanizacion.interface';
-
 
 @Component({
   selector: 'app-urbanizacion-list',
   standalone: true,
-  imports: [FontAwesomeModule, CommonModule, ReactiveFormsModule, FormsModule, ArchivosComponent,RouterModule],
+  imports: [
+    FontAwesomeModule,
+    CommonModule,
+    ReactiveFormsModule,
+    FormsModule,
+    ArchivosComponent,
+    RouterModule,
+  ],
   templateUrl: './urbanizacion-list.html',
 })
 export class UrbanizacionList {
@@ -60,6 +65,7 @@ export class UrbanizacionList {
       ubicacion: ['', Validators.required],
       ciudad: ['', Validators.required],
       descripcion: [''],
+      maps: [''],
     });
     this.loadUrbanizaciones();
   }
@@ -91,7 +97,7 @@ export class UrbanizacionList {
           u.nombre.toLowerCase().includes(term) ||
           u.ubicacion.toLowerCase().includes(term) ||
           u.ciudad.toLowerCase().includes(term) ||
-          (u.descripcion ?? '').toLowerCase().includes(term)
+          (u.descripcion ?? '').toLowerCase().includes(term),
       );
     }
 
@@ -243,10 +249,10 @@ export class UrbanizacionList {
     const end = this.currentPage() * this.pageSize();
     return end > this.total() ? this.total() : end;
   }
-  // urbanizacionSeleccionada = signal<UrbanizacionDto| null>(null);
-    mostrarUploader = signal(false);
+
+  mostrarUploader = signal(false);
   abrirModalSubirArchivos(urbanizacion: UrbanizacionDto) {
-    this.  urbanizacionSeleccionada.set(urbanizacion);
+    this.urbanizacionSeleccionada.set(urbanizacion);
     this.mostrarUploader.set(true);
   }
 
@@ -254,8 +260,21 @@ export class UrbanizacionList {
     this.mostrarUploader.set(false);
     this.urbanizacionSeleccionada.set(null);
   }
+
   onSubidaCompleta() {
     this.cerrarModalUploader();
     this.notificationService.showSuccess('Archivos subidos correctamente');
+  }
+
+  tieneMaps(urbanizacion: UrbanizacionDto): boolean {
+    return !!urbanizacion.maps && urbanizacion.maps.trim().length > 0;
+  }
+
+  abrirMaps(urbanizacion: UrbanizacionDto) {
+    if (urbanizacion.maps) {
+      window.open(urbanizacion.maps, '_blank', 'noopener,noreferrer');
+    } else {
+      this.notificationService.showWarning('Esta urbanización no tiene ubicación en Google Maps');
+    }
   }
 }

@@ -5,6 +5,7 @@ import { UsersComponent } from './components/users-list/users-list';
 import { AuthGuard } from '../../core/guards/auth.guard';
 import { RoleGuard } from '../../core/guards/role.guard';
 import { Perfil } from './components/perfil/perfil';
+import { UsersCreateComponent } from './components/ussers-create/ussers-create';
 
 const routes: Routes = [
   {
@@ -21,6 +22,10 @@ const routes: Routes = [
   },
 
   { path: 'perfil', component: Perfil, canActivate: [AuthGuard] },
+  { path: 'crear', component:UsersCreateComponent ,
+        canActivate: [AuthGuard, RoleGuard],
+    data: { roles: ['ADMINISTRADOR'] },
+  }
 ];
 
 @NgModule({

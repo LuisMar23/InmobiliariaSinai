@@ -1,7 +1,9 @@
 export interface CotizacionDto {
   id: number;
   uuid: string;
-  clienteId: number;
+  nombreCliente: string;
+  contactoCliente: string;
+  detalle?: string;
   asesorId: number;
   inmuebleTipo: string;
   inmuebleId: number;
@@ -9,14 +11,6 @@ export interface CotizacionDto {
   estado: string;
   createdAt: string;
   updatedAt: string;
-  cliente?: {
-    id: number;
-    fullName: string;
-    email: string;
-    telefono: string;
-    ci: string;
-    role: string;
-  };
   asesor?: {
     id: number;
     fullName: string;

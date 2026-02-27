@@ -31,6 +31,7 @@ export class CajaService {
         nombre: createCajaDto.nombre,
         montoInicial: createCajaDto.montoInicial,
         saldoActual: createCajaDto.montoInicial,
+        estado: 'ABIERTA', // Cambiado de 'CERRADA' a 'ABIERTA'
         usuarioAperturaId: createCajaDto.usuarioAperturaId,
       },
       include: {

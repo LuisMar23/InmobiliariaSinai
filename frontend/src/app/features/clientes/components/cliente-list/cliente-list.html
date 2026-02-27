@@ -130,7 +130,7 @@
                                 </th>
                                 
                                 <!-- Estado - Ancho fijo 120px -->
-                                <th class="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider cursor-pointer hover:bg-emerald-600 transition-colors w-32"
+                                <!-- <th class="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider cursor-pointer hover:bg-emerald-600 transition-colors w-32"
                                     (click)="columns[4].sortable ? sort(columns[4].key) : null">
                                     <div class="flex items-center space-x-2">
                                         <span class="text-sm font-semibold">
@@ -146,7 +146,7 @@
                                         </div>
                                         }
                                     </div>
-                                </th>
+                                </th> -->
                                 
                                 <!-- Acciones - Ancho fijo 160px -->
                                 <th class="px-6 py-4 text-center text-xs font-bold text-white uppercase tracking-wider w-40">
@@ -168,7 +168,7 @@
                                         </div>
                                         <div class="ml-4 min-w-0">
                                             <div class="text-sm font-medium text-gray-900 truncate">{{ cliente.fullName }}</div>
-                                            <div class="text-sm text-gray-500 truncate">{{ cliente.email || 'Sin email' }}</div>
+                                            <!-- <div class="text-sm text-gray-500 truncate">{{ cliente.email || 'Sin email' }}</div> -->
                                         </div>
                                     </div>
                                 </td>
@@ -195,12 +195,12 @@
                                 </td>
 
                                 <!-- Celda Estado -->
-                                <td class="px-6 py-4 whitespace-nowrap w-32">
+                                <!-- <td class="px-6 py-4 whitespace-nowrap w-32">
                                     <span [class]="getStatusClass(cliente.isActive)"
                                         class="px-3 py-1 rounded-full text-xs font-bold truncate inline-block max-w-full">
                                         {{ cliente.isActive ? 'Activo' : 'Inactivo' }}
                                     </span>
-                                </td>
+                                </td> -->
 
                                 <!-- Celda Acciones -->
                                 <td class="px-6 py-4 whitespace-nowrap text-center w-40">
@@ -268,10 +268,10 @@
                             <fa-icon [icon]="faPhone" class="text-gray-400 text-xs flex-shrink-0"></fa-icon>
                             <span class="text-gray-800 truncate">{{ cliente.telefono }}</span>
                         </div>
-                        <div class="flex items-center gap-2 text-sm truncate">
+                        <!-- <div class="flex items-center gap-2 text-sm truncate">
                             <fa-icon [icon]="faEnvelope" class="text-gray-400 text-xs flex-shrink-0"></fa-icon>
                             <span class="text-gray-800 truncate">{{ cliente.email || 'Sin email' }}</span>
-                        </div>
+                        </div> -->
                         <div class="flex items-center gap-2 text-sm truncate">
                             <fa-icon [icon]="faMapMarkerAlt" class="text-gray-400 text-xs flex-shrink-0"></fa-icon>
                             <span class="text-gray-800 truncate">{{ cliente.direccion || 'Sin dirección' }}</span>

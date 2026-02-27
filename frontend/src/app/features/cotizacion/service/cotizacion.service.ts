@@ -19,10 +19,11 @@ export class CotizacionService {
 
   constructor(private http: HttpClient) {}
 
-  getAll(clienteId?: number, estado?: string): Observable<CotizacionDto[]> {
+  getAll(nombreCliente?: string, contactoCliente?: string, estado?: string): Observable<CotizacionDto[]> {
     let url = this.apiUrl;
     const params = [];
-    if (clienteId) params.push(`clienteId=${clienteId}`);
+    if (nombreCliente) params.push(`nombreCliente=${nombreCliente}`);
+    if (contactoCliente) params.push(`contactoCliente=${contactoCliente}`);
     if (estado) params.push(`estado=${estado}`);
     if (params.length > 0) url += `?${params.join('&')}`;
 

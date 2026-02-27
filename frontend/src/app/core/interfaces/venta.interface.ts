@@ -96,8 +96,6 @@ export interface CreateVentaDto {
 
 export interface UpdateVentaDto {
   clienteId?: number;
-  inmuebleTipo?: string;
-  inmuebleId?: number;
   precioFinal?: number;
   estado?: string;
   observaciones?: string;

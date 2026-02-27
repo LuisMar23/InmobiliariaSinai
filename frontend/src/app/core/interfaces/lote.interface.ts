@@ -16,6 +16,7 @@ export interface LoteDto {
   descripcion?: string;
   ubicacion?: string;
   ciudad: string;
+  manzano?:string;
   latitud?: number;
   longitud?: number;
   esIndependiente: boolean;

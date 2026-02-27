@@ -106,7 +106,7 @@ menuItems: {
     { label: 'Usuarios', icon: faUsers, route: '/usuarios', roles: ['ADMINISTRADOR'] },
     
     // Configuración (solo Admin)
-    { label: 'Configuración', icon: faCog, route: '/configuracion', roles: ['ADMINISTRADOR'] },
+    // { label: 'Configuración', icon: faCog, route: '/configuracion', roles: ['ADMINISTRADOR'] },
   ];
   filteredMenu: any[] = [];
   constructor(private authService: AuthService) {
