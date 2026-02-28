@@ -82,28 +82,23 @@ menuItems: {
     roles: string[]; // Roles que tienen acceso a este item
   }[] = [
     // Acceso para todos los roles
-    { label: 'Dashboard', icon: faTachometerAlt, route: '/dashboard', roles: ['ADMINISTRADOR', 'SECRETARIA', 'ASESOR'] },
-    
-    // Gestión de Propiedades y Urbanizaciones (Admin y Secretaria)
-    { label: 'Urbanizaciones', icon: faCity, route: '/urbanizaciones', roles: ['ADMINISTRADOR', 'SECRETARIA'] },
-    { label: 'Lotes', icon: faMapMarkedAlt, route: '/lotes', roles: ['ADMINISTRADOR', 'SECRETARIA', 'ASESOR'] },
-    { label: 'Propiedades', icon: faHouse, route: '/propiedades', roles: ['ADMINISTRADOR', 'SECRETARIA', 'ASESOR'] },
-    
-    // Gestión de Clientes (todos)
-    { label: 'Clientes', icon: faHomeUser, route: '/clientes', roles: ['ADMINISTRADOR', 'SECRETARIA', 'ASESOR'] },
-    
-    // Gestión Comercial
-    { label: 'Cotizaciones', icon: faFileInvoiceDollar, route: '/cotizaciones', roles: ['ADMINISTRADOR', 'SECRETARIA', 'ASESOR'] },
-    { label: 'Ventas', icon: faReceipt, route: '/ventas', roles: ['ADMINISTRADOR', 'SECRETARIA', 'ASESOR'] },
-    { label: 'Reservas', icon: faCalendarCheck, route: '/reservas', roles: ['ADMINISTRADOR', 'SECRETARIA', 'ASESOR'] },
-    { label: 'Visitas', icon: faEye, route: '/visitas', roles: ['ADMINISTRADOR', 'SECRETARIA', 'ASESOR'] },
-    
-    // Gestión Financiera y Operativa
-    { label: 'Caja', icon: faCashRegister, route: '/caja', roles: ['ADMINISTRADOR', 'SECRETARIA'] },
-    { label: 'Promociones', icon: faTag, route: '/promociones', roles: ['ADMINISTRADOR', 'SECRETARIA'] },
-    
-    // Gestión de Usuarios (solo Admin)
-    { label: 'Usuarios', icon: faUsers, route: '/usuarios', roles: ['ADMINISTRADOR'] },
+{ label: 'Dashboard', icon: faTachometerAlt, route: '/dashboard', roles: ['ADMINISTRADOR', 'SECRETARIA', 'ASESOR'] },
+
+{ label: 'Urbanizaciones', icon: faCity, route: '/urbanizaciones', roles: ['ADMINISTRADOR','SECRETARIA'] },
+{ label: 'Lotes', icon: faMapMarkedAlt, route: '/lotes', roles: ['ADMINISTRADOR', 'SECRETARIA', 'ASESOR'] },
+{ label: 'Propiedades', icon: faHouse, route: '/propiedades', roles: ['ADMINISTRADOR'] },
+
+{ label: 'Clientes', icon: faHomeUser, route: '/clientes', roles: ['ADMINISTRADOR', 'SECRETARIA'] },
+
+{ label: 'Cotizaciones', icon: faFileInvoiceDollar, route: '/cotizaciones', roles: ['ADMINISTRADOR'] },
+{ label: 'Ventas', icon: faReceipt, route: '/ventas', roles: ['ADMINISTRADOR', 'SECRETARIA'] },
+{ label: 'Reservas', icon: faCalendarCheck, route: '/reservas', roles: ['ADMINISTRADOR', 'SECRETARIA', 'ASESOR'] },
+{ label: 'Visitas', icon: faEye, route: '/visitas', roles: ['ADMINISTRADOR', 'SECRETARIA'] },
+
+{ label: 'Caja', icon: faCashRegister, route: '/caja', roles: ['ADMINISTRADOR', 'SECRETARIA'] },
+{ label: 'Promociones', icon: faTag, route: '/promociones', roles: ['ADMINISTRADOR'] },
+
+{ label: 'Usuarios', icon: faUsers, route: '/usuarios', roles: ['ADMINISTRADOR'] },
     
     // Configuración (solo Admin)
     // { label: 'Configuración', icon: faCog, route: '/configuracion', roles: ['ADMINISTRADOR'] },

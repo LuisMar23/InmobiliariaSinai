@@ -11,7 +11,10 @@ import { LoteService } from '../../../lote/service/lote.service';
 import { PropiedadService } from '../../../propiedad/service/propiedad.service';
 import { AuthService } from '../../../../components/services/auth.service';
 import { VentaService } from '../../service/venta.service';
-import { ModalConfig, SeleccionModalComponent } from '../../../../components/seleccion-modal/seleccion-modal';
+import {
+  ModalConfig,
+  SeleccionModalComponent,
+} from '../../../../components/seleccion-modal/seleccion-modal';
 import { VentaDto } from '../../../../core/interfaces/venta.interface';
 import { AnticipoPdfService } from '../../../../core/services/pdf-anticipo.service';
 
@@ -116,7 +119,7 @@ export class VentaCreate implements OnInit {
       this.searchPropiedad.set('');
     });
   }
- onEstadoChange(estado: string): void {
+  onEstadoChange(estado: string): void {
     const precioFinal = this.ventaForm.get('precioFinal')?.value || 0;
 
     if (estado === 'PAGADO') {
@@ -136,7 +139,7 @@ export class VentaCreate implements OnInit {
       this.planPagoForm.get('monto_inicial')?.enable();
       this.planPagoForm.get('plazo')?.enable();
       this.planPagoForm.get('periodicidad')?.enable();
-      
+
       // Resetear el monto inicial a 0 o mantener el valor actual
       if (this.planPagoForm.get('monto_inicial')?.value === precioFinal) {
         this.planPagoForm.patchValue({
@@ -168,43 +171,41 @@ export class VentaCreate implements OnInit {
     });
   }
 
-cargarLotes(): void {
-  const currentUser = this.authService.getCurrentUser();
-  
-  console.log('currentUser lotes:', currentUser);
-  console.log('rol exacto:', currentUser?.rol);
+  cargarLotes(): void {
+    const currentUser = this.authService.getCurrentUser();
 
-  const rolesFullAccess = ['ADMINISTRADOR', 'SECRETARIA'];
+    console.log('currentUser lotes:', currentUser);
+    console.log('rol exacto:', currentUser?.rol);
 
-  this.loteSvc.getAll().subscribe({
-    next: (lotes: LoteDto[]) => {
-      console.log('lotes recibidos:', lotes);
-      
-      const lotesDisponibles = lotes.filter(
-        (lote) => lote.estado === 'DISPONIBLE' || lote.estado === 'CON_OFERTA',
-      );
+    const rolesFullAccess = ['ADMINISTRADOR', 'SECRETARIA'];
 
-      console.log('incluye rol?:', rolesFullAccess.includes(currentUser?.rol));
+    this.loteSvc.getAll().subscribe({
+      next: (lotes: LoteDto[]) => {
+        console.log('lotes recibidos:', lotes);
 
-      if (rolesFullAccess.includes(currentUser?.role)) {
-        this.lotes.set(lotesDisponibles);
-        return;
-      }
+        const lotesDisponibles = lotes.filter(
+          (lote) => lote.estado === 'DISPONIBLE' || lote.estado === 'CON_OFERTA',
+        );
 
-      const lotesFiltrados = lotesDisponibles.filter(
-        (lote) => {
+        console.log('incluye rol?:', rolesFullAccess.includes(currentUser?.rol));
+
+        if (rolesFullAccess.includes(currentUser?.role)) {
+          this.lotes.set(lotesDisponibles);
+          return;
+        }
+
+        const lotesFiltrados = lotesDisponibles.filter((lote) => {
           console.log(`encargadoId: ${lote.encargadoId} === userId: ${currentUser?.id}`);
           return lote.encargadoId?.toString() === currentUser?.id?.toString();
-        }
-      );
+        });
 
-      this.lotes.set(lotesFiltrados);
-    },
-    error: (err: any) => {
-      this.notificationService.showError('No se pudieron cargar los lotes');
-    },
-  });
-}
+        this.lotes.set(lotesFiltrados);
+      },
+      error: (err: any) => {
+        this.notificationService.showError('No se pudieron cargar los lotes');
+      },
+    });
+  }
   cargarPropiedades(): void {
     const currentUser = this.authService.getCurrentUser();
 
@@ -407,7 +408,6 @@ cargarLotes(): void {
     const montoInicial = this.planPagoForm.get('monto_inicial')?.value || 0;
     const estado = this.ventaForm.get('estado')?.value;
 
-
     if (estado === 'PAGADO') {
       this.planPagoForm.patchValue({
         monto_inicial: precioFinal,
@@ -468,7 +468,7 @@ cargarLotes(): void {
       this.notificationService.showError(
         'Complete todos los campos del plan de pago correctamente.',
       );
-            if (estado === 'PAGADO') {
+      if (estado === 'PAGADO') {
         this.planPagoForm.get('monto_inicial')?.disable();
         this.planPagoForm.get('plazo')?.disable();
         this.planPagoForm.get('periodicidad')?.disable();
@@ -496,8 +496,7 @@ cargarLotes(): void {
       cajaId: Number(cajaId),
       estado: this.ventaForm.value.estado,
       observaciones: this.ventaForm.value.observaciones,
-    plan_pago: {
-      
+      plan_pago: {
         monto_inicial: Number(this.planPagoForm.getRawValue().monto_inicial),
         plazo: Number(this.planPagoForm.getRawValue().plazo),
         periodicidad: this.planPagoForm.getRawValue().periodicidad,
@@ -583,44 +582,48 @@ cargarLotes(): void {
     }
   }
 
-// Agregar en el componente
-clienteModalConfig: ModalConfig = {
-  title: 'Seleccionar Cliente',
-  searchPlaceholder: 'Buscar por nombre, CI',
-  searchKeys: ['fullName', 'ci', 'email'],
-  columns: [
-    { key: 'fullName', label: 'Nombre' },
-    { key: 'ci', label: 'CI' },
-  ]
-};
+  // Agregar en el componente
+  clienteModalConfig: ModalConfig = {
+    title: 'Seleccionar Cliente',
+    searchPlaceholder: 'Buscar por nombre, CI',
+    searchKeys: ['fullName', 'ci', 'email'],
+    columns: [
+      { key: 'fullName', label: 'Nombre' },
+      { key: 'ci', label: 'CI' },
+    ],
+  };
 
-loteModalConfig: ModalConfig = {
-  title: 'Seleccionar Lote',
-  searchPlaceholder: 'Buscar por número, urbanización...',
-  searchKeys: ['numeroLote'],
-  columns: [
-    { key: 'numeroLote', label: 'N° Lote' },
-    { key: 'estado', label: 'Estado' },
-    { key: 'precioBase', label: 'Precio (Bs.)', format: (v) => v?.toLocaleString('es-BO') },
-  ]
-};
+  loteModalConfig: ModalConfig = {
+    title: 'Seleccionar Lote',
+    searchPlaceholder: 'Buscar por número, urbanización...',
+    searchKeys: ['numeroLote'],
+    columns: [
+{ 
+  key: 'urbanizacion', 
+  label: 'Urbanización', 
+  format: (v) => v?.nombre 
+},
+      { key: 'numeroLote', label: 'N° Lote' },
+        { key: 'manzano', label: 'Manzano' },
+      { key: 'estado', label: 'Estado' },
+      { key: 'precioBase', label: 'Precio (Bs.)', format: (v) => v?.toLocaleString('es-BO') },
+    ],
+  };
 
-propiedadModalConfig: ModalConfig = {
-  title: 'Seleccionar Propiedad',
-  searchPlaceholder: 'Buscar por nombre, tipo, ciudad...',
-  searchKeys: ['nombre', 'tipo', 'ciudad'],
-  columns: [
-    { key: 'nombre', label: 'Nombre' },
-    { key: 'tipo', label: 'Tipo' },
-    { key: 'ciudad', label: 'Ciudad' },
-    { key: 'precio', label: 'Precio (Bs.)', format: (v) => Number(v)?.toLocaleString('es-BO') },
-  ]
-};
+  propiedadModalConfig: ModalConfig = {
+    title: 'Seleccionar Propiedad',
+    searchPlaceholder: 'Buscar por nombre, tipo, ciudad...',
+    searchKeys: ['nombre', 'tipo', 'ciudad'],
+    columns: [
+      { key: 'nombre', label: 'Nombre' },
+      { key: 'tipo', label: 'Tipo' },
+      { key: 'ciudad', label: 'Ciudad' },
+      { key: 'precio', label: 'Precio (Bs.)', format: (v) => Number(v)?.toLocaleString('es-BO') },
+    ],
+  };
 
-// Referencias a los modales
-@ViewChild('clienteModal') clienteModal!: SeleccionModalComponent;
-@ViewChild('loteModal') loteModal!: SeleccionModalComponent;
-@ViewChild('propiedadModal') propiedadModal!: SeleccionModalComponent;
-
-
+  // Referencias a los modales
+  @ViewChild('clienteModal') clienteModal!: SeleccionModalComponent;
+  @ViewChild('loteModal') loteModal!: SeleccionModalComponent;
+  @ViewChild('propiedadModal') propiedadModal!: SeleccionModalComponent;
 }
