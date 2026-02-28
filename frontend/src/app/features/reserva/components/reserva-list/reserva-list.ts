@@ -43,9 +43,8 @@ export class ReservaList implements OnInit {
   columns: ColumnConfig[] = [
     { key: 'id', label: 'Reserva', sortable: true },
     { key: 'cliente', label: 'Cliente', sortable: true },
-    { key: 'montoReserva', label: 'Monto', sortable: true },
-    { key: 'fechaInicio', label: 'Fecha Inicio', sortable: true },
-    { key: 'fechaVencimiento', label: 'Fecha Vencimiento', sortable: true },
+    { key: 'fechaInicio', label: 'Inicio', sortable: true },
+    { key: 'fechaVencimiento', label: 'Vence', sortable: true },
     { key: 'estado', label: 'Estado', sortable: true },
   ];
 
@@ -120,27 +119,16 @@ export class ReservaList implements OnInit {
 
     this.reservaSvc.getAll().subscribe({
       next: (reservas) => {
-        const reservasConvertidas = reservas.map((reserva) => ({
-          ...reserva,
-          montoReserva: this.convertirANumero(reserva.montoReserva),
-        }));
-
-        this.reservas.set(reservasConvertidas);
-        this.allReservas.set(reservasConvertidas);
-        this.total.set(reservasConvertidas.length);
+        this.reservas.set(reservas);
+        this.allReservas.set(reservas);
+        this.total.set(reservas.length);
         this.cargando.set(false);
       },
-      error: (err) => {
+      error: () => {
         this.error.set('No se pudieron cargar las reservas');
         this.cargando.set(false);
       },
     });
-  }
-
-  private convertirANumero(valor: any): number {
-    if (valor === null || valor === undefined) return 0;
-    const numero = Number(valor);
-    return isNaN(numero) ? 0 : numero;
   }
 
   cambiarOrden(columna: keyof ReservaDto) {
@@ -174,7 +162,7 @@ export class ReservaList implements OnInit {
         this.recibosReserva.set(recibos);
         this.recibosCargando.set(false);
       },
-      error: (err) => {
+      error: () => {
         this.notificationService.showError('No se pudieron cargar los recibos de la reserva');
         this.recibosCargando.set(false);
       },
@@ -190,36 +178,33 @@ export class ReservaList implements OnInit {
   }
 
   eliminarReserva(id: number) {
-    this.notificationService
-      .confirmDelete('¿Está seguro que desea eliminar esta reserva?')
-      .then((result) => {
-        if (result.isConfirmed) {
-          this.reservaSvc.delete(id).subscribe({
-            next: () => {
-              this.reservas.update((list) => list.filter((r) => r.id !== id));
-              this.allReservas.update((list) => list.filter((r) => r.id !== id));
-              this.total.update((total) => total - 1);
-              this.notificationService.showSuccess('Reserva eliminada correctamente');
-              if (this.reservaSeleccionada()?.id === id) {
-                this.cerrarModal();
-              }
-            },
-            error: (err) => {
-              this.notificationService.showError('No se pudo eliminar la reserva');
-            },
-          });
-        }
-      });
+    this.notificationService.confirmDelete('¿Está seguro que desea eliminar esta reserva?').then((result) => {
+      if (result.isConfirmed) {
+        this.reservaSvc.delete(id).subscribe({
+          next: () => {
+            this.reservas.update((list) => list.filter((r) => r.id !== id));
+            this.allReservas.update((list) => list.filter((r) => r.id !== id));
+            this.total.update((total) => total - 1);
+            this.notificationService.showSuccess('Reserva eliminada correctamente');
+            if (this.reservaSeleccionada()?.id === id) {
+              this.cerrarModal();
+            }
+          },
+          error: () => {
+            this.notificationService.showError('No se pudo eliminar la reserva');
+          },
+        });
+      }
+    });
   }
 
-  // NUEVO: Generar PDF de todas las reservas
   generarPdfReservas() {
     this.pdfService.generarPdfReservas(this.allReservas());
   }
 
   generarPdfReservaIndividual(reserva: ReservaDto) {
-  this.pdfService.generarPdfReservaIndividual(reserva);
-}
+    this.pdfService.generarPdfReservaIndividual(reserva);
+  }
 
   getEstadoBadgeClass(estado: string): string {
     const classes = {
@@ -275,22 +260,7 @@ export class ReservaList implements OnInit {
   onSearchChange(event: Event): void {
     const value = (event.target as HTMLInputElement).value;
     this.searchTerm.set(value);
-  }
-
-  formatMonto(monto: any): string {
-    const montoNumerico = this.convertirANumero(monto);
-
-    if (Number.isInteger(montoNumerico)) {
-      return montoNumerico.toString();
-    }
-
-    const formatted = montoNumerico.toFixed(2);
-
-    if (formatted.endsWith('.00')) {
-      return formatted.slice(0, -3);
-    }
-
-    return formatted;
+    this.currentPage.set(1);
   }
 
   formatFecha(fecha: string | Date): string {
@@ -300,6 +270,8 @@ export class ReservaList implements OnInit {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
     });
   }
 
@@ -311,9 +283,7 @@ export class ReservaList implements OnInit {
       const archivosFinales = [...archivosActuales, ...nuevosArchivos];
 
       if (archivosFinales.length > this.maxArchivos) {
-        this.notificationService.showError(
-          `Solo puedes subir un máximo de ${this.maxArchivos} archivos.`
-        );
+        this.notificationService.showError(`Solo puedes subir un máximo de ${this.maxArchivos} archivos.`);
         return;
       }
 
@@ -340,34 +310,28 @@ export class ReservaList implements OnInit {
 
     const reservaId = this.reservaIdParaArchivos();
     if (!reservaId) {
-      this.notificationService.showError(
-        'No se puede subir archivos: ID de reserva no disponible.'
-      );
+      this.notificationService.showError('No se puede subir archivos: ID de reserva no disponible.');
       return;
     }
 
     this.archivosCargando.set(true);
 
-    this.reciboSvc
-      .subirRecibosGenerales(this.archivosSeleccionados(), {
-        tipoOperacion: 'RESERVA',
-        reservaId: reservaId,
-        observaciones: 'Subido desde listado de reservas',
-      })
-      .subscribe({
-        next: (response) => {
-          this.archivosCargando.set(false);
-          this.notificationService.showSuccess('Archivos subidos exitosamente.');
-          this.archivosSeleccionados.set([]);
-          this.cargarRecibosReserva(reservaId);
-        },
-        error: (error) => {
-          this.archivosCargando.set(false);
-          this.notificationService.showError(
-            'Error al subir los archivos: ' + (error?.error?.message || 'Error desconocido')
-          );
-        },
-      });
+    this.reciboSvc.subirRecibosGenerales(this.archivosSeleccionados(), {
+      tipoOperacion: 'RESERVA',
+      reservaId: reservaId,
+      observaciones: 'Subido desde listado de reservas',
+    }).subscribe({
+      next: () => {
+        this.archivosCargando.set(false);
+        this.notificationService.showSuccess('Archivos subidos exitosamente.');
+        this.archivosSeleccionados.set([]);
+        this.cargarRecibosReserva(reservaId);
+      },
+      error: (error) => {
+        this.archivosCargando.set(false);
+        this.notificationService.showError('Error al subir los archivos: ' + (error?.error?.message || 'Error desconocido'));
+      },
+    });
   }
 
   descargarRecibo(recibo: Recibo) {
@@ -375,21 +339,19 @@ export class ReservaList implements OnInit {
   }
 
   eliminarRecibo(recibo: Recibo) {
-    this.notificationService
-      .confirmDelete('¿Está seguro que desea eliminar este archivo?')
-      .then((result) => {
-        if (result.isConfirmed) {
-          this.reciboSvc.eliminarRecibo(recibo.id).subscribe({
-            next: () => {
-              this.notificationService.showSuccess('Archivo eliminado exitosamente.');
-              this.cargarRecibosReserva(this.reservaSeleccionada()!.id);
-            },
-            error: (err) => {
-              this.notificationService.showError('No se pudo eliminar el archivo.');
-            },
-          });
-        }
-      });
+    this.notificationService.confirmDelete('¿Está seguro que desea eliminar este archivo?').then((result) => {
+      if (result.isConfirmed) {
+        this.reciboSvc.eliminarRecibo(recibo.id).subscribe({
+          next: () => {
+            this.notificationService.showSuccess('Archivo eliminado exitosamente.');
+            this.cargarRecibosReserva(this.reservaSeleccionada()!.id);
+          },
+          error: () => {
+            this.notificationService.showError('No se pudo eliminar el archivo.');
+          },
+        });
+      }
+    });
   }
 
   formatFileSize(bytes: number): string {

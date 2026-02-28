@@ -166,6 +166,7 @@ model User {
   lotesEncargado          Lote[]           @relation("LotesEncargado")
   propiedadesEncargado    Propiedad[]      @relation("PropiedadesEncargado")
 }
+
 model Lote {
   id              Int            @id @default(autoincrement())
   uuid            String         @unique @default(uuid())
@@ -194,6 +195,7 @@ model Lote {
   visitas       Visita[]        @relation("VisitasLote")
   LotePromocion LotePromocion[]
 }
+
 model Urbanizacion {
   id          Int      @id @default(autoincrement())
   uuid        String   @unique @default(uuid())
@@ -262,7 +264,6 @@ model Reserva {
   asesorId         Int
   inmuebleTipo     TipoInmueble  @default(LOTE)
   inmuebleId       Int
-  montoReserva     Decimal       @map("monto_reserva") @db.Decimal(12, 2)
   fechaInicio      DateTime      @map("fecha_inicio")
   fechaVencimiento DateTime      @map("fecha_vencimiento")
   estado           EstadoReserva @default(ACTIVA)
@@ -297,8 +298,6 @@ model Visita {
 
   @@map("visitas")
 }
-
-
 
 model Promocion {
   id             Int      @id @default(autoincrement())

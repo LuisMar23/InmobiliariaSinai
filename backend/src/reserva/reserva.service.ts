@@ -10,7 +10,6 @@ import {
   CreateReservaDto,
   TipoInmueble,
   EstadoReserva,
-  MetodoPago,
 } from './dto/create-reserva.dto';
 import { UpdateReservaDto } from './dto/update-reserva.dto';
 
@@ -22,6 +21,12 @@ export class ReservasService {
     const now = new Date();
     const offset = -4 * 60;
     return new Date(now.getTime() + offset * 60 * 1000);
+  }
+
+  private calcularFechaVencimiento(fechaInicio: Date): Date {
+    const fechaVencimiento = new Date(fechaInicio);
+    fechaVencimiento.setHours(fechaVencimiento.getHours() + 24);
+    return fechaVencimiento;
   }
 
   private async crearAuditoria(
@@ -51,232 +56,90 @@ export class ReservasService {
     }
   }
 
-  private async verificarCajaActiva(cajaId: number, prisma: any) {
-    const caja = await prisma.caja.findUnique({
-      where: { id: cajaId },
-    });
-    if (!caja) {
-      throw new BadRequestException(`Caja con ID ${cajaId} no encontrada`);
-    }
-    if (caja.estado !== 'ABIERTA') {
-      throw new BadRequestException(`La caja con ID ${cajaId} no está abierta`);
-    }
-    return caja;
-  }
-
-  private async registrarMovimientoCajaReserva(
-    cajaId: number,
-    monto: number,
-    reserva: any,
-    usuarioId: number,
-    metodoPago: MetodoPago = MetodoPago.EFECTIVO,
-  ) {
-    return this.prisma.$transaction(async (prisma) => {
-      const caja = await this.verificarCajaActiva(cajaId, prisma);
-
-      const movimiento = await prisma.movimientoCaja.create({
-        data: {
-          cajaId,
-          usuarioId,
-          tipo: 'INGRESO',
-          monto,
-          descripcion: `Reserva #${reserva.id} - Cliente ID: ${reserva.clienteId}`,
-          metodoPago,
-          referencia: `Reserva-${reserva.id}`,
-        },
-      });
-
-      const nuevoSaldo = Number(caja.saldoActual) + Number(monto);
-      await prisma.caja.update({
-        where: { id: cajaId },
-        data: { saldoActual: nuevoSaldo },
-      });
-
-      await this.crearAuditoria(
-        usuarioId,
-        'CREAR_MOVIMIENTO_CAJA_RESERVA',
-        'MovimientoCaja',
-        movimiento.id,
-        null,
-        { cajaId, monto, reservaId: reserva.id, tipo: 'INGRESO', metodoPago },
-      );
-
-      return movimiento;
-    });
-  }
-
-  private async revertirMovimientoCajaReserva(
-    cajaId: number,
-    monto: number,
-    reserva: any,
-    usuarioId: number,
-  ) {
-    return this.prisma.$transaction(async (prisma) => {
-      const caja = await this.verificarCajaActiva(cajaId, prisma);
-
-      const movimiento = await prisma.movimientoCaja.create({
-        data: {
-          cajaId,
-          usuarioId,
-          tipo: 'EGRESO',
-          monto,
-          descripcion: `Reversión de reserva #${reserva.id} - Cliente ID: ${reserva.clienteId}`,
-          metodoPago: MetodoPago.EFECTIVO,
-          referencia: `Reserva-${reserva.id}-Reversion`,
-        },
-      });
-
-      const nuevoSaldo = Number(caja.saldoActual) - Number(monto);
-      await prisma.caja.update({
-        where: { id: cajaId },
-        data: { saldoActual: nuevoSaldo },
-      });
-
-      await this.crearAuditoria(
-        usuarioId,
-        'REVERTIR_MOVIMIENTO_CAJA_RESERVA',
-        'MovimientoCaja',
-        movimiento.id,
-        null,
-        { cajaId, monto, reservaId: reserva.id, tipo: 'EGRESO' },
-      );
-
-      return movimiento;
-    });
-  }
-
-  private async obtenerCajaOriginalReserva(reservaId: number): Promise<number> {
-    const movimientoCaja = await this.prisma.movimientoCaja.findFirst({
-      where: { referencia: { contains: `Reserva-${reservaId}` } },
-      orderBy: { fecha: 'asc' },
-    });
-
-    if (!movimientoCaja) {
-      throw new BadRequestException(
-        'No se encontró caja asociada a esta reserva',
-      );
-    }
-
-    return movimientoCaja.cajaId;
-  }
-
-  private async actualizarMovimientoCajaReserva(
-    cajaId: number,
-    montoAnterior: number,
-    montoNuevo: number,
-    reserva: any,
-    usuarioId: number,
-  ) {
-    return this.prisma.$transaction(async (prisma) => {
-      const caja = await this.verificarCajaActiva(cajaId, prisma);
-
-      const diferencia = montoNuevo - montoAnterior;
-
-      if (diferencia !== 0) {
-        const movimiento = await prisma.movimientoCaja.create({
-          data: {
-            cajaId,
-            usuarioId,
-            tipo: diferencia > 0 ? 'INGRESO' : 'EGRESO',
-            monto: Math.abs(diferencia),
-            descripcion: `Ajuste de reserva #${reserva.id} - ${diferencia > 0 ? 'Incremento' : 'Decremento'} de monto`,
-            metodoPago: MetodoPago.EFECTIVO,
-            referencia: `Reserva-${reserva.id}-Ajuste`,
-          },
-        });
-
-        const nuevoSaldo = Number(caja.saldoActual) + diferencia;
-        await prisma.caja.update({
-          where: { id: cajaId },
-          data: { saldoActual: nuevoSaldo },
-        });
-
-        await this.crearAuditoria(
-          usuarioId,
-          'ACTUALIZAR_MOVIMIENTO_CAJA_RESERVA',
-          'MovimientoCaja',
-          movimiento.id,
-          null,
-          {
-            cajaId,
-            diferencia,
-            reservaId: reserva.id,
-            tipo: diferencia > 0 ? 'INGRESO' : 'EGRESO',
-          },
-        );
-
-        return movimiento;
-      }
-      return null;
-    });
-  }
-
-  private validarFechasReserva(
-    fechaInicio: Date,
-    fechaVencimiento: Date,
-  ): void {
+  private async verificarYActualizarReservasVencidas() {
     const ahora = this.getCurrentTimeLaPaz();
-    const inicioMinimo = new Date(ahora);
-    inicioMinimo.setHours(0, 0, 0, 0);
+    
+    const reservasVencidas = await this.prisma.reserva.findMany({
+      where: {
+        estado: EstadoReserva.ACTIVA,
+        fechaVencimiento: {
+          lt: ahora
+        }
+      }
+    });
 
-    if (fechaInicio < inicioMinimo) {
-      throw new BadRequestException('La fecha de inicio debe ser hoy o futura');
+    for (const reserva of reservasVencidas) {
+      await this.prisma.$transaction(async (prisma) => {
+        await prisma.reserva.update({
+          where: { id: reserva.id },
+          data: { estado: EstadoReserva.VENCIDA },
+        });
+
+        if (reserva.inmuebleTipo === TipoInmueble.LOTE) {
+          await prisma.lote.update({
+            where: { id: reserva.inmuebleId },
+            data: { estado: 'DISPONIBLE' },
+          });
+        }
+      });
     }
 
-    if (fechaInicio >= fechaVencimiento) {
-      throw new BadRequestException(
-        'La fecha de inicio debe ser anterior a la fecha de vencimiento',
-      );
-    }
+    return reservasVencidas.length;
   }
 
-  async getCajasAbiertas() {
+  async getLotesDisponiblesParaReserva(usuarioId: number, usuarioRole: string) {
     try {
-      const cajasAbiertas = await this.prisma.caja.findMany({
-        where: {
-          estado: 'ABIERTA',
-        },
-        select: {
-          id: true,
-          nombre: true,
-          montoInicial: true,
-          saldoActual: true,
-          estado: true,
-          usuarioApertura: {
+      const rolesFullAccess = ['ADMINISTRADOR', 'SECRETARIA'];
+      const whereClause: any = {
+        estado: 'DISPONIBLE',
+      };
+
+      if (!rolesFullAccess.includes(usuarioRole)) {
+        whereClause.OR = [
+          { encargadoId: usuarioId },
+          { encargadoId: null }
+        ];
+      }
+
+      const lotes = await this.prisma.lote.findMany({
+        where: whereClause,
+        include: {
+          urbanizacion: {
+            select: {
+              id: true,
+              nombre: true,
+              ubicacion: true,
+              ciudad: true,
+            },
+          },
+          encargado: {
             select: {
               id: true,
               fullName: true,
-              username: true,
+              email: true,
               role: true,
             },
           },
-          creadoEn: true,
-          actualizadoEn: true,
         },
-        orderBy: {
-          creadoEn: 'desc',
-        },
+        orderBy: [
+          { urbanizacionId: 'asc' },
+          { numeroLote: 'asc' }
+        ],
       });
 
       return {
         success: true,
-        data: cajasAbiertas,
+        data: lotes,
       };
     } catch (error) {
-      throw new InternalServerErrorException(
-        'Error al obtener las cajas abiertas',
-      );
+      console.error('Error en getLotesDisponiblesParaReserva:', error);
+      throw new InternalServerErrorException('Error al obtener lotes disponibles');
     }
   }
 
   async create(createReservaDto: CreateReservaDto, asesorId: number) {
     try {
       return await this.prisma.$transaction(async (prisma) => {
-        const fechaInicio = new Date(createReservaDto.fechaInicio);
-        const fechaVencimiento = new Date(createReservaDto.fechaVencimiento);
-
-        this.validarFechasReserva(fechaInicio, fechaVencimiento);
-
         const asesor = await prisma.user.findFirst({
           where: {
             id: asesorId,
@@ -305,23 +168,30 @@ export class ReservasService {
           );
         }
 
-        await this.verificarCajaActiva(createReservaDto.cajaId, prisma);
-
         if (createReservaDto.inmuebleTipo === TipoInmueble.LOTE) {
-          const lote = await prisma.lote.findUnique({
-            where: { id: createReservaDto.inmuebleId },
+          const rolesFullAccess = ['ADMINISTRADOR', 'SECRETARIA'];
+          const whereClause: any = {
+            id: createReservaDto.inmuebleId,
+            estado: 'DISPONIBLE',
+          };
+
+          if (!rolesFullAccess.includes(asesor.role)) {
+            whereClause.encargadoId = asesorId;
+          }
+
+          const lote = await prisma.lote.findFirst({
+            where: whereClause,
           });
 
           if (!lote) {
-            throw new BadRequestException('Lote no encontrado');
-          }
-
-          if (lote.estado !== 'DISPONIBLE') {
             throw new BadRequestException(
-              'El lote no está disponible para reserva',
+              `El lote con ID ${createReservaDto.inmuebleId} no existe, no está disponible o no eres el encargado`,
             );
           }
         }
+
+        const fechaInicio = new Date(createReservaDto.fechaInicio);
+        const fechaVencimiento = this.calcularFechaVencimiento(fechaInicio);
 
         const reserva = await prisma.reserva.create({
           data: {
@@ -329,9 +199,8 @@ export class ReservasService {
             asesorId,
             inmuebleTipo: createReservaDto.inmuebleTipo,
             inmuebleId: createReservaDto.inmuebleId,
-            montoReserva: createReservaDto.montoReserva,
-            fechaInicio,
-            fechaVencimiento,
+            fechaInicio: fechaInicio,
+            fechaVencimiento: fechaVencimiento,
             estado: createReservaDto.estado || EstadoReserva.ACTIVA,
           },
           include: {
@@ -357,14 +226,6 @@ export class ReservasService {
           },
         });
 
-        await this.registrarMovimientoCajaReserva(
-          createReservaDto.cajaId,
-          createReservaDto.montoReserva,
-          reserva,
-          asesorId,
-          createReservaDto.metodoPago || MetodoPago.EFECTIVO,
-        );
-
         if (createReservaDto.inmuebleTipo === TipoInmueble.LOTE) {
           await prisma.lote.update({
             where: { id: createReservaDto.inmuebleId },
@@ -383,17 +244,15 @@ export class ReservasService {
             asesorId: reserva.asesorId,
             inmuebleTipo: reserva.inmuebleTipo,
             inmuebleId: reserva.inmuebleId,
-            montoReserva: reserva.montoReserva,
             fechaInicio: reserva.fechaInicio,
             fechaVencimiento: reserva.fechaVencimiento,
             estado: reserva.estado,
-            cajaId: createReservaDto.cajaId,
           },
         );
 
         return {
           success: true,
-          message: 'Reserva creada correctamente',
+          message: 'Reserva creada correctamente. La reserva expirará en 24 horas.',
           data: reserva,
         };
       });
@@ -410,6 +269,8 @@ export class ReservasService {
 
   async findAll(clienteId?: number, estado?: string) {
     try {
+      await this.verificarYActualizarReservasVencidas();
+
       const where: any = {};
       if (clienteId) where.clienteId = clienteId;
       if (estado) where.estado = estado;
@@ -440,37 +301,8 @@ export class ReservasService {
         orderBy: { createdAt: 'desc' },
       });
 
-      const ahora = this.getCurrentTimeLaPaz();
-      const reservasActualizadas = await Promise.all(
-        reservas.map(async (reserva) => {
-          if (
-            reserva.estado === EstadoReserva.ACTIVA &&
-            reserva.fechaVencimiento < ahora
-          ) {
-            const reservaActualizada = await this.prisma.reserva.update({
-              where: { id: reserva.id },
-              data: { estado: EstadoReserva.VENCIDA },
-            });
-
-            if (reservaActualizada.inmuebleTipo === TipoInmueble.LOTE) {
-              await this.prisma.lote.update({
-                where: { id: reservaActualizada.inmuebleId },
-                data: { estado: 'DISPONIBLE' },
-              });
-            }
-
-            return {
-              ...reservaActualizada,
-              cliente: reserva.cliente,
-              asesor: reserva.asesor,
-            };
-          }
-          return reserva;
-        }),
-      );
-
       const reservasConLotes = await Promise.all(
-        reservasActualizadas.map(async (reserva) => {
+        reservas.map(async (reserva) => {
           let loteInfo: any = null;
 
           if (reserva.inmuebleTipo === TipoInmueble.LOTE) {
@@ -479,6 +311,14 @@ export class ReservasService {
               include: {
                 urbanizacion: {
                   select: { id: true, nombre: true, ubicacion: true },
+                },
+                encargado: {
+                  select: {
+                    id: true,
+                    fullName: true,
+                    email: true,
+                    role: true,
+                  },
                 },
               },
             });
@@ -490,7 +330,9 @@ export class ReservasService {
                 superficieM2: Number(lote.superficieM2),
                 precioBase: Number(lote.precioBase),
                 estado: lote.estado,
+                manzano: lote.manzano,
                 urbanizacion: lote.urbanizacion,
+                encargado: lote.encargado,
               };
             }
           }
@@ -507,6 +349,8 @@ export class ReservasService {
 
   async findOne(id: number) {
     try {
+      await this.verificarYActualizarReservasVencidas();
+
       const reserva = await this.prisma.reserva.findUnique({
         where: { id },
         include: {
@@ -538,24 +382,6 @@ export class ReservasService {
         throw new NotFoundException(`Reserva con ID ${id} no encontrada`);
       }
 
-      const ahora = this.getCurrentTimeLaPaz();
-      if (
-        reserva.estado === EstadoReserva.ACTIVA &&
-        reserva.fechaVencimiento < ahora
-      ) {
-        const reservaActualizada = await this.prisma.reserva.update({
-          where: { id: reserva.id },
-          data: { estado: EstadoReserva.VENCIDA },
-        });
-
-        if (reservaActualizada.inmuebleTipo === TipoInmueble.LOTE) {
-          await this.prisma.lote.update({
-            where: { id: reservaActualizada.inmuebleId },
-            data: { estado: 'DISPONIBLE' },
-          });
-        }
-      }
-
       let loteInfo: any = null;
       if (reserva.inmuebleTipo === TipoInmueble.LOTE) {
         const lote = await this.prisma.lote.findUnique({
@@ -563,6 +389,14 @@ export class ReservasService {
           include: {
             urbanizacion: {
               select: { id: true, nombre: true, ubicacion: true },
+            },
+            encargado: {
+              select: {
+                id: true,
+                fullName: true,
+                email: true,
+                role: true,
+              },
             },
           },
         });
@@ -574,39 +408,14 @@ export class ReservasService {
             superficieM2: Number(lote.superficieM2),
             precioBase: Number(lote.precioBase),
             estado: lote.estado,
+            manzano: lote.manzano,
             urbanizacion: lote.urbanizacion,
+            encargado: lote.encargado,
           };
         }
       }
 
-      const reservaActual = await this.prisma.reserva.findUnique({
-        where: { id },
-        include: {
-          cliente: {
-            select: {
-              id: true,
-              fullName: true,
-              ci: true,
-              telefono: true,
-              direccion: true,
-              observaciones: true,
-              role: true,
-            },
-          },
-          asesor: {
-            select: {
-              id: true,
-              username: true,
-              email: true,
-              fullName: true,
-              telefono: true,
-              role: true,
-            },
-          },
-        },
-      });
-
-      return { success: true, data: { ...reservaActual, lote: loteInfo } };
+      return { success: true, data: { ...reserva, lote: loteInfo } };
     } catch (error) {
       if (error instanceof NotFoundException) {
         throw error;
@@ -645,23 +454,25 @@ export class ReservasService {
         }
 
         const datosAntes = { ...reservaExistente };
-
         const dataActualizada: any = {};
 
-        // Solo incluir campos que están presentes en el DTO y han cambiado
         if (
           updateReservaDto.clienteId !== undefined &&
           updateReservaDto.clienteId !== reservaExistente.clienteId
         ) {
+          const cliente = await prisma.user.findFirst({
+            where: {
+              id: updateReservaDto.clienteId,
+              isActive: true,
+              role: 'CLIENTE',
+            },
+          });
+          if (!cliente) {
+            throw new BadRequestException(
+              'Cliente no encontrado o no tiene rol de CLIENTE',
+            );
+          }
           dataActualizada.clienteId = updateReservaDto.clienteId;
-        }
-
-        if (
-          updateReservaDto.montoReserva !== undefined &&
-          updateReservaDto.montoReserva !==
-            Number(reservaExistente.montoReserva)
-        ) {
-          dataActualizada.montoReserva = updateReservaDto.montoReserva;
         }
 
         if (
@@ -682,91 +493,36 @@ export class ReservasService {
           updateReservaDto.inmuebleId !== undefined &&
           updateReservaDto.inmuebleId !== reservaExistente.inmuebleId
         ) {
+          if (updateReservaDto.inmuebleTipo === TipoInmueble.LOTE) {
+            const rolesFullAccess = ['ADMINISTRADOR', 'SECRETARIA'];
+            const whereClause: any = {
+              id: updateReservaDto.inmuebleId,
+              estado: 'DISPONIBLE',
+            };
+
+            if (!rolesFullAccess.includes(usuario.role)) {
+              whereClause.encargadoId = usuarioId;
+            }
+
+            const lote = await prisma.lote.findFirst({
+              where: whereClause,
+            });
+
+            if (!lote) {
+              throw new BadRequestException(
+                `El lote con ID ${updateReservaDto.inmuebleId} no existe, no está disponible o no eres el encargado`,
+              );
+            }
+          }
           dataActualizada.inmuebleId = updateReservaDto.inmuebleId;
         }
 
-        // Manejo especial para fechas - solo procesar si están presentes y han cambiado
-        let fechaInicioCambio = false;
-        let fechaVencimientoCambio = false;
-
         if (updateReservaDto.fechaInicio !== undefined) {
-          const nuevaFechaInicio = new Date(updateReservaDto.fechaInicio);
-          const fechaExistenteInicio = new Date(reservaExistente.fechaInicio);
-
-          // Comparar solo la fecha (sin hora) para evitar problemas de timezone
-          if (
-            nuevaFechaInicio.toISOString().split('T')[0] !==
-            fechaExistenteInicio.toISOString().split('T')[0]
-          ) {
-            fechaInicioCambio = true;
-            dataActualizada.fechaInicio = nuevaFechaInicio;
-          }
+          const fechaInicio = new Date(updateReservaDto.fechaInicio);
+          dataActualizada.fechaInicio = fechaInicio;
+          dataActualizada.fechaVencimiento = this.calcularFechaVencimiento(fechaInicio);
         }
 
-        if (updateReservaDto.fechaVencimiento !== undefined) {
-          const nuevaFechaVencimiento = new Date(
-            updateReservaDto.fechaVencimiento,
-          );
-          const fechaExistenteVencimiento = new Date(
-            reservaExistente.fechaVencimiento,
-          );
-
-          // Comparar solo la fecha (sin hora) para evitar problemas de timezone
-          if (
-            nuevaFechaVencimiento.toISOString().split('T')[0] !==
-            fechaExistenteVencimiento.toISOString().split('T')[0]
-          ) {
-            fechaVencimientoCambio = true;
-            dataActualizada.fechaVencimiento = nuevaFechaVencimiento;
-          }
-        }
-
-        // Solo validar fechas si la fecha de inicio ha cambiado
-        if (fechaInicioCambio) {
-          const fechaInicio =
-            dataActualizada.fechaInicio || reservaExistente.fechaInicio;
-          const fechaVencimiento =
-            dataActualizada.fechaVencimiento ||
-            reservaExistente.fechaVencimiento;
-          this.validarFechasReserva(fechaInicio, fechaVencimiento);
-        }
-
-        // Validar cliente si se está cambiando
-        if (
-          updateReservaDto.clienteId !== undefined &&
-          updateReservaDto.clienteId !== reservaExistente.clienteId
-        ) {
-          const cliente = await prisma.user.findFirst({
-            where: {
-              id: updateReservaDto.clienteId,
-              isActive: true,
-              role: 'CLIENTE',
-            },
-          });
-          if (!cliente) {
-            throw new BadRequestException(
-              'Cliente no encontrado o no tiene rol de CLIENTE',
-            );
-          }
-        }
-
-        // Actualizar movimiento de caja si el monto cambió
-        if (
-          updateReservaDto.montoReserva !== undefined &&
-          updateReservaDto.montoReserva !==
-            Number(reservaExistente.montoReserva)
-        ) {
-          const cajaId = await this.obtenerCajaOriginalReserva(id);
-          await this.actualizarMovimientoCajaReserva(
-            cajaId,
-            Number(reservaExistente.montoReserva),
-            updateReservaDto.montoReserva,
-            reservaExistente,
-            usuarioId,
-          );
-        }
-
-        // Si no hay cambios, retornar sin actualizar
         if (Object.keys(dataActualizada).length === 0) {
           return {
             success: true,
@@ -854,21 +610,6 @@ export class ReservasService {
 
         const datosAntes = { ...reserva };
 
-        try {
-          const cajaId = await this.obtenerCajaOriginalReserva(id);
-          await this.revertirMovimientoCajaReserva(
-            cajaId,
-            Number(reserva.montoReserva),
-            reserva,
-            usuarioId,
-          );
-        } catch (error) {
-          console.warn(
-            'No se pudo revertir movimiento de caja:',
-            error.message,
-          );
-        }
-
         await prisma.reserva.delete({ where: { id } });
 
         if (reserva.inmuebleTipo === TipoInmueble.LOTE) {
@@ -902,6 +643,8 @@ export class ReservasService {
 
   async getReservasPorCliente(clienteId: number) {
     try {
+      await this.verificarYActualizarReservasVencidas();
+
       const cliente = await this.prisma.user.findFirst({
         where: { id: clienteId, isActive: true, role: 'CLIENTE' },
       });
@@ -920,33 +663,8 @@ export class ReservasService {
         orderBy: { createdAt: 'desc' },
       });
 
-      const ahora = this.getCurrentTimeLaPaz();
-      const reservasActualizadas = await Promise.all(
-        reservas.map(async (reserva) => {
-          if (
-            reserva.estado === EstadoReserva.ACTIVA &&
-            reserva.fechaVencimiento < ahora
-          ) {
-            const reservaActualizada = await this.prisma.reserva.update({
-              where: { id: reserva.id },
-              data: { estado: EstadoReserva.VENCIDA },
-            });
-
-            if (reservaActualizada.inmuebleTipo === TipoInmueble.LOTE) {
-              await this.prisma.lote.update({
-                where: { id: reservaActualizada.inmuebleId },
-                data: { estado: 'DISPONIBLE' },
-              });
-            }
-
-            return { ...reservaActualizada, asesor: reserva.asesor };
-          }
-          return reserva;
-        }),
-      );
-
       const reservasConLotes = await Promise.all(
-        reservasActualizadas.map(async (reserva) => {
+        reservas.map(async (reserva) => {
           let loteInfo: any = null;
 
           if (reserva.inmuebleTipo === TipoInmueble.LOTE) {
@@ -955,6 +673,14 @@ export class ReservasService {
               include: {
                 urbanizacion: {
                   select: { id: true, nombre: true, ubicacion: true },
+                },
+                encargado: {
+                  select: {
+                    id: true,
+                    fullName: true,
+                    email: true,
+                    role: true,
+                  },
                 },
               },
             });
@@ -966,7 +692,9 @@ export class ReservasService {
                 superficieM2: Number(lote.superficieM2),
                 precioBase: Number(lote.precioBase),
                 estado: lote.estado,
+                manzano: lote.manzano,
                 urbanizacion: lote.urbanizacion,
+                encargado: lote.encargado,
               };
             }
           }

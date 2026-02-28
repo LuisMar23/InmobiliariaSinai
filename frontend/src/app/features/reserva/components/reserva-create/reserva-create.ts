@@ -7,15 +7,8 @@ import { UserDto } from '../../../../core/interfaces/user.interface';
 import { LoteDto } from '../../../../core/interfaces/lote.interface';
 import { LoteService } from '../../../lote/service/lote.service';
 import { ReservaService } from '../../service/reserva.service';
-import { UserService } from '../../../users/services/users.service';
 import { AuthService } from '../../../../components/services/auth.service';
-
-interface CajaDto {
-  id: number;
-  nombre: string;
-  saldoActual: number;
-  estado: string;
-}
+import { CreateReservaDto } from '../../../../core/interfaces/reserva.interface';
 
 @Component({
   selector: 'app-reserva-create',
@@ -28,16 +21,15 @@ export class ReservaCreate implements OnInit {
   enviando = signal<boolean>(false);
   clientes = signal<UserDto[]>([]);
   lotes = signal<LoteDto[]>([]);
-  cajas = signal<CajaDto[]>([]);
   searchCliente = signal<string>('');
   searchLote = signal<string>('');
   showClientesDropdown = signal<boolean>(false);
   showLotesDropdown = signal<boolean>(false);
+  fechaVencimientoCalculada = signal<string>('');
 
   router = inject(Router);
   private fb = inject(FormBuilder);
   private reservaSvc = inject(ReservaService);
-  private userSvc = inject(UserService);
   private loteSvc = inject(LoteService);
   private notificationService = inject(NotificationService);
   private authService = inject(AuthService);
@@ -48,9 +40,24 @@ export class ReservaCreate implements OnInit {
 
   ngOnInit(): void {
     this.cargarClientes();
-    this.cargarLotes();
-    this.cargarCajasActivas();
-    this.establecerFechasPorDefecto();
+    this.cargarLotesDisponibles();
+    this.setupFechaListener();
+  }
+
+  private getCurrentTimeLaPaz(): Date {
+    const now = new Date();
+    const offsetLaPaz = -4 * 60;
+    const laPazTime = new Date(now.getTime() + (offsetLaPaz - now.getTimezoneOffset()) * 60 * 1000);
+    return laPazTime;
+  }
+
+  private formatDateForInput(date: Date): string {
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
   }
 
   crearFormularioReserva(): FormGroup {
@@ -58,26 +65,21 @@ export class ReservaCreate implements OnInit {
       clienteId: ['', Validators.required],
       inmuebleTipo: ['LOTE', Validators.required],
       inmuebleId: ['', Validators.required],
-      montoReserva: [0, [Validators.required, Validators.min(0.01)]],
-      fechaInicio: ['', Validators.required],
-      fechaVencimiento: ['', Validators.required],
-      cajaId: ['', Validators.required],
-      metodoPago: ['EFECTIVO'],
+      fechaInicio: ['', Validators.required], 
       estado: ['ACTIVA'],
     });
   }
 
-  establecerFechasPorDefecto(): void {
-    const hoy = new Date();
-    const vencimiento = new Date();
-    vencimiento.setDate(hoy.getDate() + 30);
-
-    const hoyFormateado = hoy.toISOString().split('T')[0];
-    const vencimientoFormateado = vencimiento.toISOString().split('T')[0];
-
-    this.reservaForm.patchValue({
-      fechaInicio: hoyFormateado,
-      fechaVencimiento: vencimientoFormateado,
+  setupFechaListener(): void {
+    this.reservaForm.get('fechaInicio')?.valueChanges.subscribe((fecha) => {
+      if (fecha) {
+        const fechaInicio = new Date(fecha);
+        const fechaVencimiento = new Date(fechaInicio);
+        fechaVencimiento.setHours(fechaVencimiento.getHours() + 24);
+        this.fechaVencimientoCalculada.set(this.formatDateForInput(fechaVencimiento));
+      } else {
+        this.fechaVencimientoCalculada.set('');
+      }
     });
   }
 
@@ -85,58 +87,38 @@ export class ReservaCreate implements OnInit {
     this.authService.getClientes().subscribe({
       next: (response: any) => {
         let clientes: any[] = [];
-
         if (response.data && Array.isArray(response.data.clientes)) {
           clientes = response.data.clientes;
         } else if (response.data && Array.isArray(response.data)) {
           clientes = response.data;
         } else if (Array.isArray(response)) {
           clientes = response;
-        } else {
-          this.notificationService.showWarning('No se pudieron cargar los clientes');
-          return;
         }
-
         this.clientes.set(clientes);
-
-        if (clientes.length === 0) {
-          this.notificationService.showWarning('No se encontraron clientes registrados');
-        }
       },
-      error: (err: any) => {
+      error: () => {
         this.notificationService.showError('No se pudieron cargar los clientes');
       },
     });
   }
 
-  cargarLotes(): void {
-    this.loteSvc.getAll().subscribe({
+  cargarLotesDisponibles(): void {
+    const currentUser = this.authService.getCurrentUser();
+    const rolesFullAccess = ['ADMINISTRADOR', 'SECRETARIA'];
+
+    this.reservaSvc.getLotesDisponibles().subscribe({
       next: (lotes: LoteDto[]) => {
-        const lotesDisponibles = lotes.filter((lote) => lote.estado === 'DISPONIBLE');
-        this.lotes.set(lotesDisponibles);
-
-        if (lotesDisponibles.length === 0) {
-          this.notificationService.showWarning('No se encontraron lotes disponibles para reservar');
+        if (rolesFullAccess.includes(currentUser?.role)) {
+          this.lotes.set(lotes);
+          return;
         }
+        const lotesFiltrados = lotes.filter(
+          (lote) => lote.encargadoId?.toString() === currentUser?.id?.toString()
+        );
+        this.lotes.set(lotesFiltrados);
       },
-      error: (err: any) => {
+      error: () => {
         this.notificationService.showError('No se pudieron cargar los lotes');
-      },
-    });
-  }
-
-  cargarCajasActivas(): void {
-    this.reservaSvc.getCajasActivas().subscribe({
-      next: (response: any) => {
-        // CORREGIDO: Acceder correctamente a los datos de cajas
-        if (response.success && response.data) {
-          this.cajas.set(response.data);
-        } else {
-          this.notificationService.showWarning('No se encontraron cajas activas');
-        }
-      },
-      error: (err: any) => {
-        this.notificationService.showError('No se pudieron cargar las cajas activas');
       },
     });
   }
@@ -144,7 +126,6 @@ export class ReservaCreate implements OnInit {
   filteredClientes() {
     const search = this.searchCliente().toLowerCase();
     if (!search) return this.clientes();
-
     return this.clientes().filter(
       (cliente) =>
         cliente.fullName?.toLowerCase().includes(search) ||
@@ -156,12 +137,10 @@ export class ReservaCreate implements OnInit {
   filteredLotes() {
     const search = this.searchLote().toLowerCase();
     if (!search) return this.lotes();
-
     return this.lotes().filter(
       (lote) =>
         lote.numeroLote?.toLowerCase().includes(search) ||
-        lote.urbanizacion?.nombre?.toLowerCase().includes(search) ||
-        this.formatMonto(lote.precioBase)?.toLowerCase().includes(search)
+        lote.urbanizacion?.nombre?.toLowerCase().includes(search)
     );
   }
 
@@ -178,7 +157,7 @@ export class ReservaCreate implements OnInit {
       inmuebleId: lote.id.toString(),
     });
     this.searchLote.set(
-      `${lote.numeroLote} - ${lote.urbanizacion?.nombre} - $${this.formatMonto(lote.precioBase)}`
+      `${lote.numeroLote} - ${lote.urbanizacion?.nombre || 'Independiente'}`
     );
     this.showLotesDropdown.set(false);
   }
@@ -216,47 +195,31 @@ export class ReservaCreate implements OnInit {
       return;
     }
 
-    const fechaInicioStr = this.reservaForm.value.fechaInicio;
-    const fechaVencimientoStr = this.reservaForm.value.fechaVencimiento;
+    const fechaInicio = new Date(this.reservaForm.value.fechaInicio);
+    const ahoraLaPaz = this.getCurrentTimeLaPaz();
 
-    if (!fechaInicioStr || !fechaVencimientoStr) {
-      this.notificationService.showError('Las fechas son requeridas');
+    if (fechaInicio < ahoraLaPaz) {
+      this.notificationService.showError('La fecha de inicio no puede ser anterior a la fecha actual');
       return;
     }
 
-    const fechaInicio = new Date(fechaInicioStr + 'T00:00:00');
-    const fechaVencimiento = new Date(fechaVencimientoStr + 'T00:00:00');
-    const hoy = new Date();
-    hoy.setHours(0, 0, 0, 0);
-
-    if (fechaInicio < hoy) {
-      this.notificationService.showError('La fecha de inicio no puede ser anterior a hoy');
-      return;
-    }
-
-    if (fechaVencimiento <= fechaInicio) {
-      this.notificationService.showError(
-        'La fecha de vencimiento debe ser posterior a la fecha de inicio'
-      );
-      return;
-    }
+    const fechaVencimiento = new Date(fechaInicio);
+    fechaVencimiento.setHours(fechaVencimiento.getHours() + 24);
 
     this.enviando.set(true);
 
-    const reservaData = {
-      ...this.reservaForm.value,
+    const reservaData: CreateReservaDto = {
       clienteId: Number(this.reservaForm.value.clienteId),
+      inmuebleTipo: this.reservaForm.value.inmuebleTipo,
       inmuebleId: Number(this.reservaForm.value.inmuebleId),
-      montoReserva: Number(this.reservaForm.value.montoReserva),
-      cajaId: Number(this.reservaForm.value.cajaId),
       fechaInicio: fechaInicio.toISOString(),
       fechaVencimiento: fechaVencimiento.toISOString(),
+      estado: this.reservaForm.value.estado,
     };
 
     this.reservaSvc.create(reservaData).subscribe({
       next: (response: any) => {
         this.enviando.set(false);
-
         if (response.success) {
           this.notificationService.showSuccess('Reserva creada exitosamente!');
           setTimeout(() => {
@@ -268,19 +231,14 @@ export class ReservaCreate implements OnInit {
       },
       error: (err: any) => {
         this.enviando.set(false);
-
         let errorMessage = 'Error al crear la reserva';
         if (err.status === 400) {
-          errorMessage =
-            err.error?.message || 'Datos inválidos. Verifique la información ingresada.';
-        } else if (err.status === 404) {
-          errorMessage = 'Recurso no encontrado. Verifique los datos ingresados.';
-        } else if (err.status === 409) {
-          errorMessage = 'El lote ya está reservado. Por favor seleccione otro lote.';
+          errorMessage = err.error?.message || 'Datos inválidos.';
         } else if (err.status === 403) {
-          errorMessage = 'No tiene permisos para crear reservas. Se requiere rol de ASESOR';
+          errorMessage = 'No tiene permisos para crear reservas.';
+        } else if (err.status === 404) {
+          errorMessage = 'Recurso no encontrado.';
         }
-
         this.notificationService.showError(errorMessage);
       },
     });
@@ -303,7 +261,6 @@ export class ReservaCreate implements OnInit {
 
   formatMonto(monto: number | string | undefined | null): string {
     if (monto === undefined || monto === null) return '0';
-
     let numero: number;
     if (typeof monto === 'string') {
       numero = parseFloat(monto);
@@ -311,17 +268,13 @@ export class ReservaCreate implements OnInit {
     } else {
       numero = monto;
     }
-
     if (Number.isInteger(numero)) {
       return numero.toString();
     }
-
     const formatted = numero.toFixed(2);
-
     if (formatted.endsWith('.00')) {
       return formatted.slice(0, -3);
     }
-
     return formatted;
   }
 }

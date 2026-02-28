@@ -40,6 +40,13 @@ export class ReservasController {
     );
   }
 
+  @Get('lotes/disponibles')
+  getLotesDisponibles(@Request() req) {
+    const usuarioId = req.user.id;
+    const usuarioRole = req.user.role;
+    return this.reservasService.getLotesDisponiblesParaReserva(usuarioId, usuarioRole);
+  }
+
   @Get('cliente/:clienteId')
   getReservasPorCliente(@Param('clienteId') clienteId: string) {
     return this.reservasService.getReservasPorCliente(+clienteId);
@@ -64,10 +71,5 @@ export class ReservasController {
   remove(@Param('id') id: string, @Request() req) {
     const usuarioId = req.user.id;
     return this.reservasService.remove(+id, usuarioId);
-  }
-
-  @Get('cajas/abiertas')
-  getCajasAbiertas() {
-    return this.reservasService.getCajasAbiertas();
   }
 }

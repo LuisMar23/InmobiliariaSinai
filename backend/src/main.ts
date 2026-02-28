@@ -7,15 +7,15 @@ import { join } from 'path';
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  app.enableCors();
+  // app.enableCors();
   // Configurar CORS
-  // app.enableCors({
-  //       origin: ['http://localhost:4300', ],
-  //   credentials: true,
-  // });
   app.enableCors({
-    origin: '*', // cualquier dominio
+        origin: ['http://localhost:4300', ],
+    credentials: true,
   });
+  // app.enableCors({
+  //   origin: '*', // cualquier dominio
+  // });
 
   app.setGlobalPrefix('apisinai');
 

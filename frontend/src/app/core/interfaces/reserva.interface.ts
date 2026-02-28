@@ -5,7 +5,6 @@ export interface ReservaDto {
   asesorId: number;
   inmuebleTipo: string;
   inmuebleId: number;
-  montoReserva: number;
   fechaInicio: string;
   fechaVencimiento: string;
   estado: string;
@@ -30,10 +29,35 @@ export interface ReservaDto {
     superficieM2: number;
     precioBase: number;
     estado: string;
+    manzano?: string;
+    encargado?: {
+      id: number;
+      fullName: string;
+      email: string;
+      role: string;
+    };
     urbanizacion?: {
       id: number;
       nombre: string;
       ubicacion: string;
     };
   };
+}
+
+export interface CreateReservaDto {
+  clienteId: number;
+  inmuebleTipo: string;
+  inmuebleId: number;
+  fechaInicio: string;
+  fechaVencimiento: string;
+  estado?: string;
+}
+
+export interface UpdateReservaDto {
+  clienteId?: number;
+  inmuebleTipo?: string;
+  inmuebleId?: number;
+  fechaInicio?: string;
+  fechaVencimiento?: string;
+  estado?: string;
 }

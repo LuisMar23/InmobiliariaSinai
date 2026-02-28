@@ -1,13 +1,10 @@
 import {
-  IsString,
-  IsNumber,
-  IsEnum,
-  IsOptional,
   IsInt,
   Min,
+  IsEnum,
+  IsOptional,
   IsDateString,
 } from 'class-validator';
-import { Type } from 'class-transformer';
 
 export enum EstadoReserva {
   ACTIVA = 'ACTIVA',
@@ -19,20 +16,6 @@ export enum EstadoReserva {
 export enum TipoInmueble {
   LOTE = 'LOTE',
   PROPIEDAD = 'PROPIEDAD',
-}
-
-export enum UserRole {
-  ADMINISTRADOR = 'ADMINISTRADOR',
-  ASESOR = 'ASESOR',
-  SECRETARIA = 'SECRETARIA',
-  CLIENTE = 'CLIENTE',
-  USUARIO = 'USUARIO',
-}
-
-export enum MetodoPago {
-  EFECTIVO = 'EFECTIVO',
-  TRANSFERENCIA = 'TRANSFERENCIA',
-  TARJETA = 'TARJETA',
 }
 
 export class CreateReservaDto {
@@ -47,58 +30,11 @@ export class CreateReservaDto {
   @Min(1)
   inmuebleId: number;
 
-  @IsNumber({ maxDecimalPlaces: 2 })
-  @Min(0.01)
-  @Type(() => Number)
-  montoReserva: number;
-
   @IsDateString()
   fechaInicio: string;
 
   @IsDateString()
   fechaVencimiento: string;
-
-  @IsInt()
-  @Min(1)
-  cajaId: number;
-
-  @IsOptional()
-  @IsEnum(MetodoPago)
-  metodoPago?: MetodoPago;
-
-  @IsOptional()
-  @IsEnum(EstadoReserva)
-  estado?: EstadoReserva;
-}
-
-export class UpdateReservaDto {
-  @IsOptional()
-  @IsInt()
-  @Min(1)
-  clienteId?: number;
-
-  @IsOptional()
-  @IsEnum(TipoInmueble)
-  inmuebleTipo?: TipoInmueble;
-
-  @IsOptional()
-  @IsInt()
-  @Min(1)
-  inmuebleId?: number;
-
-  @IsOptional()
-  @IsNumber({ maxDecimalPlaces: 2 })
-  @Min(0.01)
-  @Type(() => Number)
-  montoReserva?: number;
-
-  @IsOptional()
-  @IsDateString()
-  fechaInicio?: string;
-
-  @IsOptional()
-  @IsDateString()
-  fechaVencimiento?: string;
 
   @IsOptional()
   @IsEnum(EstadoReserva)

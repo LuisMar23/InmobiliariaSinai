@@ -7,9 +7,9 @@ import { UserDto } from '../../../../core/interfaces/user.interface';
 import { LoteDto } from '../../../../core/interfaces/lote.interface';
 import { LoteService } from '../../../lote/service/lote.service';
 import { ReservaService } from '../../service/reserva.service';
-import { UserService } from '../../../users/services/users.service';
 import { AuthService } from '../../../../components/services/auth.service';
 import { ReciboService, Recibo } from '../../../../core/services/recibo.service';
+import { UpdateReservaDto } from '../../../../core/interfaces/reserva.interface';
 
 @Component({
   selector: 'app-reserva-edit',
@@ -31,18 +31,17 @@ export class ReservaEdit implements OnInit {
   searchLote = signal<string>('');
   showClientesDropdown = signal<boolean>(false);
   showLotesDropdown = signal<boolean>(false);
+  fechaVencimientoCalculada = signal<string>('');
 
   archivosSeleccionados = signal<File[]>([]);
   maxArchivos = 3;
   archivosCargando = signal<boolean>(false);
-
   recibosReserva = signal<Recibo[]>([]);
   recibosCargando = signal<boolean>(true);
 
   router = inject(Router);
   private fb = inject(FormBuilder);
   private reservaSvc = inject(ReservaService);
-  private userSvc = inject(UserService);
   private loteSvc = inject(LoteService);
   private route = inject(ActivatedRoute);
   private notificationService = inject(NotificationService);
@@ -56,6 +55,23 @@ export class ReservaEdit implements OnInit {
 
   ngOnInit(): void {
     this.obtenerReserva();
+    this.setupFechaListener();
+  }
+
+  private getCurrentTimeLaPaz(): Date {
+    const now = new Date();
+    const offsetLaPaz = -4 * 60;
+    const laPazTime = new Date(now.getTime() + (offsetLaPaz - now.getTimezoneOffset()) * 60 * 1000);
+    return laPazTime;
+  }
+
+  private formatDateForInput(date: Date): string {
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
   }
 
   crearFormularioReserva(): FormGroup {
@@ -63,10 +79,21 @@ export class ReservaEdit implements OnInit {
       clienteId: ['', Validators.required],
       inmuebleTipo: ['LOTE', Validators.required],
       inmuebleId: ['', Validators.required],
-      montoReserva: [0, [Validators.required, Validators.min(0.01)]],
       fechaInicio: ['', Validators.required],
-      fechaVencimiento: ['', Validators.required],
       estado: ['ACTIVA'],
+    });
+  }
+
+  setupFechaListener(): void {
+    this.reservaForm.get('fechaInicio')?.valueChanges.subscribe((fecha) => {
+      if (fecha) {
+        const fechaInicio = new Date(fecha);
+        const fechaVencimiento = new Date(fechaInicio);
+        fechaVencimiento.setHours(fechaVencimiento.getHours() + 24);
+        this.fechaVencimientoCalculada.set(this.formatDateForInput(fechaVencimiento));
+      } else {
+        this.fechaVencimientoCalculada.set('');
+      }
     });
   }
 
@@ -74,45 +101,42 @@ export class ReservaEdit implements OnInit {
     this.authService.getClientes().subscribe({
       next: (response: any) => {
         let clientes: any[] = [];
-
         if (response.data && Array.isArray(response.data.clientes)) {
           clientes = response.data.clientes;
         } else if (response.data && Array.isArray(response.data)) {
           clientes = response.data;
         } else if (Array.isArray(response)) {
           clientes = response;
-        } else {
-          return;
         }
-
-        const clientesFiltrados = clientes.filter(
-          (cliente) => cliente.role === 'CLIENTE' && cliente.isActive !== false
-        );
-
-        this.clientes.set(clientesFiltrados);
-
-        if (clientesFiltrados.length === 0) {
-          this.notificationService.showWarning(
-            'No se encontraron clientes registrados con rol CLIENTE'
-          );
-        }
+        this.clientes.set(clientes);
       },
-      error: (err: any) => {
+      error: () => {
         this.notificationService.showError('No se pudieron cargar los clientes');
       },
     });
   }
 
-  cargarLotes(loteActualId?: number): void {
-    this.loteSvc.getAll().subscribe({
-      next: (lotes: LoteDto[]) => {
-        const lotesFiltrados = lotes.filter(
-          (lote) => lote.estado === 'DISPONIBLE' || lote.id === loteActualId
-        );
+  cargarLotesDisponibles(loteActualId?: number): void {
+    const currentUser = this.authService.getCurrentUser();
+    const rolesFullAccess = ['ADMINISTRADOR', 'SECRETARIA'];
 
+    this.reservaSvc.getLotesDisponibles().subscribe({
+      next: (lotes: LoteDto[]) => {
+        let lotesFiltrados = lotes;
+        if (!rolesFullAccess.includes(currentUser?.role)) {
+          lotesFiltrados = lotes.filter(
+            (lote) => lote.encargadoId?.toString() === currentUser?.id?.toString()
+          );
+        }
+        if (loteActualId) {
+          const loteActual = lotes.find(l => l.id === loteActualId);
+          if (loteActual && !lotesFiltrados.some(l => l.id === loteActualId)) {
+            lotesFiltrados = [...lotesFiltrados, loteActual];
+          }
+        }
         this.lotes.set(lotesFiltrados);
       },
-      error: (err: any) => {
+      error: () => {
         this.notificationService.showError('No se pudieron cargar los lotes');
       },
     });
@@ -137,7 +161,7 @@ export class ReservaEdit implements OnInit {
           this.cargando.set(false);
         }
       },
-      error: (err: any) => {
+      error: () => {
         this.error.set('No se pudo cargar la reserva');
         this.cargando.set(false);
       },
@@ -146,9 +170,8 @@ export class ReservaEdit implements OnInit {
 
   cargarDatosAdicionales(reserva: any): void {
     const loteActualId = reserva.lote?.id || reserva.inmuebleId;
-
     this.cargarClientes();
-    this.cargarLotes(loteActualId);
+    this.cargarLotesDisponibles(loteActualId);
 
     setTimeout(() => {
       this.cargarDatosFormulario(reserva);
@@ -161,18 +184,22 @@ export class ReservaEdit implements OnInit {
     const clienteId = reserva.cliente?.id || reserva.clienteId;
     const inmuebleId = reserva.lote?.id || reserva.inmuebleId;
 
-    const fechaInicioISO = new Date(reserva.fechaInicio).toISOString().split('T')[0];
-    const fechaVencimientoISO = new Date(reserva.fechaVencimiento).toISOString().split('T')[0];
+    const fechaInicio = new Date(reserva.fechaInicio);
+    // La fecha de vencimiento se calculará automáticamente por el listener
+    const fechaInicioFormateada = this.formatDateForInput(fechaInicio);
 
     this.reservaForm.patchValue({
       clienteId: clienteId?.toString() || '',
       inmuebleTipo: reserva.inmuebleTipo || 'LOTE',
       inmuebleId: inmuebleId?.toString() || '',
-      montoReserva: reserva.montoReserva || 0,
-      fechaInicio: fechaInicioISO,
-      fechaVencimiento: fechaVencimientoISO,
+      fechaInicio: fechaInicioFormateada,
       estado: reserva.estado || 'ACTIVA',
     });
+
+    // Calcular la fecha de vencimiento basada en la fecha de inicio
+    const fechaVencimiento = new Date(fechaInicio);
+    fechaVencimiento.setHours(fechaVencimiento.getHours() + 24);
+    this.fechaVencimientoCalculada.set(this.formatDateForInput(fechaVencimiento));
 
     const clienteSeleccionado = this.clientes().find((c) => c.id === clienteId);
     const loteSeleccionado = this.lotes().find((l) => l.id === inmuebleId);
@@ -182,9 +209,7 @@ export class ReservaEdit implements OnInit {
     }
     if (loteSeleccionado) {
       this.searchLote.set(
-        `${loteSeleccionado.numeroLote} - ${
-          loteSeleccionado.urbanizacion?.nombre
-        } - $${this.formatMonto(loteSeleccionado.precioBase)}`
+        `${loteSeleccionado.numeroLote} - ${loteSeleccionado.urbanizacion?.nombre || 'Independiente'}`
       );
     }
   }
@@ -197,7 +222,7 @@ export class ReservaEdit implements OnInit {
         this.recibosReserva.set(recibos);
         this.recibosCargando.set(false);
       },
-      error: (err) => {
+      error: () => {
         this.notificationService.showError('No se pudieron cargar los recibos de la reserva');
         this.recibosCargando.set(false);
       },
@@ -207,7 +232,6 @@ export class ReservaEdit implements OnInit {
   filteredClientes() {
     const search = this.searchCliente().toLowerCase();
     if (!search) return this.clientes();
-
     return this.clientes().filter(
       (cliente) =>
         cliente.fullName?.toLowerCase().includes(search) ||
@@ -219,12 +243,10 @@ export class ReservaEdit implements OnInit {
   filteredLotes() {
     const search = this.searchLote().toLowerCase();
     if (!search) return this.lotes();
-
     return this.lotes().filter(
       (lote) =>
         lote.numeroLote?.toLowerCase().includes(search) ||
-        lote.urbanizacion?.nombre?.toLowerCase().includes(search) ||
-        this.formatMonto(lote.precioBase)?.toLowerCase().includes(search)
+        lote.urbanizacion?.nombre?.toLowerCase().includes(search)
     );
   }
 
@@ -241,7 +263,7 @@ export class ReservaEdit implements OnInit {
       inmuebleId: lote.id.toString(),
     });
     this.searchLote.set(
-      `${lote.numeroLote} - ${lote.urbanizacion?.nombre} - $${this.formatMonto(lote.precioBase)}`
+      `${lote.numeroLote} - ${lote.urbanizacion?.nombre || 'Independiente'}`
     );
     this.showLotesDropdown.set(false);
   }
@@ -281,7 +303,6 @@ export class ReservaEdit implements OnInit {
     }
   }
 
-  // NUEVA FUNCIÓN PARA FORMATEAR FECHA (SOLO FECHA SIN HORA)
   formatFecha(date: any): string {
     if (!date) return 'N/A';
     try {
@@ -303,25 +324,32 @@ export class ReservaEdit implements OnInit {
       return;
     }
 
+    const fechaInicio = new Date(this.reservaForm.value.fechaInicio);
+    const fechaVencimiento = new Date(fechaInicio);
+    fechaVencimiento.setHours(fechaVencimiento.getHours() + 24);
+
+    const fechaInicioOriginal = new Date(this.reservaData.fechaInicio);
+    const fechaInicioCambio = Math.abs(fechaInicio.getTime() - fechaInicioOriginal.getTime()) > 60000;
+
+    if (fechaInicioCambio) {
+      const ahoraLaPaz = this.getCurrentTimeLaPaz();
+      if (fechaInicio < ahoraLaPaz) {
+        this.notificationService.showError('La fecha de inicio no puede ser anterior a la fecha actual');
+        return;
+      }
+    }
+
     this.enviando.set(true);
 
     const formValue = this.reservaForm.value;
-    const dataActualizada: any = {};
+    const dataActualizada: UpdateReservaDto = {};
 
-    // Solo enviar campos que han cambiado y están definidos
     if (formValue.clienteId && Number(formValue.clienteId) !== this.reservaData.clienteId) {
       dataActualizada.clienteId = Number(formValue.clienteId);
     }
 
     if (formValue.inmuebleId && Number(formValue.inmuebleId) !== this.reservaData.inmuebleId) {
       dataActualizada.inmuebleId = Number(formValue.inmuebleId);
-    }
-
-    if (
-      formValue.montoReserva !== undefined &&
-      Number(formValue.montoReserva) !== this.reservaData.montoReserva
-    ) {
-      dataActualizada.montoReserva = Number(formValue.montoReserva);
     }
 
     if (formValue.estado && formValue.estado !== this.reservaData.estado) {
@@ -332,54 +360,21 @@ export class ReservaEdit implements OnInit {
       dataActualizada.inmuebleTipo = formValue.inmuebleTipo;
     }
 
-    // Manejo especial para fechas - solo enviar si están presentes y cambiaron
-    if (formValue.fechaInicio) {
-      const fechaInicioForm = new Date(formValue.fechaInicio);
-      const fechaInicioOriginal = new Date(this.reservaData.fechaInicio);
-
-      // Comparar solo la fecha (sin hora)
-      if (
-        fechaInicioForm.toISOString().split('T')[0] !==
-        fechaInicioOriginal.toISOString().split('T')[0]
-      ) {
-        dataActualizada.fechaInicio = fechaInicioForm.toISOString();
-      }
+    if (fechaInicioCambio) {
+      dataActualizada.fechaInicio = fechaInicio.toISOString();
+      dataActualizada.fechaVencimiento = fechaVencimiento.toISOString();
     }
 
-    if (formValue.fechaVencimiento) {
-      const fechaVencimientoForm = new Date(formValue.fechaVencimiento);
-      const fechaVencimientoOriginal = new Date(this.reservaData.fechaVencimiento);
-
-      // Comparar solo la fecha (sin hora)
-      if (
-        fechaVencimientoForm.toISOString().split('T')[0] !==
-        fechaVencimientoOriginal.toISOString().split('T')[0]
-      ) {
-        dataActualizada.fechaVencimiento = fechaVencimientoForm.toISOString();
-      }
-    }
-
-    // Verificar si hay cambios
     if (Object.keys(dataActualizada).length === 0) {
       this.notificationService.showInfo('No hay cambios para actualizar.');
       this.enviando.set(false);
       return;
     }
 
-    console.log('Datos a actualizar:', dataActualizada); // Para debug
-
     this.reservaSvc.update(this.reservaId, dataActualizada).subscribe({
       next: (response: any) => {
         this.enviando.set(false);
-
         if (response.success) {
-          this.notificationService.showSuccess(
-            response.message || 'Reserva actualizada exitosamente!'
-          );
-          setTimeout(() => {
-            this.router.navigate(['/reservas/lista']);
-          }, 1000);
-        } else if (response.id) {
           this.notificationService.showSuccess('Reserva actualizada exitosamente!');
           setTimeout(() => {
             this.router.navigate(['/reservas/lista']);
@@ -390,15 +385,11 @@ export class ReservaEdit implements OnInit {
       },
       error: (err: any) => {
         this.enviando.set(false);
-        console.error('Error detallado:', err); // Para debug
         let errorMessage = 'Error al actualizar la reserva';
         if (err.status === 400) {
-          errorMessage =
-            err.error?.message || 'Datos inválidos. Verifique la información ingresada.';
+          errorMessage = err.error?.message || 'Datos inválidos.';
         } else if (err.status === 404) {
           errorMessage = 'Reserva no encontrada.';
-        } else if (err.status === 409) {
-          errorMessage = 'El lote ya está reservado. Por favor seleccione otro lote.';
         } else if (err.status === 403) {
           errorMessage = 'No tiene permisos para actualizar reservas.';
         }
@@ -428,7 +419,6 @@ export class ReservaEdit implements OnInit {
 
   formatMonto(monto: number | string | undefined | null): string {
     if (monto === undefined || monto === null) return '0';
-
     let numero: number;
     if (typeof monto === 'string') {
       numero = parseFloat(monto);
@@ -436,17 +426,13 @@ export class ReservaEdit implements OnInit {
     } else {
       numero = monto;
     }
-
     if (Number.isInteger(numero)) {
       return numero.toString();
     }
-
     const formatted = numero.toFixed(2);
-
     if (formatted.endsWith('.00')) {
       return formatted.slice(0, -3);
     }
-
     return formatted;
   }
 
@@ -458,9 +444,7 @@ export class ReservaEdit implements OnInit {
       const archivosFinales = [...archivosActuales, ...nuevosArchivos];
 
       if (archivosFinales.length > this.maxArchivos) {
-        this.notificationService.showError(
-          `Solo puedes subir un máximo de ${this.maxArchivos} archivos.`
-        );
+        this.notificationService.showError(`Solo puedes subir un máximo de ${this.maxArchivos} archivos.`);
         return;
       }
 
@@ -481,9 +465,7 @@ export class ReservaEdit implements OnInit {
     }
 
     if (!this.reservaId) {
-      this.notificationService.showError(
-        'No se puede subir archivos: ID de reserva no disponible.'
-      );
+      this.notificationService.showError('No se puede subir archivos: ID de reserva no disponible.');
       return;
     }
 
@@ -496,26 +478,22 @@ export class ReservaEdit implements OnInit {
       return;
     }
 
-    this.reciboSvc
-      .subirRecibosGenerales(this.archivosSeleccionados(), {
-        tipoOperacion: 'RESERVA',
-        reservaId: this.reservaId,
-        observaciones: 'Subido desde edición de reserva',
-      })
-      .subscribe({
-        next: (response) => {
-          this.archivosCargando.set(false);
-          this.notificationService.showSuccess('Archivos subidos exitosamente.');
-          this.archivosSeleccionados.set([]);
-          this.cargarRecibosReserva();
-        },
-        error: (error) => {
-          this.archivosCargando.set(false);
-          this.notificationService.showError(
-            'Error al subir los archivos: ' + (error?.error?.message || 'Error desconocido')
-          );
-        },
-      });
+    this.reciboSvc.subirRecibosGenerales(this.archivosSeleccionados(), {
+      tipoOperacion: 'RESERVA',
+      reservaId: this.reservaId,
+      observaciones: 'Subido desde edición de reserva',
+    }).subscribe({
+      next: () => {
+        this.archivosCargando.set(false);
+        this.notificationService.showSuccess('Archivos subidos exitosamente.');
+        this.archivosSeleccionados.set([]);
+        this.cargarRecibosReserva();
+      },
+      error: (error) => {
+        this.archivosCargando.set(false);
+        this.notificationService.showError('Error al subir los archivos: ' + (error?.error?.message || 'Error desconocido'));
+      },
+    });
   }
 
   descargarRecibo(recibo: Recibo) {
@@ -523,21 +501,19 @@ export class ReservaEdit implements OnInit {
   }
 
   eliminarRecibo(recibo: Recibo) {
-    this.notificationService
-      .confirmDelete('¿Está seguro que desea eliminar este archivo?')
-      .then((result) => {
-        if (result.isConfirmed) {
-          this.reciboSvc.eliminarRecibo(recibo.id).subscribe({
-            next: () => {
-              this.notificationService.showSuccess('Archivo eliminado exitosamente.');
-              this.cargarRecibosReserva();
-            },
-            error: (err) => {
-              this.notificationService.showError('No se pudo eliminar el archivo.');
-            },
-          });
-        }
-      });
+    this.notificationService.confirmDelete('¿Está seguro que desea eliminar este archivo?').then((result) => {
+      if (result.isConfirmed) {
+        this.reciboSvc.eliminarRecibo(recibo.id).subscribe({
+          next: () => {
+            this.notificationService.showSuccess('Archivo eliminado exitosamente.');
+            this.cargarRecibosReserva();
+          },
+          error: () => {
+            this.notificationService.showError('No se pudo eliminar el archivo.');
+          },
+        });
+      }
+    });
   }
 
   formatFileSize(bytes: number): string {
