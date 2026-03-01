@@ -96,10 +96,17 @@ export class LoteCreate implements OnInit {
     const urbanizacionId = this.loteForm.get('urbanizacionId')?.value;
 
     if (esIndependiente) {
-      this.loteSvc.getAll().subscribe({
+      this.loteSvc.getAllLotesIndependientes().subscribe({
         next: (lotes) => {
           const lotesIndependientes = lotes.filter((lote) => lote.esIndependiente);
-          const siguienteNumero = lotesIndependientes.length + 1;
+          const numeros = lotesIndependientes
+            .map(lote => {
+              const match = lote.numeroLote?.match(/\d+/);
+              return match ? parseInt(match[0]) : 0;
+            })
+            .filter(num => !isNaN(num));
+          const maxNumero = numeros.length > 0 ? Math.max(...numeros) : 0;
+          const siguienteNumero = maxNumero + 1;
           const numeroFormateado = `Lote-${siguienteNumero.toString().padStart(3, '0')}`;
           this.loteForm.patchValue({ numeroLote: numeroFormateado }, { emitEvent: false });
         },
@@ -111,7 +118,14 @@ export class LoteCreate implements OnInit {
     } else if (urbanizacionId) {
       this.loteSvc.getAll(Number(urbanizacionId)).subscribe({
         next: (lotes) => {
-          const siguienteNumero = lotes.length + 1;
+          const numeros = lotes
+            .map(lote => {
+              const match = lote.numeroLote?.match(/\d+/);
+              return match ? parseInt(match[0]) : 0;
+            })
+            .filter(num => !isNaN(num));
+          const maxNumero = numeros.length > 0 ? Math.max(...numeros) : 0;
+          const siguienteNumero = maxNumero + 1;
           const numeroFormateado = `Lote-${siguienteNumero.toString().padStart(3, '0')}`;
           this.loteForm.patchValue({ numeroLote: numeroFormateado }, { emitEvent: false });
         },
@@ -143,14 +157,6 @@ export class LoteCreate implements OnInit {
     this.generarNumeroLoteAutomatico();
   }
 
-  // filteredUrbanizaciones() {
-  //   const search = this.searchUrbanizacion().toLowerCase();
-  //   if (!search) return this.urbanizaciones();
-  //   return this.urbanizaciones().filter((urbanizacion) =>
-  //     urbanizacion.nombre?.toLowerCase().includes(search)
-  //   );
-  // }
-
   selectUrbanizacion(urbanizacion: UrbanizacionDto) {
     if (urbanizacion.id) {
       this.loteForm.patchValue({
@@ -162,16 +168,6 @@ export class LoteCreate implements OnInit {
       this.generarNumeroLoteAutomatico();
     }
   }
-
-  // toggleUrbanizacionDropdown() {
-  //   this.showUrbanizacionDropdown.set(!this.showUrbanizacionDropdown());
-  // }
-
-  // onUrbanizacionBlur() {
-  //   setTimeout(() => {
-  //     this.showUrbanizacionDropdown.set(false);
-  //   }, 200);
-  // }
 
   onSubmit(): void {
     if (this.loteForm.invalid) {
@@ -187,7 +183,6 @@ export class LoteCreate implements OnInit {
       urbanizacionId: formValue.esIndependiente ? null : Number(formValue.urbanizacionId),
       superficieM2: Number(formValue.superficieM2),
       precioBase: Number(formValue.precioBase),
-  
       esIndependiente: Boolean(formValue.esIndependiente),
       encargadoId: formValue.encargadoId ? Number(formValue.encargadoId) : undefined,
     };
@@ -241,18 +236,15 @@ export class LoteCreate implements OnInit {
     this.loteForm.patchValue({ urbanizacionId: '' });
   }
 
-
   @ViewChild('urbanizacionModal') urbanizacionModal!: SeleccionModalComponent;
-urbanizacionModalConfig: ModalConfig = {
-  title: 'Seleccionar Urbanización',
-  searchPlaceholder: 'Buscar por nombre, ciudad, ubicación...',
-  searchKeys: ['nombre', 'ciudad', 'ubicacion'],
-  columns: [
-    { key: 'nombre', label: 'Nombre' },
-    { key: 'ciudad', label: 'Ciudad' },
-    { key: 'ubicacion', label: 'Ubicación' },
-  ]
-};
-
-
+  urbanizacionModalConfig: ModalConfig = {
+    title: 'Seleccionar Urbanización',
+    searchPlaceholder: 'Buscar por nombre, ciudad, ubicación...',
+    searchKeys: ['nombre', 'ciudad', 'ubicacion'],
+    columns: [
+      { key: 'nombre', label: 'Nombre' },
+      { key: 'ciudad', label: 'Ciudad' },
+      { key: 'ubicacion', label: 'Ubicación' },
+    ]
+  };
 }

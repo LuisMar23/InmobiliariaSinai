@@ -45,6 +45,11 @@ export class LoteController {
     );
   }
 
+  @Get('independientes/todos')
+  findAllIndependientes() {
+    return this.loteService.findAllIndependientes();
+  }
+
   @Get('para-cotizacion')
   getLotesParaCotizacion() {
     return this.loteService.getLotesParaCotizacion();
