@@ -31,6 +31,17 @@ export class LoteService {
     );
   }
 
+  getAllLotesIndependientes(): Observable<LoteDto[]> {
+    return this.http.get<ApiResponse<LoteDto[]>>(`${this.apiUrl}/independientes/todos`).pipe(
+      map((response) => {
+        if (response.success && response.data) {
+          return Array.isArray(response.data) ? response.data : [response.data];
+        }
+        return [];
+      })
+    );
+  }
+
   getById(id: number): Observable<LoteDto> {
     return this.http.get<ApiResponse<LoteDto>>(`${this.apiUrl}/${id}`).pipe(
       map((response) => {

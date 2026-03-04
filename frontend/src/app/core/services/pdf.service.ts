@@ -557,38 +557,42 @@ export class PdfService {
       }
       const fechaHora = new Date().toLocaleString('es-BO');
       const fechaGeneracion = new Date().toLocaleDateString('es-BO');
+      
+      // Calcular estadísticas
+      const reservasActivas = reservas.filter(r => r.estado === 'ACTIVA').length;
+      const reservasVencidas = reservas.filter(r => r.estado === 'VENCIDA').length;
+      const reservasCanceladas = reservas.filter(r => r.estado === 'CANCELADA').length;
+      
       const tableBody: any[] = [];
 
       tableBody.push([
         { text: 'N°', style: 'tableHeader', alignment: 'center' },
         { text: 'RESERVA', style: 'tableHeader', alignment: 'center' },
         { text: 'CLIENTE', style: 'tableHeader', alignment: 'left' },
-        { text: 'LOTE', style: 'tableHeader', alignment: 'center' },
-        { text: 'MONTO', style: 'tableHeader', alignment: 'right' },
+        { text: 'LOTE', style: 'tableHeader', alignment: 'left' },
         { text: 'FECHA INICIO', style: 'tableHeader', alignment: 'center' },
         { text: 'FECHA VENCE', style: 'tableHeader', alignment: 'center' },
+        { text: 'ASESOR', style: 'tableHeader', alignment: 'left' },
         { text: 'ESTADO', style: 'tableHeader', alignment: 'center' },
       ]);
 
       reservas.forEach((reserva, index) => {
+        const clienteNombre = reserva.cliente?.fullName || 'N/A';
+        const asesorNombre = reserva.asesor?.fullName || 'N/A';
+        const loteInfo = reserva.lote ? 
+          ` ${reserva.lote.numeroLote}${reserva.lote.urbanizacion?.nombre ? ` - ${reserva.lote.urbanizacion.nombre}` : ''}` : 
+          'N/A';
+
         tableBody.push([
           { text: (index + 1).toString(), style: 'tableCell', alignment: 'center' },
           { text: `#${reserva.id}`, style: 'tableCellBold', alignment: 'center' },
-          { text: reserva.cliente?.fullName || 'N/A', style: 'tableCell' },
-          { text: reserva.lote?.numeroLote || 'N/A', style: 'tableCell', alignment: 'center' },
+          { text: clienteNombre, style: 'tableCell' },
+          { text: loteInfo, style: 'tableCell' },
+          { text: this.formatFecha(reserva.fechaInicio), style: 'tableCell', alignment: 'center' },
+          { text: this.formatFecha(reserva.fechaVencimiento), style: 'tableCell', alignment: 'center' },
+          { text: asesorNombre, style: 'tableCell' },
           {
-            text: this.formatCurrency(reserva.montoReserva),
-            style: 'tableCellBold',
-            alignment: 'right',
-          },
-          { text: this.formatDate(reserva.fechaInicio), style: 'tableCell', alignment: 'center' },
-          {
-            text: this.formatDate(reserva.fechaVencimiento),
-            style: 'tableCell',
-            alignment: 'center',
-          },
-          {
-            text: reserva.estado?.toUpperCase() || 'N/A',
+            text: reserva.estado || 'N/A',
             style: this.getEstadoReservaStyle(reserva.estado),
             alignment: 'center',
           },
@@ -616,7 +620,7 @@ export class PdfService {
             {
               stack: [
                 {
-                  text: 'GESTIÓN INMOBILIARIA',
+                  text: 'GESTIÓN INMOBILIARIA SINAÍ',
                   style: 'companyName',
                   margin: [0, 15, 0, 0],
                 },
@@ -677,9 +681,64 @@ export class PdfService {
         },
         content: [
           {
+            columns: [
+              {
+                width: '33%',
+                stack: [
+                  {
+                    text: 'TOTAL RESERVAS',
+                    style: 'statLabel',
+                    alignment: 'center',
+                    margin: [0, 0, 0, 5],
+                  },
+                  {
+                    text: reservas.length.toString(),
+                    style: 'statValue',
+                    alignment: 'center',
+                  },
+                ],
+              },
+              {
+                width: '33%',
+                stack: [
+                  {
+                    text: 'ACTIVAS',
+                    style: 'statLabel',
+                    alignment: 'center',
+                    margin: [0, 0, 0, 5],
+                  },
+                  {
+                    text: reservasActivas.toString(),
+                    style: 'statValue',
+                    alignment: 'center',
+                    color: this.successColor,
+                  },
+                ],
+              },
+              {
+                width: '33%',
+                stack: [
+                  {
+                    text: 'VENCIDAS',
+                    style: 'statLabel',
+                    alignment: 'center',
+                    margin: [0, 0, 0, 5],
+                  },
+                  {
+                    text: reservasVencidas.toString(),
+                    style: 'statValue',
+                    alignment: 'center',
+                    color: this.errorColor,
+                  },
+                ],
+              },
+            ],
+            margin: [0, 0, 0, 20],
+          },
+          {
             table: {
               headerRows: 1,
-              widths: ['5%', '8%', '27%', '10%', '15%', '15%', '15%', '5%'],
+              widths: ['4%', '6%', '18%', '18%', '12%', '12%', '18%', '12%'],
               body: tableBody,
             },
             layout: {
@@ -721,8 +780,17 @@ export class PdfService {
             color: this.primaryDark,
             bold: true,
           },
+          statLabel: {
+            fontSize: 11,
+            color: this.primaryColor,
+            bold: true,
+          },
+          statValue: {
+            fontSize: 16,
+            bold: true,
+          },
           tableHeader: {
-            fontSize: 10,
+            fontSize: 9,
             bold: true,
             color: this.headerTextColor,
           },
@@ -776,7 +844,7 @@ export class PdfService {
             {
               stack: [
                 {
-                  text: 'GESTIÓN INMOBILIARIA',
+                  text: 'GESTIÓN INMOBILIARIA SINAÍ',
                   style: 'companyName',
                   margin: [0, 15, 0, 0],
                 },
@@ -854,24 +922,17 @@ export class PdfService {
                         [
                           { text: 'Estado:', style: 'labelCell' },
                           {
-                            text: reserva.estado?.toUpperCase() || 'N/A',
+                            text: reserva.estado || 'N/A',
                             style: this.getEstadoReservaStyle(reserva.estado),
                           },
                         ],
                         [
-                          { text: 'Monto:', style: 'labelCell' },
-                          {
-                            text: this.formatCurrency(reserva.montoReserva),
-                            style: 'valueCellBold',
-                          },
-                        ],
-                        [
                           { text: 'Fecha Inicio:', style: 'labelCell' },
-                          { text: this.formatDate(reserva.fechaInicio), style: 'valueCell' },
+                          { text: this.formatFecha(reserva.fechaInicio), style: 'valueCell' },
                         ],
                         [
                           { text: 'Fecha Vence:', style: 'labelCell' },
-                          { text: this.formatDate(reserva.fechaVencimiento), style: 'valueCell' },
+                          { text: this.formatFecha(reserva.fechaVencimiento), style: 'valueCell' },
                         ],
                       ],
                     },
@@ -897,7 +958,11 @@ export class PdfService {
                             stack: [
                               { text: reserva.cliente?.fullName || 'N/A', style: 'clientName' },
                               {
-                                text: reserva.cliente?.telefono || 'Sin teléfono',
+                                text: `CI: ${reserva.cliente?.ci || 'N/A'}`,
+                                style: 'clientDetail',
+                              },
+                              {
+                                text: `Tel: ${reserva.cliente?.telefono || 'N/A'}`,
                                 style: 'clientDetail',
                               },
                             ],
@@ -910,6 +975,10 @@ export class PdfService {
                       vLineWidth: () => 2,
                       hLineColor: () => this.headerBg,
                       vLineColor: () => this.headerBg,
+                      paddingTop: () => 10,
+                      paddingBottom: () => 10,
+                      paddingLeft: () => 10,
+                      paddingRight: () => 10,
                     },
                   },
                 ],
@@ -918,7 +987,45 @@ export class PdfService {
             margin: [0, 0, 0, 25],
           },
           {
-            text: 'DETALLE DEL INMUEBLE',
+            text: 'ASESOR RESPONSABLE',
+            style: 'sectionTitle',
+            background: this.lightBg,
+            margin: [0, 0, 0, 10],
+          },
+          {
+            table: {
+              widths: ['100%'],
+              body: [
+                [
+                  {
+                    stack: [
+                      { text: reserva.asesor?.fullName || 'N/A', style: 'clientName' },
+                      {
+                        text: `Email: ${reserva.asesor?.email || 'N/A'}`,
+                        style: 'clientDetail',
+                      },
+                      {
+                        text: `Tel: ${reserva.asesor?.telefono || 'N/A'}`,
+                        style: 'clientDetail',
+                      },
+                    ],
+                  },
+                ],
+              ],
+            },
+            layout: {
+              fillColor: this.lightBg,
+              hLineWidth: () => 0,
+              vLineWidth: () => 0,
+              paddingTop: () => 10,
+              paddingBottom: () => 10,
+              paddingLeft: () => 10,
+              paddingRight: () => 10,
+            },
+            margin: [0, 0, 0, 25],
+          },
+          {
+            text: 'DETALLE DEL LOTE',
             style: 'sectionTitle',
             background: this.lightBg,
             margin: [0, 0, 0, 10],
@@ -936,7 +1043,7 @@ export class PdfService {
                 [
                   { text: reserva.lote?.numeroLote || 'N/A', style: 'valueCell' },
                   { text: `${reserva.lote?.superficieM2 || 'N/A'} m²`, style: 'valueCell' },
-                  { text: reserva.lote?.urbanizacion?.nombre || 'N/A', style: 'valueCell' },
+                  { text: reserva.lote?.urbanizacion?.nombre || 'Independiente', style: 'valueCell' },
                   { text: this.formatCurrency(reserva.lote?.precioBase || 0), style: 'valueCell' },
                 ],
               ],
@@ -947,6 +1054,11 @@ export class PdfService {
               hLineColor: () => this.borderColor,
               vLineColor: () => this.borderColor,
             },
+          },
+          {
+            text: '\nNota: Esta reserva tiene una vigencia de 24 horas desde su fecha de inicio.',
+            style: 'footer',
+            margin: [0, 20, 0, 0],
           },
         ],
         styles: {
@@ -992,11 +1104,6 @@ export class PdfService {
             fontSize: 10,
             color: this.textColor,
           },
-          valueCellBold: {
-            fontSize: 10,
-            color: this.textColor,
-            bold: true,
-          },
           clientName: {
             fontSize: 12,
             bold: true,
@@ -1030,7 +1137,6 @@ generarPdfVentas(ventas: any[]): void {
     const fechaGeneracion = new Date().toLocaleDateString('es-BO');
     const tableBody: any[] = [];
 
-    // Calcular totales generales
     let totalGeneral = 0;
     let totalPagadoGeneral = 0;
     let totalSaldoGeneral = 0;
@@ -1058,12 +1164,10 @@ generarPdfVentas(ventas: any[]): void {
       const porcentajePagado = totalVenta > 0 ? (totalPagado / totalVenta) * 100 : 0;
       const fechaVenta = venta.fecha_venta || (planPago ? planPago.fecha_inicio : venta.createdAt);
 
-      // Acumular totales
       totalGeneral += totalVenta;
       totalPagadoGeneral += totalPagado;
       totalSaldoGeneral += saldoPendiente;
 
-      // Determinar información del inmueble según el tipo
       let inmuebleInfo = 'N/A';
       let tipoCorto = 'N/A';
       
@@ -1081,12 +1185,11 @@ generarPdfVentas(ventas: any[]): void {
         tipoCorto = 'PROP';
       }
 
-      // Determinar color del saldo según el avance
-      let saldoColor = '#1F2937'; // Negro normal
+      let saldoColor = '#1F2937';
       if (porcentajePagado === 100) {
-        saldoColor = '#059669'; // Verde
+        saldoColor = '#059669';
       } else if (porcentajePagado < 30) {
-        saldoColor = '#DC2626'; // Rojo
+        saldoColor = '#DC2626';
       }
 
       tableBody.push([
@@ -1095,7 +1198,7 @@ generarPdfVentas(ventas: any[]): void {
         { text: venta.cliente?.fullName || 'N/A', style: 'tableCell' },
         { text: tipoCorto, style: 'tableCell', alignment: 'center' },
         { text: inmuebleInfo, style: 'tableCell', fontSize: 6 },
-        { text: this.formatDate(fechaVenta), style: 'tableCell', alignment: 'center' },
+        { text: this.formatFecha(fechaVenta), style: 'tableCell', alignment: 'center' },
         { text: this.formatCurrency(totalVenta), style: 'tableCellBold', alignment: 'right' },
         { text: this.formatCurrency(totalPagado), style: 'tableCell', alignment: 'right' },
         { 
@@ -1113,7 +1216,6 @@ generarPdfVentas(ventas: any[]): void {
       ]);
     });
 
-    // Fila de totales
     tableBody.push([
       { text: '', border: [false, true, false, false] },
       { text: '', border: [false, true, false, false] },
@@ -1193,7 +1295,6 @@ generarPdfVentas(ventas: any[]): void {
       },
 
       content: [
-        // Línea separadora
         {
           canvas: [
             {
@@ -1209,7 +1310,6 @@ generarPdfVentas(ventas: any[]): void {
           margin: [0, 0, 0, 15],
         },
 
-        // Resumen ejecutivo
         {
           columns: [
             {
@@ -1244,7 +1344,6 @@ generarPdfVentas(ventas: any[]): void {
           margin: [0, 0, 0, 20],
         },
 
-        // Tabla de ventas
         {
           table: {
             headerRows: 1,
@@ -1253,14 +1352,14 @@ generarPdfVentas(ventas: any[]): void {
           },
           layout: {
             fillColor: (rowIndex: number) => {
-              if (rowIndex === 0) return '#F9FAFB'; // Header
-              if (rowIndex === tableBody.length - 1) return '#F3F4F6'; // Totales
-              return rowIndex % 2 === 0 ? '#FFFFFF' : '#F9FAFB'; // Alternado
+              if (rowIndex === 0) return '#F9FAFB';
+              if (rowIndex === tableBody.length - 1) return '#F3F4F6';
+              return rowIndex % 2 === 0 ? '#FFFFFF' : '#F9FAFB';
             },
             hLineWidth: (i: number, node: any) => {
-              if (i === 0 || i === 1) return 1.5; // Línea después del header
-              if (i === node.table.body.length - 1) return 1.5; // Línea antes de totales
-              if (i === node.table.body.length) return 1.5; // Línea después de totales
+              if (i === 0 || i === 1) return 1.5;
+              if (i === node.table.body.length - 1) return 1.5;
+              if (i === node.table.body.length) return 1.5;
               return 0.5;
             },
             vLineWidth: () => 0,
@@ -1372,7 +1471,6 @@ generarPdfVentas(ventas: any[]): void {
     const porcentajePagado = totalVenta > 0 ? (totalPagado / totalVenta) * 100 : 0;
     const fechaVenta = venta.fecha_venta || (planPago ? planPago.fecha_inicio : venta.createdAt);
 
-    // Construir tabla de detalles del inmueble según el tipo
     const detalleInmuebleTable = this.buildDetalleInmuebleTable(venta);
 
     const docDefinition: any = {
@@ -1413,7 +1511,7 @@ generarPdfVentas(ventas: any[]): void {
                     alignment: 'right',
                   },
                   {
-                    text: this.formatDate(fechaVenta),
+                    text: this.formatFecha(fechaVenta),
                     style: 'ventaDate',
                     alignment: 'right',
                     margin: [0, 2, 0, 0],
@@ -1477,7 +1575,6 @@ generarPdfVentas(ventas: any[]): void {
       },
 
       content: [
-        // Título del documento
         {
           text: 'DETALLE DE VENTA',
           style: 'documentTitle',
@@ -1485,7 +1582,6 @@ generarPdfVentas(ventas: any[]): void {
           margin: [0, 0, 0, 20],
         },
 
-        // Sección: Información del Cliente y Asesor
         {
           columns: [
             {
@@ -1570,7 +1666,6 @@ generarPdfVentas(ventas: any[]): void {
           margin: [0, 0, 0, 20],
         },
 
-        // Sección: Información del Inmueble
         {
           text: 'INFORMACIÓN DEL INMUEBLE',
           style: 'sectionTitle',
@@ -1578,7 +1673,6 @@ generarPdfVentas(ventas: any[]): void {
         },
         detalleInmuebleTable,
 
-        // Sección: Estado de la Venta
         {
           text: 'ESTADO DE LA VENTA',
           style: 'sectionTitle',
@@ -1621,7 +1715,6 @@ generarPdfVentas(ventas: any[]): void {
           },
         },
 
-        // Sección: Resumen Financiero (destacado)
         {
           text: 'RESUMEN FINANCIERO',
           style: 'sectionTitle',
@@ -1683,7 +1776,6 @@ generarPdfVentas(ventas: any[]): void {
           },
         },
 
-        // Barra de progreso visual
         {
           margin: [0, 10, 0, 0],
           canvas: [
@@ -1708,10 +1800,8 @@ generarPdfVentas(ventas: any[]): void {
           ],
         },
 
-        // Detalles del Plan de Pago
         ...this.buildDetallePagos(planPago),
 
-        // Nota al pie
         {
           text: [
             { text: 'Nota: ', bold: true, fontSize: 8, color: '#6B7280' },
@@ -2013,7 +2103,6 @@ generarPdfVentas(ventas: any[]): void {
       const total = Number(venta.precioFinal || venta.total || 0);
       let pagado = 0;
 
-      // Determinar información del inmueble
       let inmuebleInfo = 'N/A';
       let tipoInmueble = 'N/A';
 
@@ -2044,7 +2133,7 @@ generarPdfVentas(ventas: any[]): void {
         { text: `#${venta.id}`, style: 'valueCell' },
         { text: inmuebleInfo, style: 'valueCell' },
         { text: tipoInmueble, style: 'valueCell' },
-        { text: this.formatDate(fechaVenta), style: 'valueCell' },
+        { text: this.formatFecha(fechaVenta), style: 'valueCell' },
         { text: this.formatCurrency(total), style: 'valueCell' },
         { text: this.formatCurrency(pagado), style: 'valueCell' },
         {
@@ -2100,7 +2189,7 @@ generarPdfVentas(ventas: any[]): void {
 
     planPago.pagos.forEach((pago: any) => {
       tableBody.push([
-        { text: this.formatDate(pago.fecha_pago), style: 'valueCell' },
+        { text: this.formatFecha(pago.fecha_pago), style: 'valueCell' },
         { text: this.formatCurrency(pago.monto), style: 'valueCell' },
         { text: pago.metodoPago || 'EFECTIVO', style: 'valueCell' },
         { text: pago.observacion || '-', style: 'valueCell' },
@@ -2136,6 +2225,7 @@ generarPdfVentas(ventas: any[]): void {
       ACTIVA: { fontSize: 10, bold: true, color: this.successColor },
       VENCIDA: { fontSize: 10, bold: true, color: this.errorColor },
       CANCELADA: { fontSize: 10, bold: true, color: this.warningColor },
+      CONVERTIDA_EN_VENTA: { fontSize: 10, bold: true, color: this.primaryColor },
     };
     return styles[estado?.toUpperCase()] || { fontSize: 10, bold: true, color: this.textColor };
   }
@@ -2149,7 +2239,7 @@ generarPdfVentas(ventas: any[]): void {
     return styles[estado?.toUpperCase()] || { fontSize: 10, bold: true, color: this.textColor };
   }
 
-  private formatDate(dateString: string | Date): string {
+  private formatFecha(dateString: string | Date): string {
     if (!dateString) return 'N/A';
     try {
       const date = new Date(dateString);
@@ -2157,6 +2247,8 @@ generarPdfVentas(ventas: any[]): void {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
       });
     } catch {
       return 'Fecha inválida';

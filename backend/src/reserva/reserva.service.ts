@@ -89,16 +89,12 @@ export class ReservasService {
 
   async getLotesDisponiblesParaReserva(usuarioId: number, usuarioRole: string) {
     try {
-      const rolesFullAccess = ['ADMINISTRADOR', 'SECRETARIA'];
       const whereClause: any = {
         estado: 'DISPONIBLE',
       };
 
-      if (!rolesFullAccess.includes(usuarioRole)) {
-        whereClause.OR = [
-          { encargadoId: usuarioId },
-          { encargadoId: null }
-        ];
+      if (usuarioRole === 'ASESOR') {
+        whereClause.encargadoId = usuarioId;
       }
 
       const lotes = await this.prisma.lote.findMany({
@@ -169,13 +165,12 @@ export class ReservasService {
         }
 
         if (createReservaDto.inmuebleTipo === TipoInmueble.LOTE) {
-          const rolesFullAccess = ['ADMINISTRADOR', 'SECRETARIA'];
           const whereClause: any = {
             id: createReservaDto.inmuebleId,
             estado: 'DISPONIBLE',
           };
 
-          if (!rolesFullAccess.includes(asesor.role)) {
+          if (asesor.role === 'ASESOR') {
             whereClause.encargadoId = asesorId;
           }
 
@@ -494,13 +489,12 @@ export class ReservasService {
           updateReservaDto.inmuebleId !== reservaExistente.inmuebleId
         ) {
           if (updateReservaDto.inmuebleTipo === TipoInmueble.LOTE) {
-            const rolesFullAccess = ['ADMINISTRADOR', 'SECRETARIA'];
             const whereClause: any = {
               id: updateReservaDto.inmuebleId,
               estado: 'DISPONIBLE',
             };
 
-            if (!rolesFullAccess.includes(usuario.role)) {
+            if (usuario.role === 'ASESOR') {
               whereClause.encargadoId = usuarioId;
             }
 

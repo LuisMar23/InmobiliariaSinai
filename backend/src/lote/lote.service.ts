@@ -214,6 +214,22 @@ export class LoteService {
     };
   }
 
+  async findAllIndependientes() {
+    const lotes = await this.prisma.lote.findMany({
+      where: {
+        esIndependiente: true,
+      },
+      orderBy: {
+        numeroLote: 'asc',
+      },
+    });
+
+    return {
+      success: true,
+      data: lotes,
+    };
+  }
+
   async findOne(id: number) {
     const lote = await this.prisma.lote.findUnique({
       where: { id },
