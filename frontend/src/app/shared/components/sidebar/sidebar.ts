@@ -91,7 +91,7 @@ menuItems: {
 { label: 'Clientes', icon: faHomeUser, route: '/clientes', roles: ['ADMINISTRADOR', 'SECRETARIA'] },
 
 { label: 'Cotizaciones', icon: faFileInvoiceDollar, route: '/cotizaciones', roles: ['ADMINISTRADOR'] },
-{ label: 'Ventas', icon: faReceipt, route: '/ventas', roles: ['ADMINISTRADOR', 'SECRETARIA'] },
+{ label: 'Ventas', icon: faReceipt, route: '/ventas', roles: ['ADMINISTRADOR', 'SECRETARIA','ASESOR'] },
 { label: 'Reservas', icon: faCalendarCheck, route: '/reservas', roles: ['ADMINISTRADOR', 'SECRETARIA', 'ASESOR'] },
 { label: 'Visitas', icon: faEye, route: '/visitas', roles: ['ADMINISTRADOR', 'SECRETARIA'] },
 

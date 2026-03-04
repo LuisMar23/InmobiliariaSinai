@@ -601,7 +601,7 @@ export class VentaCreate implements OnInit {
 { 
   key: 'urbanizacion', 
   label: 'Urbanización', 
-  format: (v) => v?.nombre 
+  format: (v) => v?.nombre ?? 'Sin urbanización'
 },
       { key: 'numeroLote', label: 'N° Lote' },
         { key: 'manzano', label: 'Manzano' },
