@@ -1,3 +1,4 @@
+// urbanizacion-list.component.ts
 import { Component, computed, signal, OnInit } from '@angular/core';
 import { UrbanizacionService } from '../services/urbanizacion.service';
 import { Urbanizacion } from '../../../core/interfaces/datos.interface';

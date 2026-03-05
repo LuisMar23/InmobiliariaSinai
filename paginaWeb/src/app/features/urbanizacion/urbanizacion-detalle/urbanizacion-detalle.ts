@@ -1,3 +1,4 @@
+// urbanizacion-detalle.component.ts
 import { Component, CUSTOM_ELEMENTS_SCHEMA, signal } from '@angular/core';
 import { UrbanizacionService } from '../services/urbanizacion.service';
 import { Lote, Urbanizacion } from '../../../core/interfaces/datos.interface';

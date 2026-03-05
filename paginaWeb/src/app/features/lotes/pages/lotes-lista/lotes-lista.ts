@@ -39,7 +39,6 @@ export class LotesLista {
     this.cargando.set(true);
     this.loteSvc.getAll().subscribe({
       next: (data) => {
-        console.log(data)
         this.lotes.set([...data]);
         this.lotesFiltrados.set([...data]);
         this.cargando.set(false);
@@ -73,6 +72,7 @@ export class LotesLista {
       const ciudad = (lote.ciudad ?? '').toString().trim().toLowerCase();
       const numeroLote = (lote.numeroLote ?? '').toString().toLowerCase();
       const descripcion = (lote.descripcion ?? '').toString().toLowerCase();
+      const manzano = (lote.manzano ?? '').toString().toLowerCase();
 
       const cumpleCiudad = f.ciudad.length === 0 || ciudad.includes(f.ciudad);
       const cumplePrecio =
@@ -83,7 +83,8 @@ export class LotesLista {
       const cumpleTexto =
         f.busqueda.length === 0 ||
         numeroLote.includes(f.busqueda) ||
-        descripcion.includes(f.busqueda);
+        descripcion.includes(f.busqueda) ||
+        manzano.includes(f.busqueda);
 
       return cumpleCiudad && cumplePrecio && cumpleSup && cumpleEstado && cumpleTexto;
     });

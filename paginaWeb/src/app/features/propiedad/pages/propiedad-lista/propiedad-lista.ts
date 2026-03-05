@@ -9,16 +9,14 @@ import { CommonModule } from '@angular/common';
 import { PropiedadService } from '../../service/propiedad.service';
 import { PropiedadCard } from '../../components/propiedad-card/propiedad-card';
 import { PropiedadListItem } from '../../components/propiedad-list-item/propiedad-list-item';
-// Quité la importación de VistaMapaPropiedades
 
 @Component({
   selector: 'app-propiedades-lista',
-  imports: [CommonModule, PropiedadCard, PropiedadListItem], // Quité VistaMapaPropiedades
+  imports: [CommonModule, PropiedadCard, PropiedadListItem],
   templateUrl: './propiedad-lista.html',
   styleUrl: './propiedad-lista.css',
 })
 export class PropiedadesLista {
-  // TODO EL RESTO DEL CÓDIGO PERMANECE EXACTAMENTE IGUAL
   propiedades = signal<Propiedad[]>([]);
   propiedadesFiltradas = signal<Propiedad[]>([]);
   vista = signal<VistaPropiedad>('grid');
@@ -45,8 +43,6 @@ export class PropiedadesLista {
     this.cargando.set(true);
     this.propiedadSvc.getAll().subscribe({
       next: (data) => {
-        console.log('Propiedades cargadas en lista:', data);
-        console.log('Primera propiedad archivos:', data[0]?.archivos);
         this.propiedades.set([...data]);
         this.propiedadesFiltradas.set([...data]);
         this.cargando.set(false);

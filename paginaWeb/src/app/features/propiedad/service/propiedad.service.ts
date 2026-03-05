@@ -13,7 +13,7 @@ export class PropiedadService {
 
   getAll(): Observable<Propiedad[]> {
     return this.http
-      .get<{ success: boolean; data: any[] }>(this.baseUrl)
+      .get<{ success: boolean; data: any[] }>(`${this.baseUrl}/publicas/todas`)
       .pipe(map((response) => this.mapearPropiedades(response.data)));
   }
 
@@ -52,9 +52,9 @@ export class PropiedadService {
         propiedad.archivos?.map((archivo: any) => ({
           id: archivo.id,
           uuid: archivo.uuid || '',
-          url: archivo.urlArchivo, // ← Mapea urlArchivo del backend a url del frontend
-          tipo: archivo.tipoArchivo, // ← Mapea tipoArchivo del backend a tipo del frontend
-          nombre: archivo.nombreArchivo, // ← Mapea nombreArchivo del backend a nombre del frontend
+          url: archivo.urlArchivo,
+          tipo: archivo.tipoArchivo,
+          nombre: archivo.nombreArchivo,
         })) || [],
     };
   }

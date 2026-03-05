@@ -25,51 +25,61 @@ import { AuthGuard } from '@nestjs/passport';
 
 @Controller('propiedades')
 @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
-@UseGuards(AuthGuard('jwt'))
 export class PropiedadController {
   constructor(private readonly propiedadService: PropiedadService) {}
 
+  @Get('publicas/todas')
+  async findAllPublicas() {
+    return this.propiedadService.findAllPublicas();
+  }
+
+  @Get('uuid/:uuid')
+  async findOneUUIDPublic(@Param('uuid') uuid: string) {
+    return this.propiedadService.findOneUUID(uuid);
+  }
+
+  @Get('tipo/:tipo')
+  async getPropiedadesPorTipoPublic(@Param('tipo') tipo: TipoPropiedad) {
+    return this.propiedadService.getPropiedadesPorTipo(tipo);
+  }
+
+  @Get('estado-propiedad/:estado')
+  async getPropiedadesPorEstadoPublic(@Param('estado') estado: EstadoPropiedad) {
+    return this.propiedadService.getPropiedadesPorEstado(estado);
+  }
+
+  @UseGuards(AuthGuard('jwt'))
   @Post()
   create(@Body() createPropiedadDto: CreatePropiedadDto, @Request() req) {
     createPropiedadDto.usuarioId = req.user.id;
     return this.propiedadService.create(createPropiedadDto);
   }
 
+  @UseGuards(AuthGuard('jwt'))
   @Get()
   findAll(@Request() req) {
     return this.propiedadService.findAll(req.user.id);
   }
 
+  @UseGuards(AuthGuard('jwt'))
   @Get('para-cotizacion')
   getPropiedadesParaCotizacion() {
     return this.propiedadService.getPropiedadesParaCotizacion();
   }
 
-  @Get('tipo/:tipo')
-  getPropiedadesPorTipo(@Param('tipo') tipo: TipoPropiedad) {
-    return this.propiedadService.getPropiedadesPorTipo(tipo);
-  }
-
-  @Get('estado-propiedad/:estado')
-  getPropiedadesPorEstado(@Param('estado') estado: EstadoPropiedad) {
-    return this.propiedadService.getPropiedadesPorEstado(estado);
-  }
-
+  @UseGuards(AuthGuard('jwt'))
   @Get('estado-inmueble/:estado')
   getPropiedadesPorEstadoInmueble(@Param('estado') estado: EstadoInmueble) {
     return this.propiedadService.getPropiedadesPorEstadoInmueble(estado);
   }
 
+  @UseGuards(AuthGuard('jwt'))
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.propiedadService.findOne(id);
   }
 
-  @Get('uuid/:uuid')
-  findOneUUID(@Param('uuid') uuid: string) {
-    return this.propiedadService.findOneUUID(uuid);
-  }
-
+  @UseGuards(AuthGuard('jwt'))
   @Patch(':id')
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -80,11 +90,13 @@ export class PropiedadController {
     return this.propiedadService.update(id, updatePropiedadDto);
   }
 
+  @UseGuards(AuthGuard('jwt'))
   @Delete(':id')
   remove(@Param('id', ParseIntPipe) id: number, @Request() req) {
     return this.propiedadService.remove(id, req.user.id);
   }
 
+  @UseGuards(AuthGuard('jwt'))
   @Patch(':id/asignar-encargado')
   asignarEncargado(
     @Param('id', ParseIntPipe) id: number,

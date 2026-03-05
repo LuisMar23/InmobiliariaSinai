@@ -13,7 +13,6 @@ import { environment } from '../../../../../environments/environment';
 })
 export class PropiedadListItem {
   urlServer = environment.fileServer;
-
   @Input() propiedad!: Propiedad;
 
   obtenerEstadoClase(estado: string | undefined): string {
@@ -37,13 +36,11 @@ export class PropiedadListItem {
     );
   }
 
-  // Métodos auxiliares para manejar valores opcionales de forma segura
   tieneArchivos(): boolean {
     return !!this.propiedad?.archivos?.length;
   }
 
   obtenerPrimeraImagen(): string | null {
-    // Ahora debería funcionar porque el servicio mapea urlArchivo → url
     return this.propiedad?.archivos?.[0]?.url || null;
   }
 

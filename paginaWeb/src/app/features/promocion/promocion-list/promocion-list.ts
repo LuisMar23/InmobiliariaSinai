@@ -1,5 +1,5 @@
 // lotes-promocion.component.ts
-import { Component, signal, OnInit, inject } from '@angular/core';
+import { Component, signal, OnInit, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { PromocionBadgeComponent } from '../promocion-badge-component/promocion-badge-component';
@@ -16,9 +16,7 @@ interface LoteConPromocion {
   descripcion?: string;
   ciudad: string;
   archivos?: Array<{ urlArchivo: string }>;
-  lotePromocion?: {
-    precioOriginal: number;
-    precioConDescuento: number;
+  LotePromocion?: Array<{
     promocion: {
       titulo: string;
       descripcion?: string;
@@ -26,27 +24,46 @@ interface LoteConPromocion {
       fechaInicio: Date;
       fechaFin: Date;
     };
-  };
+  }>;
+  precioConDescuento: number;
 }
 
 @Component({
   selector: 'app-lotes-promocion',
   standalone: true,
   imports: [CommonModule, RouterLink, PromocionBadgeComponent, PrecioPromocionComponent],
-  templateUrl:'./promocion-list.html'
+  templateUrl: './promocion-list.html'
 })
 export class LotesPromocionComponent implements OnInit {
-  lotesPromocion = signal<LoteConPromocion[]>([]);
+  private loteService = inject(LoteService);
   urlServer = environment.fileServer;
+  
+  lotesRaw = signal<any[]>([]);
+  
+  lotesPromocion = computed<LoteConPromocion[]>(() => {
+    return this.lotesRaw().map(lote => {
+      const promocionActiva = lote.LotePromocion?.[0]?.promocion;
+      let precioConDescuento = lote.precioBase;
+      
+      if (promocionActiva?.descuento) {
+        precioConDescuento = lote.precioBase * (1 - promocionActiva.descuento / 100);
+      }
+      
+      return {
+        ...lote,
+        precioConDescuento
+      };
+    });
+  });
+
   ngOnInit() {
     this.cargarLotesPromocion();
   }
-  private loteService = inject(LoteService);
+
   cargarLotesPromocion() {
     this.loteService.getLotesPromocion().subscribe({
       next: (resp) => {
-        console.log(resp);
-        this.lotesPromocion.set(resp);
+        this.lotesRaw.set(resp);
       },
     });
   }

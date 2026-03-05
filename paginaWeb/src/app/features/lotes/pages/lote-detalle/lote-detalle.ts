@@ -1,3 +1,4 @@
+// lote-detalle.component.ts
 import {
   afterNextRender,
   Component,
@@ -21,7 +22,6 @@ import { SafeUrlPipe } from './safe-url.pipe';
 
 @Component({
   selector: 'app-lote-detalle',
-
   imports: [CommonModule, ReactiveFormsModule, RouterModule, SafeUrlPipe],
   templateUrl: './lote-detalle.html',
   styleUrl: './lote-detalle.css',
@@ -36,6 +36,7 @@ export class LoteDetalle {
   contactoForm!: FormGroup;
   currentIndex = 0;
   totalImages = 0;
+  zoomOpen = signal(false);
 
   constructor(
     private route: ActivatedRoute,
@@ -55,7 +56,6 @@ export class LoteDetalle {
     if (uuid) {
       this.loteSvc.getByUuid(uuid).subscribe({
         next: (data) => {
-          console.log(data);
           this.lote.set(data);
           this.totalImages = data.archivos?.length || 0;
           this.cargando.set(false);
@@ -64,45 +64,50 @@ export class LoteDetalle {
       });
     }
   }
-get mapIframeUrl(): string {
-  const loteData = this.lote();
-  let lat = -21.5153775;
-  let lon = -64.73239;
-  let zoom = 15;
-  
-  if (loteData?.ubicacion) {
-    // Extrae coordenadas de cualquier formato
-    const match1 = loteData.ubicacion.match(/@(-?\d+\.\d+),(-?\d+\.\d+),?(\d+)?z?/);
-    const match2 = loteData.ubicacion.match(/3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
+
+  get mapIframeUrl(): string {
+    const loteData = this.lote();
+    let lat = -21.5153775;
+    let lon = -64.73239;
+    let zoom = 15;
     
-    if (match1) {
-      lat = parseFloat(match1[1]);
-      lon = parseFloat(match1[2]);
-      zoom = match1[3] ? parseInt(match1[3]) : 15;
-    } else if (match2) {
-      lat = parseFloat(match2[1]);
-      lon = parseFloat(match2[2]);
+    if (loteData?.ubicacion) {
+      const match1 = loteData.ubicacion.match(/@(-?\d+\.\d+),(-?\d+\.\d+),?(\d+)?z?/);
+      const match2 = loteData.ubicacion.match(/3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
+      
+      if (match1) {
+        lat = parseFloat(match1[1]);
+        lon = parseFloat(match1[2]);
+        zoom = match1[3] ? parseInt(match1[3]) : 15;
+      } else if (match2) {
+        lat = parseFloat(match2[1]);
+        lon = parseFloat(match2[2]);
+      }
     }
+    
+    return `https://maps.google.com/maps?q=${lat},${lon}&z=${zoom}&output=embed`;
   }
-  
-  // URL simple de Google Maps Embed API
-  return `https://maps.google.com/maps?q=${lat},${lon}&z=${zoom}&output=embed`;
-}
+
   obtenerEstadoClase(estado: string) {
     return (
       {
         DISPONIBLE: 'bg-green-100 text-green-700',
         RESERVADO: 'bg-yellow-100 text-yellow-700',
-        VENDIDO: 'bg-red-100 text-red-700',
       }[estado] || ''
     );
   }
+
+  calcularPrecioConDescuento(precioBase: number, descuento: number): number {
+    return precioBase * (1 - descuento / 100);
+  }
+
   private platformId = inject(PLATFORM_ID);
 
   closeLightbox() {
     this.lightboxOpen.set(false);
     this.selectedImage.set(null);
   }
+
   enviarWhatsApp() {
     if (!isPlatformBrowser(this.platformId)) return;
 
@@ -126,6 +131,7 @@ get mapIframeUrl(): string {
 
     window.open(url, '_blank');
   }
+
   osmIframeUrl(ubicacion?: string): string {
     const coords = ubicacion ? this.coordenadas(ubicacion) : { lat: -21.5319, lon: -64.7296 };
     const zoom = 16;
@@ -139,11 +145,11 @@ get mapIframeUrl(): string {
     if (parts.length >= 2) return { lat: parseFloat(parts[0]), lon: parseFloat(parts[1]) };
     return { lat: -21.5319, lon: -64.7296 };
   }
+
   get mapaUrl(): string | null {
     const loteData = this.lote();
 
     if (loteData?.latitud && loteData?.longitud) {
-      // Usamos lat/lng para embed
       return `https://www.google.com/maps?q=${loteData.latitud},${loteData.longitud}&output=embed`;
     } else if (loteData?.ubicacion) {
       return loteData.ubicacion;
@@ -167,8 +173,6 @@ get mapIframeUrl(): string {
     if (!this.lote()?.archivos?.length) return;
     this.currentIndex = (this.currentIndex + 1) % this.lote()?.archivos.length;
   }
-
-  zoomOpen = signal(false); 
 
   openZoom() {
     this.zoomOpen.set(true);

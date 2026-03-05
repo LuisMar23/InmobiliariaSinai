@@ -20,7 +20,6 @@ import { CommonModule } from '@angular/common';
         </div>
       </div>
 
-      <!-- Badge de "OFERTA" alternativo en esquina superior derecha -->
       <div class="absolute top-0 right-0 z-10">
         <div class="bg-yellow-400 text-red-600 px-6 py-2 rounded-bl-2xl shadow-lg font-black text-sm">
           ¡OFERTA!

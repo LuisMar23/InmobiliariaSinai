@@ -21,7 +21,7 @@ export class FiltroPropiedades implements OnInit, OnDestroy {
 
   tiposPropiedad = Object.values(TipoPropiedad);
   estadosPropiedad = Object.values(EstadoPropiedad);
-  estadosInmueble = Object.values(EstadoInmueble);
+  estadosInmueble = Object.values(EstadoInmueble).filter(estado => estado !== 'VENDIDO');
 
   private cambios$ = new Subject<FiltrosPropiedad>();
   private sub?: Subscription;

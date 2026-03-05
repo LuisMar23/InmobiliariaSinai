@@ -16,52 +16,47 @@ export class LoteCard implements OnInit {
   urlServer = environment.fileServer;
   private loteSvc = inject(LoteService);
 
-  // Signals para los datos
   lotes = signal<Lote[]>([]);
   
-  // Signals para los filtros
   filtroCiudad = signal('');
   filtroPrecioMin = signal<number>(0);
   filtroPrecioMax = signal<number>(9999999);
   filtroEstado = signal('');
 
-  // Computed signal para los lotes filtrados
-lotesFiltrados = computed(() => {
-  const origen = this.lotes();
+  lotesFiltrados = computed(() => {
+    const origen = this.lotes();
 
-  if (!Array.isArray(origen)) return [];
+    if (!Array.isArray(origen)) return [];
 
-  const ciudad = this.filtroCiudad().trim().toLowerCase();
-  const precioMin = this.filtroPrecioMin();
-  const precioMax = this.filtroPrecioMax();
-  const estado = this.filtroEstado();
+    const ciudad = this.filtroCiudad().trim().toLowerCase();
+    const precioMin = this.filtroPrecioMin();
+    const precioMax = this.filtroPrecioMax();
+    const estado = this.filtroEstado();
 
-  const aplicarCiudad = ciudad !== '';
-  const aplicarPrecioMin = precioMin !== null && precioMin !== 0;
-  const aplicarPrecioMax = precioMax !== 9999999;
-  const aplicarEstado = estado !== '';
+    const aplicarCiudad = ciudad !== '';
+    const aplicarPrecioMin = precioMin !== null && precioMin !== 0;
+    const aplicarPrecioMax = precioMax !== 9999999;
+    const aplicarEstado = estado !== '';
 
-  // ⚠️ Si NO se está aplicando NINGÚN filtro, devolver todos los lotes
-  if (!aplicarCiudad && !aplicarPrecioMin && !aplicarPrecioMax && !aplicarEstado) {
-    return origen;
-  }
+    if (!aplicarCiudad && !aplicarPrecioMin && !aplicarPrecioMax && !aplicarEstado) {
+      return origen;
+    }
 
-  return origen.filter((lote) => {
-    if (!lote) return false;
+    return origen.filter((lote) => {
+      if (!lote) return false;
 
-    const loteCiudad = (lote.ciudad || '').toLowerCase();
-    const lotePrecio = lote.precioBase ?? 0;
-    const loteEstado = lote.estado ?? '';
+      const loteCiudad = (lote.ciudad || '').toLowerCase();
+      const lotePrecio = lote.precioBase ?? 0;
+      const loteEstado = lote.estado ?? '';
 
-    const okCiudad = !aplicarCiudad || loteCiudad.includes(ciudad);
-    const okPrecioMin = !aplicarPrecioMin || lotePrecio >= precioMin;
-    const okPrecioMax = !aplicarPrecioMax || lotePrecio <= precioMax;
-    const okEstado = !aplicarEstado || loteEstado === estado;
+      const okCiudad = !aplicarCiudad || loteCiudad.includes(ciudad);
+      const okPrecioMin = !aplicarPrecioMin || lotePrecio >= precioMin;
+      const okPrecioMax = !aplicarPrecioMax || lotePrecio <= precioMax;
+      const okEstado = !aplicarEstado || loteEstado === estado;
 
-    return okCiudad && (okPrecioMin && okPrecioMax) && okEstado;
+      return okCiudad && (okPrecioMin && okPrecioMax) && okEstado;
+    });
   });
-});
-
 
   ngOnInit() {
     this.cargarLotes();
@@ -70,17 +65,15 @@ lotesFiltrados = computed(() => {
   cargarLotes() {
     this.loteSvc.getAll().subscribe({
       next: (data) => {
-        console.log('Lotes cargados:', data); // ✅ Debug
-        this.lotes.set(data || []); // ✅ Asegurar que siempre sea un array
+        this.lotes.set(data || []);
       },
       error: (err) => {
         console.error('Error cargando lotes:', err);
-        this.lotes.set([]); // ✅ En caso de error, array vacío
+        this.lotes.set([]);
       },
     });
   }
 
-  // Métodos para actualizar filtros
   actualizarCiudad(valor: string) {
     this.filtroCiudad.set(valor);
   }
