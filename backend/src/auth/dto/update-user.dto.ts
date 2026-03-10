@@ -43,4 +43,10 @@ export class UpdateUserDto {
   @IsBoolean()
   @IsOptional()
   isActive?: boolean;
+
+  @IsOptional()
+  password?: string;
+
+  @IsOptional()
+  ciudadAsignada?: string;
 }

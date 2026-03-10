@@ -123,96 +123,109 @@ export class LoteService {
     });
   }
 
-  async findAll(urbanizacionId?: number, usuarioId?: number) {
-    const where: any = {};
+async findAll(urbanizacionId?: number, usuarioId?: number, userRole?: string, ciudadAsignada?: string | null) {
+  const where: any = {};
 
-    if (urbanizacionId) {
-      where.urbanizacionId = urbanizacionId;
+  if (urbanizacionId) {
+    where.urbanizacionId = urbanizacionId;
+  }
+
+  if (userRole !== 'ADMINISTRADOR') {
+    if (userRole === 'SECRETARIA' && ciudadAsignada) {
+      // Secretaria ve todos los lotes de su ciudad
+      where.AND = [
+        {
+          OR: [
+            { ciudad: { equals: ciudadAsignada.trim(), mode: 'insensitive' } },
+            { urbanizacion: { ciudad: { equals: ciudadAsignada.trim(), mode: 'insensitive' } } },
+            { urbanizacion: { ubicacion: { equals: ciudadAsignada.trim(), mode: 'insensitive' } } },
+          ],
+        },
+      ];
+    } else {
+      // Asesor — solo sus lotes asignados
+      where.encargadoId = usuarioId;
     }
+  }
 
-    where.OR = [
-      { encargadoId: usuarioId },
-      { encargadoId: null }
-    ];
-
-    const lotes = await this.prisma.lote.findMany({
-      where,
-      include: {
-        archivos: {
-          select: {
-            id: true,
-            urlArchivo: true,
-            tipoArchivo: true,
-            nombreArchivo: true,
+  const lotes = await this.prisma.lote.findMany({
+    where,
+    include: {
+      archivos: {
+        select: {
+          id: true,
+          urlArchivo: true,
+          tipoArchivo: true,
+          nombreArchivo: true,
+        },
+      },
+      urbanizacion: {
+        select: {
+          id: true,
+          nombre: true,
+          ubicacion: true,
+          ciudad: true,
+        },
+      },
+      LotePromocion: {
+        where: {
+          promocion: {
+            isActive: true,
+            fechaInicio: { lte: new Date() },
+            fechaFin: { gte: new Date() },
           },
         },
-        urbanizacion: {
-          select: {
-            id: true,
-            nombre: true,
-            ubicacion: true,
-            ciudad: true,
-          },
-        },
-        LotePromocion: {
-          where: {
-            promocion: {
-              isActive: true,
-              fechaInicio: { lte: new Date() },
-              fechaFin: { gte: new Date() },
-            },
-          },
-          include: {
-            promocion: {
-              select: {
-                id: true,
-                titulo: true,
-                descuento: true,
-                fechaInicio: true,
-                fechaFin: true,
-              },
+        include: {
+          promocion: {
+            select: {
+              id: true,
+              titulo: true,
+              descuento: true,
+              fechaInicio: true,
+              fechaFin: true,
             },
           },
         },
-        _count: {
-          select: {
-            cotizaciones: true,
-            ventas: true,
-            reservas: true,
-            visitas: true,
-            archivos: true,
-          },
+      },
+      _count: {
+        select: {
+          cotizaciones: true,
+          ventas: true,
+          reservas: true,
+          visitas: true,
+          archivos: true,
         },
       },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+  });
 
-    const lotesConPrecioActual = lotes.map((lote) => {
-      const promocionActiva = lote.LotePromocion[0];
-      const precioActual = lote.precioBase;
-
-      return {
-        ...lote,
-        precioActual,
-        tienePromocionActiva: !!promocionActiva,
-        promocionActiva: promocionActiva
-          ? {
-              id: promocionActiva.promocion.id,
-              titulo: promocionActiva.promocion.titulo,
-              descuento: promocionActiva.promocion.descuento,
-              fechaFin: promocionActiva.promocion.fechaFin,
-            }
-          : null,
-      };
-    });
+  const lotesConPrecioActual = lotes.map((lote) => {
+    const promocionActiva = lote.LotePromocion[0];
+    const precioActual = lote.precioBase;
 
     return {
-      success: true,
-      data: lotesConPrecioActual,
+      ...lote,
+      precioActual,
+      tienePromocionActiva: !!promocionActiva,
+      promocionActiva: promocionActiva
+        ? {
+            id: promocionActiva.promocion.id,
+            titulo: promocionActiva.promocion.titulo,
+            descuento: promocionActiva.promocion.descuento,
+            fechaFin: promocionActiva.promocion.fechaFin,
+          }
+        : null,
     };
-  }
+  });
+
+  return {
+    success: true,
+    data: lotesConPrecioActual,
+  };
+}
 
   async findAllIndependientes() {
     const lotes = await this.prisma.lote.findMany({
@@ -857,4 +870,16 @@ export class LoteService {
       };
     });
   }
+// lote.service.ts
+async getAll(userId: number, userRole: string, userCiudad: string | null) {
+  return this.prisma.lote.findMany({
+    where: userRole !== 'ADMINISTRADOR' && userCiudad
+      ? { ciudad: userCiudad }
+      : {},
+    include: { urbanizacion: true, encargado: true },
+    orderBy: { createdAt: 'desc' },
+  });
+}
+
+
 }

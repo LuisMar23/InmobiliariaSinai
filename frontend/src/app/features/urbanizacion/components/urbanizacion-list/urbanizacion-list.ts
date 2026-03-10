@@ -16,6 +16,7 @@ import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { ArchivosComponent } from '../../../../components/archivos/archivos/archivos';
 
 import { UrbanizacionDto } from '../../../../core/interfaces/urbanizacion.interface';
+import { AuthService } from '../../../../components/services/auth.service';
 
 @Component({
   selector: 'app-urbanizacion-list',
@@ -69,6 +70,9 @@ export class UrbanizacionList {
     });
     this.loadUrbanizaciones();
   }
+  private authService = inject(AuthService);
+  currentUser = this.authService.getCurrentUser();
+
 
   loadUrbanizaciones() {
     this.cargando.set(true);
@@ -277,4 +281,9 @@ export class UrbanizacionList {
       this.notificationService.showWarning('Esta urbanización no tiene ubicación en Google Maps');
     }
   }
+  get isAdmin(): boolean {
+
+    return this.currentUser.role === 'ADMINISTRADOR';
+  }
+
 }

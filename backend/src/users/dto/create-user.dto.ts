@@ -33,4 +33,8 @@ export class CreateUserDto {
   @IsString()
   @IsNotEmpty()
   telefono: string;
+
+  // create-user.dto.ts
+  @IsOptional()
+  ciudadAsignada?: string;
 }

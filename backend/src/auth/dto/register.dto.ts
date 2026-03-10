@@ -50,4 +50,6 @@ export class RegisterDto {
       'Rol inválido. Valores permitidos: ADMINISTRADOR, ASESOR, SECRETARIA, CLIENTE, USUARIO',
   })
   role: UserRole;
+  @IsOptional()
+  ciudadAsignada?:string
 }

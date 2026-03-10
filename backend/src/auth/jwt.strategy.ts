@@ -13,19 +13,19 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(payload: any) {
-    try {
-      // Verificar que el usuario existe y está activo
-      const user = await this.authService.validateUser(payload.sub);
+async validate(payload: any) {
+  try {
+    const user = await this.authService.validateUser(payload.sub);
 
-      return {
-        id: user.id,
-        email: user.email,
-        username: user.username,
-        role: user.role,
-      };
-    } catch (error) {
-      throw new UnauthorizedException('Token inválido o usuario no encontrado');
-    }
+    return {
+      id: user.id,
+      email: user.email,
+      username: user.username,
+      role: user.role,
+      ciudadAsignada: user.ciudadAsignada,  // <-- agrega esto
+    };
+  } catch (error) {
+    throw new UnauthorizedException('Token inválido o usuario no encontrado');
   }
+}
 }

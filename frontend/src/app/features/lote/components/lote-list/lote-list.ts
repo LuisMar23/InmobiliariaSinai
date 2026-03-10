@@ -61,7 +61,7 @@ export class LoteList implements OnInit {
           lote.urbanizacion?.nombre?.toLowerCase().includes(term) ||
           lote.ciudad?.toLowerCase().includes(term) ||
           lote.estado?.toLowerCase().includes(term) ||
-          lote.descripcion?.toLowerCase().includes(term)
+          lote.descripcion?.toLowerCase().includes(term),
       );
     }
 
@@ -106,9 +106,9 @@ export class LoteList implements OnInit {
     this.error.set(null);
     this.loteSvc.getAll().subscribe({
       next: (lotes) => {
-        const lotesConIndicador = lotes.map(lote => ({
+        const lotesConIndicador = lotes.map((lote) => ({
           ...lote,
-          esMiLote: lote.encargadoId === this.currentUser?.id
+          esMiLote: lote.encargadoId === this.currentUser?.id,
         }));
         this.lotes.set(lotesConIndicador);
         this.allLotes.set(lotesConIndicador);
@@ -284,5 +284,11 @@ export class LoteList implements OnInit {
   onSubidaCompleta() {
     this.cerrarModalUploader();
     this.notificationService.showSuccess('Archivos subidos correctamente');
+  }
+
+  // Agregar este getter después de currentUser
+  get isAdmin(): boolean {
+
+    return this.currentUser.role === 'ADMINISTRADOR';
   }
 }

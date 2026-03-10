@@ -9,13 +9,17 @@ import {
   UsePipes,
   ValidationPipe,
   Query,
+  UseGuards,
+    Request,
 } from '@nestjs/common';
 import { UrbanizacionService } from './urbanizacion.service';
 import { CreateUrbanizacionDto } from './dto/create-urbanizacion.dto';
 import { UpdateUrbanizacionDto } from './dto/update-urbanizacion.dto';
+import { AuthGuard } from '@nestjs/passport';
 
 @Controller('urbanizaciones')
 @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
+@UseGuards(AuthGuard('jwt'))
 export class UrbanizacionController {
   constructor(private readonly urbanizacionService: UrbanizacionService) {}
 
@@ -24,12 +28,16 @@ export class UrbanizacionController {
     return this.urbanizacionService.create(createUrbanizacionDto);
   }
 
-  @Get()
-  findAll(@Query('page') page?: string, @Query('limit') limit?: string) {
-    const pageNum = page ? +page : 1;
-    const limitNum = limit ? +limit : 10;
-    return this.urbanizacionService.findAll(pageNum, limitNum);
-  }
+@Get()
+findAll(
+  @Request() req,
+  @Query('page') page?: string,
+  @Query('limit') limit?: string,
+) {
+  const pageNum = page ? +page : 1;
+  const limitNum = limit ? +limit : 10;
+  return this.urbanizacionService.findAll(pageNum, limitNum, req.user.role, req.user.ciudadAsignada);
+}
 
   @Get(':id')
   findOne(@Param('id') id: string) {

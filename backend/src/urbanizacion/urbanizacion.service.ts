@@ -76,39 +76,49 @@ export class UrbanizacionService {
     });
   }
 
-  async findAll(page: number = 1, limit: number = 10) {
-    const skip = (page - 1) * limit;
+async findAll(page: number = 1, limit: number = 10, userRole?: string, ciudadAsignada?: string | null) {
+  const skip = (page - 1) * limit;
 
-    const [urbanizaciones, total] = await Promise.all([
-      this.prisma.urbanizacion.findMany({
-        skip,
-        take: limit,
-        include: {
-          archivos: true,
-          _count: {
-            select: {
-              lotes: true,
-            },
+  const where: any = {};
+
+  if (userRole === 'SECRETARIA' && ciudadAsignada) {
+    where.OR = [
+      { ciudad: { equals: ciudadAsignada.trim(), mode: 'insensitive' } },
+      { ubicacion: { equals: ciudadAsignada.trim(), mode: 'insensitive' } },
+    ];
+  }
+
+  const [urbanizaciones, total] = await Promise.all([
+    this.prisma.urbanizacion.findMany({
+      where,
+      skip,
+      take: limit,
+      include: {
+        archivos: true,
+        _count: {
+          select: {
+            lotes: true,
           },
         },
-        orderBy: {
-          createdAt: 'desc',
-        },
-      }),
-      this.prisma.urbanizacion.count(),
-    ]);
-
-    return {
-      success: true,
-      data: urbanizaciones,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
       },
-    };
-  }
+      orderBy: {
+        createdAt: 'desc',
+      },
+    }),
+    this.prisma.urbanizacion.count({ where }),
+  ]);
+
+  return {
+    success: true,
+    data: urbanizaciones,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
+}
 
   async findOne(id: number) {
     const urbanizacion = await this.prisma.urbanizacion.findUnique({

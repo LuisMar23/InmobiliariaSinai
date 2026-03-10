@@ -141,7 +141,7 @@ model User {
   createdAt     DateTime  @default(now()) @map("created_at")
   estado        Boolean   @default(true)
   updatedAt     DateTime  @updatedAt @map("updated_at")
-
+  ciudadAsignada  String?
   failedAttempts       Int       @default(0) @map("failed_attempts")
   lockUntil            DateTime? @map("lock_until")
   resetPasswordToken   String?   @map("reset_password_token")

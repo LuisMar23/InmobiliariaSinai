@@ -119,4 +119,10 @@ update(id: number, lote: UpdateLoteDto): Observable<any> {
       })
     );
   }
+
+  // lote.service.ts
+getCiudades(): Observable<string[]> {
+  
+  return this.http.get<string[]>(`${this.apiUrl}/ciudades`);
+}
 }
