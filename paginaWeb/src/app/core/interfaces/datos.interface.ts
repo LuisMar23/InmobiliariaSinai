@@ -78,6 +78,7 @@ export interface Lote {
   descripcion?: string;
   ubicacion?: string;
   ciudad: string;
+  manzano?: string; // AGREGADO: Número de manzano
   latitud?: number;
   longitud?: number;
   esIndependiente: boolean;

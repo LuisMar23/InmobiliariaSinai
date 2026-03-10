@@ -29,6 +29,11 @@ export class PromocionController {
     return this.promocionService.findAll();
   }
 
+  @Get('publicas/todas')
+  async findAllPublicas() {
+    return this.promocionService.findAllPublicas();
+  }
+
   @Get('activas')
   getPromocionesActivas() {
     return this.promocionService.getPromocionesActivas();

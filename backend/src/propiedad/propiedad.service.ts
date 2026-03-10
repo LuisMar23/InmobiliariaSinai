@@ -205,6 +205,41 @@ export class PropiedadService {
     };
   }
 
+  async findAllPublicas() {
+    const propiedades = await this.prisma.propiedad.findMany({
+      where: {
+        estado: {
+          not: EstadoInmueble.VENDIDO
+        }
+      },
+      include: {
+        archivos: {
+          select: {
+            id: true,
+            urlArchivo: true,
+            tipoArchivo: true,
+            nombreArchivo: true,
+          },
+        },
+        _count: {
+          select: {
+            ventas: true,
+            visitas: true,
+            archivos: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    return {
+      success: true,
+      data: propiedades,
+    };
+  }
+
   async findOne(id: number) {
     const propiedad = await this.prisma.propiedad.findUnique({
       where: { id },
@@ -547,7 +582,9 @@ export class PropiedadService {
     const propiedades = await this.prisma.propiedad.findMany({
       where: {
         tipo,
-        estado: EstadoInmueble.DISPONIBLE,
+        estado: {
+          not: EstadoInmueble.VENDIDO
+        }
       },
       include: {
         archivos: {
@@ -581,7 +618,9 @@ export class PropiedadService {
     const propiedades = await this.prisma.propiedad.findMany({
       where: {
         estadoPropiedad,
-        estado: EstadoInmueble.DISPONIBLE,
+        estado: {
+          not: EstadoInmueble.VENDIDO
+        }
       },
       include: {
         archivos: {

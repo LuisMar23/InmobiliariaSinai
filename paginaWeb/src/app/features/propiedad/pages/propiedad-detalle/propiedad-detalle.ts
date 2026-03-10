@@ -1,7 +1,6 @@
 // src/app/modules/propiedades/pages/propiedad-detalle/propiedad-detalle.ts
 import { Component, inject, PLATFORM_ID, signal } from '@angular/core';
 import { ActivatedRoute, RouterModule } from '@angular/router';
-
 import { Propiedad } from '../../../../core/interfaces/datos.interface';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -22,7 +21,6 @@ export class PropiedadDetalle {
   urlServer = environment.fileServer;
   contactoForm!: FormGroup;
   currentIndex = 0;
-
   zoomOpen = signal(false);
 
   constructor(
@@ -43,8 +41,6 @@ export class PropiedadDetalle {
     if (uuid) {
       this.propiedadSvc.getByUuid(uuid).subscribe({
         next: (data) => {
-          console.log('Propiedad cargada en detalle:', data);
-          console.log('Archivos de la propiedad:', data?.archivos);
           this.propiedad.set(data);
           this.cargando.set(false);
         },
@@ -91,7 +87,6 @@ export class PropiedadDetalle {
 
   enviarWhatsApp() {
     if (!isPlatformBrowser(this.platformId)) return;
-
     if (this.contactoForm.invalid || !this.propiedad()) return;
 
     const { nombre, telefono, mensaje } = this.contactoForm.value;
@@ -104,13 +99,11 @@ export class PropiedadDetalle {
 
   get mapaUrl(): string | null {
     const propiedadData = this.propiedad();
-
     if (propiedadData?.latitud && propiedadData?.longitud) {
       return `https://www.google.com/maps?q=${propiedadData.latitud},${propiedadData.longitud}&output=embed`;
     } else if (propiedadData?.ubicacion) {
       return propiedadData.ubicacion;
     }
-
     return null;
   }
 
@@ -141,19 +134,16 @@ export class PropiedadDetalle {
 
   obtenerPrimeraImagen(): string | null {
     const propiedad = this.propiedad();
-    // Ahora debería funcionar porque el servicio mapea urlArchivo → url
     return propiedad?.archivos?.[0]?.url || null;
   }
 
   obtenerImagenActual(): string | null {
     const propiedad = this.propiedad();
-    // Ahora debería funcionar porque el servicio mapea urlArchivo → url
     return propiedad?.archivos?.[this.currentIndex]?.url || null;
   }
 
   obtenerNombreImagenActual(): string {
     const propiedad = this.propiedad();
-    // Ahora debería funcionar porque el servicio mapea nombreArchivo → nombre
     return propiedad?.archivos?.[this.currentIndex]?.nombre || 'Imagen de propiedad';
   }
 

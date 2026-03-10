@@ -248,6 +248,82 @@ export class PromocionService {
     return { success: true, data: promociones };
   }
 
+  async findAllPublicas() {
+    const ahora = new Date();
+    const promociones = await this.prisma.promocion.findMany({
+      where: {
+        isActive: true,
+        fechaInicio: { lte: ahora },
+        fechaFin: { gte: ahora },
+      },
+      include: {
+        urbanizacion: { 
+          select: { 
+            id: true, 
+            nombre: true,
+            ubicacion: true,
+            ciudad: true 
+          } 
+        },
+        lotesAfectados: {
+          include: {
+            lote: {
+              select: {
+                id: true,
+                uuid: true,
+                numeroLote: true,
+                precioBase: true,
+                estado: true,
+                superficieM2: true,
+                ubicacion: true,
+                ciudad: true,
+                manzano: true,
+                archivos: {
+                  select: {
+                    id: true,
+                    urlArchivo: true,
+                    tipoArchivo: true,
+                    nombreArchivo: true,
+                  },
+                },
+                urbanizacion: { 
+                  select: { 
+                    id: true, 
+                    nombre: true,
+                    ubicacion: true,
+                    ciudad: true 
+                  } 
+                },
+              },
+            },
+          },
+        },
+        _count: { select: { lotesAfectados: true } },
+      },
+      orderBy: { fechaFin: 'asc' },
+    });
+
+    const promocionesConPrecios = promociones.map((promocion) => {
+      const lotesConPrecioActual = promocion.lotesAfectados.map((lp) => ({
+        ...lp.lote,
+        precioOriginal: lp.precioOriginal,
+        precioConDescuento: lp.precioConDescuento,
+        descuentoAplicado: promocion.descuento,
+      }));
+
+      return {
+        ...promocion,
+        lotesAfectados: lotesConPrecioActual,
+        totalLotes: promocion._count.lotesAfectados,
+      };
+    });
+
+    return {
+      success: true,
+      data: promocionesConPrecios,
+    };
+  }
+
   async findOne(id: number) {
     const promocion = await this.prisma.promocion.findUnique({
       where: { id },

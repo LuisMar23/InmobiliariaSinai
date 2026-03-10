@@ -93,7 +93,8 @@ export class ReservasService {
         estado: 'DISPONIBLE',
       };
 
-      if (usuarioRole === 'ASESOR') {
+      // Tanto ASESOR como ADMINISTRADOR solo ven los lotes donde son encargados
+      if (usuarioRole === 'ASESOR' || usuarioRole === 'ADMINISTRADOR') {
         whereClause.encargadoId = usuarioId;
       }
 

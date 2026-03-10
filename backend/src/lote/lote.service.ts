@@ -227,6 +227,76 @@ async findAll(urbanizacionId?: number, usuarioId?: number, userRole?: string, ci
   };
 }
 
+  async findAllPublicos() {
+    const lotes = await this.prisma.lote.findMany({
+      include: {
+        archivos: {
+          select: {
+            id: true,
+            urlArchivo: true,
+            tipoArchivo: true,
+            nombreArchivo: true,
+          },
+        },
+        urbanizacion: {
+          select: {
+            id: true,
+            nombre: true,
+            ubicacion: true,
+            ciudad: true,
+          },
+        },
+        LotePromocion: {
+          where: {
+            promocion: {
+              isActive: true,
+              fechaInicio: { lte: new Date() },
+              fechaFin: { gte: new Date() },
+            },
+          },
+          include: {
+            promocion: {
+              select: {
+                id: true,
+                titulo: true,
+                descuento: true,
+                fechaInicio: true,
+                fechaFin: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    const lotesConPrecioActual = lotes.map((lote) => {
+      const promocionActiva = lote.LotePromocion[0];
+      const precioActual = lote.precioBase;
+
+      return {
+        ...lote,
+        precioActual,
+        tienePromocionActiva: !!promocionActiva,
+        promocionActiva: promocionActiva
+          ? {
+              id: promocionActiva.promocion.id,
+              titulo: promocionActiva.promocion.titulo,
+              descuento: promocionActiva.promocion.descuento,
+              fechaFin: promocionActiva.promocion.fechaFin,
+            }
+          : null,
+      };
+    });
+
+    return {
+      success: true,
+      data: lotesConPrecioActual,
+    };
+  }
+
   async findAllIndependientes() {
     const lotes = await this.prisma.lote.findMany({
       where: {

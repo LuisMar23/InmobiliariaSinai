@@ -4,8 +4,6 @@ import { map, Observable } from 'rxjs';
 import { Lote } from '../../../core/interfaces/datos.interface';
 import { environment } from '../../../../environments/environment';
 
-
-// lote.service.ts
 @Injectable({ providedIn: 'root' })
 export class LoteService {
   private baseUrl = environment.apiUrl + '/lotes';
@@ -13,13 +11,13 @@ export class LoteService {
   constructor(private http: HttpClient) {}
 
   getAll(): Observable<Lote[]> {
-    return this.http.get<{success: boolean, data: Lote[]}>(this.baseUrl).pipe(
+    return this.http.get<{success: boolean, data: Lote[]}>(`${this.baseUrl}/publicos/todos`).pipe(
       map(response => response.data)
     );
   }
 
   getByUuid(uuid: string): Observable<Lote> {
-    return this.http.get<{success: boolean, data: Lote}>(`${this.baseUrl}/uuid/${uuid}`).pipe(
+    return this.http.get<{success: boolean, data: Lote}>(`${this.baseUrl}/publicos/uuid/${uuid}`).pipe(
       map(response => response.data) 
     );
   }
@@ -31,9 +29,6 @@ export class LoteService {
   }
 
   getLotesPromocion():Observable<any>{
-    return this.http.get<any>(`${this.baseUrl}/con-promocion`)
+    return this.http.get<any>(`${this.baseUrl}/publicos/con-promocion`)
   }
-
-
-
 }

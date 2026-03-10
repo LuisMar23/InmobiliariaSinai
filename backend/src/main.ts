@@ -7,12 +7,15 @@ import { join } from 'path';
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  // app.enableCors();
-  // Configurar CORS
+  // CONFIGURACIÓN ACTUAL MODIFICADA - Agregado localhost:4200
   app.enableCors({
-        origin: ['http://localhost:4300', ],
+    origin: [
+      'http://localhost:4300',
+      'http://localhost:4200' // AGREGADO para la página web
+    ],
     credentials: true,
   });
+
   // app.enableCors({
   //   origin: '*', // cualquier dominio
   // });

@@ -84,8 +84,6 @@ export class PropiedadCard implements OnInit {
   cargarPropiedades() {
     this.propiedadSvc.getAll().subscribe({
       next: (data) => {
-        console.log('Propiedades cargadas:', data);
-        console.log('Primera propiedad archivos:', data[0]?.archivos);
         this.propiedades.set(data || []);
       },
       error: (err) => {
@@ -160,7 +158,6 @@ export class PropiedadCard implements OnInit {
   }
 
   obtenerPrimeraImagen(propiedad: Propiedad): string | null {
-    // Ahora debería funcionar porque el servicio mapea urlArchivo → url
     return propiedad.archivos?.[0]?.url || null;
   }
 }

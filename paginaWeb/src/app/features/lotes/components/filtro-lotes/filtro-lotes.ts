@@ -26,21 +26,20 @@ export class FiltroLotes implements OnInit, OnDestroy {
     this.sub?.unsubscribe();
   }
 
-  // Para campos de texto (con debounce)
-onCambioTexto() {
-  const normalizados: FiltrosLote = {
-    ciudad: (this.filtros.ciudad ?? '').toString().trim(),
-    precioMin: this.filtros.precioMin ?? 0,
-    precioMax: this.filtros.precioMax ?? 9999999,
-    superficieMin: this.filtros.superficieMin ?? 0,
-    superficieMax: this.filtros.superficieMax ?? 9999999,
-    estado: this.filtros.estado ?? '',
-    busqueda: (this.filtros.busqueda ?? '').toString().trim()
-  };
+  onCambioTexto() {
+    const normalizados: FiltrosLote = {
+      ciudad: (this.filtros.ciudad ?? '').toString().trim(),
+      precioMin: this.filtros.precioMin ?? 0,
+      precioMax: this.filtros.precioMax ?? 9999999,
+      superficieMin: this.filtros.superficieMin ?? 0,
+      superficieMax: this.filtros.superficieMax ?? 9999999,
+      estado: this.filtros.estado ?? '',
+      busqueda: (this.filtros.busqueda ?? '').toString().trim()
+    };
 
-  this.cambios$.next(normalizados);
-}
-  // Para selects y números (instantáneo)
+    this.cambios$.next(normalizados);
+  }
+
   onCambioInstantaneo() {
     const normalizados = this.normalizar();
     this.buscar.emit({ ...normalizados });
@@ -73,4 +72,3 @@ onCambioTexto() {
     this.buscar.emit({ ...this.filtros });
   }
 }
-

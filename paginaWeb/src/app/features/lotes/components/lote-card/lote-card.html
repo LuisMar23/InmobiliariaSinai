@@ -65,7 +65,7 @@
           class="px-4 py-3 text-sm rounded-xl border border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all duration-300 shadow-sm hover:shadow-md focus:shadow-lg focus:scale-105 bg-gray-50" />
       </div>
 
-      <!-- Estado -->
+      <!-- Estado - MODIFICADO: Quitado VENDIDO -->
       <div class="flex flex-col animate-slide-left animate-delay-300">
         <label class="text-sm font-semibold text-gray-700 mb-2 flex items-center">
           <svg class="w-4 h-4 mr-2 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -79,7 +79,7 @@
           <option value="">Todos</option>
           <option value="DISPONIBLE">Disponible</option>
           <option value="RESERVADO">Reservado</option>
-          <option value="VENDIDO">Vendido</option>
+          <!-- Opción VENDIDO ELIMINADA -->
         </select>
       </div>
     </div>
@@ -225,6 +225,10 @@
             <p class="text-xs font-semibold text-emerald-700 uppercase tracking-wide mb-0.5">Ubicación</p>
             <p class="text-sm font-bold text-gray-900 truncate">{{ lote.ciudad }}</p>
             <p class="text-xs text-gray-600 truncate">{{ lote.urbanizacion?.nombre || 'Sin urbanización' }}</p>
+            <!-- AGREGADO: Manzano -->
+            @if (lote.manzano) {
+            <p class="text-xs text-gray-500 truncate mt-1">Manzano: {{ lote.manzano }}</p>
+            }
           </div>
         </div>
 
