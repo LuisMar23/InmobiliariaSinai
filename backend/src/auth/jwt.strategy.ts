@@ -22,7 +22,7 @@ async validate(payload: any) {
       email: user.email,
       username: user.username,
       role: user.role,
-      ciudadAsignada: user.ciudadAsignada,  // <-- agrega esto
+      ciudadesAsignadas: user.ciudadesAsignadas ?? [],  
     };
   } catch (error) {
     throw new UnauthorizedException('Token inválido o usuario no encontrado');

@@ -31,60 +31,83 @@ export class AuthService {
   }
 
   async register(registerDto: RegisterDto) {
-    const { username, email, password, fullName, ci, telefono } = registerDto;
+    const {
+      username,
+      email,
+      password,
+      fullName,
+      ci,
+      telefono,
+      direccion,
+      observaciones,
+    } = registerDto;
     try {
-      const normalizedEmail = email.toLowerCase().trim();
+      const normalizedEmail = email ? email.toLowerCase().trim() : null;
       const normalizedUsername = username.toLowerCase().trim();
-      const normalizedCi = ci.trim();
-      const normalizedTelefono = telefono.trim();
+      const normalizedCi = ci ? ci.trim() : null;
+      const normalizedTelefono = telefono ? telefono.trim() : null;
+
       const existingUser = await this.prisma.user.findFirst({
         where: {
           OR: [
-            { email: normalizedEmail },
+            ...(normalizedEmail ? [{ email: normalizedEmail }] : []),
             { username: normalizedUsername },
-            { ci: normalizedCi },
-            { telefono: normalizedTelefono },
+            ...(normalizedCi ? [{ ci: normalizedCi }] : []),
+            ...(normalizedTelefono ? [{ telefono: normalizedTelefono }] : []),
           ],
         },
       });
+
       if (existingUser) {
-        if (existingUser.email === normalizedEmail)
+        if (normalizedEmail && existingUser.email === normalizedEmail)
           throw new ConflictException('El email ya está registrado');
         if (existingUser.username === normalizedUsername)
           throw new ConflictException('El nombre de usuario ya existe');
-        if (existingUser.ci === normalizedCi)
+        if (normalizedCi && existingUser.ci === normalizedCi)
           throw new ConflictException('El CI ya está registrado');
-        if (existingUser.telefono === normalizedTelefono)
+        if (normalizedTelefono && existingUser.telefono === normalizedTelefono)
           throw new ConflictException('El teléfono ya está registrado');
       }
-      const hashedPassword = await bcrypt.hash(password, 12);
-  const user = await this.prisma.user.create({
-  data: {
-    username: normalizedUsername,
-    email: normalizedEmail,
-    passwordHash: hashedPassword,
-    fullName: fullName.trim(),
-    ci: normalizedCi,
-    telefono: normalizedTelefono,
-    isActive: true,
-    role: registerDto.role ?? UserRole.USUARIO,
-    ciudadAsignada: registerDto.ciudadAsignada?.trim() || null,  // <-- nuevo
-  },
-  select: {
-    id: true,
-    uuid: true,
-    username: true,
-    email: true,
-    fullName: true,
-    avatarUrl: true,
-    role: true,
-    ciudadAsignada: true,  // <-- nuevo
-    createdAt: true,
-  },
-});
 
-const userEmail = user.email ? user.email : normalizedEmail;
-const tokens = await this.generateTokens(user.id, userEmail, user.role, user.ciudadAsignada);
+      const hashedPassword = await bcrypt.hash(password, 12);
+
+      const user = await this.prisma.user.create({
+        data: {
+          username: normalizedUsername,
+          email: normalizedEmail,
+          passwordHash: hashedPassword,
+          fullName: fullName.trim(),
+          ci: normalizedCi ?? '',
+          telefono: normalizedTelefono ?? '',
+          isActive: true,
+          role: registerDto.role ?? UserRole.USUARIO,
+          ciudadesAsignadas: registerDto.ciudadesAsignadas ?? [],
+          direccion: direccion?.trim() ?? null,
+          observaciones: observaciones?.trim() ?? null,
+        },
+        select: {
+          id: true,
+          uuid: true,
+          username: true,
+          email: true,
+          fullName: true,
+          avatarUrl: true,
+          role: true,
+          ciudadesAsignadas: true,
+          direccion: true,
+          observaciones: true,
+          createdAt: true,
+        },
+      });
+
+      const userEmail = user.email ?? `user${user.id}@inmobiliaria.com`;
+      const tokens = await this.generateTokens(
+        user.id,
+        userEmail,
+        user.role,
+        user.ciudadesAsignadas,
+      );
+
       await this.prisma.auditoria.create({
         data: {
           usuarioId: user.id,
@@ -96,11 +119,14 @@ const tokens = await this.generateTokens(user.id, userEmail, user.role, user.ciu
             email: user.email,
             fullName: user.fullName,
             role: user.role,
+            direccion: user.direccion,
+            observaciones: user.observaciones,
           }),
           ip: '127.0.0.1',
           dispositivo: 'API',
         },
       });
+
       return {
         success: true,
         message: 'Usuario registrado correctamente',
@@ -161,16 +187,21 @@ const tokens = await this.generateTokens(user.id, userEmail, user.role, user.ciu
         });
       }
       let tokens;
-    if (user.email) {
-  tokens = await this.generateTokens(user.id, user.email, user.role, user.ciudadAsignada);
-} else {
-  tokens = await this.generateTokens(
-    user.id,
-    `user${user.id}@inmobiliaria.com`,
-    user.role,
-    user.ciudadAsignada,
-  );
-}
+      if (user.email) {
+        tokens = await this.generateTokens(
+          user.id,
+          user.email,
+          user.role,
+          user.ciudadesAsignadas,
+        ); // 👈
+      } else {
+        tokens = await this.generateTokens(
+          user.id,
+          `user${user.id}@inmobiliaria.com`,
+          user.role,
+          user.ciudadesAsignadas, // 👈
+        );
+      }
       await this.prisma.auditoria.create({
         data: {
           usuarioId: user.id,
@@ -193,6 +224,7 @@ const tokens = await this.generateTokens(user.id, userEmail, user.role, user.ciu
             fullName: user.fullName,
             avatarUrl: user.avatarUrl,
             role: user.role,
+            ciudadesAsignadas: user.ciudadesAsignadas, // 👈
           },
           ...tokens,
         },
@@ -285,6 +317,7 @@ const tokens = await this.generateTokens(user.id, userEmail, user.role, user.ciu
           role: true,
           isActive: true,
           avatarUrl: true,
+          ciudadesAsignadas: true, // 👈
           createdAt: true,
         },
         orderBy: { createdAt: 'desc' },
@@ -312,9 +345,9 @@ const tokens = await this.generateTokens(user.id, userEmail, user.role, user.ciu
           role: true,
           isActive: true,
           avatarUrl: true,
+          ciudadesAsignadas: true, // 👈
           createdAt: true,
           updatedAt: true,
-             ciudadAsignada: true,
         },
       });
       if (!user) throw new NotFoundException('Usuario no encontrado');
@@ -325,92 +358,99 @@ const tokens = await this.generateTokens(user.id, userEmail, user.role, user.ciu
     }
   }
 
-async updateUser(userId: number, updateUserDto: UpdateUserDto) {
-  try {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId, isActive: true },
-    });
-    if (!user) throw new NotFoundException('Usuario no encontrado');
+  async updateUser(userId: number, updateUserDto: UpdateUserDto) {
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId, isActive: true },
+      });
+      if (!user) throw new NotFoundException('Usuario no encontrado');
 
-    const updateData: any = {};
+      const updateData: any = {};
 
-    if (updateUserDto.fullName !== undefined)
-      updateData.fullName = updateUserDto.fullName;
-    if (updateUserDto.username !== undefined)
-      updateData.username = updateUserDto.username;
-    if (updateUserDto.email !== undefined)
-      updateData.email = updateUserDto.email;
-    if (updateUserDto.telefono !== undefined)
-      updateData.telefono = updateUserDto.telefono;
-    if (updateUserDto.direccion !== undefined)
-      updateData.direccion = updateUserDto.direccion;
-    if (updateUserDto.observaciones !== undefined)
-      updateData.observaciones = updateUserDto.observaciones;
-    if (updateUserDto.role !== undefined)
-      updateData.role = updateUserDto.role;
-    if (updateUserDto.isActive !== undefined)
-      updateData.isActive = updateUserDto.isActive;
+      if (updateUserDto.fullName !== undefined)
+        updateData.fullName = updateUserDto.fullName;
+      if (updateUserDto.username !== undefined)
+        updateData.username = updateUserDto.username;
+      if (updateUserDto.email !== undefined)
+        updateData.email = updateUserDto.email;
+      if (updateUserDto.telefono !== undefined)
+        updateData.telefono = updateUserDto.telefono;
+      if (updateUserDto.direccion !== undefined)
+        updateData.direccion = updateUserDto.direccion;
+      if (updateUserDto.observaciones !== undefined)
+        updateData.observaciones = updateUserDto.observaciones;
+      if (updateUserDto.role !== undefined)
+        updateData.role = updateUserDto.role;
+      if (updateUserDto.isActive !== undefined)
+        updateData.isActive = updateUserDto.isActive;
 
-    // Ciudad asignada
-    if (updateUserDto.ciudadAsignada !== undefined) {
-      updateData.ciudadAsignada = updateUserDto.ciudadAsignada?.trim() || null;
+      // Ciudades asignadas 👈
+      if (updateUserDto.ciudadesAsignadas !== undefined) {
+        updateData.ciudadesAsignadas = updateUserDto.ciudadesAsignadas.map(
+          (c) => c.trim(),
+        );
+      }
+
+      // Si cambia a rol sin restricción, limpia las ciudades
+      if (
+        updateUserDto.role &&
+        ['ADMINISTRADOR', 'CLIENTE', 'USUARIO'].includes(updateUserDto.role)
+      ) {
+        updateData.ciudadesAsignadas = [];
+      }
+
+      if (updateUserDto.password?.trim()) {
+        updateData.passwordHash = await bcrypt.hash(
+          updateUserDto.password.trim(),
+          10,
+        );
+      }
+
+      const updatedUser = await this.prisma.user.update({
+        where: { id: userId },
+        data: updateData,
+        select: {
+          id: true,
+          uuid: true,
+          username: true,
+          email: true,
+          fullName: true,
+          ci: true,
+          telefono: true,
+          direccion: true,
+          observaciones: true,
+          role: true,
+          isActive: true,
+          avatarUrl: true,
+          ciudadesAsignadas: true, // 👈
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+
+      await this.prisma.auditoria.create({
+        data: {
+          usuarioId: userId,
+          accion: 'ACTUALIZAR_USUARIO',
+          tablaAfectada: 'User',
+          registroId: userId,
+          datosAntes: JSON.stringify(user),
+          datosDespues: JSON.stringify(updatedUser),
+          ip: '127.0.0.1',
+          dispositivo: 'API',
+        },
+      });
+
+      return {
+        success: true,
+        message: 'Usuario actualizado correctamente',
+        data: { user: updatedUser },
+      };
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      throw new InternalServerErrorException('Error interno del servidor');
     }
-
-    // Si cambia a rol sin restricción, limpia la ciudad
-    if (updateUserDto.role && ['ADMINISTRADOR', 'CLIENTE', 'USUARIO'].includes(updateUserDto.role)) {
-      updateData.ciudadAsignada = null;
-    }
-
-    // Password — solo si viene y no está vacío
-    if (updateUserDto.password?.trim()) {
-      updateData.passwordHash = await bcrypt.hash(updateUserDto.password.trim(), 10);
-    }
-
-    const updatedUser = await this.prisma.user.update({
-      where: { id: userId },
-      data: updateData,
-      select: {
-        id: true,
-        uuid: true,
-        username: true,
-        email: true,
-        fullName: true,
-        ci: true,
-        telefono: true,
-        direccion: true,
-        observaciones: true,
-        role: true,
-        isActive: true,
-        avatarUrl: true,
-        ciudadAsignada: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
-
-    await this.prisma.auditoria.create({
-      data: {
-        usuarioId: userId,
-        accion: 'ACTUALIZAR_USUARIO',
-        tablaAfectada: 'User',
-        registroId: userId,
-        datosAntes: JSON.stringify(user),
-        datosDespues: JSON.stringify(updatedUser),
-        ip: '127.0.0.1',
-        dispositivo: 'API',
-      },
-    });
-
-    return {
-      success: true,
-      message: 'Usuario actualizado correctamente',
-      data: { user: updatedUser },
-    };
-  } catch (error) {
-    if (error instanceof NotFoundException) throw error;
-    throw new InternalServerErrorException('Error interno del servidor');
   }
-}
 
   async deleteUser(userId: number) {
     try {
@@ -490,14 +530,7 @@ async updateUser(userId: number, updateUserDto: UpdateUserDto) {
           accion: 'REGISTRO_CLIENTE',
           tablaAfectada: 'User',
           registroId: cliente.id,
-          datosDespues: JSON.stringify({
-            fullName: cliente.fullName,
-            ci: cliente.ci,
-            telefono: cliente.telefono,
-            direccion: cliente.direccion,
-            observaciones: cliente.observaciones,
-            role: cliente.role,
-          }),
+          datosDespues: JSON.stringify(cliente),
           ip: '127.0.0.1',
           dispositivo: 'API',
         },
@@ -551,7 +584,6 @@ async updateUser(userId: number, updateUserDto: UpdateUserDto) {
           role: true,
           createdAt: true,
           updatedAt: true,
-  
         },
       });
       if (!cliente) throw new NotFoundException('Cliente no encontrado');
@@ -664,76 +696,83 @@ async updateUser(userId: number, updateUserDto: UpdateUserDto) {
     }
   }
 
-async refreshToken(refreshToken: string) {
-  try {
-    const payload = await this.jwtService.verifyAsync(refreshToken, {
-      secret: process.env.JWT_REFRESH_SECRET || 'default-secret-key',
-    });
+  async refreshToken(refreshToken: string) {
+    try {
+      const payload = await this.jwtService.verifyAsync(refreshToken, {
+        secret: process.env.JWT_REFRESH_SECRET || 'default-secret-key',
+      });
+      const user = await this.prisma.user.findUnique({
+        where: {
+          id: payload.sub,
+          isActive: true,
+          role: { not: UserRole.CLIENTE },
+        },
+        select: {
+          id: true,
+          role: true,
+          email: true,
+          ciudadesAsignadas: true, // 👈
+        },
+      });
+      if (!user) throw new UnauthorizedException('Usuario no encontrado');
 
+      let tokens;
+      if (payload.email) {
+        tokens = await this.generateTokens(
+          payload.sub,
+          payload.email,
+          user.role,
+          user.ciudadesAsignadas,
+        ); // 👈
+      } else {
+        tokens = await this.generateTokens(
+          payload.sub,
+          `user${payload.sub}@inmobiliaria.com`,
+          user.role,
+          user.ciudadesAsignadas,
+        );
+      }
+      return {
+        success: true,
+        message: 'Token refrescado correctamente',
+        data: tokens,
+      };
+    } catch (error) {
+      throw new UnauthorizedException('Token de refresco inválido');
+    }
+  }
+
+  async validateUser(userId: number) {
     const user = await this.prisma.user.findUnique({
-      where: {
-        id: payload.sub,
-        isActive: true,
-        role: { not: UserRole.CLIENTE },
-      },
+      where: { id: userId, isActive: true, role: { not: UserRole.CLIENTE } },
       select: {
         id: true,
-        role: true,
+        uuid: true,
+        username: true,
         email: true,
-        ciudadAsignada: true,
+        fullName: true,
+        avatarUrl: true,
+        role: true,
+        isActive: true,
+        ciudadesAsignadas: true, // 👈
       },
     });
     if (!user) throw new UnauthorizedException('Usuario no encontrado');
-
-    let tokens;  // <-- declarar aquí
-
-    if (payload.email) {
-      tokens = await this.generateTokens(payload.sub, payload.email, user.role, user.ciudadAsignada);
-    } else {
-      tokens = await this.generateTokens(
-        payload.sub,
-        `user${payload.sub}@inmobiliaria.com`,
-        user.role,
-        user.ciudadAsignada,
-      );
-    }
-
-    return {
-      success: true,
-      message: 'Token refrescado correctamente',
-      data: tokens,
-    };
-  } catch (error) {
-    throw new UnauthorizedException('Token de refresco inválido');
+    return user;
   }
-}
 
-async validateUser(userId: number) {
-  const user = await this.prisma.user.findUnique({
-    where: { id: userId, isActive: true, role: { not: UserRole.CLIENTE } },
-    select: {
-      id: true,
-      uuid: true,
-      username: true,
-      email: true,
-      fullName: true,
-      avatarUrl: true,
-      role: true,
-      isActive: true,
-      ciudadAsignada: true,  // <-- agrega esto
-    },
-  });
-  if (!user) throw new UnauthorizedException('Usuario no encontrado');
-  return user;
-}
-
-private async generateTokens(userId: number, email: string, role: string, ciudadAsignada?: string | null) {
-  const payload = { 
-    sub: userId, 
-    email: email.toLowerCase(),
-    role,
-    ciudadAsignada: ciudadAsignada || null,
-  };
+  private async generateTokens(
+    userId: number,
+    email: string,
+    role: string,
+    ciudadesAsignadas: string[] = [], 
+  ) {
+    const payload = {
+      sub: userId,
+      email: email.toLowerCase(),
+      role,
+      ciudadesAsignadas: ciudadesAsignadas ?? [], 
+    };
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload, {
         expiresIn: process.env.JWT_EXPIRES_IN || '15m',

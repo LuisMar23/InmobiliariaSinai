@@ -30,6 +30,28 @@ export class MovimientosList implements OnInit {
   cargando = signal<boolean>(true);
   error = signal<string | null>(null);
   cajaId = signal<number>(0);
+  resumenFiltrado = signal<{ totalIngresos: number; totalEgresos: number } | null>(null);
+
+  // Filtros
+  filtroMes = signal<number | null>(null);
+  filtroAnio = signal<number>(new Date().getFullYear());
+  filtroTipo = signal<string>('');
+  filtroMetodoPago = signal<string>('');
+  filtroManzano = signal<string>('');
+  filtroNumeroLote = signal<string>('');
+
+  aniosDisponibles = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i);
+
+  meses = [
+    { value: 1, label: 'Enero' }, { value: 2, label: 'Febrero' },
+    { value: 3, label: 'Marzo' }, { value: 4, label: 'Abril' },
+    { value: 5, label: 'Mayo' }, { value: 6, label: 'Junio' },
+    { value: 7, label: 'Julio' }, { value: 8, label: 'Agosto' },
+    { value: 9, label: 'Septiembre' }, { value: 10, label: 'Octubre' },
+    { value: 11, label: 'Noviembre' }, { value: 12, label: 'Diciembre' },
+  ];
+
+  metodosPago = ['EFECTIVO', 'TRANSFERENCIA', 'TARJETA'];
 
   sortColumn = signal<keyof Movimiento>('fecha');
   sortDirection = signal<'asc' | 'desc'>('desc');
@@ -56,7 +78,7 @@ export class MovimientosList implements OnInit {
           movimiento.descripcion?.toLowerCase().includes(term) ||
           movimiento.tipo.toLowerCase().includes(term) ||
           movimiento.metodoPago.toLowerCase().includes(term) ||
-          movimiento.fecha.toLowerCase().includes(term)
+          movimiento.fecha.toLowerCase().includes(term),
       );
     }
 
@@ -85,11 +107,9 @@ export class MovimientosList implements OnInit {
       const aString = aValue.toString().toLowerCase();
       const bString = bValue.toString().toLowerCase();
 
-      if (direction === 'asc') {
-        return aString.localeCompare(bString);
-      } else {
-        return bString.localeCompare(aString);
-      }
+      return direction === 'asc'
+        ? aString.localeCompare(bString)
+        : bString.localeCompare(aString);
     });
   });
 
@@ -101,7 +121,6 @@ export class MovimientosList implements OnInit {
       this.cajaId.set(id);
       if (id) {
         this.obtenerMovimientos();
-        this.obtenerTotales();
         this.obtenerResumenCaja();
       }
     });
@@ -111,41 +130,70 @@ export class MovimientosList implements OnInit {
     this.cargando.set(true);
     this.error.set(null);
 
-    try {
-      this.movSvc.loadByCaja(this.cajaId(), this.currentPage(), this.pageSize());
-
-      // Simular carga de datos
-      setTimeout(() => {
-        this.movimientos.set(this.movSvc.movimientos());
-        this.allMovimientos.set(this.movSvc.movimientos());
-        this.total.set(this.movSvc.total());
+    this.movSvc.loadByCajaFiltrado(
+      this.cajaId(),
+      this.currentPage(),
+      this.pageSize(),
+      {
+        mes: this.filtroMes() ?? undefined,
+        anio: this.filtroAnio(),
+        tipo: this.filtroTipo() || undefined,
+        metodoPago: this.filtroMetodoPago() || undefined,
+        manzano: this.filtroManzano() || undefined,
+        numeroLote: this.filtroNumeroLote() || undefined,
+      },
+    ).subscribe({
+      next: (response) => {
+        this.allMovimientos.set(response.data);
+        this.movimientos.set(response.data);
+        this.total.set(response.total);
+        if (response.resumen) {
+          this.resumenFiltrado.set(response.resumen);
+        }
         this.cargando.set(false);
-      }, 1000);
-    } catch (error) {
-      this.cargando.set(false);
-      this.error.set('Error al cargar los movimientos');
-      this.notificationSvc.showError('Error al cargar los movimientos');
-    }
-  }
-
-  obtenerTotales() {
-    try {
-      this.movSvc.loadTotales(this.cajaId());
-    } catch (error) {
-      this.notificationSvc.showError('Error al cargar los totales');
-    }
+      },
+      error: () => {
+        this.cargando.set(false);
+        this.error.set('Error al cargar los movimientos');
+        this.notificationSvc.showError('Error al cargar los movimientos');
+      },
+    });
   }
 
   obtenerResumenCaja() {
     this.movSvc.getResumenCaja(this.cajaId()).subscribe({
-      next: (resumen) => {
-        this.resumenCaja.set(resumen);
-      },
+      next: (resumen) => this.resumenCaja.set(resumen),
       error: (err) => {
         console.error('Error al obtener resumen:', err);
         this.notificationSvc.showError('Error al obtener el resumen de caja');
       },
     });
+  }
+
+  aplicarFiltros() {
+    this.currentPage.set(1);
+    this.obtenerMovimientos();
+  }
+
+  limpiarFiltros() {
+    this.filtroMes.set(null);
+    this.filtroAnio.set(new Date().getFullYear());
+    this.filtroTipo.set('');
+    this.filtroMetodoPago.set('');
+    this.filtroManzano.set('');
+    this.filtroNumeroLote.set('');
+    this.currentPage.set(1);
+    this.obtenerMovimientos();
+  }
+
+  hayFiltrosActivos(): boolean {
+    return !!(
+      this.filtroMes() ||
+      this.filtroTipo() ||
+      this.filtroMetodoPago() ||
+      this.filtroManzano() ||
+      this.filtroNumeroLote()
+    );
   }
 
   cambiarOrden(columna: keyof Movimiento) {
@@ -158,9 +206,7 @@ export class MovimientosList implements OnInit {
   }
 
   getClaseFlecha(columna: keyof Movimiento): string {
-    if (this.sortColumn() !== columna) {
-      return 'opacity-30';
-    }
+    if (this.sortColumn() !== columna) return 'opacity-30';
     return this.sortDirection() === 'asc' ? '' : 'rotate-180';
   }
 
@@ -173,15 +219,13 @@ export class MovimientosList implements OnInit {
   }
 
   getTotalIngresos(): number {
-    return this.movimientos()
-      .filter((m) => m.tipo === 'INGRESO')
-      .reduce((sum, m) => sum + Number(m.monto), 0);
+    return this.resumenFiltrado()?.totalIngresos ??
+      this.allMovimientos().filter(m => m.tipo === 'INGRESO').reduce((s, m) => s + Number(m.monto), 0);
   }
 
   getTotalEgresos(): number {
-    return this.movimientos()
-      .filter((m) => m.tipo === 'EGRESO')
-      .reduce((sum, m) => sum + Number(m.monto), 0);
+    return this.resumenFiltrado()?.totalEgresos ??
+      this.allMovimientos().filter(m => m.tipo === 'EGRESO').reduce((s, m) => s + Number(m.monto), 0);
   }
 
   getBalance(): number {

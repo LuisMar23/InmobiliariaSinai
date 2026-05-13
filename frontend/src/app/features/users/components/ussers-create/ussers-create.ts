@@ -60,7 +60,7 @@ export class UsersCreateComponent implements OnInit {
     this.createForm = this.crearFormularioUsuario();
 
     // Reaccionar al cambio de rol
-    this.createForm.get('role')?.valueChanges.subscribe(role => {
+    this.createForm.get('role')?.valueChanges.subscribe((role) => {
       const ciudadControl = this.createForm.get('ciudadAsignada');
       if (role === 'ASESOR' || role === 'SECRETARIA') {
         ciudadControl?.setValidators([Validators.required]);
@@ -83,30 +83,32 @@ export class UsersCreateComponent implements OnInit {
 
     // Cargar ciudades — si falla, el input igual funciona
     this.loteService.getCiudades().subscribe({
-      
       next: (ciudades) => {
-this.ciudades = ciudades,console.log(this.ciudades)
+        ((this.ciudades = ciudades), console.log(this.ciudades));
       },
-      error: () => this.ciudades = [],
+      error: () => (this.ciudades = []),
     });
   }
 
   crearFormularioUsuario(): FormGroup {
-    return this.fb.group({
-      fullName:        ['', [Validators.required, Validators.minLength(3)]],
-      username:        ['', [Validators.required, Validators.minLength(3)]],
-      email:           [''],
-      password:        ['', [Validators.required, Validators.minLength(6)]],
-      confirmPassword: ['', [Validators.required]],
-      telefono:        ['', []],
-      ci:              [''],
-      direccion:       [''],
-      observaciones:   [''],
-      role:            ['USUARIO', [Validators.required]],
-      ciudadAsignada:  [null],
-    }, {
-      validators: this.passwordMatchValidator
-    });
+    return this.fb.group(
+      {
+        fullName: ['', [Validators.required, Validators.minLength(3)]],
+        username: ['', [Validators.required, Validators.minLength(3)]],
+        email: [''],
+        password: ['', [Validators.required, Validators.minLength(6)]],
+        confirmPassword: ['', [Validators.required]],
+        telefono: ['', []],
+        ci: [''],
+        direccion: [''],
+        observaciones: [''],
+        role: ['USUARIO', [Validators.required]],
+        ciudadAsignada: [null],
+      },
+      {
+        validators: this.passwordMatchValidator,
+      },
+    );
   }
 
   get requiresCiudad(): boolean {
@@ -124,11 +126,11 @@ this.ciudades = ciudades,console.log(this.ciudades)
   }
 
   togglePasswordVisibility(): void {
-    this.showPassword.update(value => !value);
+    this.showPassword.update((value) => !value);
   }
 
   toggleConfirmPasswordVisibility(): void {
-    this.showConfirmPassword.update(value => !value);
+    this.showConfirmPassword.update((value) => !value);
   }
 
   onSubmit(): void {
@@ -146,33 +148,29 @@ this.ciudades = ciudades,console.log(this.ciudades)
     this.enviando.set(true);
 
     const newUser = {
-      fullName:       this.createForm.value.fullName,
-      username:       this.createForm.value.username,
-      email:          this.createForm.value.email,
-      password:       this.createForm.value.password,
-      telefono:       this.createForm.value.telefono,
-      ci:             this.createForm.value.ci || undefined,
-      direccion:      this.createForm.value.direccion || undefined,
-      observaciones:  this.createForm.value.observaciones || undefined,
-      role:           this.canAssignRole() ? this.createForm.value.role : 'USUARIO',
-      ciudadAsignada: this.requiresCiudad
-                        ? this.createForm.value.ciudadAsignada || undefined
-                        : undefined,
+      fullName: this.createForm.value.fullName,
+      username: this.createForm.value.username,
+      email: this.createForm.value.email || undefined,
+      password: this.createForm.value.password,
+      telefono: this.createForm.value.telefono,
+      ci: this.createForm.value.ci || undefined,
+      direccion: this.createForm.value.direccion || undefined,
+      observaciones: this.createForm.value.observaciones || undefined,
+      role: this.canAssignRole() ? this.createForm.value.role : 'USUARIO',
+      ciudadesAsignadas: this.requiresCiudad // Fix #2
+        ? [this.createForm.value.ciudadAsignada].filter(Boolean)
+        : [],
     };
 
     this.authService.register(newUser).subscribe({
       next: (response: any) => {
         this.enviando.set(false);
-        this.notificationService.showSuccess(
-          response.message || 'Usuario creado correctamente'
-        );
+        this.notificationService.showSuccess(response.message || 'Usuario creado correctamente');
         setTimeout(() => this.router.navigate(['/usuarios']), 1500);
       },
       error: (error: any) => {
         this.enviando.set(false);
-        this.notificationService.showError(
-          error.message || 'Error al crear el usuario'
-        );
+        this.notificationService.showError(error.message || 'Error al crear el usuario');
       },
     });
   }
@@ -192,7 +190,11 @@ this.ciudades = ciudades,console.log(this.ciudades)
       }
       if (control.errors['email']) return 'Email inválido';
     }
-    if (fieldName === 'confirmPassword' && this.createForm.errors?.['passwordMismatch'] && control?.touched) {
+    if (
+      fieldName === 'confirmPassword' &&
+      this.createForm.errors?.['passwordMismatch'] &&
+      control?.touched
+    ) {
       return 'Las contraseñas no coinciden';
     }
     return '';
@@ -201,7 +203,10 @@ this.ciudades = ciudades,console.log(this.ciudades)
   isFieldValid(fieldName: string): boolean {
     const control = this.createForm.get(fieldName);
     if (fieldName === 'confirmPassword') {
-      return !!(control?.touched && (control?.invalid || this.createForm.errors?.['passwordMismatch']));
+      return !!(
+        control?.touched &&
+        (control?.invalid || this.createForm.errors?.['passwordMismatch'])
+      );
     }
     return !!(control?.invalid && control.touched);
   }

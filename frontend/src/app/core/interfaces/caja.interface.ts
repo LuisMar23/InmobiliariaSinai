@@ -57,4 +57,13 @@ export interface Movimiento {
     id: number;
     nombre: string;
   };
+  venta?: {                    
+    id: number;
+    lote?: {
+      id: number;
+      numeroLote: string;
+      manzano?: string;
+      urbanizacion?: { nombre: string };
+    };
+  };
 }

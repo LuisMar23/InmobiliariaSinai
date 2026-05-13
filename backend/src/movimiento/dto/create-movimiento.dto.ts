@@ -36,4 +36,8 @@ export class CreateMovimientoDto {
   @IsOptional()
   @IsString()
   referencia?: string;
+
+    @IsOptional()
+  @IsNumber()
+  ventaId?: number;
 }

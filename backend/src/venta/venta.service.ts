@@ -220,259 +220,239 @@ export class VentasService {
     return venta;
   }
 
-  private async verificarPermisosUsuario(usuarioId: number, prisma: any) {
-    const usuario = await prisma.user.findUnique({ where: { id: usuarioId } });
-    if (!usuario) throw new ForbiddenException('Usuario no encontrado');
-    if (usuario.role !== 'ASESOR' && usuario.role !== 'ADMINISTRADOR') {
-      throw new ForbiddenException(
-        'Solo los asesores y administradores pueden realizar esta acción',
-      );
-    }
-    return usuario;
+private async verificarPermisosUsuario(usuarioId: number, prisma: any) {
+  const usuario = await prisma.user.findUnique({ where: { id: usuarioId } });
+  if (!usuario) throw new ForbiddenException('Usuario no encontrado');
+  if (usuario.role !== 'ADMINISTRADOR') {
+    throw new ForbiddenException('Solo los administradores pueden realizar esta acción');
   }
+  return usuario;
+}
 
-async create(
-  createVentaDto: CreateVentaDto,
-  asesorId: number,
-  ip?: string,
-  userAgent?: string,
-) {
-  try {
-    return await this.prisma.$transaction(async (prisma) => {
-      
-      // ✅ Incluir SECRETARIA en los roles permitidos
-      const asesor = await prisma.user.findFirst({
-        where: {
-          id: asesorId,
-          isActive: true,
-          role: { in: ['ASESOR', 'ADMINISTRADOR', 'SECRETARIA'] },
-        },
-      });
-      if (!asesor)
-        throw new ForbiddenException(
-          'Solo los asesores, administradores y secretarias pueden crear ventas',
-        );
+  async create(
+    createVentaDto: CreateVentaDto,
+    asesorId: number,
+    ip?: string,
+    userAgent?: string,
+  ) {
+    try {
+      return await this.prisma.$transaction(async (prisma) => {
+        const asesor = await prisma.user.findFirst({
+          where: {
+            id: asesorId,
+            isActive: true,
+            role: { in: ['ADMINISTRADOR'] },
+          },
+        });
+        if (!asesor)
+          throw new ForbiddenException(
+            'Solo los administradores pueden crear ventas',
+          );
 
-      const cliente = await prisma.user.findFirst({
-        where: {
-          id: createVentaDto.clienteId,
-          isActive: true,
-          role: 'CLIENTE',
-        },
-      });
-      if (!cliente)
-        throw new BadRequestException(
-          'Cliente no encontrado o no tiene rol de CLIENTE',
-        );
+        const cliente = await prisma.user.findFirst({
+          where: {
+            id: createVentaDto.clienteId,
+            isActive: true,
+            role: 'CLIENTE',
+          },
+        });
+        if (!cliente)
+          throw new BadRequestException(
+            'Cliente no encontrado o no tiene rol de CLIENTE',
+          );
 
-      await this.verificarCajaActiva(createVentaDto.cajaId, prisma);
+        await this.verificarCajaActiva(createVentaDto.cajaId, prisma);
 
-      if (createVentaDto.inmuebleTipo === TipoInmueble.LOTE) {
+        if (createVentaDto.inmuebleTipo === TipoInmueble.LOTE) {
+          // Admin puede vender cualquier lote disponible sin restricción de encargado
+          const lote = await prisma.lote.findFirst({
+            where: {
+              id: createVentaDto.inmuebleId,
+              estado: { in: ['DISPONIBLE', 'CON_OFERTA'] },
+            },
+          });
 
-        // ✅ Admin y Secretaria pueden vender cualquier lote disponible
-        const rolesFullAccess = ['ADMINISTRADOR', 'SECRETARIA'];
-        const whereClause: any = {
-          id: createVentaDto.inmuebleId,
-          estado: { in: ['DISPONIBLE', 'CON_OFERTA'] },
+          if (!lote) {
+            throw new BadRequestException(
+              `El lote con ID ${createVentaDto.inmuebleId} no existe o no está disponible`,
+            );
+          }
+        } else if (createVentaDto.inmuebleTipo === TipoInmueble.PROPIEDAD) {
+          const propiedad = await prisma.propiedad.findFirst({
+            where: {
+              id: createVentaDto.inmuebleId,
+              estado: { in: ['DISPONIBLE', 'CON_OFERTA'] },
+            },
+          });
+          if (!propiedad) {
+            throw new BadRequestException(
+              `La propiedad con ID ${createVentaDto.inmuebleId} no existe o no está disponible`,
+            );
+          }
+        }
+
+        if (
+          createVentaDto.plan_pago.monto_inicial > createVentaDto.precioFinal
+        ) {
+          throw new BadRequestException(
+            'El monto inicial no puede ser mayor al precio final de la venta',
+          );
+        }
+
+        if (
+          !Object.values(PeriodicidadPago).includes(
+            createVentaDto.plan_pago.periodicidad,
+          )
+        ) {
+          throw new BadRequestException('Periodicidad de pago inválida');
+        }
+
+        const ventaData: any = {
+          clienteId: createVentaDto.clienteId,
+          asesorId,
+          inmuebleTipo: createVentaDto.inmuebleTipo,
+          precioFinal: createVentaDto.precioFinal,
+          estado: createVentaDto.estado || EstadoVenta.PENDIENTE,
+          observaciones: createVentaDto.observaciones || null,
+          cajaId: createVentaDto.cajaId,
         };
 
-        // Solo restringir por encargado si es ASESOR
-        if (!rolesFullAccess.includes(asesor.role)) {
-          whereClause.encargadoId = asesorId;
+        if (createVentaDto.inmuebleTipo === TipoInmueble.LOTE) {
+          ventaData.loteId = createVentaDto.inmuebleId;
+        } else if (createVentaDto.inmuebleTipo === TipoInmueble.PROPIEDAD) {
+          ventaData.propiedadId = createVentaDto.inmuebleId;
         }
 
-        const lote = await prisma.lote.findFirst({
-          where: whereClause,
-        });
+        const venta = await prisma.venta.create({ data: ventaData });
 
-        if (!lote) {
-          throw new BadRequestException(
-            `El lote con ID ${createVentaDto.inmuebleId} no existe, no está disponible o no eres el encargado`,
-          );
-        }
-
-      } else if (createVentaDto.inmuebleTipo === TipoInmueble.PROPIEDAD) {
-        const propiedad = await prisma.propiedad.findFirst({
-          where: {
-            id: createVentaDto.inmuebleId,
-            estado: { in: ['DISPONIBLE', 'CON_OFERTA'] },
-          },
-        });
-        if (!propiedad) {
-          throw new BadRequestException(
-            `La propiedad con ID ${createVentaDto.inmuebleId} no existe o no está disponible`,
-          );
-        }
-      }
-
-      if (
-        createVentaDto.plan_pago.monto_inicial > createVentaDto.precioFinal
-      ) {
-        throw new BadRequestException(
-          'El monto inicial no puede ser mayor al precio final de la venta',
-        );
-      }
-
-      if (
-        !Object.values(PeriodicidadPago).includes(
+        const fechaVencimiento = this.calcularFechaVencimiento(
+          createVentaDto.plan_pago.fecha_inicio,
+          createVentaDto.plan_pago.plazo,
           createVentaDto.plan_pago.periodicidad,
-        )
-      ) {
-        throw new BadRequestException('Periodicidad de pago inválida');
-      }
+        );
 
-      const ventaData: any = {
-        clienteId: createVentaDto.clienteId,
-        asesorId,
-        inmuebleTipo: createVentaDto.inmuebleTipo,
-        precioFinal: createVentaDto.precioFinal,
-        estado: createVentaDto.estado || EstadoVenta.PENDIENTE,
-        observaciones: createVentaDto.observaciones || null,
-        cajaId: createVentaDto.cajaId,
-      };
-
-      if (createVentaDto.inmuebleTipo === TipoInmueble.LOTE) {
-        ventaData.loteId = createVentaDto.inmuebleId;
-      } else if (createVentaDto.inmuebleTipo === TipoInmueble.PROPIEDAD) {
-        ventaData.propiedadId = createVentaDto.inmuebleId;
-      }
-
-      const venta = await prisma.venta.create({
-        data: ventaData,
-      });
-
-      const fechaVencimiento = this.calcularFechaVencimiento(
-        createVentaDto.plan_pago.fecha_inicio,
-        createVentaDto.plan_pago.plazo,
-        createVentaDto.plan_pago.periodicidad,
-      );
-
-      const planPago = await prisma.planPago.create({
-        data: {
-          ventaId: venta.id,
-          total: createVentaDto.precioFinal,
-          monto_inicial: createVentaDto.plan_pago.monto_inicial,
-          plazo: createVentaDto.plan_pago.plazo,
-          periodicidad: createVentaDto.plan_pago.periodicidad,
-          fecha_inicio: createVentaDto.plan_pago.fecha_inicio,
-          fecha_vencimiento: fechaVencimiento,
-          estado: EstadoPlanPago.ACTIVO,
-        },
-      });
-
-      if (createVentaDto.plan_pago.monto_inicial > 0) {
-        const pagoInicial = await prisma.pagoPlanPago.create({
+        const planPago = await prisma.planPago.create({
           data: {
-            plan_pago_id: planPago.id_plan_pago,
-            monto: createVentaDto.plan_pago.monto_inicial,
-            fecha_pago: new Date(),
-            observacion: 'Pago inicial',
-            metodoPago: 'EFECTIVO',
+            ventaId: venta.id,
+            total: createVentaDto.precioFinal,
+            monto_inicial: createVentaDto.plan_pago.monto_inicial,
+            plazo: createVentaDto.plan_pago.plazo,
+            periodicidad: createVentaDto.plan_pago.periodicidad,
+            fecha_inicio: createVentaDto.plan_pago.fecha_inicio,
+            fecha_vencimiento: fechaVencimiento,
+            estado: EstadoPlanPago.ACTIVO,
           },
         });
 
-        await this.registrarMovimientoCaja(
-          createVentaDto.cajaId,
-          {
-            monto: createVentaDto.plan_pago.monto_inicial,
-            metodoPago: 'EFECTIVO',
-            pagoId: pagoInicial.id_pago_plan,
-          },
-          venta,
+        if (createVentaDto.plan_pago.monto_inicial > 0) {
+          const pagoInicial = await prisma.pagoPlanPago.create({
+            data: {
+              plan_pago_id: planPago.id_plan_pago,
+              monto: createVentaDto.plan_pago.monto_inicial,
+              fecha_pago: new Date(),
+              observacion: 'Pago inicial',
+              metodoPago: 'EFECTIVO',
+            },
+          });
+
+          await this.registrarMovimientoCaja(
+            createVentaDto.cajaId,
+            {
+              monto: createVentaDto.plan_pago.monto_inicial,
+              metodoPago: 'EFECTIVO',
+              pagoId: pagoInicial.id_pago_plan,
+            },
+            venta,
+            asesorId,
+            ip,
+            userAgent,
+          );
+
+          if (
+            createVentaDto.plan_pago.monto_inicial >= createVentaDto.precioFinal
+          ) {
+            await prisma.planPago.update({
+              where: { id_plan_pago: planPago.id_plan_pago },
+              data: { estado: EstadoPlanPago.PAGADO },
+            });
+
+            await prisma.venta.update({
+              where: { id: venta.id },
+              data: { estado: EstadoVenta.PAGADO },
+            });
+          }
+        }
+
+        if (createVentaDto.inmuebleTipo === TipoInmueble.LOTE) {
+          await prisma.lote.update({
+            where: { id: createVentaDto.inmuebleId },
+            data: { estado: 'VENDIDO' },
+          });
+        } else if (createVentaDto.inmuebleTipo === TipoInmueble.PROPIEDAD) {
+          await prisma.propiedad.update({
+            where: { id: createVentaDto.inmuebleId },
+            data: { estado: 'VENDIDO' },
+          });
+        }
+
+        await this.crearAuditoria(
           asesorId,
+          'CREAR_VENTA',
+          'Venta',
+          venta.id,
           ip,
           userAgent,
         );
 
-        if (
-          createVentaDto.plan_pago.monto_inicial >= createVentaDto.precioFinal
-        ) {
-          await prisma.planPago.update({
-            where: { id_plan_pago: planPago.id_plan_pago },
-            data: { estado: EstadoPlanPago.PAGADO },
-          });
-
-          await prisma.venta.update({
-            where: { id: venta.id },
-            data: { estado: EstadoVenta.PAGADO },
-          });
-        }
-      }
-
-      if (createVentaDto.inmuebleTipo === TipoInmueble.LOTE) {
-        await prisma.lote.update({
-          where: { id: createVentaDto.inmuebleId },
-          data: { estado: 'VENDIDO' },
-        });
-      } else if (createVentaDto.inmuebleTipo === TipoInmueble.PROPIEDAD) {
-        await prisma.propiedad.update({
-          where: { id: createVentaDto.inmuebleId },
-          data: { estado: 'VENDIDO' },
-        });
-      }
-
-      await this.crearAuditoria(
-        asesorId,
-        'CREAR_VENTA',
-        'Venta',
-        venta.id,
-        ip,
-        userAgent,
-      );
-
-      const ventaCompleta = await prisma.venta.findUnique({
-        where: { id: venta.id },
-        include: {
-          cliente: {
-            select: {
-              id: true,
-              fullName: true,
-              ci: true,
-              telefono: true,
-              direccion: true,
+        const ventaCompleta = await prisma.venta.findUnique({
+          where: { id: venta.id },
+          include: {
+            cliente: {
+              select: {
+                id: true,
+                fullName: true,
+                ci: true,
+                telefono: true,
+                direccion: true,
+              },
+            },
+            asesor: {
+              select: { id: true, fullName: true, email: true, telefono: true },
+            },
+            lote:
+              createVentaDto.inmuebleTipo === TipoInmueble.LOTE
+                ? { include: { urbanizacion: true } }
+                : false,
+            propiedad:
+              createVentaDto.inmuebleTipo === TipoInmueble.PROPIEDAD
+                ? true
+                : false,
+            planPago: { include: { pagos: true } },
+            archivos: true,
+            caja: {
+              select: { id: true, nombre: true, estado: true },
             },
           },
-          asesor: {
-            select: { id: true, fullName: true, email: true, telefono: true },
-          },
-          lote:
-            createVentaDto.inmuebleTipo === TipoInmueble.LOTE
-              ? { include: { urbanizacion: true } }
-              : false,
-          propiedad:
-            createVentaDto.inmuebleTipo === TipoInmueble.PROPIEDAD
-              ? true
-              : false,
-          planPago: { include: { pagos: true } },
-          archivos: true,
-          caja: {
-            select: {
-              id: true,
-              nombre: true,
-              estado: true,
-            },
-          },
-        },
+        });
+
+        return {
+          success: true,
+          message: 'Venta creada correctamente',
+          data: this.agregarCalculosVenta(ventaCompleta),
+        };
       });
-
-      return {
-        success: true,
-        message: 'Venta creada correctamente',
-        data: this.agregarCalculosVenta(ventaCompleta),
-      };
-    });
-  } catch (error) {
-    if (
-      error instanceof BadRequestException ||
-      error instanceof ForbiddenException ||
-      error instanceof NotFoundException
-    ) {
-      throw error;
+    } catch (error) {
+      if (
+        error instanceof BadRequestException ||
+        error instanceof ForbiddenException ||
+        error instanceof NotFoundException
+      ) {
+        throw error;
+      }
+      console.error('Error en create venta:', error);
+      throw new InternalServerErrorException('Error interno del servidor');
     }
-    console.error('Error en create venta:', error);
-    throw new InternalServerErrorException('Error interno del servidor');
   }
-}
 
   async findAll(
     clienteId?: number,
@@ -488,7 +468,12 @@ async create(
 
       if (clienteId) where.clienteId = clienteId;
       if (asesorId) where.asesorId = asesorId;
-      if (usuarioId) where.asesorId = usuarioId;
+
+      // ASESOR solo ve sus propias ventas
+      // ADMINISTRADOR y SECRETARIA ven todas
+    if (usuarioRole === 'ASESOR') {
+    throw new ForbiddenException('No tienes permisos para ver ventas');
+  }
 
       const [ventas, total] = await Promise.all([
         this.prisma.venta.findMany({
@@ -509,19 +494,13 @@ async create(
                 },
               },
             },
-            propiedad: {
-              where: usuarioId ? { encargadoId: usuarioId } : {},
-            },
+            propiedad: true,
             planPago: {
               include: { pagos: { orderBy: { fecha_pago: 'desc' } } },
             },
             archivos: true,
             caja: {
-              select: {
-                id: true,
-                nombre: true,
-                estado: true,
-              },
+              select: { id: true, nombre: true, estado: true },
             },
           },
           orderBy: { createdAt: 'desc' },
@@ -678,7 +657,7 @@ async create(
               },
             },
           });
-          
+
           return {
             success: true,
             message: 'No se realizaron cambios',
@@ -1019,7 +998,14 @@ async create(
   ) {
     try {
       return await this.prisma.$transaction(async (prisma) => {
-        const usuario = await this.verificarPermisosUsuario(usuarioId, prisma);
+        // 👈 Validación propia en lugar de verificarPermisosUsuario
+        const usuario = await prisma.user.findUnique({
+          where: { id: usuarioId },
+        });
+        if (!usuario) throw new ForbiddenException('Usuario no encontrado');
+    if (!['ADMINISTRADOR', 'SECRETARIA'].includes(usuario.role)) {
+  throw new ForbiddenException('No tienes permisos para registrar pagos');
+}
 
         const planPago = await prisma.planPago.findUnique({
           where: { id_plan_pago: registrarPagoDto.plan_pago_id },
@@ -1042,6 +1028,8 @@ async create(
           );
         }
 
+        // Asesor solo puede registrar pagos de sus propias ventas
+        // Admin y Secretaria pueden registrar cualquier pago
         if (
           usuario.role === 'ASESOR' &&
           planPago.venta.asesorId !== usuarioId
@@ -1058,9 +1046,7 @@ async create(
         }
 
         if (!planPago.venta.cajaId) {
-          throw new BadRequestException(
-            'La venta no tiene una caja asociada',
-          );
+          throw new BadRequestException('La venta no tiene una caja asociada');
         }
 
         const cajaId = planPago.venta.cajaId;
@@ -1104,9 +1090,7 @@ async create(
           pagoData.metodoPago = registrarPagoDto.metodoPago;
         }
 
-        const pago = await prisma.pagoPlanPago.create({
-          data: pagoData,
-        });
+        const pago = await prisma.pagoPlanPago.create({ data: pagoData });
 
         await this.registrarMovimientoCaja(
           cajaId,
@@ -1286,9 +1270,7 @@ async create(
         }
 
         if (!pagoExistente.planPago.venta.cajaId) {
-          throw new BadRequestException(
-            'La venta no tiene una caja asociada',
-          );
+          throw new BadRequestException('La venta no tiene una caja asociada');
         }
 
         const cajaId = pagoExistente.planPago.venta.cajaId;
@@ -1402,9 +1384,7 @@ async create(
           );
 
         if (!pago.planPago.venta.cajaId) {
-          throw new BadRequestException(
-            'La venta no tiene una caja asociada',
-          );
+          throw new BadRequestException('La venta no tiene una caja asociada');
         }
 
         const cajaOriginalId = pago.planPago.venta.cajaId;

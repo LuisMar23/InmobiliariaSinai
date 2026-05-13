@@ -6,6 +6,7 @@ import {
   Matches,
   IsEnum,
   IsOptional,
+  IsArray,
 } from 'class-validator';
 
 export enum UserRole {
@@ -21,8 +22,9 @@ export class RegisterDto {
   @IsNotEmpty({ message: 'El nombre de usuario es requerido' })
   username: string;
 
-  @IsEmail({}, { message: 'El email debe ser válido' })
-  email: string;
+  @IsOptional()
+  @IsEmail()
+  email?: string;
 
   @IsString()
   @MinLength(8, { message: 'La contraseña debe tener al menos 8 caracteres' })
@@ -51,5 +53,15 @@ export class RegisterDto {
   })
   role: UserRole;
   @IsOptional()
-  ciudadAsignada?:string
+  @IsArray()
+  @IsString({ each: true })
+  ciudadesAsignadas?: string[];
+
+  @IsOptional()
+  @IsString()
+  direccion?: string;
+
+  @IsOptional()
+  @IsString()
+  observaciones?: string;
 }

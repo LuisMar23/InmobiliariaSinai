@@ -1,7 +1,8 @@
 import { Injectable, signal } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Movimiento } from '../../../core/interfaces/caja.interface';
 import { environment } from '../../../../environments/environment';
+import { Observable } from 'rxjs';
 
 @Injectable({ providedIn: 'root' })
 export class MovimientoService {
@@ -19,9 +20,12 @@ export class MovimientoService {
   loadByCaja(cajaId: number, page: number = 1, pageSize: number = 10) {
     this.cargando.set(true);
     this.http
-      .get<{ data: Movimiento[]; total: number; page: number; pageSize: number }>(
-        `${this.apiUrl}/caja/${cajaId}?page=${page}&pageSize=${pageSize}`
-      )
+      .get<{
+        data: Movimiento[];
+        total: number;
+        page: number;
+        pageSize: number;
+      }>(`${this.apiUrl}/caja/${cajaId}?page=${page}&pageSize=${pageSize}`)
       .subscribe({
         next: (res) => {
           this.movimientos.set(res.data);
@@ -35,7 +39,30 @@ export class MovimientoService {
         },
       });
   }
+  loadByCajaFiltrado(
+    cajaId: number,
+    page: number,
+    pageSize: number,
+    filtros: {
+      mes?: number;
+      anio?: number;
+      tipo?: string;
+      metodoPago?: string;
+      manzano?: string;
+      numeroLote?: string;
+    },
+  ): Observable<any> {
+    let params = new HttpParams().set('page', page.toString()).set('pageSize', pageSize.toString());
 
+    if (filtros.mes) params = params.set('mes', filtros.mes.toString());
+    if (filtros.anio) params = params.set('anio', filtros.anio.toString());
+    if (filtros.tipo) params = params.set('tipo', filtros.tipo);
+    if (filtros.metodoPago) params = params.set('metodoPago', filtros.metodoPago);
+    if (filtros.manzano) params = params.set('manzano', filtros.manzano);
+    if (filtros.numeroLote) params = params.set('numeroLote', filtros.numeroLote);
+
+    return this.http.get<any>(`${this.apiUrl}/caja/${cajaId}/filtrado`, { params });
+  }
   crearMovimiento(payload: {
     cajaId: number;
     tipo: 'INGRESO' | 'EGRESO';

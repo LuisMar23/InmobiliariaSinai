@@ -417,30 +417,42 @@ export class VentaCreate implements OnInit {
     }
   }
 
-  calcularFechaVencimiento(): void {
-    const fechaInicio = this.planPagoForm.get('fecha_inicio')?.value;
-    const plazo = this.planPagoForm.get('plazo')?.value;
-    const periodicidad = this.planPagoForm.get('periodicidad')?.value;
+calcularFechaVencimiento(): void {
+  const fechaInicio = this.planPagoForm.get('fecha_inicio')?.value;
+  const plazo = this.planPagoForm.get('plazo')?.value;
+  const periodicidad = this.planPagoForm.get('periodicidad')?.value;
 
-    if (fechaInicio && plazo && periodicidad) {
-      const fecha = new Date(fechaInicio);
-      switch (periodicidad) {
-        case 'DIAS':
-          fecha.setDate(fecha.getDate() + Number(plazo));
-          break;
-        case 'SEMANAS':
-          fecha.setDate(fecha.getDate() + Number(plazo) * 7);
-          break;
-        case 'MESES':
-          fecha.setMonth(fecha.getMonth() + Number(plazo));
-          break;
-      }
-      this.fechaVencimientoCalculada.set(fecha.toISOString().split('T')[0]);
-    } else {
-      this.fechaVencimientoCalculada.set('');
+  if (fechaInicio && plazo && periodicidad) {
+    // Parsear manualmente para evitar conversión UTC→local
+    const [anio, mes, dia] = fechaInicio.split('-').map(Number);
+    const fecha = new Date(anio, mes - 1, dia); // mes es 0-indexed
+
+    switch (periodicidad) {
+      case 'DIAS':
+        fecha.setDate(fecha.getDate() + Number(plazo));
+        break;
+      case 'SEMANAS':
+        fecha.setDate(fecha.getDate() + Number(plazo) * 7);
+        break;
+      case 'MESES':
+        fecha.setMonth(fecha.getMonth() + Number(plazo));
+        break;
     }
-  }
 
+    // Formatear manualmente también para evitar el mismo problema al revés
+    const y = fecha.getFullYear();
+    const m = String(fecha.getMonth() + 1).padStart(2, '0');
+    const d = String(fecha.getDate()).padStart(2, '0');
+    this.fechaVencimientoCalculada.set(`${y}-${m}-${d}`);
+  } else {
+    this.fechaVencimientoCalculada.set('');
+  }
+}
+formatearFecha(fecha: string): string {
+  if (!fecha) return '';
+  const [anio, mes, dia] = fecha.split('-');
+  return `${dia}/${mes}/${anio}`;
+}
   getMontoMaximoInicial(): number {
     return this.ventaForm.get('precioFinal')?.value || 0;
   }

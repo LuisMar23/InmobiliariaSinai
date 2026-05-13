@@ -1,4 +1,5 @@
 import {
+  IsArray,
   IsEmail,
   IsNotEmpty,
   IsOptional,
@@ -35,6 +36,12 @@ export class CreateUserDto {
   telefono: string;
 
   // create-user.dto.ts
-  @IsOptional()
-  ciudadAsignada?: string;
+  // @IsOptional()
+  // ciudadAsignada?: string;
+
+@IsOptional()
+@IsArray()
+@IsString({ each: true })
+ciudadesAsignadas?: string[];
+
 }

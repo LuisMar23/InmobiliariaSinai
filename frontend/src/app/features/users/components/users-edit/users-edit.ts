@@ -52,19 +52,19 @@ export class UsersEditComponent implements OnInit {
   canEditRole = signal<boolean>(false);
   roles = ['ADMINISTRADOR', 'ASESOR', 'SECRETARIA', 'USUARIO'];
   ciudades: string[] = [];
-faLock = faLock;
-faEye = faEye;
-faEyeSlash = faEyeSlash;
-showPassword = signal<boolean>(false);
-showConfirmPassword = signal<boolean>(false);
+  faLock = faLock;
+  faEye = faEye;
+  faEyeSlash = faEyeSlash;
+  showPassword = signal<boolean>(false);
+  showConfirmPassword = signal<boolean>(false);
 
-togglePasswordVisibility(): void {
-  this.showPassword.update(v => !v);
-}
+  togglePasswordVisibility(): void {
+    this.showPassword.update((v) => !v);
+  }
 
-toggleConfirmPasswordVisibility(): void {
-  this.showConfirmPassword.update(v => !v);
-}
+  toggleConfirmPasswordVisibility(): void {
+    this.showConfirmPassword.update((v) => !v);
+  }
   private userService = inject(UserService);
   private authService = inject(AuthService);
   private notificationService = inject(NotificationService);
@@ -77,7 +77,7 @@ toggleConfirmPasswordVisibility(): void {
     this.editForm = this.crearFormularioUsuario();
 
     // Reaccionar al cambio de rol
-    this.editForm.get('role')?.valueChanges.subscribe(role => {
+    this.editForm.get('role')?.valueChanges.subscribe((role) => {
       const ciudadControl = this.editForm.get('ciudadAsignada');
       if (role === 'ASESOR' || role === 'SECRETARIA') {
         ciudadControl?.setValidators([Validators.required]);
@@ -95,38 +95,41 @@ toggleConfirmPasswordVisibility(): void {
 
     // Cargar ciudades sugeridas
     this.loteService.getCiudades().subscribe({
-      next: (ciudades) => this.ciudades = ciudades,
-      error: () => this.ciudades = [],
+      next: (ciudades) => (this.ciudades = ciudades),
+      error: () => (this.ciudades = []),
     });
 
     this.obtenerUsuario();
   }
 
   crearFormularioUsuario(): FormGroup {
-    return this.fb.group({
-      fullName:       ['', [Validators.required, Validators.minLength(3)]],
-      username:       ['', [Validators.required, Validators.minLength(3)]],
-      email:          ['', [Validators.required, Validators.email]],
-      telefono:       ['', [Validators.required]],
-      direccion:      [''],
-      observaciones:  [''],
-      role:           ['', [Validators.required]],
-       password:        ['', [Validators.minLength(6)]],
-           confirmPassword: [''],
-      ciudadAsignada: [null],
-    },{
-    validators: this.passwordMatchValidator
-  });
+    return this.fb.group(
+      {
+        fullName: ['', [Validators.required, Validators.minLength(3)]],
+        username: ['', [Validators.required, Validators.minLength(3)]],
+        email: ['', [ Validators.email]],
+        telefono: ['', [Validators.required]],
+        direccion: [''],
+        observaciones: [''],
+        role: ['', [Validators.required]],
+        password: ['', [Validators.minLength(6)]],
+        confirmPassword: [''],
+        ciudadAsignada: [null],
+      },
+      {
+        validators: this.passwordMatchValidator,
+      },
+    );
   }
-passwordMatchValidator(group: FormGroup): { [key: string]: boolean } | null {
-  const password = group.get('password')?.value;
-  const confirmPassword = group.get('confirmPassword')?.value;
-  // Solo valida si escribió algo en password
-  if (password && password !== confirmPassword) {
-    return { passwordMismatch: true };
+  passwordMatchValidator(group: FormGroup): { [key: string]: boolean } | null {
+    const password = group.get('password')?.value;
+    const confirmPassword = group.get('confirmPassword')?.value;
+    // Solo valida si escribió algo en password
+    if (password && password !== confirmPassword) {
+      return { passwordMismatch: true };
+    }
+    return null;
   }
-  return null;
-}
   get requiresCiudad(): boolean {
     const role = this.editForm.get('role')?.value;
     return role === 'ASESOR' || role === 'SECRETARIA';
@@ -153,7 +156,7 @@ passwordMatchValidator(group: FormGroup): { [key: string]: boolean } | null {
             this.router.navigate(['/usuarios']);
             return;
           }
-          console.log(user)
+          console.log(user);
           this.userData.set(user);
           this.cargarDatosFormulario(user);
         } else {
@@ -172,14 +175,14 @@ passwordMatchValidator(group: FormGroup): { [key: string]: boolean } | null {
 
   cargarDatosFormulario(user: any): void {
     this.editForm.patchValue({
-      fullName:       user.fullName      || '',
-      username:       user.username      || '',
-      email:          user.email         || '',
-      telefono:       user.telefono      || '',
-      direccion:      user.direccion     || '',
-      observaciones:  user.observaciones || '',
-      role:           user.role          || 'USUARIO',
-      ciudadAsignada: user.ciudadAsignada || null,
+      fullName: user.fullName || '',
+      username: user.username || '',
+      email: user.email || '',
+      telefono: user.telefono || '',
+      direccion: user.direccion || '',
+      observaciones: user.observaciones || '',
+      role: user.role || 'USUARIO',
+    ciudadAsignada: user.ciudadesAsignadas?.[0] || null,
     });
 
     if (!this.canEditRole()) {
@@ -187,51 +190,52 @@ passwordMatchValidator(group: FormGroup): { [key: string]: boolean } | null {
     }
   }
 
-  onSubmit(): void {
-    if (this.editForm.invalid) {
-      this.markFormGroupTouched();
-      this.notificationService.showError('Complete todos los campos requeridos correctamente');
-      return;
-    }
-
-    if (!this.userId()) {
-      this.notificationService.showError('ID de usuario no válido');
-      return;
-    }
-
-    this.enviando.set(true);
-
-const updateData: any = {
-  fullName:      this.editForm.value.fullName,
-  username:      this.editForm.value.username,
-  email:         this.editForm.value.email,
-  telefono:      this.editForm.value.telefono,
-  direccion:     this.editForm.value.direccion,
-  observaciones: this.editForm.value.observaciones,
-  ...(this.canEditRole() && { role: this.editForm.value.role }),
-  ...(this.canEditRole() && this.requiresCiudad && {
-    ciudadAsignada: this.editForm.value.ciudadAsignada || undefined,
-  }),
-  // Solo envía password si el usuario escribió algo
-  ...(this.editForm.value.password && {
-    password: this.editForm.value.password,
-  }),
-};
-
-    this.userService.update(this.userId()!, updateData).subscribe({
-      next: (response: any) => {
-        this.enviando.set(false);
-        this.notificationService.showSuccess(
-          response.message || 'Usuario actualizado correctamente'
-        );
-        setTimeout(() => this.router.navigate(['/usuarios']), 1500);
-      },
-      error: (error: any) => {
-        this.enviando.set(false);
-        this.notificationService.showError(error.message || 'Error al actualizar el usuario');
-      },
-    });
+onSubmit(): void {
+  if (this.editForm.invalid) {
+    this.markFormGroupTouched();
+    this.notificationService.showError('Complete todos los campos requeridos correctamente');
+    return;
   }
+
+  if (!this.userId()) {
+    this.notificationService.showError('ID de usuario no válido');
+    return;
+  }
+
+  this.enviando.set(true);
+
+  const updateData: any = {
+    fullName:      this.editForm.value.fullName,
+    username:      this.editForm.value.username,
+    email:         this.editForm.value.email,
+    telefono:      this.editForm.value.telefono,
+    direccion:     this.editForm.value.direccion,
+    observaciones: this.editForm.value.observaciones,
+    ...(this.canEditRole() && { role: this.editForm.value.role }),
+    ...(this.canEditRole() && {
+      ciudadesAsignadas: this.requiresCiudad && this.editForm.value.ciudadAsignada
+        ? [this.editForm.value.ciudadAsignada.trim()]
+        : [],
+    }),
+    ...(this.editForm.value.password && {
+      password: this.editForm.value.password,
+    }),
+  };
+
+  this.userService.update(this.userId()!, updateData).subscribe({
+    next: (response: any) => {
+      this.enviando.set(false);
+      this.notificationService.showSuccess(
+        response.message || 'Usuario actualizado correctamente',
+      );
+      setTimeout(() => this.router.navigate(['/usuarios']), 1500);
+    },
+    error: (error: any) => {
+      this.enviando.set(false);
+      this.notificationService.showError(error.message || 'Error al actualizar el usuario');
+    },
+  });
+}
 
   private markFormGroupTouched(): void {
     Object.keys(this.editForm.controls).forEach((key) => {
@@ -246,17 +250,24 @@ const updateData: any = {
       if (control.errors['minlength']) return 'Mínimo 3 caracteres';
       if (control.errors['email']) return 'Email inválido';
     }
-      if (fieldName === 'confirmPassword' && this.editForm.errors?.['passwordMismatch'] && control?.touched) {
-    return 'Las contraseñas no coinciden';
-  }
+    if (
+      fieldName === 'confirmPassword' &&
+      this.editForm.errors?.['passwordMismatch'] &&
+      control?.touched
+    ) {
+      return 'Las contraseñas no coinciden';
+    }
     return '';
   }
 
   isFieldValid(fieldName: string): boolean {
     const control = this.editForm.get(fieldName);
-      if (fieldName === 'confirmPassword') {
-    return !!(control?.touched && (control?.invalid || this.editForm.errors?.['passwordMismatch']));
-  }
+    if (fieldName === 'confirmPassword') {
+      return !!(
+        control?.touched &&
+        (control?.invalid || this.editForm.errors?.['passwordMismatch'])
+      );
+    }
     return !!(control?.invalid && control.touched);
   }
 

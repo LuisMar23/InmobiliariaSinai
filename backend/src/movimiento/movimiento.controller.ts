@@ -28,15 +28,32 @@ export class MovimientosController {
     return this.movimientosService.create({ ...dto, usuarioId, ip, userAgent });
   }
 
+  // 👈 Eliminado findByCaja, ahora todo va por filtrado
   @Get('caja/:cajaId')
   findByCaja(
     @Param('cajaId') cajaId: string,
-    @Query('page') page: string,
-    @Query('pageSize') pageSize: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+    @Query('mes') mes?: string,
+    @Query('anio') anio?: string,
+    @Query('tipo') tipo?: string,
+    @Query('metodoPago') metodoPago?: string,
+    @Query('manzano') manzano?: string,
+    @Query('numeroLote') numeroLote?: string,
   ) {
-    const pageNum = parseInt(page, 10) || 1;
-    const size = parseInt(pageSize, 10) || 10;
-    return this.movimientosService.findByCaja(+cajaId, pageNum, size);
+    return this.movimientosService.findByCajaFiltrado(
+      Number(cajaId),
+      Number(page ?? 1),
+      Number(pageSize ?? 10),
+      {
+        mes: mes ? Number(mes) : undefined,
+        anio: anio ? Number(anio) : undefined,
+        tipo: tipo as 'INGRESO' | 'EGRESO' | undefined,
+        metodoPago: metodoPago || undefined,
+        manzano: manzano || undefined,
+        numeroLote: numeroLote || undefined,
+      },
+    );
   }
 
   @Get('caja/:cajaId/totales')
@@ -47,5 +64,32 @@ export class MovimientosController {
   @Get('caja/:cajaId/resumen')
   getResumenCaja(@Param('cajaId') cajaId: string) {
     return this.movimientosService.getResumenCaja(+cajaId);
+  }
+
+  @Get('caja/:cajaId/filtrado')
+  findByCajaFiltrado(
+    @Param('cajaId') cajaId: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+    @Query('mes') mes?: string,
+    @Query('anio') anio?: string,
+    @Query('tipo') tipo?: string,
+    @Query('metodoPago') metodoPago?: string,
+    @Query('manzano') manzano?: string,
+    @Query('numeroLote') numeroLote?: string,
+  ) {
+    return this.movimientosService.findByCajaFiltrado(
+      Number(cajaId),
+      Number(page ?? 1),
+      Number(pageSize ?? 10),
+      {
+        mes: mes ? Number(mes) : undefined,
+        anio: anio ? Number(anio) : undefined,
+        tipo: tipo as 'INGRESO' | 'EGRESO' | undefined,
+        metodoPago: metodoPago || undefined,
+        manzano: manzano || undefined,
+        numeroLote: numeroLote || undefined,
+      },
+    );
   }
 }

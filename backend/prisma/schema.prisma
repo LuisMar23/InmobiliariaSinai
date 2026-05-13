@@ -141,7 +141,9 @@ model User {
   createdAt     DateTime  @default(now()) @map("created_at")
   estado        Boolean   @default(true)
   updatedAt     DateTime  @updatedAt @map("updated_at")
-  ciudadAsignada  String?
+  // ciudadAsignada  String?
+ciudadesAsignadas  String[]  @default([]) 
+
   failedAttempts       Int       @default(0) @map("failed_attempts")
   lockUntil            DateTime? @map("lock_until")
   resetPasswordToken   String?   @map("reset_password_token")
@@ -255,6 +257,7 @@ model Venta {
   ingresos  Ingreso[]
   planPago  PlanPago?
   recibos   Recibo[]
+    movimientosCaja MovimientoCaja[] 
 }
 
 model Reserva {
@@ -488,10 +491,11 @@ model MovimientoCaja {
   fecha       DateTime       @default(now())
   descripcion String?
   referencia  String?
+  ventaId     Int?           @map("venta_id") 
   metodoPago  MetodoPago     @default(EFECTIVO)
   caja        Caja           @relation(fields: [cajaId], references: [id])
   usuario     User           @relation(fields: [usuarioId], references: [id])
-
+  venta   Venta? @relation(fields: [ventaId], references: [id]) // 
   @@map("movimientos_caja")
 }
 
@@ -578,3 +582,6 @@ model Propiedad {
   visitas   Visita[]  @relation("VisitasPropiedad")
   encargado User?     @relation("PropiedadesEncargado", fields: [encargadoId], references: [id])
 }
+
+
+

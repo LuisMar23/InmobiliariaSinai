@@ -13,21 +13,21 @@ export class UsersService {
   constructor(private prisma: PrismaService) {}
 
   async create(dto: CreateUserDto) {
-    const passwordHash = await bcrypt.hash(dto.password, 10);
+  const passwordHash = await bcrypt.hash(dto.password, 10);
 
-    return this.prisma.user.create({
-      data: {
-        fullName: dto.fullName,
-        username: dto.username,
-        ci: dto.ci,
-        email: dto.email,
-        passwordHash,
-        avatarUrl: dto.avatarUrl,
-        ciudadAsignada: dto.ciudadAsignada?.trim().toLowerCase() || null,
-        telefono: dto.telefono,
-      },
-    });
-  }
+  return this.prisma.user.create({
+    data: {
+      fullName: dto.fullName,
+      username: dto.username,
+      ci: dto.ci,
+      email: dto.email,
+      passwordHash,
+      avatarUrl: dto.avatarUrl,
+      telefono: dto.telefono,
+      ciudadesAsignadas: dto.ciudadesAsignadas?.map(c => c.trim().toLowerCase()) ?? [],
+    },
+  });
+}
 
   findAll() {
     return this.prisma.user.findMany();
@@ -42,31 +42,30 @@ export class UsersService {
     return user;
   }
 
-  async update(id: number, dto: UpdateUserDto) {
-    const user = await this.findOne(id);
+async update(id: number, dto: UpdateUserDto) {
+  const user = await this.findOne(id);
 
-    let passwordHash = user.passwordHash;
-    if (dto.password) {
-      passwordHash = await bcrypt.hash(dto.password, 10);
-    }
-
-    return this.prisma.user.update({
-      where: { id },
-      data: {
-        fullName: dto.fullName ?? user.fullName,
-        username: dto.username ?? user.username,
-        ci: dto.ci ?? user.ci,
-        email: dto.email ?? user.email,
-        passwordHash,
-        avatarUrl: dto.avatarUrl ?? user.avatarUrl,
-        telefono: dto.telefono ?? user.telefono,
-        ciudadAsignada:
-          dto.ciudadAsignada !== undefined
-            ? dto.ciudadAsignada?.trim() || null
-            : user.ciudadAsignada,
-      },
-    });
+  let passwordHash = user.passwordHash;
+  if (dto.password) {
+    passwordHash = await bcrypt.hash(dto.password, 10);
   }
+
+  return this.prisma.user.update({
+    where: { id },
+    data: {
+      fullName: dto.fullName ?? user.fullName,
+      username: dto.username ?? user.username,
+      ci: dto.ci ?? user.ci,
+      email: dto.email ?? user.email,
+      passwordHash,
+      avatarUrl: dto.avatarUrl ?? user.avatarUrl,
+      telefono: dto.telefono ?? user.telefono,
+      ciudadesAsignadas: dto.ciudadesAsignadas !== undefined
+        ? dto.ciudadesAsignadas.map(c => c.trim().toLowerCase())
+        : user.ciudadesAsignadas,
+    },
+  });
+}
 
   async remove(id: number) {
     await this.findOne(id);
@@ -101,4 +100,12 @@ export class UsersService {
 
     return { message: 'Contraseña actualizada correctamente' };
   }
+async getCiudadesDisponibles(): Promise<string[]> {
+  const lotes = await this.prisma.lote.findMany({
+    select: { ciudad: true },
+    distinct: ['ciudad'],
+  });
+  return lotes.map(l => l.ciudad).sort();
+}
+
 }

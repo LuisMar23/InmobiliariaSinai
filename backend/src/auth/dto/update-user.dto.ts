@@ -4,6 +4,7 @@ import {
   IsEnum,
   IsOptional,
   IsBoolean,
+  IsArray,
 } from 'class-validator';
 import { UserRole } from './register.dto';
 
@@ -47,6 +48,8 @@ export class UpdateUserDto {
   @IsOptional()
   password?: string;
 
-  @IsOptional()
-  ciudadAsignada?: string;
+@IsOptional()
+@IsArray()
+@IsString({ each: true })
+ciudadesAsignadas?: string[];
 }

@@ -26,7 +26,7 @@ export class LoteController {
     private readonly prisma: PrismaService,
   ) {}
 
-  // ===== RUTAS PÚBLICAS (sin autenticación) =====
+  // ===== RUTAS PÚBLICAS =====
   @Get('publicos/todos')
   async findAllPublicos() {
     return this.loteService.findAllPublicos();
@@ -42,7 +42,7 @@ export class LoteController {
     return this.loteService.obtenerLotesConPromocion();
   }
 
-  // ===== RUTAS PROTEGIDAS (requieren autenticación) =====
+  // ===== RUTAS PROTEGIDAS =====
   @Post()
   @UseGuards(AuthGuard('jwt'))
   create(@Body() createLoteDto: CreateLoteDto, @Request() req) {
@@ -55,44 +55,49 @@ export class LoteController {
   async obtenerLotesConPromocion() {
     return this.loteService.obtenerLotesConPromocion();
   }
-@Get('ciudades')
-async getCiudades() {
-  const [ciudadesLotes, ciudadesUrbanizaciones] = await Promise.all([
-    this.prisma.lote.findMany({
-      distinct: ['ciudad'],
-      select: { ciudad: true },
-    }),
-    this.prisma.urbanizacion.findMany({
-      select: { ciudad: true, ubicacion: true },  // trae ambos
-    }),
-  ]);
 
-  const todasLasCiudades = [
-    ...ciudadesLotes.map(l => l.ciudad),
-    ...ciudadesUrbanizaciones.map(u => u.ciudad),
-    ...ciudadesUrbanizaciones.map(u => u.ubicacion),  // agrega ubicaciones también
-  ];
+  @Get('ciudades')
+  async getCiudades() {
+    const [ciudadesLotes, ciudadesUrbanizaciones] = await Promise.all([
+      this.prisma.lote.findMany({
+        distinct: ['ciudad'],
+        select: { ciudad: true },
+      }),
+      this.prisma.urbanizacion.findMany({
+        select: { ciudad: true, ubicacion: true },
+      }),
+    ]);
 
-  const ciudadesUnicas = [...new Map(
-    todasLasCiudades
-      .filter(c => c?.trim())  // elimina nulos o vacíos
-      .map(c => [c.trim().toLowerCase(), c.trim().toUpperCase()])
-  ).values()].sort();
+    const todasLasCiudades = [
+      ...ciudadesLotes.map((l) => l.ciudad),
+      ...ciudadesUrbanizaciones.map((u) => u.ciudad),
+      ...ciudadesUrbanizaciones.map((u) => u.ubicacion),
+    ];
 
-  return ciudadesUnicas;
-}
-@Get()
-findAll(
-  @Request() req,
-  @Query('urbanizacionId') urbanizacionId?: string,
-) {
-  return this.loteService.findAll(
-    urbanizacionId ? +urbanizacionId : undefined,
-    req.user.id,
-    req.user.role,
-    req.user.ciudadAsignada,
-  );
-}
+    const ciudadesUnicas = [
+      ...new Map(
+        todasLasCiudades
+          .filter((c) => c?.trim())
+          .map((c) => [c.trim().toLowerCase(), c.trim().toUpperCase()]),
+      ).values(),
+    ].sort();
+
+    return ciudadesUnicas;
+  }
+
+  @Get()
+  @UseGuards(AuthGuard('jwt'))
+  findAll(
+    @Request() req,
+    @Query('urbanizacionId') urbanizacionId?: string,
+  ) {
+    return this.loteService.findAll(
+      urbanizacionId ? +urbanizacionId : undefined,
+      req.user.id,
+      req.user.role,
+      req.user.ciudadesAsignadas ?? [], // 👈 array en lugar de string
+    );
+  }
 
   @Get('independientes/todos')
   @UseGuards(AuthGuard('jwt'))
@@ -119,6 +124,7 @@ findAll(
   }
 
   @Patch(':id')
+  @UseGuards(AuthGuard('jwt'))
   update(
     @Param('id') id: string,
     @Body() updateLoteDto: UpdateLoteDto,
@@ -141,13 +147,6 @@ findAll(
     @Body() body: { encargadoId: number },
     @Request() req,
   ) {
-    return this.loteService.asignarEncargado(
-      +id,
-      body.encargadoId,
-      req.user.id,
-    );
+    return this.loteService.asignarEncargado(+id, body.encargadoId, req.user.id);
   }
-
-  // lote.controller.ts
-
 }

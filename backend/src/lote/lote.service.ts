@@ -123,7 +123,12 @@ export class LoteService {
     });
   }
 
-async findAll(urbanizacionId?: number, usuarioId?: number, userRole?: string, ciudadAsignada?: string | null) {
+async findAll(
+  urbanizacionId?: number,
+  usuarioId?: number,
+  userRole?: string,
+  ciudadesAsignadas: string[] = [],
+) {
   const where: any = {};
 
   if (urbanizacionId) {
@@ -131,14 +136,15 @@ async findAll(urbanizacionId?: number, usuarioId?: number, userRole?: string, ci
   }
 
   if (userRole !== 'ADMINISTRADOR') {
-    if (userRole === 'SECRETARIA' && ciudadAsignada) {
-      // Secretaria ve todos los lotes de su ciudad
+    if (userRole === 'SECRETARIA' && ciudadesAsignadas.length > 0) {
+      // Secretaria ve todos los lotes de sus ciudades asignadas
+      const ciudadesLower = ciudadesAsignadas.map((c) => c.toLowerCase());
       where.AND = [
         {
           OR: [
-            { ciudad: { equals: ciudadAsignada.trim(), mode: 'insensitive' } },
-            { urbanizacion: { ciudad: { equals: ciudadAsignada.trim(), mode: 'insensitive' } } },
-            { urbanizacion: { ubicacion: { equals: ciudadAsignada.trim(), mode: 'insensitive' } } },
+            { ciudad: { in: ciudadesAsignadas, mode: 'insensitive' } },
+            { urbanizacion: { ciudad: { in: ciudadesAsignadas, mode: 'insensitive' } } },
+            { urbanizacion: { ubicacion: { in: ciudadesAsignadas, mode: 'insensitive' } } },
           ],
         },
       ];
@@ -197,9 +203,7 @@ async findAll(urbanizacionId?: number, usuarioId?: number, userRole?: string, ci
         },
       },
     },
-    orderBy: {
-      createdAt: 'desc',
-    },
+    orderBy: { createdAt: 'desc' },
   });
 
   const lotesConPrecioActual = lotes.map((lote) => {
@@ -227,6 +231,26 @@ async findAll(urbanizacionId?: number, usuarioId?: number, userRole?: string, ci
   };
 }
 
+async getAll(userId: number, userRole: string, ciudadesAsignadas: string[] = []) {
+  const where: any = {};
+
+  if (userRole !== 'ADMINISTRADOR') {
+    if (ciudadesAsignadas.length > 0) {
+      where.OR = [
+        { ciudad: { in: ciudadesAsignadas, mode: 'insensitive' } },
+        { urbanizacion: { ciudad: { in: ciudadesAsignadas, mode: 'insensitive' } } },
+      ];
+    } else {
+      where.encargadoId = userId;
+    }
+  }
+
+  return this.prisma.lote.findMany({
+    where,
+    include: { urbanizacion: true, encargado: true },
+    orderBy: { createdAt: 'desc' },
+  });
+}
   async findAllPublicos() {
     const lotes = await this.prisma.lote.findMany({
       include: {
@@ -941,15 +965,7 @@ async findAll(urbanizacionId?: number, usuarioId?: number, userRole?: string, ci
     });
   }
 // lote.service.ts
-async getAll(userId: number, userRole: string, userCiudad: string | null) {
-  return this.prisma.lote.findMany({
-    where: userRole !== 'ADMINISTRADOR' && userCiudad
-      ? { ciudad: userCiudad }
-      : {},
-    include: { urbanizacion: true, encargado: true },
-    orderBy: { createdAt: 'desc' },
-  });
-}
+
 
 
 }
