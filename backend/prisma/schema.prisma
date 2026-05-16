@@ -141,8 +141,7 @@ model User {
   createdAt     DateTime  @default(now()) @map("created_at")
   estado        Boolean   @default(true)
   updatedAt     DateTime  @updatedAt @map("updated_at")
-  // ciudadAsignada  String?
-ciudadesAsignadas  String[]  @default([]) 
+  ciudadesAsignadas  String[]  @default([]) 
 
   failedAttempts       Int       @default(0) @map("failed_attempts")
   lockUntil            DateTime? @map("lock_until")
@@ -257,7 +256,7 @@ model Venta {
   ingresos  Ingreso[]
   planPago  PlanPago?
   recibos   Recibo[]
-    movimientosCaja MovimientoCaja[] 
+  movimientosCaja MovimientoCaja[] 
 }
 
 model Reserva {
@@ -386,9 +385,26 @@ model PlanPago {
 
   venta   Venta          @relation(fields: [ventaId], references: [id], onDelete: Cascade)
   pagos   PagoPlanPago[]
+  cuotas  Cuota[]
   recibos Recibo[]
 
   @@map("planes_pago")
+}
+
+model Cuota {
+  id_cuota     Int           @id @default(autoincrement())
+  uuid         String        @unique @default(uuid())
+  plan_pago_id Int
+  numero       Int
+  fecha        DateTime
+  monto        Decimal       @db.Decimal(12, 2)
+  estado       EstadoCuota   @default(PENDIENTE)
+  creado_en    DateTime      @default(now())
+
+  planPago     PlanPago      @relation(fields: [plan_pago_id], references: [id_plan_pago], onDelete: Cascade)
+  pagoCuotas   PagoCuota[]
+
+  @@map("cuotas")
 }
 
 model PagoPlanPago {
@@ -399,11 +415,25 @@ model PagoPlanPago {
   fecha_pago   DateTime @default(now())
   observacion  String?
   creado_en    DateTime @default(now())
+  metodoPago   MetodoPago?
 
   planPago   PlanPago    @relation(fields: [plan_pago_id], references: [id_plan_pago], onDelete: Cascade)
-  metodoPago MetodoPago?
+  pagoCuotas PagoCuota[]
 
   @@map("pagos_plan_pago")
+}
+
+model PagoCuota {
+  id_pago_cuota Int           @id @default(autoincrement())
+  pago_id       Int
+  cuota_id      Int
+  monto_aplicado Decimal       @db.Decimal(12, 2)
+
+  pago  PagoPlanPago @relation(fields: [pago_id], references: [id_pago_plan], onDelete: Cascade)
+  cuota Cuota        @relation(fields: [cuota_id], references: [id_cuota], onDelete: Cascade)
+
+  @@unique([pago_id, cuota_id])
+  @@map("pagos_cuotas")
 }
 
 model CategoriaContable {
@@ -587,6 +617,3 @@ model Propiedad {
   visitas   Visita[]  @relation("VisitasPropiedad")
   encargado User?     @relation("PropiedadesEncargado", fields: [encargadoId], references: [id])
 }
-
-
-

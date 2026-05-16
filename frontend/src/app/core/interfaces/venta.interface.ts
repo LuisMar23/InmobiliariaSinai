@@ -1,3 +1,14 @@
+export interface Cuota {
+  id_cuota: number;
+  uuid?: string;
+  plan_pago_id: number;
+  numero: number;
+  fecha: string;
+  monto: number;
+  estado: 'PENDIENTE' | 'PAGADA' | 'VENCIDA';
+  creado_en?: string;
+}
+
 export interface VentaDto {
   id: number;
   uuid?: string;
@@ -62,6 +73,7 @@ export interface VentaDto {
     creado_en?: string;
     actualizado_en?: string;
     pagos: PagoPlanPago[];
+    cuotas?: Cuota[];
     saldo_pendiente?: number;
     total_pagado?: number;
     porcentaje_pagado?: number;

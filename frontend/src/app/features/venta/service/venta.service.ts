@@ -366,6 +366,21 @@ export class VentaService {
     );
   }
 
+  obtenerCronograma(ventaId: number): Observable<any> {
+    return this.http.get<ApiResponse<any>>(`${this.apiUrl}/${ventaId}/cronograma`).pipe(
+      map((response) => {
+        if (!response.success) {
+          throw new Error(response.message || 'Error al cargar cronograma');
+        }
+        return response;
+      }),
+      catchError((error) => {
+        console.error('Error loading payment schedule:', error);
+        return throwError(() => error);
+      }),
+    );
+  }
+
   private parseVenta(venta: any): VentaDto {
     return {
       ...venta,
@@ -426,6 +441,15 @@ export class VentaService {
                   id_pago_plan: Number(pago.id_pago_plan),
                   plan_pago_id: Number(pago.plan_pago_id),
                   monto: Number(pago.monto || 0),
+                }))
+              : [],
+            cuotas: venta.planPago.cuotas
+              ? venta.planPago.cuotas.map((cuota: any) => ({
+                  ...cuota,
+                  id_cuota: Number(cuota.id_cuota),
+                  plan_pago_id: Number(cuota.plan_pago_id),
+                  numero: Number(cuota.numero),
+                  monto: Number(cuota.monto),
                 }))
               : [],
             saldo_pendiente: Number(venta.planPago.saldo_pendiente || 0),

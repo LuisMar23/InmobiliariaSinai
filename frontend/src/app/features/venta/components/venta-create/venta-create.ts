@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit, ViewChild } from '@angular/core';
+import { Component, inject, signal, OnInit, ViewChild, computed, effect } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
@@ -15,7 +15,7 @@ import {
   ModalConfig,
   SeleccionModalComponent,
 } from '../../../../components/seleccion-modal/seleccion-modal';
-import { VentaDto } from '../../../../core/interfaces/venta.interface';
+import { VentaDto, Cuota } from '../../../../core/interfaces/venta.interface';
 import { AnticipoPdfService } from '../../../../core/services/pdf-anticipo.service';
 
 @Component({
@@ -47,6 +47,8 @@ export class VentaCreate implements OnInit {
 
   inmuebleTipoSeleccionado = signal<string>('LOTE');
 
+  cronogramaEstimado = signal<Cuota[]>([]);
+
   authService = inject(AuthService);
   router = inject(Router);
   private fb = inject(FormBuilder);
@@ -59,6 +61,9 @@ export class VentaCreate implements OnInit {
   constructor() {
     this.ventaForm = this.crearFormularioVenta();
     this.planPagoForm = this.crearPlanPagoForm();
+    effect(() => {
+      this.calcularCronogramaEstimado();
+    });
   }
 
   ngOnInit(): void {
@@ -84,7 +89,6 @@ export class VentaCreate implements OnInit {
   crearPlanPagoForm(): FormGroup {
     const hoy = new Date();
     const fechaHoy = hoy.toISOString().split('T')[0];
-
     return this.fb.group({
       monto_inicial: [0, [Validators.required, Validators.min(0)]],
       plazo: ['', [Validators.required, Validators.min(1)]],
@@ -97,7 +101,6 @@ export class VentaCreate implements OnInit {
     this.ventaForm.get('precioFinal')?.valueChanges.subscribe(() => {
       this.onPrecioFinalChange();
     });
-
     this.planPagoForm.get('fecha_inicio')?.valueChanges.subscribe(() => {
       this.calcularFechaVencimiento();
     });
@@ -107,52 +110,105 @@ export class VentaCreate implements OnInit {
     this.planPagoForm.get('plazo')?.valueChanges.subscribe(() => {
       this.calcularFechaVencimiento();
     });
-
     this.planPagoForm.get('periodicidad')?.valueChanges.subscribe(() => {
       this.calcularFechaVencimiento();
     });
-
     this.ventaForm.get('inmuebleTipo')?.valueChanges.subscribe((tipo) => {
       this.inmuebleTipoSeleccionado.set(tipo);
       this.ventaForm.patchValue({ inmuebleId: '', precioFinal: 0 });
       this.searchLote.set('');
       this.searchPropiedad.set('');
     });
+    this.planPagoForm.valueChanges.subscribe(() => {
+      this.calcularCronogramaEstimado();
+    });
+    this.ventaForm.get('precioFinal')?.valueChanges.subscribe(() => {
+      this.calcularCronogramaEstimado();
+    });
   }
+
+  calcularCronogramaEstimado(): void {
+    const precioFinal = this.ventaForm.get('precioFinal')?.value || 0;
+    const montoInicial = this.planPagoForm.get('monto_inicial')?.value || 0;
+    const plazo = this.planPagoForm.get('plazo')?.value;
+    const periodicidad = this.planPagoForm.get('periodicidad')?.value;
+    const fechaInicioStr = this.planPagoForm.get('fecha_inicio')?.value;
+    const estado = this.ventaForm.get('estado')?.value;
+
+    if (estado === 'PAGADO' || !plazo || !periodicidad || !fechaInicioStr || montoInicial >= precioFinal) {
+      this.cronogramaEstimado.set([]);
+      return;
+    }
+
+    const saldoRestante = precioFinal - montoInicial;
+    const montoPorCuota = saldoRestante / plazo;
+    const [anio, mes, dia] = fechaInicioStr.split('-').map(Number);
+    let fechaBase = new Date(anio, mes - 1, dia);
+    const cuotas: Cuota[] = [];
+    let sumaMontos = 0;
+
+    for (let i = 1; i <= plazo; i++) {
+      let fechaCuota = new Date(fechaBase);
+      switch (periodicidad) {
+        case 'DIAS':
+          fechaCuota.setDate(fechaBase.getDate() + i);
+          break;
+        case 'SEMANAS':
+          fechaCuota.setDate(fechaBase.getDate() + i * 7);
+          break;
+        case 'MESES':
+          fechaCuota.setMonth(fechaBase.getMonth() + i);
+          break;
+        default:
+          fechaCuota.setDate(fechaBase.getDate() + i);
+      }
+      let monto = montoPorCuota;
+      if (i === plazo) {
+        monto = saldoRestante - sumaMontos;
+      }
+      const y = fechaCuota.getFullYear();
+      const m = String(fechaCuota.getMonth() + 1).padStart(2, '0');
+      const d = String(fechaCuota.getDate()).padStart(2, '0');
+      cuotas.push({
+        id_cuota: 0,
+        plan_pago_id: 0,
+        numero: i,
+        fecha: `${y}-${m}-${d}`,
+        monto: Number(monto.toFixed(2)),
+        estado: 'PENDIENTE',
+      });
+      sumaMontos += monto;
+    }
+    this.cronogramaEstimado.set(cuotas);
+  }
+
   onEstadoChange(estado: string): void {
     const precioFinal = this.ventaForm.get('precioFinal')?.value || 0;
-
     if (estado === 'PAGADO') {
-      // Si está pagado, el monto inicial = precio final (pago completo)
       this.planPagoForm.patchValue({
         monto_inicial: precioFinal,
         plazo: 1,
         periodicidad: 'DIAS',
       });
-
-      // Deshabilitar los campos de plan de pago
       this.planPagoForm.get('monto_inicial')?.disable();
       this.planPagoForm.get('plazo')?.disable();
       this.planPagoForm.get('periodicidad')?.disable();
+      this.cronogramaEstimado.set([]);
     } else {
-      // Si no está pagado, habilitar los campos
       this.planPagoForm.get('monto_inicial')?.enable();
       this.planPagoForm.get('plazo')?.enable();
       this.planPagoForm.get('periodicidad')?.enable();
-
-      // Resetear el monto inicial a 0 o mantener el valor actual
       if (this.planPagoForm.get('monto_inicial')?.value === precioFinal) {
-        this.planPagoForm.patchValue({
-          monto_inicial: 0,
-        });
+        this.planPagoForm.patchValue({ monto_inicial: 0 });
       }
+      this.calcularCronogramaEstimado();
     }
   }
+
   cargarClientes(): void {
     this.authService.getClientes().subscribe({
       next: (response: any) => {
         let clientes: any[] = [];
-
         if (response.data && Array.isArray(response.data.clientes)) {
           clientes = response.data.clientes;
         } else if (response.data && Array.isArray(response.data)) {
@@ -162,7 +218,6 @@ export class VentaCreate implements OnInit {
         } else if (response.success && response.data) {
           clientes = response.data.clientes || response.data.users || response.data || [];
         }
-
         this.clientes.set(clientes);
       },
       error: (err: any) => {
@@ -173,32 +228,17 @@ export class VentaCreate implements OnInit {
 
   cargarLotes(): void {
     const currentUser = this.authService.getCurrentUser();
-
-    console.log('currentUser lotes:', currentUser);
-    console.log('rol exacto:', currentUser?.rol);
-
     const rolesFullAccess = ['ADMINISTRADOR', 'SECRETARIA'];
-
     this.loteSvc.getAll().subscribe({
       next: (lotes: LoteDto[]) => {
-        console.log('lotes recibidos:', lotes);
-
         const lotesDisponibles = lotes.filter(
           (lote) => lote.estado === 'DISPONIBLE' || lote.estado === 'CON_OFERTA',
         );
-
-        console.log('incluye rol?:', rolesFullAccess.includes(currentUser?.rol));
-
         if (rolesFullAccess.includes(currentUser?.role)) {
           this.lotes.set(lotesDisponibles);
           return;
         }
-
-        const lotesFiltrados = lotesDisponibles.filter((lote) => {
-          console.log(`encargadoId: ${lote.encargadoId} === userId: ${currentUser?.id}`);
-          return lote.encargadoId?.toString() === currentUser?.id?.toString();
-        });
-
+        const lotesFiltrados = lotesDisponibles.filter((lote) => lote.encargadoId?.toString() === currentUser?.id?.toString());
         this.lotes.set(lotesFiltrados);
       },
       error: (err: any) => {
@@ -206,9 +246,9 @@ export class VentaCreate implements OnInit {
       },
     });
   }
+
   cargarPropiedades(): void {
     const currentUser = this.authService.getCurrentUser();
-
     this.propiedadSvc.getAll().subscribe({
       next: (propiedades: PropiedadDto[]) => {
         const propiedadesParaVenta = propiedades.filter(
@@ -218,7 +258,6 @@ export class VentaCreate implements OnInit {
             (propiedad.estado === 'DISPONIBLE' || propiedad.estado === 'CON_OFERTA') &&
             propiedad.encargadoId === currentUser?.id,
         );
-
         this.propiedades.set(propiedadesParaVenta);
       },
       error: (err: any) => {
@@ -241,7 +280,6 @@ export class VentaCreate implements OnInit {
   filteredClientes() {
     const search = this.searchCliente().toLowerCase();
     if (!search) return this.clientes();
-
     return this.clientes().filter(
       (cliente) =>
         cliente.fullName?.toLowerCase().includes(search) ||
@@ -253,7 +291,6 @@ export class VentaCreate implements OnInit {
   filteredLotes() {
     const search = this.searchLote().toLowerCase();
     if (!search) return this.lotes();
-
     return this.lotes().filter(
       (lote) =>
         lote.numeroLote?.toLowerCase().includes(search) ||
@@ -265,7 +302,6 @@ export class VentaCreate implements OnInit {
   filteredPropiedades() {
     const search = this.searchPropiedad().toLowerCase();
     if (!search) return this.propiedades();
-
     return this.propiedades().filter(
       (propiedad) =>
         propiedad.nombre?.toLowerCase().includes(search) ||
@@ -279,7 +315,6 @@ export class VentaCreate implements OnInit {
   filteredCajas() {
     const search = this.searchCaja().toLowerCase();
     if (!search) return this.cajas();
-
     return this.cajas().filter(
       (caja) =>
         caja.nombre?.toLowerCase().includes(search) ||
@@ -288,9 +323,7 @@ export class VentaCreate implements OnInit {
   }
 
   selectCliente(cliente: UserDto) {
-    this.ventaForm.patchValue({
-      clienteId: cliente.id.toString(),
-    });
+    this.ventaForm.patchValue({ clienteId: cliente.id.toString() });
     this.searchCliente.set(cliente.fullName || '');
     this.showClientesDropdown.set(false);
   }
@@ -314,29 +347,21 @@ export class VentaCreate implements OnInit {
   }
 
   selectCaja(caja: Caja) {
-    this.ventaForm.patchValue({
-      cajaId: caja.id.toString(),
-    });
+    this.ventaForm.patchValue({ cajaId: caja.id.toString() });
     this.searchCaja.set(this.getCajaDisplayText(caja));
     this.showCajasDropdown.set(false);
   }
 
   getLoteDisplayText(lote: LoteDto): string {
-    return `${lote.numeroLote} - ${lote.urbanizacion?.nombre} - $${this.formatNumber(
-      lote.precioBase,
-    )}`;
+    return `${lote.numeroLote} - ${lote.urbanizacion?.nombre} - $${this.formatNumber(lote.precioBase)}`;
   }
 
   getPropiedadDisplayText(propiedad: PropiedadDto): string {
-    return `${propiedad.nombre} - ${propiedad.tipo} - ${propiedad.ubicacion} - $${this.formatNumber(
-      propiedad.precio,
-    )}`;
+    return `${propiedad.nombre} - ${propiedad.tipo} - ${propiedad.ubicacion} - $${this.formatNumber(propiedad.precio)}`;
   }
 
   getCajaDisplayText(caja: Caja): string {
-    return `${caja.nombre} - ${caja.usuarioApertura?.fullName} - $${this.formatNumber(
-      caja.saldoActual,
-    )}`;
+    return `${caja.nombre} - ${caja.usuarioApertura?.fullName} - $${this.formatNumber(caja.saldoActual)}`;
   }
 
   formatNumber(value: number): string {
@@ -407,52 +432,46 @@ export class VentaCreate implements OnInit {
     const precioFinal = this.ventaForm.get('precioFinal')?.value || 0;
     const montoInicial = this.planPagoForm.get('monto_inicial')?.value || 0;
     const estado = this.ventaForm.get('estado')?.value;
-
     if (estado === 'PAGADO') {
-      this.planPagoForm.patchValue({
-        monto_inicial: precioFinal,
-      });
+      this.planPagoForm.patchValue({ monto_inicial: precioFinal });
     } else if (montoInicial > precioFinal) {
       this.planPagoForm.get('monto_inicial')?.setValue(precioFinal);
     }
   }
 
-calcularFechaVencimiento(): void {
-  const fechaInicio = this.planPagoForm.get('fecha_inicio')?.value;
-  const plazo = this.planPagoForm.get('plazo')?.value;
-  const periodicidad = this.planPagoForm.get('periodicidad')?.value;
-
-  if (fechaInicio && plazo && periodicidad) {
-    // Parsear manualmente para evitar conversión UTC→local
-    const [anio, mes, dia] = fechaInicio.split('-').map(Number);
-    const fecha = new Date(anio, mes - 1, dia); // mes es 0-indexed
-
-    switch (periodicidad) {
-      case 'DIAS':
-        fecha.setDate(fecha.getDate() + Number(plazo));
-        break;
-      case 'SEMANAS':
-        fecha.setDate(fecha.getDate() + Number(plazo) * 7);
-        break;
-      case 'MESES':
-        fecha.setMonth(fecha.getMonth() + Number(plazo));
-        break;
+  calcularFechaVencimiento(): void {
+    const fechaInicio = this.planPagoForm.get('fecha_inicio')?.value;
+    const plazo = this.planPagoForm.get('plazo')?.value;
+    const periodicidad = this.planPagoForm.get('periodicidad')?.value;
+    if (fechaInicio && plazo && periodicidad) {
+      const [anio, mes, dia] = fechaInicio.split('-').map(Number);
+      const fecha = new Date(anio, mes - 1, dia);
+      switch (periodicidad) {
+        case 'DIAS':
+          fecha.setDate(fecha.getDate() + Number(plazo));
+          break;
+        case 'SEMANAS':
+          fecha.setDate(fecha.getDate() + Number(plazo) * 7);
+          break;
+        case 'MESES':
+          fecha.setMonth(fecha.getMonth() + Number(plazo));
+          break;
+      }
+      const y = fecha.getFullYear();
+      const m = String(fecha.getMonth() + 1).padStart(2, '0');
+      const d = String(fecha.getDate()).padStart(2, '0');
+      this.fechaVencimientoCalculada.set(`${y}-${m}-${d}`);
+    } else {
+      this.fechaVencimientoCalculada.set('');
     }
-
-    // Formatear manualmente también para evitar el mismo problema al revés
-    const y = fecha.getFullYear();
-    const m = String(fecha.getMonth() + 1).padStart(2, '0');
-    const d = String(fecha.getDate()).padStart(2, '0');
-    this.fechaVencimientoCalculada.set(`${y}-${m}-${d}`);
-  } else {
-    this.fechaVencimientoCalculada.set('');
   }
-}
-formatearFecha(fecha: string): string {
-  if (!fecha) return '';
-  const [anio, mes, dia] = fecha.split('-');
-  return `${dia}/${mes}/${anio}`;
-}
+
+  formatearFecha(fecha: string): string {
+    if (!fecha) return '';
+    const [anio, mes, dia] = fecha.split('-');
+    return `${dia}/${mes}/${anio}`;
+  }
+
   getMontoMaximoInicial(): number {
     return this.ventaForm.get('precioFinal')?.value || 0;
   }
@@ -477,9 +496,7 @@ formatearFecha(fecha: string): string {
     }
     if (this.planPagoForm.invalid) {
       this.planPagoForm.markAllAsTouched();
-      this.notificationService.showError(
-        'Complete todos los campos del plan de pago correctamente.',
-      );
+      this.notificationService.showError('Complete todos los campos del plan de pago correctamente.');
       if (estado === 'PAGADO') {
         this.planPagoForm.get('monto_inicial')?.disable();
         this.planPagoForm.get('plazo')?.disable();
@@ -515,13 +532,7 @@ formatearFecha(fecha: string): string {
         fecha_inicio: this.planPagoForm.getRawValue().fecha_inicio,
       },
     };
-    if (inmuebleTipo === 'LOTE') {
-      ventaData.loteId = Number(inmuebleId);
-      ventaData.propiedadId = null;
-    } else if (inmuebleTipo === 'PROPIEDAD') {
-      ventaData.propiedadId = Number(inmuebleId);
-      ventaData.loteId = null;
-    }
+
     this.ventaSvc.create(ventaData).subscribe({
       next: (response: any) => {
         this.enviando.set(false);
@@ -529,7 +540,6 @@ formatearFecha(fecha: string): string {
           this.notificationService.showSuccess('Venta creada exitosamente!');
           if (response.data) {
             this.ventaCreada.set(response.data);
-            // CORRECCIÓN: Solo mostrar modal de PDF si es un LOTE
             if (inmuebleTipo === 'LOTE') {
               this.mostrarModalPdf.set(true);
             } else {
@@ -583,18 +593,22 @@ formatearFecha(fecha: string): string {
   getPeriodicidadTexto(): string {
     const periodicidad = this.planPagoForm.get('periodicidad')?.value;
     switch (periodicidad) {
-      case 'DIAS':
-        return 'días';
-      case 'SEMANAS':
-        return 'semanas';
-      case 'MESES':
-        return 'meses';
-      default:
-        return '';
+      case 'DIAS': return 'días';
+      case 'SEMANAS': return 'semanas';
+      case 'MESES': return 'meses';
+      default: return '';
     }
   }
 
-  // Agregar en el componente
+  getEstadoCuotaClass(estado: string): string {
+    const classes: { [key: string]: string } = {
+      PENDIENTE: 'bg-yellow-100 text-yellow-700',
+      PAGADA: 'bg-green-100 text-green-700',
+      VENCIDA: 'bg-red-100 text-red-700',
+    };
+    return classes[estado] || classes['PENDIENTE'];
+  }
+
   clienteModalConfig: ModalConfig = {
     title: 'Seleccionar Cliente',
     searchPlaceholder: 'Buscar por nombre, CI',
@@ -610,13 +624,9 @@ formatearFecha(fecha: string): string {
     searchPlaceholder: 'Buscar por número, urbanización...',
     searchKeys: ['numeroLote'],
     columns: [
-{ 
-  key: 'urbanizacion', 
-  label: 'Urbanización', 
-  format: (v) => v?.nombre ?? 'Sin urbanización'
-},
+      { key: 'urbanizacion', label: 'Urbanización', format: (v) => v?.nombre ?? 'Sin urbanización' },
       { key: 'numeroLote', label: 'N° Lote' },
-        { key: 'manzano', label: 'Manzano' },
+      { key: 'manzano', label: 'Manzano' },
       { key: 'estado', label: 'Estado' },
       { key: 'precioBase', label: 'Precio (Bs.)', format: (v) => v?.toLocaleString('es-BO') },
     ],
@@ -634,7 +644,6 @@ formatearFecha(fecha: string): string {
     ],
   };
 
-  // Referencias a los modales
   @ViewChild('clienteModal') clienteModal!: SeleccionModalComponent;
   @ViewChild('loteModal') loteModal!: SeleccionModalComponent;
   @ViewChild('propiedadModal') propiedadModal!: SeleccionModalComponent;
