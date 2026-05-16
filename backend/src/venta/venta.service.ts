@@ -103,40 +103,32 @@ export class VentasService {
     pagoData: any,
     venta: any,
     usuarioId: number,
+    prismaClient: any, // ← agregar este parámetro
     ip?: string,
     userAgent?: string,
   ) {
-    return this.prisma.$transaction(async (prisma) => {
-      const caja = await this.verificarCajaActiva(cajaId, prisma);
-      const movimiento = await prisma.movimientoCaja.create({
-        data: {
-          cajaId: cajaId,
-          usuarioId,
-          tipo: 'INGRESO',
-          monto: pagoData.monto,
-          descripcion: `Pago de venta #${venta.id} - Cliente ID: ${venta.clienteId}`,
-          metodoPago: pagoData.metodoPago || 'EFECTIVO',
-          referencia: `Venta-${venta.id}-Pago-${pagoData.pagoId || 'Inicial'}`,
-        },
-      });
+    const caja = await this.verificarCajaActiva(cajaId, prismaClient);
 
-      const nuevoSaldo = Number(caja.saldoActual) + Number(pagoData.monto);
-      await prisma.caja.update({
-        where: { id: cajaId },
-        data: { saldoActual: nuevoSaldo },
-      });
-
-      await this.crearAuditoria(
+    const movimiento = await prismaClient.movimientoCaja.create({
+      data: {
+        cajaId,
         usuarioId,
-        'CREAR_MOVIMIENTO_CAJA',
-        'MovimientoCaja',
-        movimiento.id,
-        ip,
-        userAgent,
-      );
-
-      return movimiento;
+        tipo: 'INGRESO',
+        monto: pagoData.monto,
+        descripcion: `Pago de venta #${venta.id} - Cliente ID: ${venta.clienteId}`,
+        metodoPago: pagoData.metodoPago || 'EFECTIVO',
+        referencia: `Venta-${venta.id}-Pago-${pagoData.pagoId || 'Inicial'}`,
+        ventaId: venta.id, // ← ahora sí funciona
+      },
     });
+
+    const nuevoSaldo = Number(caja.saldoActual) + Number(pagoData.monto);
+    await prismaClient.caja.update({
+      where: { id: cajaId },
+      data: { saldoActual: nuevoSaldo },
+    });
+
+    return movimiento;
   }
 
   private async revertirMovimientoCaja(
@@ -144,40 +136,32 @@ export class VentasService {
     pagoData: any,
     venta: any,
     usuarioId: number,
+    prismaClient: any, // ← agregar
     ip?: string,
     userAgent?: string,
   ) {
-    return this.prisma.$transaction(async (prisma) => {
-      const caja = await this.verificarCajaActiva(cajaId, prisma);
-      const movimiento = await prisma.movimientoCaja.create({
-        data: {
-          cajaId: cajaId,
-          usuarioId,
-          tipo: 'EGRESO',
-          monto: pagoData.monto,
-          descripcion: `Reversión de pago - Venta #${venta.id} - Pago ID: ${pagoData.pagoId}`,
-          metodoPago: pagoData.metodoPago || 'EFECTIVO',
-          referencia: `Venta-${venta.id}-Reversion-${pagoData.pagoId}`,
-        },
-      });
+    const caja = await this.verificarCajaActiva(cajaId, prismaClient);
 
-      const nuevoSaldo = Number(caja.saldoActual) - Number(pagoData.monto);
-      await prisma.caja.update({
-        where: { id: cajaId },
-        data: { saldoActual: nuevoSaldo },
-      });
-
-      await this.crearAuditoria(
+    const movimiento = await prismaClient.movimientoCaja.create({
+      data: {
+        cajaId,
         usuarioId,
-        'REVERTIR_MOVIMIENTO_CAJA',
-        'MovimientoCaja',
-        movimiento.id,
-        ip,
-        userAgent,
-      );
-
-      return movimiento;
+        tipo: 'EGRESO',
+        monto: pagoData.monto,
+        descripcion: `Reversión de pago - Venta #${venta.id} - Pago ID: ${pagoData.pagoId}`,
+        metodoPago: pagoData.metodoPago || 'EFECTIVO',
+        referencia: `Venta-${venta.id}-Reversion-${pagoData.pagoId}`,
+        ventaId: venta.id, // ← agregar
+      },
     });
+
+    const nuevoSaldo = Number(caja.saldoActual) - Number(pagoData.monto);
+    await prismaClient.caja.update({
+      where: { id: cajaId },
+      data: { saldoActual: nuevoSaldo },
+    });
+
+    return movimiento;
   }
 
   private agregarCalculosVenta(venta: any) {
@@ -220,14 +204,16 @@ export class VentasService {
     return venta;
   }
 
-private async verificarPermisosUsuario(usuarioId: number, prisma: any) {
-  const usuario = await prisma.user.findUnique({ where: { id: usuarioId } });
-  if (!usuario) throw new ForbiddenException('Usuario no encontrado');
-  if (usuario.role !== 'ADMINISTRADOR') {
-    throw new ForbiddenException('Solo los administradores pueden realizar esta acción');
+  private async verificarPermisosUsuario(usuarioId: number, prisma: any) {
+    const usuario = await prisma.user.findUnique({ where: { id: usuarioId } });
+    if (!usuario) throw new ForbiddenException('Usuario no encontrado');
+    if (usuario.role !== 'ADMINISTRADOR') {
+      throw new ForbiddenException(
+        'Solo los administradores pueden realizar esta acción',
+      );
+    }
+    return usuario;
   }
-  return usuario;
-}
 
   async create(
     createVentaDto: CreateVentaDto,
@@ -364,6 +350,7 @@ private async verificarPermisosUsuario(usuarioId: number, prisma: any) {
             },
             venta,
             asesorId,
+            prisma,
             ip,
             userAgent,
           );
@@ -471,9 +458,9 @@ private async verificarPermisosUsuario(usuarioId: number, prisma: any) {
 
       // ASESOR solo ve sus propias ventas
       // ADMINISTRADOR y SECRETARIA ven todas
-    if (usuarioRole === 'ASESOR') {
-    throw new ForbiddenException('No tienes permisos para ver ventas');
-  }
+      if (usuarioRole === 'ASESOR') {
+        throw new ForbiddenException('No tienes permisos para ver ventas');
+      }
 
       const [ventas, total] = await Promise.all([
         this.prisma.venta.findMany({
@@ -785,6 +772,7 @@ private async verificarPermisosUsuario(usuarioId: number, prisma: any) {
               },
               venta,
               usuarioId,
+              prisma,
               ip,
               userAgent,
             );
@@ -808,6 +796,7 @@ private async verificarPermisosUsuario(usuarioId: number, prisma: any) {
               },
               venta,
               usuarioId,
+              prisma,
               ip,
               userAgent,
             );
@@ -838,6 +827,7 @@ private async verificarPermisosUsuario(usuarioId: number, prisma: any) {
               },
               venta,
               usuarioId,
+              prisma,
               ip,
               userAgent,
             );
@@ -919,10 +909,10 @@ private async verificarPermisosUsuario(usuarioId: number, prisma: any) {
             'Solo puedes eliminar tus propias ventas',
           );
 
-        if (venta.archivos.length > 0 || venta.ingresos.length > 0)
-          throw new BadRequestException(
-            'No se puede eliminar la venta porque tiene archivos o ingresos asociados',
-          );
+        // if (venta.archivos.length > 0 || venta.ingresos.length > 0)
+        //   throw new BadRequestException(
+        //     'No se puede eliminar la venta porque tiene archivos o ingresos asociados',
+        //   );
 
         if (!venta.cajaId) {
           throw new BadRequestException('La venta no tiene una caja asociada');
@@ -938,6 +928,7 @@ private async verificarPermisosUsuario(usuarioId: number, prisma: any) {
               { monto: totalPagado, pagoId: 0 },
               venta,
               usuarioId,
+              prisma,
               ip,
               userAgent,
             );
@@ -950,6 +941,25 @@ private async verificarPermisosUsuario(usuarioId: number, prisma: any) {
           });
         }
 
+        // ── Eliminar todos los movimientos de caja vinculados a esta venta ──
+        await prisma.movimientoCaja.deleteMany({
+          where: { ventaId: id },
+        });
+
+        // ── Eliminar ingresos vinculados ──
+        await prisma.ingreso.deleteMany({
+          where: { ventaId: id },
+        });
+
+        // ── Eliminar recibos vinculados ──
+        await prisma.recibo.deleteMany({
+          where: { ventaId: id },
+        });
+
+        // ── Eliminar archivos vinculados ──
+        await prisma.archivo.deleteMany({
+          where: { ventaId: id },
+        });
         if (venta.inmuebleTipo === TipoInmueble.LOTE && venta.loteId) {
           await prisma.lote.update({
             where: { id: venta.loteId },
@@ -998,14 +1008,16 @@ private async verificarPermisosUsuario(usuarioId: number, prisma: any) {
   ) {
     try {
       return await this.prisma.$transaction(async (prisma) => {
-        // 👈 Validación propia en lugar de verificarPermisosUsuario
+     
         const usuario = await prisma.user.findUnique({
           where: { id: usuarioId },
         });
         if (!usuario) throw new ForbiddenException('Usuario no encontrado');
-    if (!['ADMINISTRADOR', 'SECRETARIA'].includes(usuario.role)) {
-  throw new ForbiddenException('No tienes permisos para registrar pagos');
-}
+        if (!['ADMINISTRADOR', 'SECRETARIA'].includes(usuario.role)) {
+          throw new ForbiddenException(
+            'No tienes permisos para registrar pagos',
+          );
+        }
 
         const planPago = await prisma.planPago.findUnique({
           where: { id_plan_pago: registrarPagoDto.plan_pago_id },
@@ -1101,6 +1113,7 @@ private async verificarPermisosUsuario(usuarioId: number, prisma: any) {
           },
           planPago.venta,
           usuarioId,
+          prisma,
           ip,
           userAgent,
         );
@@ -1281,6 +1294,7 @@ private async verificarPermisosUsuario(usuarioId: number, prisma: any) {
             { monto: montoAnterior, pagoId: pagoId },
             pagoExistente.planPago.venta,
             usuarioId,
+            prisma,
             ip,
             userAgent,
           );
@@ -1311,6 +1325,7 @@ private async verificarPermisosUsuario(usuarioId: number, prisma: any) {
             },
             pagoExistente.planPago.venta,
             usuarioId,
+            prisma,
             ip,
             userAgent,
           );
@@ -1395,6 +1410,7 @@ private async verificarPermisosUsuario(usuarioId: number, prisma: any) {
           { monto: pago.monto, pagoId: pagoId },
           pago.planPago.venta,
           usuarioId,
+          prisma,
           ip,
           userAgent,
         );

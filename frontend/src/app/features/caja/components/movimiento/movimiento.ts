@@ -2,7 +2,7 @@ import { Component, inject, signal, input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { NotificationService } from '../../../../core/services/notification.service';
-import { MovimientoService } from '../../service/movimiento.service';
+import { MovimientoService } from '../../../movimientos/service/movimiento.service';
 
 @Component({
   selector: 'app-movimiento-modal',

@@ -785,4 +785,267 @@ export class AuthService {
     ]);
     return { accessToken, refreshToken };
   }
+
+async getClientesWithDetails() {
+    try {
+      const clientes = await this.prisma.user.findMany({
+        where: { 
+          isActive: true, 
+          role: UserRole.CLIENTE 
+        },
+        select: {
+          id: true,
+          uuid: true,
+          fullName: true,
+          ci: true,
+          telefono: true,
+          direccion: true,
+          observaciones: true,
+          email: true,
+          role: true,
+          createdAt: true,
+          ventasComoCliente: {
+            where: { estado: { not: 'CANCELADO' } },
+            include: {
+              asesor: {
+                select: {
+                  id: true,
+                  fullName: true,
+                  telefono: true,
+                },
+              },
+              lote: {
+                select: {
+                  id: true,
+                  numeroLote: true,
+                  manzano: true,
+                  superficieM2: true,
+                  precioBase: true,
+                  ciudad: true,
+                  urbanizacion: {
+                    select: { id: true, nombre: true },
+                  },
+                },
+              },
+              propiedad: {
+                select: {
+                  id: true,
+                  nombre: true,
+                  tipo: true,
+                  ciudad: true,
+                  ubicacion: true,
+                  precio: true,
+                },
+              },
+              planPago: {
+                include: {
+                  pagos: {
+                    orderBy: { fecha_pago: 'asc' },
+                    select: {
+                      id_pago_plan: true,
+                      monto: true,
+                      fecha_pago: true,
+                      observacion: true,
+                    },
+                  },
+                },
+              },
+            },
+            orderBy: { createdAt: 'desc' },
+          },
+        },
+      });
+
+      // Procesar datos con tipado explícito
+      const clientesConResumen = clientes.map((cliente) => {
+        let totalVentas = 0;
+        let totalPagado = 0;
+        let tienePlanActivo = false;
+        let saldoPendienteTotal = 0;
+        let montoInicialTotal = 0;
+        let totalCredito = 0;
+
+        // Procesar cada venta
+        const ventasProcesadas = cliente.ventasComoCliente.map((venta) => {
+          const precioFinal = Number(venta.precioFinal);
+          totalVentas += precioFinal;
+
+          let pagadoVenta = 0;
+          let creditoVenta = 0;
+          let montoInicial = 0;
+
+          if (venta.planPago) {
+            tienePlanActivo = true;
+            montoInicial = Number(venta.planPago.monto_inicial) || 0;
+            const pagosPlan = venta.planPago.pagos || [];
+            const pagadoPlan = pagosPlan.reduce((sum, p) => sum + Number(p.monto), 0);
+            
+            pagadoVenta = montoInicial + pagadoPlan;
+            creditoVenta = Number(venta.planPago.total);
+            
+            montoInicialTotal += montoInicial;
+            totalCredito += creditoVenta;
+            totalPagado += pagadoVenta;
+            saldoPendienteTotal += creditoVenta - pagadoPlan;
+
+            // 👈 RETORNAR VENTA CON PLAN PAGO PROCESADO
+            return {
+              ...venta,
+              precioFinal: Number(venta.precioFinal),
+              planPago: {
+                ...venta.planPago,
+                total: Number(venta.planPago.total),
+                monto_inicial: Number(venta.planPago.monto_inicial),
+                pagadoPlan,
+                saldoPendiente: creditoVenta - pagadoPlan,
+                montoInicialCalculado: montoInicial,
+              },
+            };
+          } else {
+            // Venta al contado
+            if (venta.estado === 'PAGADO') {
+              pagadoVenta = precioFinal;
+              totalPagado += pagadoVenta;
+            }
+            saldoPendienteTotal += precioFinal - pagadoVenta;
+            
+            // 👈 RETORNAR VENTA SIN PLAN PAGO
+            return {
+              ...venta,
+              precioFinal: Number(venta.precioFinal),
+            };
+          }
+        });
+
+        return {
+          id: cliente.id,
+          uuid: cliente.uuid,
+          fullName: cliente.fullName,
+          ci: cliente.ci,
+          telefono: cliente.telefono,
+          direccion: cliente.direccion,
+          observaciones: cliente.observaciones,
+          email: cliente.email,
+          role: cliente.role,
+          createdAt: cliente.createdAt,
+          ventasComoCliente: ventasProcesadas,
+          resumenFinanciero: {
+            totalVentas,
+            totalPagado,
+            saldoPendiente: totalVentas - totalPagado,
+            tienePlanActivo,
+            porcentajePagado: totalVentas > 0 ? (totalPagado / totalVentas) * 100 : 0,
+            montoInicialTotal,
+            totalCredito,
+          },
+        };
+      });
+
+      return { 
+        success: true, 
+        data: { 
+          clientes: clientesConResumen 
+        } 
+      };
+    } catch (error) {
+      console.error('Error:', error);
+      throw new InternalServerErrorException('Error interno del servidor');
+    }
+  }
+
+ // backend: auth.service.ts - Método getClienteByIdWithDetails
+
+// backend: auth.service.ts - Método corregido
+
+// backend: auth.service.ts - Método corregido
+
+// backend: auth.service.ts - Método corregido
+
+// backend: auth.service.ts - Versión CORREGIDA
+
+async getClienteByIdWithDetails(id: number) {
+  try {
+    const cliente = await this.prisma.user.findUnique({
+      where: { id, isActive: true, role: UserRole.CLIENTE },
+      select: {
+        id: true,
+        fullName: true,
+        ci: true,
+        telefono: true,
+        direccion: true,
+        observaciones: true,
+        email: true,
+        createdAt: true,
+        ventasComoCliente: {
+          where: { estado: { not: 'CANCELADO' } },
+          include: {
+            asesor: true,
+            lote: { include: { urbanizacion: true } },
+            propiedad: true,
+            planPago: { include: { pagos: true } },
+          },
+        },
+      },
+    });
+
+    if (!cliente) throw new NotFoundException('Cliente no encontrado');
+
+    let totalVentas = 0;
+    let totalPagado = 0;
+    let montoInicialTotal = 0;
+    let totalCredito = 0;
+
+    for (const venta of cliente.ventasComoCliente) {
+      const precioFinal = Number(venta.precioFinal);
+      totalVentas += precioFinal;
+
+      if (venta.planPago) {
+        const montoInicial = Number(venta.planPago.monto_inicial);
+        const pagosPlan = venta.planPago.pagos || [];
+        const pagadoPlan = pagosPlan.reduce((sum, p) => sum + Number(p.monto), 0);
+        const totalPlan = Number(venta.planPago.total);
+        
+       
+        totalPagado += montoInicial;
+        montoInicialTotal += montoInicial;
+        totalCredito += totalPlan;
+        
+        console.log(`Venta ${venta.id}: montoInicial=${montoInicial}, pagadoPlan=${pagadoPlan}, suma=${montoInicial + pagadoPlan}`);
+      } else if (venta.estado === 'PAGADO') {
+        totalPagado += precioFinal;
+      }
+    }
+
+    console.log('Totales finales:', { totalVentas, totalPagado, montoInicialTotal, totalCredito });
+
+    const clienteData = JSON.parse(JSON.stringify(cliente, (key, value) => {
+      if (value && typeof value === 'object' && 'constructor' in value && value.constructor.name === 'Decimal') {
+        return Number(value);
+      }
+      return value;
+    }));
+
+    return {
+      success: true,
+      data: {
+        cliente: {
+          ...clienteData,
+          resumenFinanciero: {
+            totalVentas,
+            totalPagado,
+            saldoPendiente: totalVentas - totalPagado,
+            porcentajePagado: totalVentas > 0 ? (totalPagado / totalVentas) * 100 : 0,
+            tienePlanActivo: clienteData.ventasComoCliente?.some(v => v.planPago) || false,
+            montoInicialTotal,
+            totalCredito,
+          },
+        },
+      },
+    };
+  } catch (error) {
+    console.error('Error:', error);
+    throw new InternalServerErrorException('Error interno del servidor');
+  }
+}
+  
 }

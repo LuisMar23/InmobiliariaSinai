@@ -83,4 +83,20 @@ export class MovimientoService {
   getResumenCaja(cajaId: number) {
     return this.http.get<any>(`${this.apiUrl}/caja/${cajaId}/resumen`);
   }
+// movimiento.service.ts — agrega este método
+loadTodosParaPDF(cajaId: number, filtros: any) {
+  let params = new HttpParams()
+    .set('page', '1')
+    .set('limit', '9999'); // sin límite
+
+  if (filtros.mes)        params = params.set('mes', filtros.mes);
+  if (filtros.anio)       params = params.set('anio', filtros.anio);
+  if (filtros.tipo)       params = params.set('tipo', filtros.tipo);
+  if (filtros.metodoPago) params = params.set('metodoPago', filtros.metodoPago);
+  if (filtros.manzano)    params = params.set('manzano', filtros.manzano);
+  if (filtros.numeroLote) params = params.set('numeroLote', filtros.numeroLote);
+
+  return this.http.get<any>(`${this.apiUrl}/caja/${cajaId}/movimientos`, { params });
+}
+
 }

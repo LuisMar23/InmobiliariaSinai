@@ -31,18 +31,34 @@ export const routes: Routes = [
           import('./features/clientes/cliente.routes').then((r) => r.ClientesRoutingModule),
       },
       {
+        path: 'creditos',
+        loadChildren: () =>
+          import('./features/creditos/credito.routes').then((r) => r.CreditosRoutingModule),
+      },
+      {
         path: 'urbanizaciones',
         loadChildren: () =>
           import('./features/urbanizacion/urbanizacion.routes').then(
-            (r) => r.UrbanizacionRoutingModule
+            (r) => r.UrbanizacionRoutingModule,
           ),
       },
       {
+        path: 'egresos', // Nueva ruta para Propiedades
+        loadChildren: () =>
+          import('./features/egresos/egresos.routes').then((r) => r.EgresosRoutingModule),
+      },
+      
+      {
         path: 'propiedades', // Nueva ruta para Propiedades
         loadChildren: () =>
-          import('./features/propiedad/propiedad.routes').then((r) => r.PropiedadRoutingModule
-          ),
+          import('./features/propiedad/propiedad.routes').then((r) => r.PropiedadRoutingModule),
       },
+      {
+        path: 'reportes', // Nueva ruta para Propiedades
+        loadChildren: () =>
+          import('./features/reportes/reportes.routes').then((r) => r.ReportesRoutingModule),
+      },
+
       {
         path: 'promociones',
         loadChildren: () =>
@@ -56,7 +72,7 @@ export const routes: Routes = [
         path: 'cotizaciones',
         loadChildren: () =>
           import('./features/cotizacion/cotizacion.routes').then(
-            (r) => r.CotizacionesRoutingModule
+            (r) => r.CotizacionesRoutingModule,
           ),
       },
       {
@@ -86,7 +102,7 @@ export const routes: Routes = [
 @NgModule({
   imports: [
     RouterModule.forRoot(routes, {
-      preloadingStrategy: false, 
+      preloadingStrategy: false,
       enableTracing: false,
       scrollPositionRestoration: 'enabled',
     }),

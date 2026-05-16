@@ -83,90 +83,188 @@ export class MovimientosService {
     });
   }
 
-  async findByCajaFiltrado(
-    cajaId: number,
-    page: number = 1,
-    pageSize: number = 10,
-    filtros?: {
-      mes?: number;
-      anio?: number;
-      tipo?: 'INGRESO' | 'EGRESO';
-      metodoPago?: string;
-      manzano?: string;
-      numeroLote?: string;
-    },
-  ) {
-    const where: any = { cajaId };
+async findByCajaFiltrado(
+  cajaId: number,
+  page: number = 1,
+  pageSize: number = 10,
+  filtros?: {
+    mes?: number;
+    anio?: number;
+    tipo?: 'INGRESO' | 'EGRESO';
+    metodoPago?: string;
+    manzano?: string;
+    numeroLote?: string;
+  },
+) {
+  const where: any = { cajaId };
 
-    if (filtros?.tipo) where.tipo = filtros.tipo;
-    if (filtros?.metodoPago) where.metodoPago = filtros.metodoPago;
+  if (filtros?.tipo)       where.tipo       = filtros.tipo;
+  if (filtros?.metodoPago) where.metodoPago = filtros.metodoPago;
 
-    if (filtros?.mes && filtros?.anio) {
-      where.fecha = {
-        gte: new Date(filtros.anio, filtros.mes - 1, 1),
-        lt: new Date(filtros.anio, filtros.mes, 1),
-      };
-    } else if (filtros?.anio) {
-      where.fecha = {
-        gte: new Date(filtros.anio, 0, 1),
-        lt: new Date(filtros.anio + 1, 0, 1),
-      };
-    }
+  if (filtros?.mes && filtros?.anio) {
+    where.fecha = {
+      gte: new Date(filtros.anio, filtros.mes - 1, 1),
+      lt:  new Date(filtros.anio, filtros.mes,     1),
+    };
+  } else if (filtros?.anio) {
+    where.fecha = {
+      gte: new Date(filtros.anio,     0, 1),
+      lt:  new Date(filtros.anio + 1, 0, 1),
+    };
+  }
 
-    // Filtro por lote/manzano via la venta
-    if (filtros?.manzano || filtros?.numeroLote) {
-      where.venta = {
-        lote: {
-          ...(filtros.manzano
-            ? { manzano: { contains: filtros.manzano, mode: 'insensitive' } }
-            : {}),
-          ...(filtros.numeroLote
-            ? { numeroLote: { contains: filtros.numeroLote, mode: 'insensitive' } }
-            : {}),
+  if (filtros?.manzano || filtros?.numeroLote) {
+    where.venta = {
+      lote: {
+        ...(filtros.manzano
+          ? { manzano:    { contains: filtros.manzano,    mode: 'insensitive' } }
+          : {}),
+        ...(filtros.numeroLote
+          ? { numeroLote: { contains: filtros.numeroLote, mode: 'insensitive' } }
+          : {}),
+      },
+    };
+  }
+
+  const [caja, data, total, totalesPorTipo, totalesPorMetodo] = await Promise.all([
+
+    // ── Datos de la caja (encabezado del reporte) ──────────────
+    this.prisma.caja.findUnique({
+      where: { id: cajaId },
+      include: {
+        usuarioApertura: {
+          select: { id: true, fullName: true, username: true },
         },
-      };
-    }
+      },
+    }),
 
-    const [data, total, totales] = await Promise.all([
-      this.prisma.movimientoCaja.findMany({
-        where,
-        include: {
-          usuario: {
-            select: { id: true, fullName: true, username: true, role: true },
-          },
-          venta: {
-            include: {
-              lote: {
-                select: {
-                  id: true,
-                  numeroLote: true,
-                  manzano: true,
-                  urbanizacion: { select: { nombre: true } },
-                },
+    // ── Movimientos paginados ──────────────────────────────────
+    this.prisma.movimientoCaja.findMany({
+      where,
+      include: {
+        usuario: {
+          select: { id: true, fullName: true, username: true, role: true },
+        },
+        venta: {
+          include: {
+            cliente: {
+              select: { id: true, fullName: true, ci: true, telefono: true },
+            },
+            lote: {
+              select: {
+                id: true,
+                numeroLote: true,
+                manzano: true,
+                urbanizacion: { select: { nombre: true } },
+              },
+            },
+            planPago: {
+              select: {
+                id_plan_pago: true,
+                total: true,
+                monto_inicial: true,
+                plazo: true,
+                periodicidad: true,
+                estado: true,
               },
             },
           },
         },
-        orderBy: { fecha: 'desc' },
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-      }),
-      this.prisma.movimientoCaja.count({ where }),
-      this.prisma.movimientoCaja.groupBy({
-        by: ['tipo'],
-        where,
-        _sum: { monto: true },
-      }),
-    ]);
+        egreso: {
+          select: {
+            id: true,
+            descripcion: true,
+            monto: true,
+            categoria: { select: { id: true, nombre: true } },
+          },
+        },
+      },
+      orderBy: { fecha: 'desc' },
+      skip:  (page - 1) * pageSize,
+      take:  pageSize,
+    }),
 
-    const resumen = { totalIngresos: 0, totalEgresos: 0 };
-    totales.forEach((t) => {
-      if (t.tipo === 'INGRESO') resumen.totalIngresos = Number(t._sum.monto ?? 0);
-      if (t.tipo === 'EGRESO') resumen.totalEgresos = Number(t._sum.monto ?? 0);
-    });
+    // ── Total de registros para paginación ────────────────────
+    this.prisma.movimientoCaja.count({ where }),
 
-    return { data, total, page, pageSize, resumen };
+    // ── Totales agrupados por tipo (INGRESO / EGRESO) ─────────
+    this.prisma.movimientoCaja.groupBy({
+      by: ['tipo'],
+      where,
+      _sum:   { monto: true },
+      _count: { id: true },
+    }),
+
+    // ── Totales agrupados por método de pago ──────────────────
+    this.prisma.movimientoCaja.groupBy({
+      by: ['metodoPago'],
+      where,
+      _sum:   { monto: true },
+      _count: { id: true },
+    }),
+  ]);
+
+  // ── Resumen INGRESO / EGRESO ───────────────────────────────
+  const resumen = { totalIngresos: 0, totalEgresos: 0, cantidadIngresos: 0, cantidadEgresos: 0 };
+  for (const t of totalesPorTipo) {
+    if (t.tipo === 'INGRESO') {
+      resumen.totalIngresos    = Number(t._sum.monto ?? 0);
+      resumen.cantidadIngresos = t._count.id;
+    }
+    if (t.tipo === 'EGRESO') {
+      resumen.totalEgresos    = Number(t._sum.monto ?? 0);
+      resumen.cantidadEgresos = t._count.id;
+    }
   }
+  resumen['saldoNeto'] = resumen.totalIngresos - resumen.totalEgresos;
+
+  // ── Desglose por método de pago ────────────────────────────
+  const porMetodoPago = totalesPorMetodo.map((m) => ({
+    metodoPago: m.metodoPago,
+    total:      Number(m._sum.monto ?? 0),
+    cantidad:   m._count.id,
+  }));
+
+  // ── Saldo acumulado por día (para gráficos / reporte diario)
+  const todosLosMovimientos = await this.prisma.movimientoCaja.findMany({
+    where,
+    select: { fecha: true, tipo: true, monto: true },
+    orderBy: { fecha: 'asc' },
+  });
+
+  const saldoPorDiaMap = new Map<string, number>();
+  for (const mov of todosLosMovimientos) {
+    const dia = mov.fecha.toISOString().split('T')[0]; // 'YYYY-MM-DD'
+    const delta = mov.tipo === 'INGRESO' ? Number(mov.monto) : -Number(mov.monto);
+    saldoPorDiaMap.set(dia, (saldoPorDiaMap.get(dia) ?? 0) + delta);
+  }
+
+  // Acumular progresivamente
+  let acumulado = 0;
+  const saldoDiario = Array.from(saldoPorDiaMap.entries()).map(([dia, neto]) => {
+    acumulado += neto;
+    return { dia, netoDelDia: neto, saldoAcumulado: acumulado };
+  });
+
+  return {
+    // Paginación
+    data,
+    total,
+    page,
+    pageSize,
+    totalPages: Math.ceil(total / pageSize),
+
+    // Contexto de la caja (encabezado PDF)
+    caja,
+
+    // Resumen contable
+    resumen,
+    porMetodoPago,
+
+    // Serie temporal para el reporte
+    saldoDiario,
+  };
+}
 
   async getTotalesPorMetodo(cajaId: number) {
     const movimientos = await this.prisma.movimientoCaja.findMany({ where: { cajaId } });

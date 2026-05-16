@@ -90,7 +90,7 @@ export class LoteService {
           ubicacion: createLoteDto.ubicacion,
           ciudad: createLoteDto.ciudad,
           latitud: createLoteDto.latitud,
-          manzano:createLoteDto.manzano,
+          manzano: createLoteDto.manzano,
           longitud: createLoteDto.longitud,
           esIndependiente: createLoteDto.esIndependiente,
         },
@@ -123,134 +123,169 @@ export class LoteService {
     });
   }
 
-async findAll(
-  urbanizacionId?: number,
-  usuarioId?: number,
-  userRole?: string,
-  ciudadesAsignadas: string[] = [],
-) {
-  const where: any = {};
+  async findAll(
+    urbanizacionId?: number,
+    usuarioId?: number,
+    userRole?: string,
+    ciudadesAsignadas: string[] = [],
+  ) {
+    const where: any = {};
 
-  if (urbanizacionId) {
-    where.urbanizacionId = urbanizacionId;
-  }
-
-  if (userRole !== 'ADMINISTRADOR') {
-    if (userRole === 'SECRETARIA' && ciudadesAsignadas.length > 0) {
-      // Secretaria ve todos los lotes de sus ciudades asignadas
-      const ciudadesLower = ciudadesAsignadas.map((c) => c.toLowerCase());
-      where.AND = [
-        {
-          OR: [
-            { ciudad: { in: ciudadesAsignadas, mode: 'insensitive' } },
-            { urbanizacion: { ciudad: { in: ciudadesAsignadas, mode: 'insensitive' } } },
-            { urbanizacion: { ubicacion: { in: ciudadesAsignadas, mode: 'insensitive' } } },
-          ],
-        },
-      ];
-    } else {
-      // Asesor — solo sus lotes asignados
-      where.encargadoId = usuarioId;
+    if (urbanizacionId) {
+      where.urbanizacionId = urbanizacionId;
     }
-  }
 
-  const lotes = await this.prisma.lote.findMany({
-    where,
-    include: {
-      archivos: {
-        select: {
-          id: true,
-          urlArchivo: true,
-          tipoArchivo: true,
-          nombreArchivo: true,
-        },
-      },
-      urbanizacion: {
-        select: {
-          id: true,
-          nombre: true,
-          ubicacion: true,
-          ciudad: true,
-        },
-      },
-      LotePromocion: {
-        where: {
-          promocion: {
-            isActive: true,
-            fechaInicio: { lte: new Date() },
-            fechaFin: { gte: new Date() },
+    if (userRole !== 'ADMINISTRADOR') {
+      if (userRole === 'SECRETARIA' && ciudadesAsignadas.length > 0) {
+        // Secretaria ve todos los lotes de sus ciudades asignadas
+        const ciudadesLower = ciudadesAsignadas.map((c) => c.toLowerCase());
+        where.AND = [
+          {
+            OR: [
+              { ciudad: { in: ciudadesAsignadas, mode: 'insensitive' } },
+              {
+                urbanizacion: {
+                  ciudad: { in: ciudadesAsignadas, mode: 'insensitive' },
+                },
+              },
+              {
+                urbanizacion: {
+                  ubicacion: { in: ciudadesAsignadas, mode: 'insensitive' },
+                },
+              },
+            ],
+          },
+        ];
+      } else {
+        // Asesor — solo sus lotes asignados
+        where.encargadoId = usuarioId;
+      }
+    }
+
+    const lotes = await this.prisma.lote.findMany({
+      where,
+      include: {
+        archivos: {
+          select: {
+            id: true,
+            urlArchivo: true,
+            tipoArchivo: true,
+            nombreArchivo: true,
           },
         },
-        include: {
-          promocion: {
-            select: {
-              id: true,
-              titulo: true,
-              descuento: true,
-              fechaInicio: true,
-              fechaFin: true,
+        urbanizacion: {
+          select: {
+            id: true,
+            nombre: true,
+            ubicacion: true,
+            ciudad: true,
+            uuid: true,
+          },
+        },
+        LotePromocion: {
+          where: {
+            promocion: {
+              isActive: true,
+              fechaInicio: { lte: new Date() },
+              fechaFin: { gte: new Date() },
+            },
+          },
+          include: {
+            promocion: {
+              select: {
+                id: true,
+                titulo: true,
+                descuento: true,
+                fechaInicio: true,
+                fechaFin: true,
+              },
             },
           },
         },
-      },
-      _count: {
-        select: {
-          cotizaciones: true,
-          ventas: true,
-          reservas: true,
-          visitas: true,
-          archivos: true,
+        _count: {
+          select: {
+            cotizaciones: true,
+            ventas: true,
+            reservas: true,
+            visitas: true,
+            archivos: true,
+          },
         },
       },
-    },
-    orderBy: { createdAt: 'desc' },
-  });
+      orderBy: { createdAt: 'desc' },
+    });
 
-  const lotesConPrecioActual = lotes.map((lote) => {
-    const promocionActiva = lote.LotePromocion[0];
-    const precioActual = lote.precioBase;
+    const lotesConPrecioActual = lotes.map((lote) => {
+      const promocionActiva = lote.LotePromocion[0];
+      const precioActual = lote.precioBase;
+
+      return {
+        ...lote,
+        precioActual,
+        tienePromocionActiva: !!promocionActiva,
+        promocionActiva: promocionActiva
+          ? {
+              id: promocionActiva.promocion.id,
+              titulo: promocionActiva.promocion.titulo,
+              descuento: promocionActiva.promocion.descuento,
+              fechaFin: promocionActiva.promocion.fechaFin,
+            }
+          : null,
+      };
+    });
 
     return {
-      ...lote,
-      precioActual,
-      tienePromocionActiva: !!promocionActiva,
-      promocionActiva: promocionActiva
-        ? {
-            id: promocionActiva.promocion.id,
-            titulo: promocionActiva.promocion.titulo,
-            descuento: promocionActiva.promocion.descuento,
-            fechaFin: promocionActiva.promocion.fechaFin,
-          }
-        : null,
+      success: true,
+      data: lotesConPrecioActual,
     };
-  });
-
-  return {
-    success: true,
-    data: lotesConPrecioActual,
-  };
-}
-
-async getAll(userId: number, userRole: string, ciudadesAsignadas: string[] = []) {
-  const where: any = {};
-
-  if (userRole !== 'ADMINISTRADOR') {
-    if (ciudadesAsignadas.length > 0) {
-      where.OR = [
-        { ciudad: { in: ciudadesAsignadas, mode: 'insensitive' } },
-        { urbanizacion: { ciudad: { in: ciudadesAsignadas, mode: 'insensitive' } } },
-      ];
-    } else {
-      where.encargadoId = userId;
-    }
   }
 
+  async getAll(
+    userId: number,
+    userRole: string,
+    ciudadesAsignadas: string[] = [],
+  ) {
+    const where: any = {};
+
+    if (userRole !== 'ADMINISTRADOR') {
+      if (ciudadesAsignadas.length > 0) {
+        where.OR = [
+          { ciudad: { in: ciudadesAsignadas, mode: 'insensitive' } },
+          {
+            urbanizacion: {
+              ciudad: { in: ciudadesAsignadas, mode: 'insensitive' },
+            },
+          },
+        ];
+      } else {
+        where.encargadoId = userId;
+      }
+    }
+
+    return this.prisma.lote.findMany({
+      where,
+      include: { urbanizacion: true, encargado: true },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+async getLotesSinUrbanizacion() {
   return this.prisma.lote.findMany({
-    where,
-    include: { urbanizacion: true, encargado: true },
-    orderBy: { createdAt: 'desc' },
+    where: {
+      urbanizacionId: null  // o IS NULL dependiendo de tu BD
+    },
+    select: {
+      id: true,
+      uuid: true,
+      numeroLote: true,
+      manzano: true,
+      ciudad: true,
+      _count: {
+        select: { ventas: true }
+      }
+    }
   });
 }
+
   async findAllPublicos() {
     const lotes = await this.prisma.lote.findMany({
       include: {
@@ -595,7 +630,7 @@ async getAll(userId: number, userRole: string, ciudadesAsignadas: string[] = [])
         ciudad: updateLoteDto.ciudad,
         latitud: updateLoteDto.latitud,
         longitud: updateLoteDto.longitud,
-        manzano:updateLoteDto.manzano,
+        manzano: updateLoteDto.manzano,
         esIndependiente: updateLoteDto.esIndependiente,
         urbanizacionId: updateLoteDto.esIndependiente
           ? null
@@ -964,8 +999,5 @@ async getAll(userId: number, userRole: string, ciudadesAsignadas: string[] = [])
       };
     });
   }
-// lote.service.ts
-
-
-
+  // lote.service.ts
 }

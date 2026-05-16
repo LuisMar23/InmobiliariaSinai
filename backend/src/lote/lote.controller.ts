@@ -31,7 +31,10 @@ export class LoteController {
   async findAllPublicos() {
     return this.loteService.findAllPublicos();
   }
-
+@Get('sin-urbanizacion')
+async getLotesSinUrbanizacion() {
+  return this.loteService.getLotesSinUrbanizacion();
+}
   @Get('publicos/uuid/:id')
   async findOneUUIDPublic(@Param('id') id: string) {
     return this.loteService.findOneUUID(id);

@@ -328,7 +328,24 @@ export class AuthService {
       })
     );
   }
+gettClienteById(id: number): Observable<UserResponse> {
+  // ❌ ANTES: apuntaba a /auth/users/${id}
+  // ✅ AHORA: apunta a /auth/${id}
+  return this.http.get<UserResponse>(`${this.apiUrl}/auth/${id}`).pipe(
+    catchError((error) => {
+      console.error('Error al obtener cliente:', error);
+      let errorMessage = 'Error al cargar el cliente';
 
+      if (error.error?.message) {
+        errorMessage = error.error.message;
+      } else if (error.status === 404) {
+        errorMessage = 'Cliente no encontrado';
+      }
+
+      return throwError(() => new Error(errorMessage));
+    })
+  );
+}
   updateCliente(id: number, clienteData: any): Observable<UserResponse> {
     return this.http.put<UserResponse>(`${this.apiUrl}/auth/clientes/${id}`, clienteData).pipe(
       catchError((error) => {

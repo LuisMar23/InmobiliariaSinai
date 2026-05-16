@@ -56,7 +56,21 @@ export class ClientesService {
       })
     );
   }
-
+  getByClienteId(id: number): Observable<any> {
+    return this.authService.gettClienteById(id).pipe(
+      tap((response) => console.log('Cliente by ID response:', response)), // Para debug
+      map((response: any) => {
+        if (response.success && response.data) {
+          return response;
+        }
+        // Si la respuesta no tiene la estructura esperada, crear una estructura válida
+        return {
+          success: true,
+          data: response || null,
+        };
+      })
+    );
+  }
   create(clienteData: CreateClienteDto): Observable<any> {
     return this.authService.registerCliente(clienteData);
   }
@@ -68,4 +82,7 @@ export class ClientesService {
   delete(id: number): Observable<any> {
     return this.authService.deleteCliente(id);
   }
+
+
+
 }

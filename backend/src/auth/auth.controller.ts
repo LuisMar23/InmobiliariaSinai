@@ -100,4 +100,9 @@ export class AuthController {
   async deleteCliente(@Param('id', ParseIntPipe) id: number) {
     return this.authService.deleteCliente(id);
   }
+
+  @Get(':id')
+  async getClienteById(@Param('id', ParseIntPipe) id: number) {
+    return this.authService.getClienteByIdWithDetails(id);
+  }
 }

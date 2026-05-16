@@ -295,260 +295,175 @@ export class PdfService {
     }
   }
 
-  generarPdfClienteIndividual(cliente: any): void {
-    try {
-      if (!cliente) {
-        return;
-      }
-      const fechaHora = new Date().toLocaleString('es-BO');
-      const infoPlanPago = this.obtenerInfoPlanPagoCliente(cliente);
+// Reemplaza el método generarPdfClienteIndividual completo
 
-      const docDefinition: any = {
-        pageSize: 'A4',
-        pageMargins: [40, 160, 40, 60],
-        header: {
-          stack: [
-            {
-              canvas: [
-                {
-                  type: 'rect',
-                  x: 0,
-                  y: 0,
-                  w: 595.28,
-                  h: 130,
-                  color: this.headerBg,
-                },
-              ],
-            },
-            {
-              stack: [
-                {
-                  text: 'GESTIÓN INMOBILIARIA',
-                  style: 'companyName',
-                  margin: [0, 15, 0, 0],
-                },
-                {
-                  text: 'INFORMACIÓN DETALLADA DEL CLIENTE',
-                  style: 'mainHeader',
-                  margin: [0, 10, 0, 0],
-                },
-                {
-                  text: `Cliente #${cliente.id}`,
-                  style: 'headerSubtitle',
-                  margin: [0, 5, 0, 0],
-                },
-                {
-                  text: `Generado el ${fechaHora}`,
-                  style: 'headerDate',
-                  margin: [0, 10, 0, 0],
-                },
-              ],
-              alignment: 'center',
-              margin: [40, -120, 40, 0],
-            },
-          ],
-        },
-        footer: (currentPage: number, pageCount: number) => {
-          return {
-            stack: [
-              {
-                canvas: [
-                  {
-                    type: 'rect',
-                    x: 0,
-                    y: 0,
-                    w: 595.28,
-                    h: 40,
-                    color: this.lightBg,
-                  },
-                ],
-              },
-              {
-                columns: [
-                  {
-                    text: `Generado: ${fechaHora}`,
-                    style: 'footer',
-                    alignment: 'left',
-                    margin: [40, -30, 0, 0],
-                  },
-                  {
-                    text: `Página ${currentPage} de ${pageCount}`,
-                    style: 'footer',
-                    alignment: 'right',
-                    margin: [0, -30, 40, 0],
-                  },
-                ],
-              },
-            ],
-          };
-        },
-        content: [
+private async getLogoBase64(path = 'assets/logoSinai.jpg'): Promise<string | null> {
+  try {
+    const res  = await fetch(path);
+    const blob = await res.blob();
+    return await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.readAsDataURL(blob);
+    });
+  } catch { return null; }
+}
+
+private money(v: number | string | null | undefined): string {
+  return `Bs. ${Number(v ?? 0).toLocaleString('es-BO', {
+    minimumFractionDigits: 2, maximumFractionDigits: 2,
+  })}`;
+}
+
+async generarPdfClienteIndividual(cliente: any): Promise<void> {
+  console.log('Datos del cliente:', cliente);
+  
+  try {
+    if (!cliente) return;
+
+    const logo = await this.getLogoBase64();
+    const fechaHora = new Date().toLocaleString('es-BO');
+    
+    // Extraer resumen financiero directamente
+    const resumen = cliente.resumenFinanciero || {};
+    const tienePlan = resumen.tienePlanActivo || false;
+    const totalVenta = resumen.totalVentas || 0;
+    const montoInicial = resumen.montoInicialTotal || 0;
+    const totalCredito = resumen.totalCredito || 0;
+    const totalPagado = resumen.totalPagado || 0;
+    const saldoPendiente = resumen.saldoPendiente || 0;
+    const porcentajePagado = resumen.porcentajePagado || 0;
+
+    const money = (value: number) => `Bs ${value.toLocaleString('es-BO', { minimumFractionDigits: 2 })}`;
+
+    // Header
+    const header: any[] = [
+      {
+        columns: [
+          logo ? { image: logo, width: 70, margin: [0, 0, 10, 0] } : { text: '', width: 70 },
           {
-            columns: [
-              {
-                width: '60%',
-                stack: [
-                  { text: cliente.fullName || 'N/A', style: 'clientName' },
-                  {
-                    text: cliente.ci ? `CI: ${cliente.ci}` : 'Documento no registrado',
-                    style: 'clientDetail',
-                  },
-                ],
-              },
-              {
-                width: '40%',
-                stack: [
-                  {
-                    text: infoPlanPago.tienePlan ? 'CON PLAN PAGO' : 'SIN PLAN PAGO',
-                    style: infoPlanPago.tienePlan ? 'statusActive' : 'statusInactive',
-                    alignment: 'right',
-                    margin: [0, 10, 0, 0],
-                  },
-                ],
-              },
-            ],
-            margin: [0, 0, 0, 25],
-          },
-          {
+            width: '*',
             stack: [
-              {
-                text: 'INFORMACIÓN DE CONTACTO',
-                style: 'sectionTitle',
-                background: this.lightBg,
-                margin: [0, 0, 0, 10],
-              },
-              {
-                table: {
-                  widths: ['25%', '75%'],
-                  body: [
-                    [
-                      { text: 'Teléfono:', style: 'labelCell' },
-                      { text: cliente.telefono || 'No registrado', style: 'valueCell' },
-                    ],
-                    [
-                      { text: 'Dirección:', style: 'labelCell' },
-                      { text: cliente.direccion || 'No registrada', style: 'valueCell' },
-                    ],
-                    [
-                      { text: 'Observaciones:', style: 'labelCell' },
-                      { text: cliente.observaciones || 'Ninguna', style: 'valueCell' },
-                    ],
-                  ],
-                },
-                layout: {
-                  hLineWidth: () => 0.5,
-                  vLineWidth: () => 0.5,
-                  hLineColor: () => this.borderColor,
-                  vLineColor: () => this.borderColor,
-                },
-              },
+              { text: 'SINAÍ BIENES RAÍCES', fontSize: 14, bold: true, alignment: 'center' },
+              { text: 'NIT: 5813305010', fontSize: 9, alignment: 'center' },
+              { text: 'AV. BARRIENTOS O. ENTRE C/ V. DE CHAGUAYA Y C/ G. BUCH - BERMEJO', fontSize: 8, alignment: 'center' },
+              { text: 'Teléfono: 74532320', fontSize: 9, alignment: 'center' },
             ],
-            margin: [0, 0, 0, 25],
           },
-          {
-            stack: [
-              {
-                text: 'RESUMEN FINANCIERO',
-                style: 'sectionTitle',
-                background: this.lightBg,
-                margin: [0, 0, 0, 10],
-              },
-              this.buildResumenFinancieroCliente(infoPlanPago),
-            ],
-            margin: [0, 0, 0, 25],
-          },
-          ...this.buildDetalleVentasCliente(cliente),
         ],
-        styles: {
-          companyName: {
-            fontSize: 12,
-            bold: true,
-            color: '#E5E7EB',
-            alignment: 'center',
-          },
-          mainHeader: {
-            fontSize: 18,
-            bold: true,
-            color: this.headerTextColor,
-            alignment: 'center',
-          },
-          headerSubtitle: {
-            fontSize: 14,
-            color: '#E5E7EB',
-            alignment: 'center',
-          },
-          headerDate: {
-            fontSize: 10,
-            color: '#E5E7EB',
-            alignment: 'center',
-          },
-          footer: {
-            fontSize: 8,
-            color: this.primaryDark,
-            bold: true,
-          },
-          clientName: {
-            fontSize: 16,
-            bold: true,
-            color: this.primaryDark,
-          },
-          clientDetail: {
-            fontSize: 12,
-            color: this.textColor,
-          },
-          sectionTitle: {
-            fontSize: 14,
-            bold: true,
-            color: this.primaryDark,
-            padding: [10, 5, 10, 5],
-          },
-          labelCell: {
-            fontSize: 10,
-            bold: true,
-            color: this.textColor,
-            fillColor: this.lightBg,
-          },
-          valueCell: {
-            fontSize: 10,
-            color: this.textColor,
-          },
-          statusActive: {
-            fontSize: 12,
-            bold: true,
-            color: this.successColor,
-          },
-          statusInactive: {
-            fontSize: 12,
-            bold: true,
-            color: '#666666',
-          },
-          financialLabel: {
-            fontSize: 10,
-            bold: true,
-            color: this.textColor,
-          },
-          financialValue: {
-            fontSize: 10,
-            color: this.textColor,
-          },
-          financialWarning: {
-            fontSize: 10,
-            bold: true,
-            color: this.errorColor,
-          },
-        },
-        defaultStyle: {
-          font: 'Roboto',
-          color: this.textColor,
-        },
-      };
+        margin: [0, 0, 0, 10],
+      },
+      { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 0.5, lineColor: '#000' }], margin: [0, 0, 0, 8] },
+      { text: 'INFORMACIÓN DETALLADA DEL CLIENTE', fontSize: 11, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
+    ];
 
-      const fileName = `Cliente_${cliente.id}_${new Date().toISOString().split('T')[0]}.pdf`;
-      pdfMake.createPdf(docDefinition).download(fileName);
-    } catch (error) {
-      console.error('Error generando PDF individual de cliente:', error);
-    }
+    // Info del cliente
+    const infoCliente = {
+      stack: [
+        { columns: [{ text: 'Cliente:', bold: true, fontSize: 9, width: 100 }, { text: (cliente.fullName ?? 'N/A').toUpperCase(), fontSize: 9, width: '*' }], margin: [0, 0, 0, 3] },
+        { columns: [{ text: 'CI:', bold: true, fontSize: 9, width: 100 }, { text: cliente.ci ?? 'No registrado', fontSize: 9, width: '*' }], margin: [0, 0, 0, 3] },
+        { columns: [{ text: 'Teléfono:', bold: true, fontSize: 9, width: 100 }, { text: cliente.telefono ?? 'No registrado', fontSize: 9, width: '*' }], margin: [0, 0, 0, 3] },
+        { columns: [{ text: 'Dirección:', bold: true, fontSize: 9, width: 100 }, { text: cliente.direccion ?? 'No registrada', fontSize: 9, width: '*' }], margin: [0, 0, 0, 3] },
+        { columns: [{ text: 'Observaciones:', bold: true, fontSize: 9, width: 100 }, { text: cliente.observaciones ?? 'Ninguna', fontSize: 9, width: '*' }], margin: [0, 0, 0, 12] },
+      ],
+      margin: [0, 0, 0, 14],
+    };
+
+    // Tabla resumen financiero
+    const resumenFinanciero = {
+      table: {
+        widths: ['*', '*'],
+        body: [
+          [{ text: 'Estado del Plan:', bold: true, fontSize: 9, fillColor: '#e0e0e0' }, { text: tienePlan ? 'CON PLAN DE PAGO' : 'SIN PLAN DE PAGO', fontSize: 9 }],
+          [{ text: 'Total Venta:', bold: true, fontSize: 9, fillColor: '#e0e0e0' }, { text: money(totalVenta), fontSize: 9 }],
+          [{ text: 'Monto Inicial:', bold: true, fontSize: 9, fillColor: '#e0e0e0' }, { text: money(montoInicial), fontSize: 9 }],
+          [{ text: 'Total Crédito:', bold: true, fontSize: 9, fillColor: '#e0e0e0' }, { text: money(totalCredito), fontSize: 9 }],
+          [{ text: 'Total Pagado:', bold: true, fontSize: 9, fillColor: '#e0e0e0' }, { text: money(totalPagado), fontSize: 9 }],
+          [{ text: 'Saldo Pendiente:', bold: true, fontSize: 9, fillColor: '#e0e0e0' }, { text: money(saldoPendiente), fontSize: 9, bold: true }],
+          [{ text: '% Pagado:', bold: true, fontSize: 9, fillColor: '#e0e0e0' }, { text: `${porcentajePagado.toFixed(1)}%`, fontSize: 9 }],
+        ],
+      },
+      layout: {
+        hLineWidth: () => 0.5, vLineWidth: () => 0.5,
+        hLineColor: () => '#000', vLineColor: () => '#000',
+        paddingTop: () => 4, paddingBottom: () => 4,
+        paddingLeft: () => 6, paddingRight: () => 6,
+      },
+      margin: [0, 0, 0, 14],
+    };
+
+    // Tabla de ventas
+    const ventas = cliente.ventasComoCliente || [];
+const ventasBody = [];
+
+// Header sin fillColor
+ventasBody.push([
+  { text: 'ID', bold: true, fontSize: 8, alignment: 'center' },
+  { text: 'Fecha', bold: true, fontSize: 8, alignment: 'center' },
+  { text: 'Inmueble', bold: true, fontSize: 8 },
+  { text: 'Monto', bold: true, fontSize: 8, alignment: 'right' },
+  { text: 'Estado', bold: true, fontSize: 8, alignment: 'center' },
+]);
+for (const venta of ventas) {
+  let inmueble = '';
+  if (venta.lote) {
+    inmueble = `Lote ${venta.lote.numeroLote}`;
+    if (venta.lote.manzano) inmueble += ` - Mz ${venta.lote.manzano}`;
+  } else if (venta.propiedad) {
+    inmueble = venta.propiedad.nombre || 'Propiedad';
+  } else {
+    inmueble = 'N/A';
   }
+
+  ventasBody.push([
+    { text: `#${venta.id}`, fontSize: 8, alignment: 'center' },
+    { text: new Date(venta.createdAt).toLocaleDateString('es-BO'), fontSize: 8, alignment: 'center' },
+    { text: inmueble, fontSize: 8 },
+    { text: money(Number(venta.precioFinal)), fontSize: 8, alignment: 'right' },
+    { text: venta.estado, fontSize: 8, alignment: 'center', color: venta.estado === 'PAGADO' ? '#16a34a' : '#eab308' },
+  ]);
+}
+
+const detalleVentas = ventas.length === 0 
+  ? [{ text: 'No hay ventas registradas para este cliente', fontSize: 9, alignment: 'center', margin: [0, 10, 0, 10] }]
+  : [{ 
+      table: { 
+        widths: [30, '*', '*', '*', '*'], 
+        body: ventasBody 
+      }, 
+      layout: 'lightHorizontalLines', // Layout más simple que no necesita fillColor
+      margin: [0, 0, 0, 10] 
+    }];
+
+    // Documento final
+    const docDefinition: any = {
+      pageSize: 'A4',
+      pageOrientation: 'portrait',
+      pageMargins: [40, 40, 40, 50],
+      content: [
+        ...header,
+        infoCliente,
+        { text: 'RESUMEN FINANCIERO', fontSize: 10, bold: true, italics: true, alignment: 'center', margin: [0, 0, 0, 6] },
+        resumenFinanciero,
+        { text: 'DETALLE DE VENTAS', fontSize: 10, bold: true, italics: true, alignment: 'center', margin: [0, 0, 0, 6] },
+        ...detalleVentas,
+      ],
+      footer: (page: number, pages: number) => ({
+        columns: [
+          { text: `SINAÍ BIENES RAÍCES — Cliente #${cliente.id}`, fontSize: 7, color: '#666', margin: [40, 10, 0, 0] },
+          { text: `Generado: ${fechaHora}   |   Página ${page} de ${pages}`, fontSize: 7, color: '#666', alignment: 'right', margin: [0, 10, 40, 0] },
+        ],
+      }),
+      defaultStyle: { font: 'Roboto', color: '#000000' },
+    };
+
+    const fecha = new Date().toISOString().split('T')[0];
+    pdfMake.createPdf(docDefinition).download(`Cliente_${cliente.id}_${fecha}.pdf`);
+
+  } catch (error) {
+    console.error('Error generando PDF individual de cliente:', error);
+  }
+}
 
   generarPdfReservas(reservas: any[]): void {
     try {

@@ -16,10 +16,12 @@ import {
   faPhone,
   faMapMarkerAlt,
   faPlus,
+  faFileExcel,
 } from '@fortawesome/free-solid-svg-icons';
 import { ClientesService } from '../../service/cliente.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { PdfService } from '../../../../core/services/pdf.service';
+import { ExcelService } from '../../service/excel.service';
 
 @Component({
   selector: 'app-clientes-list',
@@ -40,6 +42,10 @@ export class ClientesListComponent implements OnInit {
   faPhone = faPhone;
   faMapMarkerAlt = faMapMarkerAlt;
   faPlus = faPlus;
+
+  faFileExcel = faFileExcel;
+
+  excelService = inject(ExcelService);
 
   clientes = signal<any[]>([]);
   allClientes = signal<any[]>([]);
@@ -66,7 +72,7 @@ export class ClientesListComponent implements OnInit {
         (cliente: any) =>
           cliente.fullName?.toLowerCase().includes(term) ||
           cliente.ci?.toLowerCase().includes(term) ||
-          cliente.telefono?.toLowerCase().includes(term)
+          cliente.telefono?.toLowerCase().includes(term),
       );
     }
 
@@ -116,6 +122,7 @@ export class ClientesListComponent implements OnInit {
     this.isLoading.set(true);
     this.clientesService.getClientes().subscribe({
       next: (response: any) => {
+        console.log(response)
         this.isLoading.set(false);
 
         if (response.success && response.data && Array.isArray(response.data.clientes)) {
@@ -156,13 +163,13 @@ export class ClientesListComponent implements OnInit {
 
   deleteCliente(cliente: any) {
     this.notificationService
-      .confirmDelete("¿Estás seguro de eliminar al cliente ${cliente.fullName}?")
+      .confirmDelete('¿Estás seguro de eliminar al cliente ${cliente.fullName}?')
       .then((result) => {
         if (result.isConfirmed) {
           this.clientesService.delete(cliente.id).subscribe({
             next: (response: any) => {
               this.notificationService.showSuccess(
-                response.message || 'Cliente eliminado correctamente'
+                response.message || 'Cliente eliminado correctamente',
               );
               this.loadClientes();
             },
@@ -225,7 +232,40 @@ export class ClientesListComponent implements OnInit {
     this.pdfService.generarPdfClientes(this.allClientes());
   }
 
-  generarPdfClienteIndividual(cliente: any): void {
-    this.pdfService.generarPdfClienteIndividual(cliente);
-  }
+
+isLoadingPdf = signal<number | null>(null);
+
+generarPdfClienteIndividual(cliente: any): void {
+  this.isLoadingPdf.set(cliente.id);
+  
+  this.clientesService.getByClienteId(cliente.id).subscribe({
+    next: async (response: any) => {
+
+           console.log('Respuesta completa:', response);
+      if (response.success && response.data?.cliente) {
+        await this.pdfService.generarPdfClienteIndividual(response.data.cliente);
+        this.notificationService.showSuccess(`PDF generado para ${cliente.fullName}`);
+      } else {
+        this.notificationService.showError('No se pudieron obtener los datos completos');
+      }
+      this.isLoadingPdf.set(null);
+    },
+    error: (error) => {
+      console.error('Error:', error);
+      this.notificationService.showError('Error al obtener datos del cliente');
+      this.isLoadingPdf.set(null);
+    },
+  });
+}
+  exportarExcelTodosClientes(): void {
+    const clientesFiltrados = this.filteredClientes();
+
+    if (clientesFiltrados.length === 0) {
+      this.notificationService.showWarning('No hay clientes para exportar');
+      return;
+    }
+
+    this.excelService.exportClientesToExcel(clientesFiltrados, 'clientes');
+    this.notificationService.showSuccess(`Exportados ${clientesFiltrados.length} clientes a Excel`);
+  }
 }

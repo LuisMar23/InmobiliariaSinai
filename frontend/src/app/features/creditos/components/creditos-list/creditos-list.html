@@ -1,0 +1,579 @@
+<div class="min-h-screen bg-slate-50 p-4 md:p-6">
+  <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+    <!-- ══ HEADER ══════════════════════════════════════════ -->
+    <div
+      class="px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100"
+    >
+      <div class="flex items-center gap-3">
+        <h1 class="font-semibold text-slate-700 text-base">Lista de Créditos</h1>
+
+        <!-- dots decorativos -->
+        <div class="flex gap-1 ml-1">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block"></span>
+          <span class="w-2.5 h-2.5 rounded-full bg-green-400 inline-block"></span>
+          <span class="w-2.5 h-2.5 rounded-full bg-teal-400 inline-block"></span>
+        </div>
+      </div>
+
+      <!-- acciones -->
+      <div class="flex items-center gap-2">
+        <button
+          (click)="onExport()"
+          class="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+            />
+          </svg>
+          Export
+        </button>
+        <button
+          (click)="reload()"
+          title="Recargar"
+          class="p-1.5 border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 transition-colors"
+        >
+          <svg
+            class="w-4 h-4"
+            [class.animate-spin]="svc.loading()"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9
+                         m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+            />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- ══ FILTROS ══════════════════════════════════════════ -->
+    <div class="px-5 py-3 bg-slate-50/70 border-b border-slate-100 flex flex-wrap gap-2">
+      <!-- búsqueda -->
+      <div class="relative">
+        <svg
+          class="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+          />
+        </svg>
+        <input
+          type="text"
+          [(ngModel)]="searchInput"
+          (ngModelChange)="search$.next($event)"
+          placeholder="Buscar (mín. 2 caracteres)..."
+          class="pl-8 pr-3 py-2 text-sm border border-slate-200 rounded-lg w-60 focus:outline-none focus:ring-2 focus:ring-green-400/60 focus:border-green-400 bg-white placeholder:text-slate-400 transition-all"
+        />
+      </div>
+
+      <!-- ciudad -->
+      <select
+        [(ngModel)]="filtros.ciudad"
+        (ngModelChange)="onFiltroChange()"
+        class="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white text-slate-600 focus:outline-none focus:ring-2 focus:ring-green-400/60 focus:border-green-400 transition-all"
+      >
+        <option value="">Todas las ciudades</option>
+        <option value="BERMEJO">Bermejo</option>
+        <option value="TARIJA">Tarija</option>
+        <option value="YACUIBA">Yacuiba</option>
+      </select>
+    </div>
+
+    <!-- ══ TABLA ════════════════════════════════════════════ -->
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm border-collapse">
+        <!-- thead -->
+        <thead>
+          <tr class="border-b border-slate-100 bg-slate-50/50">
+            <th
+              class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400 w-12"
+            >
+              N°
+            </th>
+            <th
+              class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400"
+            >
+              <button
+                class="flex items-center gap-1 hover:text-slate-600 transition-colors"
+                (click)="toggleSort('cliente')"
+              >
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                  />
+                </svg>
+                Cliente
+                <svg
+                  class="w-3 h-3 opacity-50"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
+                  />
+                </svg>
+              </button>
+            </th>
+            <th
+              class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400"
+            >
+              <div class="flex items-center gap-1">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9
+                               7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1
+                               1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
+                  />
+                </svg>
+                Lote-Mz
+              </div>
+            </th>
+            <th
+              class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400"
+            >
+              <button
+                class="flex items-center gap-1 hover:text-slate-600 transition-colors"
+                (click)="toggleSort('fecha')"
+              >
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2
+                               2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  />
+                </svg>
+                Sig. CP.
+                <svg
+                  class="w-3 h-3 opacity-50"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
+                  />
+                </svg>
+              </button>
+            </th>
+            <th
+              class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-400"
+            >
+              <div class="flex items-center justify-end gap-1">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3
+                               2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0
+                               1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9
+                               9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                M.Cuota P.
+              </div>
+            </th>
+            <th
+              class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-400"
+            >
+              <div class="flex items-center justify-end gap-1">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6
+                               7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3
+                               9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"
+                  />
+                </svg>
+                M. Restante
+              </div>
+            </th>
+            <th
+              class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-400"
+            >
+              <div class="flex items-center justify-end gap-1">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15
+                               11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2
+                               0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                  />
+                </svg>
+                Total Venta
+              </div>
+            </th>
+            <th
+              class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-400"
+            >
+              Crongrma
+            </th>
+            <th
+              class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-400"
+            >
+              Pagaré
+            </th>
+            <th
+              class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-400"
+            >
+              H.Pagos
+            </th>
+            <th
+              class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-400"
+            >
+              <svg class="w-4 h-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724
+                             0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724
+                             0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724
+                             0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724
+                             0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724
+                             0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724
+                             0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724
+                             0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608
+                             2.296.07 2.572-1.065z"
+                />
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                />
+              </svg>
+            </th>
+          </tr>
+        </thead>
+
+        <!-- tbody -->
+        <tbody>
+          <!-- skeleton loading -->
+          @if (svc.loading()) {
+            @for (i of [1, 2, 3, 4, 5]; track i) {
+              <tr class="border-b border-slate-50">
+                <td class="px-4 py-3" colspan="11">
+                  <div class="h-5 bg-slate-100 rounded animate-pulse w-full"></div>
+                </td>
+              </tr>
+            }
+          }
+
+          <!-- error -->
+          @if (!svc.loading() && svc.error()) {
+            <tr>
+              <td colspan="11" class="px-4 py-10 text-center">
+                <div class="flex flex-col items-center gap-2 text-red-400">
+                  <svg
+                    class="w-10 h-10 opacity-50"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="1.5"
+                      d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  <p class="text-sm font-medium">{{ svc.error() }}</p>
+                  <button
+                    (click)="reload()"
+                    class="text-xs text-green-600 hover:underline font-medium mt-1"
+                  >
+                    Reintentar
+                  </button>
+                </div>
+              </td>
+            </tr>
+          }
+
+          <!-- sin datos -->
+          @if (!svc.loading() && !svc.error() && svc.creditos().length === 0) {
+            <tr>
+              <td colspan="11" class="px-4 py-14 text-center">
+                <div class="flex flex-col items-center gap-2 text-slate-300">
+                  <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="1.5"
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586
+                                 a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19
+                                 a2 2 0 01-2 2z"
+                    />
+                  </svg>
+                  <p class="text-sm font-medium text-slate-400">Sin créditos registrados</p>
+                </div>
+              </td>
+            </tr>
+          }
+
+          <!-- datos -->
+          @if (!svc.loading()) {
+            @for (c of sortedCreditos(); track c.ventaId; let i = $index) {
+              <tr class="border-b border-slate-50 hover:bg-green-50/40 transition-colors group">
+                <!-- N° -->
+                <td class="px-4 py-3 text-slate-400 text-xs font-medium">
+                  {{ offset() + i + 1 }}
+                </td>
+
+                <!-- Cliente -->
+                <td class="px-4 py-3">
+                  <span
+                    class="font-medium text-slate-700 group-hover:text-green-700 transition-colors"
+                  >
+                    {{ c.cliente }}
+                  </span>
+                </td>
+
+                <!-- Lote-Mz -->
+                <td class="px-4 py-3 text-slate-500 font-medium text-xs">
+                  {{ c.loteMz }}
+                </td>
+
+                <!-- Sig. CP (siguiente cuota) -->
+                <td class="px-4 py-3">
+                  @if (c.siguienteCuota) {
+                    <div class="flex items-center gap-1.5">
+                      <!-- badge fecha con color según vencimiento -->
+                      <span
+                        [class]="badgeFechaClass(c)"
+                        class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap"
+                      >
+                        {{ c.siguienteCuota.fecha | date: 'dd/MM/yyyy' }}
+                      </span>
+                      <!-- badge cuotas vencidas -->
+                      @if (c.siguienteCuota.cuotasVencidas > 0) {
+                        <span
+                          class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold"
+                        >
+                          {{ c.siguienteCuota.cuotasVencidas }}
+                        </span>
+                      } @else {
+                        <span
+                          class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-slate-200 text-slate-500 text-[10px] font-bold"
+                        >
+                          0
+                        </span>
+                      }
+                    </div>
+                  } @else {
+                    <span class="text-slate-300 text-xs">—</span>
+                  }
+                </td>
+
+                <!-- M. Cuota Pendiente -->
+                <td class="px-4 py-3 text-right">
+                  <span class="font-semibold text-violet-600 text-xs whitespace-nowrap">
+                    BS {{ c.montoCuotaPendiente | number: '1.2-2' }}
+                  </span>
+                </td>
+
+                <!-- M. Restante -->
+                <td class="px-4 py-3 text-right">
+                  <span class="font-semibold text-cyan-600 text-xs whitespace-nowrap">
+                    BS {{ c.montoRestante | number: '1.2-2' }}
+                  </span>
+                </td>
+
+                <!-- Total Venta -->
+                <td class="px-4 py-3 text-right">
+                  <span class="font-bold text-slate-700 text-xs whitespace-nowrap">
+                    BS {{ c.totalVenta | number: '1.2-2' }}
+                  </span>
+                </td>
+
+                <!-- Cronograma (PDF) -->
+                <td class="px-4 py-3 text-center">
+                  <button
+                    (click)="onCronograma(c)"
+                    class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium border border-slate-200 text-slate-500 hover:border-green-400 hover:text-green-600 hover:bg-green-50 transition-all"
+                  >
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                      />
+                    </svg>
+                    Crong
+                  </button>
+                </td>
+
+                <!-- Pagaré (PDF) -->
+                <td class="px-4 py-3 text-center">
+                  <button
+                    (click)="onPagare(c)"
+                    class="inline-flex items-center justify-center px-2.5 py-1 rounded-md border border-slate-200 text-slate-400 hover:border-green-400 hover:text-green-600 hover:bg-green-50 transition-all"
+                  >
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586
+                                   a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19
+                                   a2 2 0 01-2 2z"
+                      />
+                    </svg>
+                  </button>
+                </td>
+
+                <!-- Historial Pagos (PDF) -->
+                <td class="px-4 py-3 text-center">
+                  <button
+                    (click)="onHistorial(c)"
+                    class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium border border-slate-200 text-slate-500 hover:border-teal-400 hover:text-teal-600 hover:bg-teal-50 transition-all"
+                  >
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2
+                                   M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                      />
+                    </svg>
+                    H.Pagos
+                  </button>
+                </td>
+
+                <!-- Acciones / config -->
+                <td class="px-4 py-3 text-center">
+                  <button
+                    (click)="onAcciones(c)"
+                    class="p-1.5 rounded-md border border-slate-200 text-slate-400 hover:border-slate-300 hover:text-slate-600 hover:bg-slate-50 transition-all"
+                  >
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573
+                                   1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426
+                                   1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37
+                                   2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724
+                                   1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0
+                                   00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573
+                                   c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                      />
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                      />
+                    </svg>
+                  </button>
+                </td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ══ FOOTER / PAGINACIÓN ══════════════════════════════ -->
+    <div
+      class="px-5 py-3 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-2 bg-slate-50/40"
+    >
+      <!-- info -->
+      <p class="text-xs text-slate-400">
+        @if (svc.totalItems() > 0) {
+          Mostrando el {{ offset() + 1 }} al
+          {{ [offset() + svc.pagination().limit, svc.totalItems()] }}
+          de {{ svc.totalItems() }} registros
+        } @else {
+          Sin registros
+        }
+      </p>
+
+      <!-- controles -->
+      <div class="flex items-center gap-1">
+        <!-- prev -->
+        <button
+          (click)="goPage(svc.currentPage() - 1)"
+          [disabled]="svc.currentPage() <= 1"
+          class="w-7 h-7 flex items-center justify-center rounded-md border border-slate-200 text-slate-500 hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M15 19l-7-7 7-7"
+            />
+          </svg>
+        </button>
+
+        <!-- páginas -->
+        @for (p of pageNumbers(); track p) {
+          <button
+            (click)="goPage(p)"
+            [class]="
+              p === svc.currentPage()
+                ? 'w-7 h-7 rounded-md bg-green-600 text-white text-xs font-bold shadow-sm'
+                : 'w-7 h-7 rounded-md border border-slate-200 text-slate-500 text-xs hover:bg-white transition-colors'
+            "
+          >
+            {{ p }}
+          </button>
+        }
+
+        <!-- next -->
+        <button
+          (click)="goPage(svc.currentPage() + 1)"
+          [disabled]="svc.currentPage() >= svc.totalPages()"
+          class="w-7 h-7 flex items-center justify-center rounded-md border border-slate-200 text-slate-500 hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 5l7 7-7 7"
+            />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

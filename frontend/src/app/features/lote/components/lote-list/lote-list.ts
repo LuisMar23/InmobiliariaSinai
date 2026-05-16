@@ -1,6 +1,6 @@
 import { Component, inject, signal, OnInit, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { LoteDto } from '../../../../core/interfaces/lote.interface';
 import { NotificationService } from '../../../../core/services/notification.service';
@@ -41,6 +41,22 @@ export class LoteList implements OnInit {
     { key: 'estado', label: 'Estado', sortable: true },
   ];
 
+  //cambios
+  readonly COLORES = [
+    { c: '#185FA5', bg: '#E6F1FB', bdr: '#B5D4F4' },
+    { c: '#0F6E56', bg: '#E1F5EE', bdr: '#9FE1CB' },
+    { c: '#854F0B', bg: '#FAEEDA', bdr: '#FAC775' },
+    { c: '#5B21B6', bg: '#EDE9FE', bdr: '#C4B5FD' },
+    { c: '#0E7490', bg: '#E0F9FF', bdr: '#A5F3FC' },
+  ];
+
+  readonly CHIPS: Record<string, { bg: string; c: string; label: string }> = {
+    DISPONIBLE: { bg: '#dcfce7', c: '#166534', label: 'Disponible' },
+    RESERVADO: { bg: '#fef9c3', c: '#854d0e', label: 'Reservado' },
+    VENDIDO: { bg: '#fee2e2', c: '#991b1b', label: 'Vendido' },
+    CON_OFERTA: { bg: '#e0f2fe', c: '#075985', label: 'Con oferta' },
+  };
+
   total = signal(0);
   pageSize = signal(10);
   currentPage = signal(1);
@@ -50,62 +66,166 @@ export class LoteList implements OnInit {
   private notificationService = inject(NotificationService);
   currentUser = this.authService.getCurrentUser();
 
-  filteredLotes = computed(() => {
+  // filteredLotes = computed(() => {
+  //   const term = this.searchTerm().toLowerCase();
+  //   let lotes = this.allLotes();
+
+  //   if (term) {
+  //     lotes = lotes.filter(
+  //       (lote: LoteDto) =>
+  //         lote.numeroLote?.toLowerCase().includes(term) ||
+  //         lote.urbanizacion?.nombre?.toLowerCase().includes(term) ||
+  //         lote.ciudad?.toLowerCase().includes(term) ||
+  //         lote.estado?.toLowerCase().includes(term) ||
+  //         lote.descripcion?.toLowerCase().includes(term),
+  //     );
+  //   }
+
+  //   const column = this.sortColumn();
+  //   const direction = this.sortDirection();
+
+  //   if (!column) return lotes;
+
+  //   return [...lotes].sort((a, b) => {
+  //     let aValue: any = a[column];
+  //     let bValue: any = b[column];
+
+  //     if (column === 'urbanizacion') {
+  //       aValue = a.urbanizacion?.nombre;
+  //       bValue = b.urbanizacion?.nombre;
+  //     }
+
+  //     if (aValue === undefined || aValue === null) aValue = '';
+  //     if (bValue === undefined || bValue === null) bValue = '';
+
+  //     if (typeof aValue === 'number' && typeof bValue === 'number') {
+  //       return direction === 'asc' ? aValue - bValue : bValue - aValue;
+  //     }
+
+  //     const aString = aValue.toString().toLowerCase();
+  //     const bString = bValue.toString().toLowerCase();
+
+  //     if (direction === 'asc') {
+  //       return aString.localeCompare(bString);
+  //     } else {
+  //       return bString.localeCompare(aString);
+  //     }
+  //   });
+  // });
+  loteGroups = computed(() => {
     const term = this.searchTerm().toLowerCase();
-    let lotes = this.allLotes();
-
-    if (term) {
-      lotes = lotes.filter(
-        (lote: LoteDto) =>
-          lote.numeroLote?.toLowerCase().includes(term) ||
-          lote.urbanizacion?.nombre?.toLowerCase().includes(term) ||
-          lote.ciudad?.toLowerCase().includes(term) ||
-          lote.estado?.toLowerCase().includes(term) ||
-          lote.descripcion?.toLowerCase().includes(term),
-      );
-    }
-
     const column = this.sortColumn();
     const direction = this.sortDirection();
+    const uuid = this.filtroUuid();
 
-    if (!column) return lotes;
+    let lotes = this.allLotes().filter((lote: LoteDto) => {
+      if (uuid && lote.urbanizacion?.uuid !== uuid) return false; // <-- esto es lo nuevo
+      return (
+        !term ||
+        lote.numeroLote?.toLowerCase().includes(term) ||
+        lote.urbanizacion?.nombre?.toLowerCase().includes(term) ||
+        lote.ciudad?.toLowerCase().includes(term) ||
+        lote.estado?.toLowerCase().includes(term) ||
+        lote.descripcion?.toLowerCase().includes(term)
+      );
+    });
 
-    return [...lotes].sort((a, b) => {
-      let aValue: any = a[column];
-      let bValue: any = b[column];
+    if (column) {
+      lotes = [...lotes].sort((a, b) => {
+        let aVal: any = column === 'urbanizacion' ? a.urbanizacion?.nombre : a[column];
+        let bVal: any = column === 'urbanizacion' ? b.urbanizacion?.nombre : b[column];
+        aVal = aVal ?? '';
+        bVal = bVal ?? '';
+        if (typeof aVal === 'number' && typeof bVal === 'number')
+          return direction === 'asc' ? aVal - bVal : bVal - aVal;
+        return direction === 'asc'
+          ? aVal.toString().localeCompare(bVal.toString())
+          : bVal.toString().localeCompare(aVal.toString());
+      });
+    }
 
-      if (column === 'urbanizacion') {
-        aValue = a.urbanizacion?.nombre;
-        bValue = b.urbanizacion?.nombre;
+    const map = new Map<
+      string,
+      {
+        key: string;
+        nombre: string;
+        ciudad: string;
+        independiente: boolean;
+        colorIndex: number;
+        lotes: LoteDto[];
       }
+    >();
+    let colorIdx = 0;
 
-      if (aValue === undefined || aValue === null) aValue = '';
-      if (bValue === undefined || bValue === null) bValue = '';
-
-      if (typeof aValue === 'number' && typeof bValue === 'number') {
-        return direction === 'asc' ? aValue - bValue : bValue - aValue;
-      }
-
-      const aString = aValue.toString().toLowerCase();
-      const bString = bValue.toString().toLowerCase();
-
-      if (direction === 'asc') {
-        return aString.localeCompare(bString);
+    lotes.forEach((lote) => {
+      if (lote.esIndependiente || !lote.urbanizacion) {
+        if (!map.has('__ind__'))
+          map.set('__ind__', {
+            key: '__ind__',
+            nombre: 'Lotes Independientes',
+            ciudad: '',
+            independiente: true,
+            colorIndex: -1,
+            lotes: [],
+          });
+        map.get('__ind__')!.lotes.push(lote);
       } else {
-        return bString.localeCompare(aString);
+        const key = String(lote.urbanizacion.id ?? lote.urbanizacion.nombre);
+        if (!map.has(key))
+          map.set(key, {
+            key,
+            nombre: lote.urbanizacion.nombre,
+            ciudad: lote.urbanizacion.ciudad ?? lote.ciudad,
+            independiente: false,
+            colorIndex: colorIdx++,
+            lotes: [],
+          });
+        map.get(key)!.lotes.push(lote);
       }
     });
+
+    const ind = map.get('__ind__');
+    map.delete('__ind__');
+    const result = Array.from(map.values()).sort((a, b) => a.nombre.localeCompare(b.nombre));
+    if (ind) result.push(ind);
+    return result;
   });
 
-  ngOnInit(): void {
-    this.obtenerLotes();
+  // Mantén filteredLotes para que el paginado del HTML siga funcionando
+  filteredLotes = computed(() => {
+    return this.loteGroups().flatMap((g) => g.lotes);
+  });
+
+  getGroupColor(group: { independiente: boolean; colorIndex: number }) {
+    if (group.independiente) return { c: '#4B5563', bg: '#F3F4F6', bdr: '#D1D5DB' };
+    return this.COLORES[group.colorIndex % this.COLORES.length];
   }
 
+  getChip(estado: string) {
+    return this.CHIPS[estado] ?? this.CHIPS['DISPONIBLE'];
+  }
+
+  countDisponibles(lotes: LoteDto[]): number {
+    return lotes.filter((l) => l.estado === 'DISPONIBLE').length;
+  }
+filtroUuid = signal<string | null>(null);
+private route = inject(ActivatedRoute);
+
+ngOnInit(): void {
+  // Primero lee el param, luego carga
+  this.route.queryParams.subscribe(params => {
+    const uuid = params['urbanizacion'] ?? null;
+    this.filtroUuid.set(uuid);
+  });
+  
+  this.obtenerLotes();
+}
   obtenerLotes() {
     this.cargando.set(true);
     this.error.set(null);
     this.loteSvc.getAll().subscribe({
       next: (lotes) => {
+        console.log(lotes)
         const lotesConIndicador = lotes.map((lote) => ({
           ...lote,
           esMiLote: lote.encargadoId === this.currentUser?.id,
@@ -288,7 +408,26 @@ export class LoteList implements OnInit {
 
   // Agregar este getter después de currentUser
   get isAdmin(): boolean {
-
     return this.currentUser.role === 'ADMINISTRADOR';
   }
+  private router = inject(Router);
+crearLote(): void {
+  const uuid = this.filtroUuid();
+  if (uuid) {
+    // Busca el grupo activo para sacar el nombre y datos
+    const grupo = this.loteGroups().find(g => 
+      g.lotes.some(l => l.urbanizacion?.uuid === uuid)
+    );
+    this.router.navigate(['/lotes/crear'], {
+      queryParams: { urbanizacion: uuid },
+      state: { 
+        urbanizacionNombre: grupo?.nombre,
+        urbanizacionCiudad: grupo?.ciudad
+      }
+    });
+  } else {
+    this.router.navigate(['/lotes/crear']);
+  }
+}
+
 }

@@ -1,0 +1,143 @@
+<div
+  class="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-emerald-50 py-4 px-2 sm:px-4 lg:px-8"
+>
+  <div class="max-w-auto mx-auto">
+    <!-- Header -->
+    <div
+      class="bg-gradient-to-r from-emerald-600 to-emerald-500 rounded-t-2xl shadow-lg p-4 sm:p-6"
+    >
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <div class="bg-white/20 backdrop-blur-sm rounded-lg p-2">
+            <fa-icon [icon]="faBuilding" class="text-white text-2xl"></fa-icon>
+          </div>
+          <div>
+            <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold text-white">Proyectos</h1>
+            <p class="text-emerald-100 text-xs sm:text-sm mt-1">
+              {{ totalCiudades() }} ciudades · {{ totalUrbanizaciones() }} urbanizaciones
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Buscador -->
+    <div class="bg-white border-x border-gray-200 px-4 sm:px-6 py-4">
+      <div class="relative max-w-sm">
+        <fa-icon
+          [icon]="faSearch"
+          class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"
+        ></fa-icon>
+        <input
+          type="text"
+          [ngModel]="busqueda()"
+          (ngModelChange)="busqueda.set($event)"
+          placeholder="Buscar por nombre, ciudad..."
+          class="w-full pl-9 pr-4 py-2.5 border-2 border-gray-200 rounded-xl focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100 text-sm transition-all outline-none"
+        />
+      </div>
+    </div>
+
+    <!-- Contenido -->
+    <div class="bg-white rounded-b-2xl shadow-xl border-x border-b border-gray-200 p-4 sm:p-6">
+      @if (cargando()) {
+        <div class="text-center py-16">
+          <fa-icon [icon]="faSpinner" class="text-emerald-500 text-4xl animate-spin"></fa-icon>
+          <p class="text-gray-500 mt-4">Cargando urbanizaciones...</p>
+        </div>
+      } @else if (error()) {
+        <div class="text-center py-16 text-gray-500">
+          <p class="text-lg">{{ error() }}</p>
+          <button
+            (click)="cargarUrbanizaciones()"
+            class="mt-4 px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors text-sm"
+          >
+            Reintentar
+          </button>
+        </div>
+      } @else if (ciudadGroups().length === 0) {
+        <div class="text-center py-16 text-gray-400">
+          <fa-icon [icon]="faBuilding" class="text-5xl mb-4"></fa-icon>
+          <p class="text-lg">No se encontraron urbanizaciones</p>
+        </div>
+      } @else {
+        <div class="flex flex-wrap gap-8 items-start">
+          @for (group of ciudadGroups(); track group.ciudad; let ci = $index) {
+            <div class="inline-block">
+
+              <!-- Pestaña -->
+              <div
+                class="inline-flex w-fit items-center gap-2.5 px-4 py-2.5 rounded-t-xl border border-b-0 border-amber-300 bg-amber-400 text-amber-950 text-sm font-medium -mb-px relative z-10"
+              >
+                <fa-icon [icon]="faFolderOpen" class="text-base"></fa-icon>
+                {{ group.ciudad }}
+                <span class="text-xs opacity-70 font-normal">
+                  {{ group.urbanizaciones.length }} urbanización{{
+                    group.urbanizaciones.length !== 1 ? 'es' : ''
+                  }}
+                </span>
+              </div>
+
+              <!-- Cuerpo -->
+              <div class="w-fit rounded-b-xl rounded-tr-xl border border-amber-300 bg-amber-50 p-5">
+                <div class="flex flex-wrap gap-4">
+                  @for (u of group.urbanizaciones; track u.id) {
+                    <div
+                      class="w-56 border border-gray-200 rounded-xl p-4 bg-white hover:border-gray-300 transition-all duration-200 flex flex-col gap-3"
+                    >
+                      <!-- Nombre -->
+                      <div class="flex items-start gap-2">
+                        <fa-icon
+                          [icon]="faBuilding"
+                          class="text-amber-700 text-base mt-0.5 shrink-0"
+                        ></fa-icon>
+                        <p class="font-semibold text-sm text-gray-800 m-0 leading-snug">
+                          {{ u.nombre }}
+                        </p>
+                      </div>
+
+                      <!-- Badge lotes -->
+                      @if (u._count?.lotes !== undefined) {
+                        <div
+                          class="inline-flex items-center gap-1.5 text-xs text-gray-500 bg-gray-100 rounded-md px-2 py-1 w-fit"
+                        >
+                          <fa-icon [icon]="faThLarge" class="text-xs"></fa-icon>
+                          <span class="font-medium">{{ u._count!.lotes }}</span> lote{{
+                            u._count!.lotes !== 1 ? 's' : ''
+                          }}
+                        </div>
+                      }
+
+                      <!-- Descripción -->
+                      @if (u.descripcion) {
+                        <p class="text-xs text-gray-400 m-0 line-clamp-2">
+                          <b>Descripción:</b> {{ u.descripcion }}
+                        </p>
+                      }
+
+                      <!-- Ubicación -->
+                      @if (u.ubicacion) {
+                        <p class="text-xs text-gray-400 m-0 line-clamp-2">
+                          <b>Ubicación:</b> {{ u.ubicacion }}
+                        </p>
+                      }
+
+                      <!-- Acción -->
+                      <button
+                        (click)="irALotes(u.uuid)"
+                        class="mt-auto w-full text-xs py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all flex items-center justify-center gap-1.5"
+                      >
+                        <fa-icon [icon]="faThLarge" class="text-xs "></fa-icon> Ver lotes
+                      </button>
+                    </div>
+                  }
+                </div>
+              </div>
+
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </div>
+</div>

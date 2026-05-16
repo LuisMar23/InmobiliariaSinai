@@ -125,4 +125,11 @@ getCiudades(): Observable<string[]> {
   
   return this.http.get<string[]>(`${this.apiUrl}/ciudades`);
 }
+// ── AGREGAR en urbanizacion.service.ts ──
+
+
+// En lote.service.ts
+getLotesSinUrbanizacion(): Observable<any> {
+  return this.http.get(`${this.apiUrl}/sin-urbanizacion`);
+}
 }

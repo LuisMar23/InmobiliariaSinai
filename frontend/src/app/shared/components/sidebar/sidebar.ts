@@ -89,13 +89,15 @@ menuItems: {
 { label: 'Propiedades', icon: faHouse, route: '/propiedades', roles: ['ADMINISTRADOR'] },
 
 { label: 'Clientes', icon: faHomeUser, route: '/clientes', roles: ['ADMINISTRADOR', 'SECRETARIA'] },
-
+{ label: 'Creditos', icon: faHomeUser, route: '/creditos', roles: ['ADMINISTRADOR', 'SECRETARIA'] },
 { label: 'Cotizaciones', icon: faFileInvoiceDollar, route: '/cotizaciones', roles: ['ADMINISTRADOR'] },
 { label: 'Ventas', icon: faReceipt, route: '/ventas', roles: ['ADMINISTRADOR', 'SECRETARIA','ASESOR'] },
 { label: 'Reservas', icon: faCalendarCheck, route: '/reservas', roles: ['ADMINISTRADOR', 'SECRETARIA', 'ASESOR'] },
 { label: 'Visitas', icon: faEye, route: '/visitas', roles: ['ADMINISTRADOR', 'SECRETARIA'] },
-
+{ label: 'Reportes', icon: faEye, route: '/reportes', roles: ['ADMINISTRADOR', 'SECRETARIA'] },
 { label: 'Caja', icon: faCashRegister, route: '/caja', roles: ['ADMINISTRADOR', 'SECRETARIA'] },
+
+{ label: 'Gastos', icon: faCashRegister, route: '/egresos', roles: ['ADMINISTRADOR', 'SECRETARIA'] },
 { label: 'Promociones', icon: faTag, route: '/promociones', roles: ['ADMINISTRADOR'] },
 
 { label: 'Usuarios', icon: faUsers, route: '/usuarios', roles: ['ADMINISTRADOR'] },

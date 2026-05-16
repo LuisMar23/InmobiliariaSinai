@@ -17,9 +17,12 @@ import { DashboardModule } from './dashboard/dashboard.module';
 
 import { ReciboModule } from './recibo/recibo.module';
 import { PropiedadModule } from './propiedad/propiedad.module';
+import { CreditosModule } from './creditos/creditos.module';
+import { ReportesModule } from './reportes/reportes.module';
+import { EgresosModule } from './egresos/egresos.module';
 
 @Module({
-  imports: [AuthModule, UsersModule, UrbanizacionModule, PromocionModule, LotesModule, VentasModule, ReservasModule, CotizacionesModule, CajaModule, MovimientoModule, CierreModule, VisitasModule, ArchivosModule, ReciboModule,DashboardModule, PropiedadModule],
+  imports: [AuthModule, UsersModule, UrbanizacionModule, PromocionModule, LotesModule, VentasModule, ReservasModule, CotizacionesModule, CajaModule, MovimientoModule, CierreModule, VisitasModule, ArchivosModule, ReciboModule,DashboardModule, PropiedadModule, CreditosModule, ReportesModule, EgresosModule],
 
   controllers: [],
   providers: [],
