@@ -91,30 +91,6 @@
                     </svg>
                   </button>
                 </div>
-
-                @if (showClientesDropdown()) {
-                  <div
-                    class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto"
-                  >
-                    @for (cliente of filteredClientes(); track cliente.id) {
-                      <div
-                        (click)="selectCliente(cliente)"
-                        class="px-4 py-3 hover:bg-emerald-50 cursor-pointer border-b border-gray-100 last:border-b-0"
-                      >
-                        <div class="font-medium text-gray-900">{{ cliente.fullName }}</div>
-                        @if (cliente.ci) {
-                          <div class="text-sm text-gray-600">{{ cliente.ci }}</div>
-                        }
-                      </div>
-                    }
-                    @if (filteredClientes().length === 0) {
-                      <div class="px-4 py-3 text-gray-500 text-center">
-                        No se encontraron clientes
-                      </div>
-                    }
-                  </div>
-                }
-
                 @if (ventaForm.get('clienteId')?.invalid && ventaForm.get('clienteId')?.touched) {
                   <p class="mt-1 text-xs text-red-600">El cliente es requerido</p>
                 }
@@ -165,7 +141,6 @@
                       </svg>
                     </button>
                   </div>
-
                   @if (
                     ventaForm.get('inmuebleId')?.invalid && ventaForm.get('inmuebleId')?.touched
                   ) {
@@ -211,37 +186,6 @@
                   ) {
                     <p class="mt-1 text-xs text-red-600">La propiedad es requerida</p>
                   }
-
-                  <!-- @if (showPropiedadesDropdown()) {
-                    <div
-                      class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto"
-                    >
-                      @for (propiedad of filteredPropiedades(); track propiedad.id) {
-                        <div
-                          (click)="selectPropiedad(propiedad)"
-                          class="px-4 py-3 hover:bg-emerald-50 cursor-pointer border-b border-gray-100 last:border-b-0"
-                        >
-                          <div class="font-medium text-gray-900">
-                            {{ propiedad.nombre }} - {{ propiedad.tipo }}
-                          </div>
-                          <div class="text-sm text-gray-600">
-                            Bs.{{ formatNumber(propiedad.precio) }} - {{ propiedad.ubicacion }}
-                          </div>
-                        </div>
-                      }
-                      @if (filteredPropiedades().length === 0) {
-                        <div class="px-4 py-3 text-gray-500 text-center">
-                          No se encontraron propiedades
-                        </div>
-                      }
-                    </div>
-                  } -->
-
-                  @if (
-                    ventaForm.get('inmuebleId')?.invalid && ventaForm.get('inmuebleId')?.touched
-                  ) {
-                    <p class="mt-1 text-xs text-red-600">La propiedad es requerida</p>
-                  }
                 </div>
               }
 
@@ -280,7 +224,6 @@
                     </svg>
                   </div>
                 </div>
-
                 @if (showCajasDropdown()) {
                   <div
                     class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto"
@@ -302,7 +245,6 @@
                     }
                   </div>
                 }
-
                 @if (ventaForm.get('cajaId')?.invalid && ventaForm.get('cajaId')?.touched) {
                   <p class="mt-1 text-xs text-red-600">La caja es requerida</p>
                 }
@@ -500,12 +442,48 @@
                 </div>
               }
             </div>
+
+            @if (cronogramaEstimado().length > 0) {
+            <div class="mt-6">
+              <h4 class="text-md font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                Cronograma de Pagos
+              </h4>
+              <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg">
+                  <thead class="bg-gray-50">
+                    <tr>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">N° Cuota</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha Cuota</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Monto Cuota (Bs.)</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody class="bg-white divide-y divide-gray-200">
+                    @for (cuota of cronogramaEstimado(); track cuota.numero) {
+                    <tr class="hover:bg-gray-50">
+                      <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ cuota.numero }}</td>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ formatearFecha(cuota.fecha) }}</td>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Bs. {{ cuota.monto | number:'1.2-2' }}</td>
+                      <td class="px-6 py-4 whitespace-nowrap">
+                        <span [class]="'px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ' + getEstadoCuotaClass(cuota.estado)">
+                          {{ cuota.estado }}
+                        </span>
+                      </td>
+                    </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            }
           </div>
         </div>
 
-        <div
-          class="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 pt-6 border-t border-gray-200"
-        >
+        <div class="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 pt-6 border-t border-gray-200">
           <button
             type="button"
             (click)="router.navigate(['/ventas/lista'])"
@@ -556,8 +534,6 @@
   (selected)="selectLote($event)"
 >
 </app-selection-modal>
-
-<!-- Modal Propiedad (solo se muestra si tipo es PROPIEDAD) -->
 <app-selection-modal
   #propiedadModal
   [config]="propiedadModalConfig"

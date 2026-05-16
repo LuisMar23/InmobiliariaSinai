@@ -8,7 +8,7 @@ import {
   FormGroup,
   Validators,
 } from '@angular/forms';
-import { VentaDto, RegistrarPagoDto } from '../../../../core/interfaces/venta.interface';
+import { VentaDto, RegistrarPagoDto, Cuota } from '../../../../core/interfaces/venta.interface';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { VentaService } from '../../service/venta.service';
 import { ReciboService, Recibo } from '../../../../core/services/recibo.service';
@@ -37,6 +37,8 @@ export class VentaDetail implements OnInit {
 
   recibosVenta = signal<Recibo[]>([]);
   recibosCargando = signal<boolean>(true);
+
+  cronograma = signal<Cuota[]>([]);
 
   pagoForm: FormGroup;
 
@@ -119,6 +121,7 @@ export class VentaDetail implements OnInit {
         if (venta) {
           this.ventaData.set(venta);
           this.cargarRecibosVenta(venta.id);
+          this.cargarCronograma(venta.id);
           this.cargando.set(false);
         } else {
           this.error.set('No se encontró la venta');
@@ -129,6 +132,22 @@ export class VentaDetail implements OnInit {
         console.error('Error obteniendo venta:', err);
         this.error.set('No se pudo cargar la venta');
         this.cargando.set(false);
+      },
+    });
+  }
+
+  cargarCronograma(ventaId: number): void {
+    this.ventaSvc.obtenerCronograma(ventaId).subscribe({
+      next: (response) => {
+        if (response.success && response.data.cronograma) {
+          this.cronograma.set(response.data.cronograma);
+        } else {
+          this.cronograma.set([]);
+        }
+      },
+      error: (err) => {
+        console.error('Error cargando cronograma:', err);
+        this.cronograma.set([]);
       },
     });
   }
@@ -296,7 +315,6 @@ export class VentaDetail implements OnInit {
 
   descargarAnticipo() {
     const venta = this.ventaData();
-    // CORRECCIÓN: Verificar explícitamente que sea un LOTE
     if (venta && venta.lote) {
       this.anticipoPdfService.generarAnticipoPdf(venta);
     }
@@ -331,7 +349,6 @@ export class VentaDetail implements OnInit {
     this.router.navigate(['/ventas/lista']);
   }
 
-  // Métodos de utilidad
   getEstadoBadgeClass(estado: string): string {
     const classes: { [key: string]: string } = {
       PENDIENTE: 'px-3 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-700',
@@ -349,6 +366,15 @@ export class VentaDetail implements OnInit {
       CANCELADO: 'px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-700',
     };
     return classes[estado] || classes['ACTIVO'];
+  }
+
+  getEstadoCuotaClass(estado: string): string {
+    const classes: { [key: string]: string } = {
+      PENDIENTE: 'bg-yellow-100 text-yellow-700',
+      PAGADA: 'bg-green-100 text-green-700',
+      VENCIDA: 'bg-red-100 text-red-700',
+    };
+    return classes[estado] || classes['PENDIENTE'];
   }
 
   formatPrecio(precio: number): string {

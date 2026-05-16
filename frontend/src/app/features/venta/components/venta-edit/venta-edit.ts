@@ -17,6 +17,7 @@ import {
   VentaDto,
   UpdateVentaDto,
   RegistrarPagoDto,
+  Cuota,
 } from '../../../../core/interfaces/venta.interface';
 
 @Component({
@@ -63,6 +64,8 @@ export class VentaEdit implements OnInit {
 
   recibosVenta = signal<Recibo[]>([]);
   recibosCargando = signal<boolean>(true);
+
+  cronograma = signal<Cuota[]>([]);
 
   filteredClientes = computed(() => {
     const search = this.searchCliente().toLowerCase();
@@ -375,6 +378,7 @@ export class VentaEdit implements OnInit {
           this.cargarLotes();
           this.cargarPropiedades();
           this.cargarRecibosVenta(id);
+          this.cargarCronograma(id);
         } else {
           this.error.set('No se encontró la venta');
           this.cargando.set(false);
@@ -384,6 +388,22 @@ export class VentaEdit implements OnInit {
         console.error('Error obteniendo venta:', err);
         this.error.set('No se pudo cargar la venta');
         this.cargando.set(false);
+      },
+    });
+  }
+
+  cargarCronograma(ventaId: number): void {
+    this.ventaSvc.obtenerCronograma(ventaId).subscribe({
+      next: (response) => {
+        if (response.success && response.data.cronograma) {
+          this.cronograma.set(response.data.cronograma);
+        } else {
+          this.cronograma.set([]);
+        }
+      },
+      error: (err) => {
+        console.error('Error cargando cronograma:', err);
+        this.cronograma.set([]);
       },
     });
   }
@@ -993,5 +1013,14 @@ export class VentaEdit implements OnInit {
       CANCELADO: 'px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-700',
     };
     return classes[estado] || classes['ACTIVO'];
+  }
+
+  getEstadoCuotaClass(estado: string): string {
+    const classes: { [key: string]: string } = {
+      PENDIENTE: 'bg-yellow-100 text-yellow-700',
+      PAGADA: 'bg-green-100 text-green-700',
+      VENCIDA: 'bg-red-100 text-red-700',
+    };
+    return classes[estado] || classes['PENDIENTE'];
   }
 }

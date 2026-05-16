@@ -60,6 +60,11 @@ export class VentasController {
     return this.ventasService.findOne(+id);
   }
 
+  @Get(':id/cronograma')
+  obtenerCronograma(@Param('id') id: string) {
+    return this.ventasService.obtenerCronograma(+id);
+  }
+
   @Patch(':id')
   update(
     @Param('id') id: string,
