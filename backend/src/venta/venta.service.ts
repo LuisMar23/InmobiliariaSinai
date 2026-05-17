@@ -103,7 +103,7 @@ export class VentasService {
     pagoData: any,
     venta: any,
     usuarioId: number,
-    prismaClient: any, // ← agregar este parámetro
+    prismaClient: any,
     ip?: string,
     userAgent?: string,
   ) {
@@ -118,7 +118,7 @@ export class VentasService {
         descripcion: `Pago de venta #${venta.id} - Cliente ID: ${venta.clienteId}`,
         metodoPago: pagoData.metodoPago || 'EFECTIVO',
         referencia: `Venta-${venta.id}-Pago-${pagoData.pagoId || 'Inicial'}`,
-        ventaId: venta.id, // ← ahora sí funciona
+        ventaId: venta.id,
       },
     });
 
@@ -136,7 +136,7 @@ export class VentasService {
     pagoData: any,
     venta: any,
     usuarioId: number,
-    prismaClient: any, // ← agregar
+    prismaClient: any,
     ip?: string,
     userAgent?: string,
   ) {
@@ -151,7 +151,7 @@ export class VentasService {
         descripcion: `Reversión de pago - Venta #${venta.id} - Pago ID: ${pagoData.pagoId}`,
         metodoPago: pagoData.metodoPago || 'EFECTIVO',
         referencia: `Venta-${venta.id}-Reversion-${pagoData.pagoId}`,
-        ventaId: venta.id, // ← agregar
+        ventaId: venta.id,
       },
     });
 
@@ -492,12 +492,6 @@ export class VentasService {
             });
           } else {
             await this.generarCuotas(planPago.id_plan_pago, prisma);
-            await this.aplicarPagoACuotas(
-              pagoInicial.id_pago_plan,
-              planPago.id_plan_pago,
-              createVentaDto.plan_pago.monto_inicial,
-              prisma,
-            );
           }
         } else if (createVentaDto.plan_pago.plazo > 0) {
           await this.generarCuotas(planPago.id_plan_pago, prisma);
@@ -584,8 +578,6 @@ export class VentasService {
       if (clienteId) where.clienteId = clienteId;
       if (asesorId) where.asesorId = asesorId;
 
-      // ASESOR solo ve sus propias ventas
-      // ADMINISTRADOR y SECRETARIA ven todas
       if (usuarioRole === 'ASESOR') {
         throw new ForbiddenException('No tienes permisos para ver ventas');
       }
@@ -973,14 +965,6 @@ export class VentasService {
         });
         if (nuevoMontoInicial < Number(venta.planPago.total)) {
           await this.generarCuotas(venta.planPago.id_plan_pago, prisma);
-          if (pagoInicialExistente) {
-            await this.aplicarPagoACuotas(
-              pagoInicialExistente.id_pago_plan,
-              venta.planPago.id_plan_pago,
-              nuevoMontoInicial,
-              prisma,
-            );
-          }
         }
         await this.actualizarEstadoPlan(venta.planPago.id_plan_pago);
         await this.crearAuditoria(
@@ -1043,11 +1027,6 @@ export class VentasService {
             'Solo puedes eliminar tus propias ventas',
           );
 
-        // if (venta.archivos.length > 0 || venta.ingresos.length > 0)
-        //   throw new BadRequestException(
-        //     'No se puede eliminar la venta porque tiene archivos o ingresos asociados',
-        //   );
-
         if (!venta.cajaId) {
           throw new BadRequestException('La venta no tiene una caja asociada');
         }
@@ -1079,22 +1058,18 @@ export class VentasService {
           });
         }
 
-        // ── Eliminar todos los movimientos de caja vinculados a esta venta ──
         await prisma.movimientoCaja.deleteMany({
           where: { ventaId: id },
         });
 
-        // ── Eliminar ingresos vinculados ──
         await prisma.ingreso.deleteMany({
           where: { ventaId: id },
         });
 
-        // ── Eliminar recibos vinculados ──
         await prisma.recibo.deleteMany({
           where: { ventaId: id },
         });
 
-        // ── Eliminar archivos vinculados ──
         await prisma.archivo.deleteMany({
           where: { ventaId: id },
         });
@@ -1592,14 +1567,6 @@ export class VentasService {
             const pagoInicial = await prisma.pagoPlanPago.findFirst({
               where: { plan_pago_id: planPagoId, observacion: 'Pago inicial' },
             });
-            if (pagoInicial) {
-              await this.aplicarPagoACuotas(
-                pagoInicial.id_pago_plan,
-                planPagoId,
-                Number(pagoInicial.monto),
-                prisma,
-              );
-            }
           }
         }
         await this.actualizarEstadoPlan(planPagoId);
