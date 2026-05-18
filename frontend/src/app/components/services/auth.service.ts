@@ -431,4 +431,7 @@ gettClienteById(id: number): Observable<UserResponse> {
     const user = this.getCurrentUser();
     return user?.role === 'ADMINISTRADOR' || user?.role === 'ASESOR';
   }
+
+
+  
 }

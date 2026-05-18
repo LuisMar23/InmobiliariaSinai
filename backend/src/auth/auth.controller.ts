@@ -12,6 +12,7 @@ import {
   Delete,
   Param,
   ParseIntPipe,
+  Patch,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
@@ -104,5 +105,13 @@ export class AuthController {
   @Get(':id')
   async getClienteById(@Param('id', ParseIntPipe) id: number) {
     return this.authService.getClienteByIdWithDetails(id);
+  }
+
+  @Patch(':id/urbanizaciones')
+  async asignarUrbanizaciones(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { urbanizacionIds: number[] },
+  ) {
+    return this.authService.asignarUrbanizaciones(id, body.urbanizacionIds);
   }
 }

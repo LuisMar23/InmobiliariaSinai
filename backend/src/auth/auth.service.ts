@@ -1,3 +1,10 @@
+// src/auth/auth.service.ts
+// CAMBIOS RESPECTO A LA VERSIÓN ANTERIOR:
+// - Eliminado ciudadesAsignadas de JWT y todos los métodos
+// - generateTokens solo lleva sub, email, role
+// - register y updateUser ya no manejan ciudadesAsignadas
+// - Las urbanizaciones se gestionan desde SeguridadService
+
 import {
   Injectable,
   UnauthorizedException,
@@ -30,17 +37,37 @@ export class AuthService {
     return localTime;
   }
 
+  // ============================================================
+  // JWT - sin ciudadesAsignadas
+  // ============================================================
+  private async generateTokens(userId: number, email: string, role: string) {
+    const payload = {
+      sub: userId,
+      email: email.toLowerCase(),
+      role,
+    };
+
+    const [accessToken, refreshToken] = await Promise.all([
+      this.jwtService.signAsync(payload, {
+        expiresIn: process.env.JWT_EXPIRES_IN || '15m',
+        secret: process.env.JWT_SECRET || 'default-secret-key',
+      }),
+      this.jwtService.signAsync(payload, {
+        expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
+        secret: process.env.JWT_REFRESH_SECRET || 'default-secret-key',
+      }),
+    ]);
+
+    return { accessToken, refreshToken };
+  }
+
+  // ============================================================
+  // REGISTER
+  // ============================================================
   async register(registerDto: RegisterDto) {
-    const {
-      username,
-      email,
-      password,
-      fullName,
-      ci,
-      telefono,
-      direccion,
-      observaciones,
-    } = registerDto;
+    const { username, email, password, fullName, ci, telefono, direccion, observaciones } =
+      registerDto;
+
     try {
       const normalizedEmail = email ? email.toLowerCase().trim() : null;
       const normalizedUsername = username.toLowerCase().trim();
@@ -81,7 +108,6 @@ export class AuthService {
           telefono: normalizedTelefono ?? '',
           isActive: true,
           role: registerDto.role ?? UserRole.USUARIO,
-          ciudadesAsignadas: registerDto.ciudadesAsignadas ?? [],
           direccion: direccion?.trim() ?? null,
           observaciones: observaciones?.trim() ?? null,
         },
@@ -93,7 +119,6 @@ export class AuthService {
           fullName: true,
           avatarUrl: true,
           role: true,
-          ciudadesAsignadas: true,
           direccion: true,
           observaciones: true,
           createdAt: true,
@@ -101,12 +126,7 @@ export class AuthService {
       });
 
       const userEmail = user.email ?? `user${user.id}@inmobiliaria.com`;
-      const tokens = await this.generateTokens(
-        user.id,
-        userEmail,
-        user.role,
-        user.ciudadesAsignadas,
-      );
+      const tokens = await this.generateTokens(user.id, userEmail, user.role);
 
       await this.prisma.auditoria.create({
         data: {
@@ -119,8 +139,6 @@ export class AuthService {
             email: user.email,
             fullName: user.fullName,
             role: user.role,
-            direccion: user.direccion,
-            observaciones: user.observaciones,
           }),
           ip: '127.0.0.1',
           dispositivo: 'API',
@@ -138,10 +156,15 @@ export class AuthService {
     }
   }
 
+  // ============================================================
+  // LOGIN
+  // ============================================================
   async login(loginDto: LoginDto) {
     const { identifier, password } = loginDto;
+
     try {
       const normalizedIdentifier = identifier.toLowerCase().trim();
+
       const user = await this.prisma.user.findFirst({
         where: {
           OR: [
@@ -152,12 +175,13 @@ export class AuthService {
           role: { not: UserRole.CLIENTE },
         },
       });
+
       if (!user) throw new UnauthorizedException('Credenciales inválidas');
       if (!user.passwordHash)
-        throw new UnauthorizedException(
-          'Este usuario no tiene credenciales de acceso',
-        );
+        throw new UnauthorizedException('Este usuario no tiene credenciales de acceso');
+
       const now = this.getCurrentTimeLaPaz();
+
       if (user.lockUntil && user.lockUntil > now) {
         const diffMs = user.lockUntil.getTime() - now.getTime();
         const diffMin = Math.ceil(diffMs / (1000 * 60));
@@ -165,43 +189,56 @@ export class AuthService {
           `Cuenta bloqueada. Intenta nuevamente en ${diffMin} minutos.`,
         );
       }
+
       const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+
       if (!isPasswordValid) {
         const failedAttempts = (user.failedAttempts || 0) + 1;
         const lockUntil =
           failedAttempts >= 5 ? new Date(now.getTime() + 5 * 60 * 1000) : null;
+
         await this.prisma.user.update({
           where: { id: user.id },
           data: { failedAttempts, lockUntil },
         });
+
         const message =
           failedAttempts >= 5
             ? 'Demasiados intentos fallidos. Tu cuenta se bloqueó por 5 minutos.'
             : 'Credenciales inválidas';
+
         throw new UnauthorizedException(message);
       }
+
       if (user.failedAttempts > 0 || user.lockUntil) {
         await this.prisma.user.update({
           where: { id: user.id },
           data: { failedAttempts: 0, lockUntil: null, lastLogin: now },
         });
       }
-      let tokens;
-      if (user.email) {
-        tokens = await this.generateTokens(
-          user.id,
-          user.email,
-          user.role,
-          user.ciudadesAsignadas,
-        ); // 👈
-      } else {
-        tokens = await this.generateTokens(
-          user.id,
-          `user${user.id}@inmobiliaria.com`,
-          user.role,
-          user.ciudadesAsignadas, // 👈
-        );
-      }
+
+      // Obtener permisos para devolver al frontend
+      const permisos = await this.prisma.permisoRole.findMany({
+        where: { role: user.role },
+        include: { modulo: true },
+      });
+
+      const permisosMap = permisos.reduce(
+        (acc, p) => {
+          acc[p.modulo.clave] = {
+            ver: p.puedeVer,
+            crear: p.puedeCrear,
+            editar: p.puedeEditar,
+            eliminar: p.puedeEliminar,
+          };
+          return acc;
+        },
+        {} as Record<string, { ver: boolean; crear: boolean; editar: boolean; eliminar: boolean }>,
+      );
+
+      const userEmail = user.email ?? `user${user.id}@inmobiliaria.com`;
+      const tokens = await this.generateTokens(user.id, userEmail, user.role);
+
       await this.prisma.auditoria.create({
         data: {
           usuarioId: user.id,
@@ -212,6 +249,7 @@ export class AuthService {
           dispositivo: 'API',
         },
       });
+
       return {
         success: true,
         message: 'Login exitoso',
@@ -224,7 +262,7 @@ export class AuthService {
             fullName: user.fullName,
             avatarUrl: user.avatarUrl,
             role: user.role,
-            ciudadesAsignadas: user.ciudadesAsignadas, // 👈
+            permisos: permisosMap, // 👈 permisos para el frontend
           },
           ...tokens,
         },
@@ -235,19 +273,80 @@ export class AuthService {
     }
   }
 
+  // ============================================================
+  // REFRESH TOKEN
+  // ============================================================
+  async refreshToken(refreshToken: string) {
+    try {
+      const payload = await this.jwtService.verifyAsync(refreshToken, {
+        secret: process.env.JWT_REFRESH_SECRET || 'default-secret-key',
+      });
+
+      const user = await this.prisma.user.findUnique({
+        where: {
+          id: payload.sub,
+          isActive: true,
+          role: { not: UserRole.CLIENTE },
+        },
+        select: { id: true, role: true, email: true },
+      });
+
+      if (!user) throw new UnauthorizedException('Usuario no encontrado');
+
+      const userEmail = user.email ?? `user${user.id}@inmobiliaria.com`;
+      const tokens = await this.generateTokens(user.id, userEmail, user.role);
+
+      return {
+        success: true,
+        message: 'Token refrescado correctamente',
+        data: tokens,
+      };
+    } catch (error) {
+      throw new UnauthorizedException('Token de refresco inválido');
+    }
+  }
+
+  // ============================================================
+  // VALIDATE USER (usado por JwtStrategy)
+  // ============================================================
+  async validateUser(userId: number) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId, isActive: true, role: { not: UserRole.CLIENTE } },
+      select: {
+        id: true,
+        uuid: true,
+        username: true,
+        email: true,
+        fullName: true,
+        avatarUrl: true,
+        role: true,
+        isActive: true,
+      },
+    });
+
+    if (!user) throw new UnauthorizedException('Usuario no encontrado');
+    return user;
+  }
+
+  // ============================================================
+  // CHANGE PASSWORD
+  // ============================================================
   async changePassword(changePasswordDto: ChangePasswordDto) {
     const { identifier, newPassword, confirmPassword } = changePasswordDto;
+
     if (newPassword !== confirmPassword)
       throw new BadRequestException('Las contraseñas no coinciden');
-    const passwordRegex =
-      /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/;
+
+    const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/;
     if (!passwordRegex.test(newPassword)) {
       throw new BadRequestException(
         'La contraseña debe tener al menos 8 caracteres, una letra mayúscula, un número y un símbolo.',
       );
     }
+
     try {
       const normalizedIdentifier = identifier.toLowerCase().trim();
+
       const user = await this.prisma.user.findFirst({
         where: {
           OR: [
@@ -258,21 +357,17 @@ export class AuthService {
           role: { not: UserRole.CLIENTE },
         },
       });
-      if (!user) {
-        throw new NotFoundException(
-          'No se encontró ningún usuario con ese username o email',
-        );
-      }
+
+      if (!user)
+        throw new NotFoundException('No se encontró ningún usuario con ese username o email');
+
       const hashedPassword = await bcrypt.hash(newPassword, 12);
+
       await this.prisma.user.update({
         where: { id: user.id },
-        data: {
-          passwordHash: hashedPassword,
-          failedAttempts: 0,
-          lockUntil: null,
-          updatedAt: new Date(),
-        },
+        data: { passwordHash: hashedPassword, failedAttempts: 0, lockUntil: null },
       });
+
       await this.prisma.auditoria.create({
         data: {
           usuarioId: user.id,
@@ -283,23 +378,21 @@ export class AuthService {
           dispositivo: 'API',
         },
       });
+
       return {
         success: true,
         message: 'Contraseña cambiada exitosamente',
-        data: {
-          user: { username: user.username, email: user.email, role: user.role },
-        },
+        data: { user: { username: user.username, email: user.email, role: user.role } },
       };
     } catch (error) {
-      if (
-        error instanceof NotFoundException ||
-        error instanceof BadRequestException
-      )
-        throw error;
+      if (error instanceof NotFoundException || error instanceof BadRequestException) throw error;
       throw new InternalServerErrorException('Error interno del servidor');
     }
   }
 
+  // ============================================================
+  // USERS CRUD
+  // ============================================================
   async getAllUsers() {
     try {
       const users = await this.prisma.user.findMany({
@@ -317,11 +410,14 @@ export class AuthService {
           role: true,
           isActive: true,
           avatarUrl: true,
-          ciudadesAsignadas: true, // 👈
           createdAt: true,
+          urbanizacionesAsignadas: {
+            include: { urbanizacion: true },
+          },
         },
         orderBy: { createdAt: 'desc' },
       });
+
       return { success: true, data: { users } };
     } catch (error) {
       throw new InternalServerErrorException('Error interno del servidor');
@@ -345,12 +441,16 @@ export class AuthService {
           role: true,
           isActive: true,
           avatarUrl: true,
-          ciudadesAsignadas: true, // 👈
           createdAt: true,
           updatedAt: true,
+          urbanizacionesAsignadas: {
+            include: { urbanizacion: true },
+          },
         },
       });
+
       if (!user) throw new NotFoundException('Usuario no encontrado');
+
       return { success: true, data: { user } };
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
@@ -363,47 +463,23 @@ export class AuthService {
       const user = await this.prisma.user.findUnique({
         where: { id: userId, isActive: true },
       });
+
       if (!user) throw new NotFoundException('Usuario no encontrado');
 
       const updateData: any = {};
 
-      if (updateUserDto.fullName !== undefined)
-        updateData.fullName = updateUserDto.fullName;
-      if (updateUserDto.username !== undefined)
-        updateData.username = updateUserDto.username;
-      if (updateUserDto.email !== undefined)
-        updateData.email = updateUserDto.email;
-      if (updateUserDto.telefono !== undefined)
-        updateData.telefono = updateUserDto.telefono;
-      if (updateUserDto.direccion !== undefined)
-        updateData.direccion = updateUserDto.direccion;
+      if (updateUserDto.fullName !== undefined) updateData.fullName = updateUserDto.fullName;
+      if (updateUserDto.username !== undefined) updateData.username = updateUserDto.username;
+      if (updateUserDto.email !== undefined) updateData.email = updateUserDto.email;
+      if (updateUserDto.telefono !== undefined) updateData.telefono = updateUserDto.telefono;
+      if (updateUserDto.direccion !== undefined) updateData.direccion = updateUserDto.direccion;
       if (updateUserDto.observaciones !== undefined)
         updateData.observaciones = updateUserDto.observaciones;
-      if (updateUserDto.role !== undefined)
-        updateData.role = updateUserDto.role;
-      if (updateUserDto.isActive !== undefined)
-        updateData.isActive = updateUserDto.isActive;
-
-      // Ciudades asignadas 👈
-      if (updateUserDto.ciudadesAsignadas !== undefined) {
-        updateData.ciudadesAsignadas = updateUserDto.ciudadesAsignadas.map(
-          (c) => c.trim(),
-        );
-      }
-
-      // Si cambia a rol sin restricción, limpia las ciudades
-      if (
-        updateUserDto.role &&
-        ['ADMINISTRADOR', 'CLIENTE', 'USUARIO'].includes(updateUserDto.role)
-      ) {
-        updateData.ciudadesAsignadas = [];
-      }
+      if (updateUserDto.role !== undefined) updateData.role = updateUserDto.role;
+      if (updateUserDto.isActive !== undefined) updateData.isActive = updateUserDto.isActive;
 
       if (updateUserDto.password?.trim()) {
-        updateData.passwordHash = await bcrypt.hash(
-          updateUserDto.password.trim(),
-          10,
-        );
+        updateData.passwordHash = await bcrypt.hash(updateUserDto.password.trim(), 10);
       }
 
       const updatedUser = await this.prisma.user.update({
@@ -422,7 +498,6 @@ export class AuthService {
           role: true,
           isActive: true,
           avatarUrl: true,
-          ciudadesAsignadas: true, // 👈
           createdAt: true,
           updatedAt: true,
         },
@@ -457,11 +532,14 @@ export class AuthService {
       const user = await this.prisma.user.findUnique({
         where: { id: userId, isActive: true },
       });
+
       if (!user) throw new NotFoundException('Usuario no encontrado');
+
       await this.prisma.user.update({
         where: { id: userId },
         data: { isActive: false },
       });
+
       await this.prisma.auditoria.create({
         data: {
           usuarioId: userId,
@@ -473,6 +551,7 @@ export class AuthService {
           dispositivo: 'API',
         },
       });
+
       return { success: true, message: 'Usuario eliminado correctamente' };
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
@@ -480,12 +559,16 @@ export class AuthService {
     }
   }
 
+  // ============================================================
+  // CLIENTES CRUD
+  // ============================================================
   async createCliente(createClienteDto: CreateClienteDto) {
-    const { fullName, ci, telefono, direccion, observaciones } =
-      createClienteDto;
+    const { fullName, ci, telefono, direccion, observaciones } = createClienteDto;
+
     try {
       const normalizedCi = ci.trim();
       const normalizedTelefono = telefono.trim();
+
       const existingCliente = await this.prisma.user.findFirst({
         where: {
           OR: [{ ci: normalizedCi }, { telefono: normalizedTelefono }],
@@ -493,12 +576,14 @@ export class AuthService {
           isActive: true,
         },
       });
+
       if (existingCliente) {
         if (existingCliente.ci === normalizedCi)
           throw new ConflictException('Ya existe un cliente con este CI');
         if (existingCliente.telefono === normalizedTelefono)
           throw new ConflictException('Ya existe un cliente con este teléfono');
       }
+
       const cliente = await this.prisma.user.create({
         data: {
           fullName: fullName.trim(),
@@ -524,6 +609,7 @@ export class AuthService {
           createdAt: true,
         },
       });
+
       await this.prisma.auditoria.create({
         data: {
           usuarioId: cliente.id,
@@ -535,6 +621,7 @@ export class AuthService {
           dispositivo: 'API',
         },
       });
+
       return {
         success: true,
         message: 'Cliente registrado correctamente',
@@ -563,6 +650,7 @@ export class AuthService {
         },
         orderBy: { createdAt: 'desc' },
       });
+
       return { success: true, data: { clientes } };
     } catch (error) {
       throw new InternalServerErrorException('Error interno del servidor');
@@ -586,7 +674,9 @@ export class AuthService {
           updatedAt: true,
         },
       });
+
       if (!cliente) throw new NotFoundException('Cliente no encontrado');
+
       return { success: true, data: { user: cliente } };
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
@@ -599,11 +689,12 @@ export class AuthService {
       const cliente = await this.prisma.user.findUnique({
         where: { id: clienteId, role: UserRole.CLIENTE, isActive: true },
       });
+
       if (!cliente) throw new NotFoundException('Cliente no encontrado');
-      const normalizedCi = updateClienteDto.ci
-        ? updateClienteDto.ci.trim()
-        : cliente.ci;
+
+      const normalizedCi = updateClienteDto.ci ? updateClienteDto.ci.trim() : cliente.ci;
       const normalizedTelefono = updateClienteDto.telefono.trim();
+
       const existingCliente = await this.prisma.user.findFirst({
         where: {
           id: { not: clienteId },
@@ -612,12 +703,14 @@ export class AuthService {
           isActive: true,
         },
       });
+
       if (existingCliente) {
         if (existingCliente.ci === normalizedCi)
           throw new ConflictException('Ya existe un cliente con este CI');
         if (existingCliente.telefono === normalizedTelefono)
           throw new ConflictException('Ya existe un cliente con este teléfono');
       }
+
       const updatedCliente = await this.prisma.user.update({
         where: { id: clienteId },
         data: {
@@ -626,7 +719,6 @@ export class AuthService {
           telefono: normalizedTelefono,
           direccion: updateClienteDto.direccion?.trim(),
           observaciones: updateClienteDto.observaciones?.trim(),
-          updatedAt: new Date(),
         },
         select: {
           id: true,
@@ -641,6 +733,7 @@ export class AuthService {
           updatedAt: true,
         },
       });
+
       await this.prisma.auditoria.create({
         data: {
           usuarioId: clienteId,
@@ -653,17 +746,14 @@ export class AuthService {
           dispositivo: 'API',
         },
       });
+
       return {
         success: true,
         message: 'Cliente actualizado correctamente',
         data: { cliente: updatedCliente },
       };
     } catch (error) {
-      if (
-        error instanceof NotFoundException ||
-        error instanceof ConflictException
-      )
-        throw error;
+      if (error instanceof NotFoundException || error instanceof ConflictException) throw error;
       throw new InternalServerErrorException('Error interno del servidor');
     }
   }
@@ -673,11 +763,14 @@ export class AuthService {
       const cliente = await this.prisma.user.findUnique({
         where: { id: clienteId, role: UserRole.CLIENTE, isActive: true },
       });
+
       if (!cliente) throw new NotFoundException('Cliente no encontrado');
+
       await this.prisma.user.update({
         where: { id: clienteId },
         data: { isActive: false },
       });
+
       await this.prisma.auditoria.create({
         data: {
           usuarioId: clienteId,
@@ -689,6 +782,7 @@ export class AuthService {
           dispositivo: 'API',
         },
       });
+
       return { success: true, message: 'Cliente eliminado correctamente' };
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
@@ -696,103 +790,10 @@ export class AuthService {
     }
   }
 
-  async refreshToken(refreshToken: string) {
-    try {
-      const payload = await this.jwtService.verifyAsync(refreshToken, {
-        secret: process.env.JWT_REFRESH_SECRET || 'default-secret-key',
-      });
-      const user = await this.prisma.user.findUnique({
-        where: {
-          id: payload.sub,
-          isActive: true,
-          role: { not: UserRole.CLIENTE },
-        },
-        select: {
-          id: true,
-          role: true,
-          email: true,
-          ciudadesAsignadas: true, // 👈
-        },
-      });
-      if (!user) throw new UnauthorizedException('Usuario no encontrado');
-
-      let tokens;
-      if (payload.email) {
-        tokens = await this.generateTokens(
-          payload.sub,
-          payload.email,
-          user.role,
-          user.ciudadesAsignadas,
-        ); // 👈
-      } else {
-        tokens = await this.generateTokens(
-          payload.sub,
-          `user${payload.sub}@inmobiliaria.com`,
-          user.role,
-          user.ciudadesAsignadas,
-        );
-      }
-      return {
-        success: true,
-        message: 'Token refrescado correctamente',
-        data: tokens,
-      };
-    } catch (error) {
-      throw new UnauthorizedException('Token de refresco inválido');
-    }
-  }
-
-  async validateUser(userId: number) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId, isActive: true, role: { not: UserRole.CLIENTE } },
-      select: {
-        id: true,
-        uuid: true,
-        username: true,
-        email: true,
-        fullName: true,
-        avatarUrl: true,
-        role: true,
-        isActive: true,
-        ciudadesAsignadas: true, // 👈
-      },
-    });
-    if (!user) throw new UnauthorizedException('Usuario no encontrado');
-    return user;
-  }
-
-  private async generateTokens(
-    userId: number,
-    email: string,
-    role: string,
-    ciudadesAsignadas: string[] = [], 
-  ) {
-    const payload = {
-      sub: userId,
-      email: email.toLowerCase(),
-      role,
-      ciudadesAsignadas: ciudadesAsignadas ?? [], 
-    };
-    const [accessToken, refreshToken] = await Promise.all([
-      this.jwtService.signAsync(payload, {
-        expiresIn: process.env.JWT_EXPIRES_IN || '15m',
-        secret: process.env.JWT_SECRET || 'default-secret-key',
-      }),
-      this.jwtService.signAsync(payload, {
-        expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
-        secret: process.env.JWT_REFRESH_SECRET || 'default-secret-key',
-      }),
-    ]);
-    return { accessToken, refreshToken };
-  }
-
-async getClientesWithDetails() {
+  async getClientesWithDetails() {
     try {
       const clientes = await this.prisma.user.findMany({
-        where: { 
-          isActive: true, 
-          role: UserRole.CLIENTE 
-        },
+        where: { isActive: true, role: UserRole.CLIENTE },
         select: {
           id: true,
           uuid: true,
@@ -807,13 +808,7 @@ async getClientesWithDetails() {
           ventasComoCliente: {
             where: { estado: { not: 'CANCELADO' } },
             include: {
-              asesor: {
-                select: {
-                  id: true,
-                  fullName: true,
-                  telefono: true,
-                },
-              },
+              asesor: { select: { id: true, fullName: true, telefono: true } },
               lote: {
                 select: {
                   id: true,
@@ -822,9 +817,7 @@ async getClientesWithDetails() {
                   superficieM2: true,
                   precioBase: true,
                   ciudad: true,
-                  urbanizacion: {
-                    select: { id: true, nombre: true },
-                  },
+                  urbanizacion: { select: { id: true, nombre: true } },
                 },
               },
               propiedad: {
@@ -856,7 +849,6 @@ async getClientesWithDetails() {
         },
       });
 
-      // Procesar datos con tipado explícito
       const clientesConResumen = clientes.map((cliente) => {
         let totalVentas = 0;
         let totalPagado = 0;
@@ -865,30 +857,23 @@ async getClientesWithDetails() {
         let montoInicialTotal = 0;
         let totalCredito = 0;
 
-        // Procesar cada venta
         const ventasProcesadas = cliente.ventasComoCliente.map((venta) => {
           const precioFinal = Number(venta.precioFinal);
           totalVentas += precioFinal;
 
-          let pagadoVenta = 0;
-          let creditoVenta = 0;
-          let montoInicial = 0;
-
           if (venta.planPago) {
             tienePlanActivo = true;
-            montoInicial = Number(venta.planPago.monto_inicial) || 0;
+            const montoInicial = Number(venta.planPago.monto_inicial) || 0;
             const pagosPlan = venta.planPago.pagos || [];
             const pagadoPlan = pagosPlan.reduce((sum, p) => sum + Number(p.monto), 0);
-            
-            pagadoVenta = montoInicial + pagadoPlan;
-            creditoVenta = Number(venta.planPago.total);
-            
+            const pagadoVenta = montoInicial + pagadoPlan;
+            const creditoVenta = Number(venta.planPago.total);
+
             montoInicialTotal += montoInicial;
             totalCredito += creditoVenta;
             totalPagado += pagadoVenta;
             saldoPendienteTotal += creditoVenta - pagadoPlan;
 
-            // 👈 RETORNAR VENTA CON PLAN PAGO PROCESADO
             return {
               ...venta,
               precioFinal: Number(venta.precioFinal),
@@ -902,32 +887,16 @@ async getClientesWithDetails() {
               },
             };
           } else {
-            // Venta al contado
             if (venta.estado === 'PAGADO') {
-              pagadoVenta = precioFinal;
-              totalPagado += pagadoVenta;
+              totalPagado += precioFinal;
             }
-            saldoPendienteTotal += precioFinal - pagadoVenta;
-            
-            // 👈 RETORNAR VENTA SIN PLAN PAGO
-            return {
-              ...venta,
-              precioFinal: Number(venta.precioFinal),
-            };
+            saldoPendienteTotal += precioFinal - (venta.estado === 'PAGADO' ? precioFinal : 0);
+            return { ...venta, precioFinal: Number(venta.precioFinal) };
           }
         });
 
         return {
-          id: cliente.id,
-          uuid: cliente.uuid,
-          fullName: cliente.fullName,
-          ci: cliente.ci,
-          telefono: cliente.telefono,
-          direccion: cliente.direccion,
-          observaciones: cliente.observaciones,
-          email: cliente.email,
-          role: cliente.role,
-          createdAt: cliente.createdAt,
+          ...cliente,
           ventasComoCliente: ventasProcesadas,
           resumenFinanciero: {
             totalVentas,
@@ -941,111 +910,133 @@ async getClientesWithDetails() {
         };
       });
 
-      return { 
-        success: true, 
-        data: { 
-          clientes: clientesConResumen 
-        } 
-      };
+      return { success: true, data: { clientes: clientesConResumen } };
     } catch (error) {
-      console.error('Error:', error);
       throw new InternalServerErrorException('Error interno del servidor');
     }
   }
 
- // backend: auth.service.ts - Método getClienteByIdWithDetails
-
-// backend: auth.service.ts - Método corregido
-
-// backend: auth.service.ts - Método corregido
-
-// backend: auth.service.ts - Método corregido
-
-// backend: auth.service.ts - Versión CORREGIDA
-
-async getClienteByIdWithDetails(id: number) {
-  try {
-    const cliente = await this.prisma.user.findUnique({
-      where: { id, isActive: true, role: UserRole.CLIENTE },
-      select: {
-        id: true,
-        fullName: true,
-        ci: true,
-        telefono: true,
-        direccion: true,
-        observaciones: true,
-        email: true,
-        createdAt: true,
-        ventasComoCliente: {
-          where: { estado: { not: 'CANCELADO' } },
-          include: {
-            asesor: true,
-            lote: { include: { urbanizacion: true } },
-            propiedad: true,
-            planPago: { include: { pagos: true } },
+  async getClienteByIdWithDetails(id: number) {
+    try {
+      const cliente = await this.prisma.user.findUnique({
+        where: { id, isActive: true, role: UserRole.CLIENTE },
+        select: {
+          id: true,
+          fullName: true,
+          ci: true,
+          telefono: true,
+          direccion: true,
+          observaciones: true,
+          email: true,
+          createdAt: true,
+          ventasComoCliente: {
+            where: { estado: { not: 'CANCELADO' } },
+            include: {
+              asesor: true,
+              lote: { include: { urbanizacion: true } },
+              propiedad: true,
+              planPago: { include: { pagos: true } },
+            },
           },
         },
-      },
-    });
+      });
 
-    if (!cliente) throw new NotFoundException('Cliente no encontrado');
+      if (!cliente) throw new NotFoundException('Cliente no encontrado');
 
-    let totalVentas = 0;
-    let totalPagado = 0;
-    let montoInicialTotal = 0;
-    let totalCredito = 0;
+      let totalVentas = 0;
+      let totalPagado = 0;
+      let montoInicialTotal = 0;
+      let totalCredito = 0;
 
-    for (const venta of cliente.ventasComoCliente) {
-      const precioFinal = Number(venta.precioFinal);
-      totalVentas += precioFinal;
+      for (const venta of cliente.ventasComoCliente) {
+        const precioFinal = Number(venta.precioFinal);
+        totalVentas += precioFinal;
 
-      if (venta.planPago) {
-        const montoInicial = Number(venta.planPago.monto_inicial);
-        const pagosPlan = venta.planPago.pagos || [];
-        const pagadoPlan = pagosPlan.reduce((sum, p) => sum + Number(p.monto), 0);
-        const totalPlan = Number(venta.planPago.total);
-        
-       
-        totalPagado += montoInicial;
-        montoInicialTotal += montoInicial;
-        totalCredito += totalPlan;
-        
-        console.log(`Venta ${venta.id}: montoInicial=${montoInicial}, pagadoPlan=${pagadoPlan}, suma=${montoInicial + pagadoPlan}`);
-      } else if (venta.estado === 'PAGADO') {
-        totalPagado += precioFinal;
+        if (venta.planPago) {
+          const montoInicial = Number(venta.planPago.monto_inicial);
+          const pagosPlan = venta.planPago.pagos || [];
+          const pagadoPlan = pagosPlan.reduce((sum, p) => sum + Number(p.monto), 0);
+          const totalPlan = Number(venta.planPago.total);
+
+          totalPagado += montoInicial + pagadoPlan;
+          montoInicialTotal += montoInicial;
+          totalCredito += totalPlan;
+        } else if (venta.estado === 'PAGADO') {
+          totalPagado += precioFinal;
+        }
       }
+
+      const clienteData = JSON.parse(
+        JSON.stringify(cliente, (key, value) => {
+          if (
+            value &&
+            typeof value === 'object' &&
+            'constructor' in value &&
+            value.constructor.name === 'Decimal'
+          ) {
+            return Number(value);
+          }
+          return value;
+        }),
+      );
+
+      return {
+        success: true,
+        data: {
+          cliente: {
+            ...clienteData,
+            resumenFinanciero: {
+              totalVentas,
+              totalPagado,
+              saldoPendiente: totalVentas - totalPagado,
+              porcentajePagado: totalVentas > 0 ? (totalPagado / totalVentas) * 100 : 0,
+              tienePlanActivo: clienteData.ventasComoCliente?.some((v: any) => v.planPago) || false,
+              montoInicialTotal,
+              totalCredito,
+            },
+          },
+        },
+      };
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      throw new InternalServerErrorException('Error interno del servidor');
     }
+  }
+// Asignar urbanizaciones a un usuario
+async asignarUrbanizaciones(usuarioId: number, urbanizacionIds: number[]) {
+  try {
+    const user = await this.prisma.user.findUnique({
+      where: { id: usuarioId, isActive: true },
+    });
+    if (!user) throw new NotFoundException('Usuario no encontrado');
 
-    console.log('Totales finales:', { totalVentas, totalPagado, montoInicialTotal, totalCredito });
+    // Eliminar asignaciones anteriores y crear las nuevas
+    await this.prisma.$transaction([
+      this.prisma.usuarioUrbanizacion.deleteMany({
+        where: { usuarioId },
+      }),
+      this.prisma.usuarioUrbanizacion.createMany({
+        data: urbanizacionIds.map((urbanizacionId) => ({
+          usuarioId,
+          urbanizacionId,
+        })),
+      }),
+    ]);
 
-    const clienteData = JSON.parse(JSON.stringify(cliente, (key, value) => {
-      if (value && typeof value === 'object' && 'constructor' in value && value.constructor.name === 'Decimal') {
-        return Number(value);
-      }
-      return value;
-    }));
+    const updated = await this.prisma.usuarioUrbanizacion.findMany({
+      where: { usuarioId },
+      include: { urbanizacion: true },
+    });
 
     return {
       success: true,
-      data: {
-        cliente: {
-          ...clienteData,
-          resumenFinanciero: {
-            totalVentas,
-            totalPagado,
-            saldoPendiente: totalVentas - totalPagado,
-            porcentajePagado: totalVentas > 0 ? (totalPagado / totalVentas) * 100 : 0,
-            tienePlanActivo: clienteData.ventasComoCliente?.some(v => v.planPago) || false,
-            montoInicialTotal,
-            totalCredito,
-          },
-        },
-      },
+      message: 'Urbanizaciones asignadas correctamente',
+      data: { urbanizaciones: updated },
     };
   } catch (error) {
-    console.error('Error:', error);
+    if (error instanceof NotFoundException) throw error;
     throw new InternalServerErrorException('Error interno del servidor');
   }
 }
-  
+
 }

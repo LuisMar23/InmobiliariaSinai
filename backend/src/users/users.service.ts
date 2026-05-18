@@ -24,7 +24,7 @@ export class UsersService {
       passwordHash,
       avatarUrl: dto.avatarUrl,
       telefono: dto.telefono,
-      ciudadesAsignadas: dto.ciudadesAsignadas?.map(c => c.trim().toLowerCase()) ?? [],
+  
     },
   });
 }
@@ -60,9 +60,7 @@ async update(id: number, dto: UpdateUserDto) {
       passwordHash,
       avatarUrl: dto.avatarUrl ?? user.avatarUrl,
       telefono: dto.telefono ?? user.telefono,
-      ciudadesAsignadas: dto.ciudadesAsignadas !== undefined
-        ? dto.ciudadesAsignadas.map(c => c.trim().toLowerCase())
-        : user.ciudadesAsignadas,
+
     },
   });
 }

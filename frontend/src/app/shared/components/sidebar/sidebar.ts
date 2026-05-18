@@ -96,7 +96,7 @@ menuItems: {
 { label: 'Visitas', icon: faEye, route: '/visitas', roles: ['ADMINISTRADOR', 'SECRETARIA'] },
 { label: 'Reportes', icon: faEye, route: '/reportes', roles: ['ADMINISTRADOR', 'SECRETARIA'] },
 { label: 'Caja', icon: faCashRegister, route: '/caja', roles: ['ADMINISTRADOR', 'SECRETARIA'] },
-
+{ label: 'Seguridad', icon: faCashRegister, route: '/seguridad', roles: ['ADMINISTRADOR', 'SECRETARIA'] },
 { label: 'Gastos', icon: faCashRegister, route: '/egresos', roles: ['ADMINISTRADOR', 'SECRETARIA'] },
 { label: 'Promociones', icon: faTag, route: '/promociones', roles: ['ADMINISTRADOR'] },
 

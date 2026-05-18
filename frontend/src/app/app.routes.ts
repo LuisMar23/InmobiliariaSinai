@@ -53,6 +53,12 @@ export const routes: Routes = [
         loadChildren: () =>
           import('./features/propiedad/propiedad.routes').then((r) => r.PropiedadRoutingModule),
       },
+
+         {
+        path: 'seguridad', // Nueva ruta para Propiedades
+        loadChildren: () =>
+          import('./features/seguridad/seguridad.routes').then((r) => r.SeguridadRoutingModule),
+      },
       {
         path: 'reportes', // Nueva ruta para Propiedades
         loadChildren: () =>

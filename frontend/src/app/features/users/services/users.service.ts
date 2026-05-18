@@ -95,4 +95,13 @@ export class UserService {
       })
     );
   }
+
+
+// UserService Angular
+asignarUrbanizaciones(userId: number, urbanizacionIds: number[]): Observable<any> {
+  return this.http.patch(`${this.apiUrl}/auth/${userId}/urbanizaciones`, {
+    urbanizacionIds,
+  });
+}
+
 }

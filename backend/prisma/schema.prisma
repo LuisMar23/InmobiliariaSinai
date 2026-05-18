@@ -141,8 +141,8 @@ model User {
   createdAt     DateTime  @default(now()) @map("created_at")
   estado        Boolean   @default(true)
   updatedAt     DateTime  @updatedAt @map("updated_at")
-  ciudadesAsignadas  String[]  @default([]) 
 
+urbanizacionesAsignadas UsuarioUrbanizacion[]
   failedAttempts       Int       @default(0) @map("failed_attempts")
   lockUntil            DateTime? @map("lock_until")
   resetPasswordToken   String?   @map("reset_password_token")
@@ -207,7 +207,7 @@ model Urbanizacion {
   maps        String?  
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
-
+usuariosAsignados UsuarioUrbanizacion[]
   lotes     Lote[]
   archivos  Archivo[]
   Promocion Promocion[]
@@ -616,4 +616,50 @@ model Propiedad {
   ventas    Venta[]   @relation("VentasPropiedad")
   visitas   Visita[]  @relation("VisitasPropiedad")
   encargado User?     @relation("PropiedadesEncargado", fields: [encargadoId], references: [id])
+}
+
+
+model Modulo {
+  id       Int      @id @default(autoincrement())
+  uuid     String   @unique @default(uuid())
+  clave    String   @unique
+  nombre   String
+  padreId  Int?     @map("padre_id")
+  activo   Boolean  @default(true)
+
+  padre    Modulo?       @relation("ModuloHijos", fields: [padreId], references: [id])
+  hijos    Modulo[]      @relation("ModuloHijos")
+  permisos PermisoRole[]
+
+  @@map("modulos")
+}
+
+
+model PermisoRole {
+  id            Int      @id @default(autoincrement())
+  uuid          String   @unique @default(uuid())
+  role          UserRole
+  moduloId      Int      @map("modulo_id")
+  puedeVer      Boolean  @default(false) @map("puede_ver")
+  puedeCrear    Boolean  @default(false) @map("puede_crear")
+  puedeEditar   Boolean  @default(false) @map("puede_editar")
+  puedeEliminar Boolean  @default(false) @map("puede_eliminar")
+
+  modulo Modulo @relation(fields: [moduloId], references: [id])
+
+  @@unique([role, moduloId])
+  @@map("permisos_role")
+}
+
+
+model UsuarioUrbanizacion {
+  id             Int          @id @default(autoincrement())
+  usuarioId      Int          @map("usuario_id")
+  urbanizacionId Int          @map("urbanizacion_id")
+
+  usuario      User         @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  urbanizacion Urbanizacion @relation(fields: [urbanizacionId], references: [id], onDelete: Cascade)
+
+  @@unique([usuarioId, urbanizacionId])
+  @@map("usuario_urbanizacion")
 }
