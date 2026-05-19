@@ -11,7 +11,7 @@ async function bootstrap() {
   app.enableCors({
     origin: [
       'http://localhost:4300',
-      'http://localhost:4200' // AGREGADO para la página web
+      'http://localhost:4200' ,   'https://inmobiliriasinai.com',
     ],
     credentials: true,
   });

@@ -5,7 +5,7 @@ export interface Cuota {
   numero: number;
   fecha: string;
   monto: number;
-  estado: 'PENDIENTE' | 'PAGADA' | 'VENCIDA';
+  estado: 'PENDIENTE' | 'PAGADA' | 'VENCIDA' | 'PARCIAL';
   creado_en?: string;
 }
 

@@ -283,9 +283,9 @@ async login(loginDto: LoginDto) {
       },
     };
   } catch (error) {
-    if (error instanceof UnauthorizedException) throw error;
-    throw new InternalServerErrorException('Error interno del servidor');
-  }
+  console.error('LOGIN ERROR:', JSON.stringify(error, null, 2));
+  throw error;
+}
 }
 
   // ============================================================

@@ -70,12 +70,12 @@ export class Sidebar implements OnInit {
   faCog = faCog;
   faTag = faTag;
   faHouse = faHouse; // Icono para Propiedades
-faChartBar     = faChartBar;
-faShieldAlt    = faShieldAlt;
-faMoneyBillWave = faMoneyBillWave;
-faUsersCog     = faUsersCog;
-faChevronDown = faChevronDown;
-faChevronUp   = faChevronUp;
+  faChartBar = faChartBar;
+  faShieldAlt = faShieldAlt;
+  faMoneyBillWave = faMoneyBillWave;
+  faUsersCog = faUsersCog;
+  faChevronDown = faChevronDown;
+  faChevronUp = faChevronUp;
 
   @Output() sidebarToggled = new EventEmitter<boolean>();
   private permisosState = inject(PermisosStateService);
@@ -86,67 +86,76 @@ faChevronUp   = faChevronUp;
   isMobileOpen = false;
 
   // Menú - SOLO modificar la opción de Usuarios
-menuGroups = [
-  {
-    label: '',
-    items: [
-      { label: 'Dashboard', icon: faTachometerAlt, route: '/dashboard', clave: 'dashboard' },
-    ]
-  },
-  {
-    label: 'Comercial',
-    items: [
-      { label: 'Urbanizaciones', icon: faCity,              route: '/urbanizaciones', clave: 'urbanizaciones' },
-      { label: 'Lotes',          icon: faMapMarkedAlt,      route: '/lotes',          clave: 'lotes' },
-      { label: 'Propiedades',    icon: faHouse,             route: '/propiedades',    clave: 'propiedades' },
-      { label: 'Cotizaciones',   icon: faFileInvoiceDollar, route: '/cotizaciones',   clave: 'cotizaciones' },
-      { label: 'Ventas',         icon: faReceipt,           route: '/ventas',         clave: 'ventas' },
-      { label: 'Reservas',       icon: faCalendarCheck,     route: '/reservas',       clave: 'reservas' },
-      { label: 'Visitas',        icon: faEye,               route: '/visitas',        clave: 'visitas' },
-      { label: 'Promociones',    icon: faTag,               route: '/promociones',    clave: 'promociones' },
-    ]
-  },
-  {
-    label: 'Finanzas',
-    items: [
-      { label: 'Caja',    icon: faCashRegister,   route: '/caja',     clave: 'caja' },
-      { label: 'Gastos',  icon: faMoneyBillWave,  route: '/egresos',  clave: 'egresos' },
-      { label: 'Créditos',icon: faHandHoldingUsd, route: '/creditos', clave: 'creditos' },
-    ]
-  },
-  {
-    label: 'Reportes',  // ← grupo propio
-    items: [
-      { label: 'Reportes', icon: faChartBar, route: '/reportes', clave: 'reportes' },
-    ]
-  },
-  {
-    label: 'Gestión',
-    items: [
-      { label: 'Clientes',  icon: faUsers,     route: '/clientes',  clave: 'clientes' },
-      { label: 'Usuarios',  icon: faUsersCog,  route: '/usuarios',  clave: 'usuarios' },
-      { label: 'Seguridad', icon: faShieldAlt, route: '/seguridad', clave: 'seguridad' },
-    ]
-  },
-];
+  menuGroups = [
+    {
+      label: '',
+      items: [
+        { label: 'Dashboard', icon: faTachometerAlt, route: '/dashboard', clave: 'dashboard' },
+      ],
+    },
+    {
+      label: 'Comercial',
+      items: [
+        {
+          label: 'Urbanizaciones',
+          icon: faCity,
+          route: '/urbanizaciones',
+          clave: 'urbanizaciones',
+        },
+        { label: 'Lotes', icon: faMapMarkedAlt, route: '/lotes', clave: 'lotes' },
+        { label: 'Propiedades', icon: faHouse, route: '/propiedades', clave: 'propiedades' },
+        {
+          label: 'Cotizaciones',
+          icon: faFileInvoiceDollar,
+          route: '/cotizaciones',
+          clave: 'cotizaciones',
+        },
+        { label: 'Ventas', icon: faReceipt, route: '/ventas', clave: 'ventas' },
+        { label: 'Reservas', icon: faCalendarCheck, route: '/reservas', clave: 'reservas' },
+        { label: 'Visitas', icon: faEye, route: '/visitas', clave: 'visitas' },
+        { label: 'Promociones', icon: faTag, route: '/promociones', clave: 'promociones' },
+      ],
+    },
+    {
+      label: 'Finanzas',
+      items: [
+        { label: 'Caja', icon: faCashRegister, route: '/caja', clave: 'caja' },
+        { label: 'Gastos', icon: faMoneyBillWave, route: '/egresos', clave: 'egresos' },
+        { label: 'Créditos', icon: faHandHoldingUsd, route: '/creditos', clave: 'creditos' },
+        { label: 'Cobros', icon:faMoneyBillWave, route: '/cobros', clave: 'cobros' },
+      ],
+    },
+    {
+      label: 'Reportes', // ← grupo propio
+      items: [{ label: 'Reportes', icon: faChartBar, route: '/reportes', clave: 'reportes' }],
+    },
+    {
+      label: 'Gestión',
+      items: [
+        { label: 'Clientes', icon: faUsers, route: '/clientes', clave: 'clientes' },
+        { label: 'Usuarios', icon: faUsersCog, route: '/usuarios', clave: 'usuarios' },
+        { label: 'Seguridad', icon: faShieldAlt, route: '/seguridad', clave: 'seguridad' },
+      ],
+    },
+  ];
   filteredMenu: any[] = [];
+
   constructor(private authService: AuthService) {
     this.imagen = 'assets/logoSinai.jpg';
   }
 
   ngOnInit() {
     this.currentUser = this.authService.getCurrentUser();
-
   }
-get filteredGroups() {
-  return this.menuGroups
-    .map(group => ({
-      ...group,
-      items: group.items.filter(item => this.permisosState.tieneAcceso(item.clave))
-    }))
-    .filter(group => group.items.length > 0); // oculta el grupo si no tiene ningún item
-}
-private openGroups = new Set<string>(['Comercial', 'Finanzas', 'Reportes', 'Gestión']);
+  get filteredGroups() {
+    return this.menuGroups
+      .map((group) => ({
+        ...group,
+        items: group.items.filter((item) => this.permisosState.tieneAcceso(item.clave)),
+      }))
+      .filter((group) => group.items.length > 0); // oculta el grupo si no tiene ningún item
+  }
+  private openGroups = new Set<string>(['Comercial', 'Finanzas', 'Reportes', 'Gestión']);
 
   toggleSidebar() {
     this.isCollapsed = !this.isCollapsed;
@@ -156,16 +165,15 @@ private openGroups = new Set<string>(['Comercial', 'Finanzas', 'Reportes', 'Gest
   toggleMobile() {
     this.isMobileOpen = !this.isMobileOpen;
   }
-toggleGroup(label: string) {
-  if (this.openGroups.has(label)) {
-    this.openGroups.delete(label);
-  } else {
-    this.openGroups.add(label);
+  toggleGroup(label: string) {
+    if (this.openGroups.has(label)) {
+      this.openGroups.delete(label);
+    } else {
+      this.openGroups.add(label);
+    }
   }
-}
 
-isGroupOpen(label: string): boolean {
-  return this.openGroups.has(label);
-}
-
+  isGroupOpen(label: string): boolean {
+    return this.openGroups.has(label);
+  }
 }

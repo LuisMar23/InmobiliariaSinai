@@ -109,13 +109,33 @@ export class VentasService {
   ) {
     const caja = await this.verificarCajaActiva(cajaId, prismaClient);
 
+    let descripcionBase = `Pago de venta #${venta.id} - Cliente: ${venta.cliente?.fullName || venta.clienteId}`;
+
+    if (venta.lote) {
+      let manzanoTexto = '';
+      if (venta.lote.manzano) {
+        manzanoTexto = venta.lote.manzano.replace(/Mzno/gi, 'Manzano');
+      }
+      if (venta.lote.numeroLote) {
+        descripcionBase += ` - Lote: ${venta.lote.numeroLote}`;
+      }
+      if (manzanoTexto) {
+        descripcionBase += ` - ${manzanoTexto}`;
+      }
+      if (venta.lote.urbanizacion?.nombre) {
+        descripcionBase += ` - Urb: ${venta.lote.urbanizacion.nombre}`;
+      }
+    } else if (venta.propiedad) {
+      descripcionBase += ` - Propiedad: ${venta.propiedad.nombre || venta.propiedad.id}`;
+    }
+
     const movimiento = await prismaClient.movimientoCaja.create({
       data: {
         cajaId,
         usuarioId,
         tipo: 'INGRESO',
         monto: pagoData.monto,
-        descripcion: `Pago de venta #${venta.id} - Cliente ID: ${venta.clienteId}`,
+        descripcion: descripcionBase,
         metodoPago: pagoData.metodoPago || 'EFECTIVO',
         referencia: `Venta-${venta.id}-Pago-${pagoData.pagoId || 'Inicial'}`,
         ventaId: venta.id,
@@ -142,13 +162,30 @@ export class VentasService {
   ) {
     const caja = await this.verificarCajaActiva(cajaId, prismaClient);
 
+    let descripcionBase = `Reversión de pago - Venta #${venta.id} - Pago ID: ${pagoData.pagoId}`;
+
+    if (venta.lote) {
+      let manzanoTexto = '';
+      if (venta.lote.manzano) {
+        manzanoTexto = venta.lote.manzano.replace(/Mzno/gi, 'Manzano');
+      }
+      if (venta.lote.numeroLote) {
+        descripcionBase += ` - Lote: ${venta.lote.numeroLote}`;
+      }
+      if (manzanoTexto) {
+        descripcionBase += ` - ${manzanoTexto}`;
+      }
+    } else if (venta.propiedad) {
+      descripcionBase += ` - Propiedad: ${venta.propiedad.nombre || venta.propiedad.id}`;
+    }
+
     const movimiento = await prismaClient.movimientoCaja.create({
       data: {
         cajaId,
         usuarioId,
         tipo: 'EGRESO',
         monto: pagoData.monto,
-        descripcion: `Reversión de pago - Venta #${venta.id} - Pago ID: ${pagoData.pagoId}`,
+        descripcion: descripcionBase,
         metodoPago: pagoData.metodoPago || 'EFECTIVO',
         referencia: `Venta-${venta.id}-Reversion-${pagoData.pagoId}`,
         ventaId: venta.id,
@@ -204,7 +241,9 @@ export class VentasService {
     const usuario = await prisma.user.findUnique({ where: { id: usuarioId } });
     if (!usuario) throw new ForbiddenException('Usuario no encontrado');
     if (usuario.role !== 'ADMINISTRADOR') {
-      throw new ForbiddenException('Solo los administradores pueden realizar esta acción');
+      throw new ForbiddenException(
+        'Solo los administradores pueden realizar esta acción',
+      );
     }
     return usuario;
   }
@@ -262,6 +301,42 @@ export class VentasService {
     });
   }
 
+  // Nueva función para recalcular estado de una cuota basado en los pagos aplicados
+  private async actualizarEstadoCuota(cuotaId: number, prisma: any) {
+    const cuota = await prisma.cuota.findUnique({
+      where: { id_cuota: cuotaId },
+      include: { pagoCuotas: true },
+    });
+    if (!cuota) return;
+
+    let totalPagadoCuota = 0;
+    for (const pc of cuota.pagoCuotas) {
+      totalPagadoCuota += Number(pc.monto_aplicado);
+    }
+    const montoCuota = Number(cuota.monto);
+
+    let nuevoEstado = 'PENDIENTE';
+    if (totalPagadoCuota >= montoCuota) {
+      nuevoEstado = 'PAGADA';
+    } else if (totalPagadoCuota > 0) {
+      nuevoEstado = 'PARCIAL';
+    } else {
+      const hoy = new Date();
+      if (cuota.fecha < hoy) {
+        nuevoEstado = 'VENCIDA';
+      } else {
+        nuevoEstado = 'PENDIENTE';
+      }
+    }
+
+    if (cuota.estado !== nuevoEstado) {
+      await prisma.cuota.update({
+        where: { id_cuota: cuotaId },
+        data: { estado: nuevoEstado },
+      });
+    }
+  }
+
   private async aplicarPagoACuotas(
     pagoId: number,
     planPagoId: number,
@@ -272,13 +347,23 @@ export class VentasService {
     const cuotasPendientes = await prisma.cuota.findMany({
       where: {
         plan_pago_id: planPagoId,
-        estado: { in: ['PENDIENTE', 'VENCIDA'] },
+        estado: { in: ['PENDIENTE', 'VENCIDA', 'PARCIAL'] },
       },
       orderBy: { fecha: 'asc' },
     });
     for (const cuota of cuotasPendientes) {
       if (montoRestante <= 0) break;
-      const aplicar = Math.min(cuota.monto, montoRestante);
+
+      const saldoCuota = Number(cuota.monto) - (
+        await prisma.pagoCuota.aggregate({
+          where: { cuota_id: cuota.id_cuota },
+          _sum: { monto_aplicado: true },
+        })
+      )._sum.monto_aplicado || 0;
+
+      if (saldoCuota <= 0) continue;
+
+      const aplicar = Math.min(saldoCuota, montoRestante);
       await prisma.pagoCuota.create({
         data: {
           pago_id: pagoId,
@@ -287,12 +372,9 @@ export class VentasService {
         },
       });
       montoRestante -= aplicar;
-      if (aplicar >= cuota.monto) {
-        await prisma.cuota.update({
-          where: { id_cuota: cuota.id_cuota },
-          data: { estado: 'PAGADA' },
-        });
-      }
+
+      // Actualizar estado de la cuota después de aplicar el pago
+      await this.actualizarEstadoCuota(cuota.id_cuota, prisma);
     }
     if (montoRestante > 0) {
       throw new BadRequestException(
@@ -306,24 +388,11 @@ export class VentasService {
       where: { pago_id: pagoId },
     });
     for (const asig of asignaciones) {
-      const cuota = await prisma.cuota.findUnique({
-        where: { id_cuota: asig.cuota_id },
+      await prisma.pagoCuota.delete({
+        where: { id_pago_cuota: asig.id_pago_cuota },
       });
-      if (cuota && cuota.estado === 'PAGADA') {
-        const otrasAsignaciones = await prisma.pagoCuota.count({
-          where: {
-            cuota_id: asig.cuota_id,
-            pago_id: { not: pagoId },
-          },
-        });
-        if (otrasAsignaciones === 0) {
-          await prisma.cuota.update({
-            where: { id_cuota: asig.cuota_id },
-            data: { estado: 'PENDIENTE' },
-          });
-        }
-      }
-      await prisma.pagoCuota.delete({ where: { id_pago_cuota: asig.id_pago_cuota } });
+      // Recalcular estado de la cuota después de eliminar esta asignación
+      await this.actualizarEstadoCuota(asig.cuota_id, prisma);
     }
   }
 
@@ -363,194 +432,205 @@ export class VentasService {
     userAgent?: string,
   ) {
     try {
-      return await this.prisma.$transaction(async (prisma) => {
-        const asesor = await prisma.user.findFirst({
-          where: {
-            id: asesorId,
-            isActive: true,
-            role: { in: ['ADMINISTRADOR'] },
-          },
-        });
-        if (!asesor)
-          throw new ForbiddenException(
-            'Solo los administradores pueden crear ventas',
-          );
-        const cliente = await prisma.user.findFirst({
-          where: {
-            id: createVentaDto.clienteId,
-            isActive: true,
-            role: 'CLIENTE',
-          },
-        });
-        if (!cliente)
-          throw new BadRequestException(
-            'Cliente no encontrado o no tiene rol de CLIENTE',
-          );
-        await this.verificarCajaActiva(createVentaDto.cajaId, prisma);
-        if (createVentaDto.inmuebleTipo === TipoInmueble.LOTE) {
-          const lote = await prisma.lote.findFirst({
+      return await this.prisma.$transaction(
+        async (prisma) => {
+          const asesor = await prisma.user.findFirst({
             where: {
-              id: createVentaDto.inmuebleId,
-              estado: { in: ['DISPONIBLE', 'CON_OFERTA'] },
+              id: asesorId,
+              isActive: true,
+              role: { in: ['ADMINISTRADOR'] },
             },
           });
-          if (!lote) {
+          if (!asesor)
+            throw new ForbiddenException(
+              'Solo los administradores pueden crear ventas',
+            );
+          const cliente = await prisma.user.findFirst({
+            where: {
+              id: createVentaDto.clienteId,
+              isActive: true,
+              role: 'CLIENTE',
+            },
+          });
+          if (!cliente)
             throw new BadRequestException(
-              `El lote con ID ${createVentaDto.inmuebleId} no existe o no está disponible`,
+              'Cliente no encontrado o no tiene rol de CLIENTE',
+            );
+          await this.verificarCajaActiva(createVentaDto.cajaId, prisma);
+          if (createVentaDto.inmuebleTipo === TipoInmueble.LOTE) {
+            const lote = await prisma.lote.findFirst({
+              where: {
+                id: createVentaDto.inmuebleId,
+                estado: { in: ['DISPONIBLE', 'CON_OFERTA'] },
+              },
+            });
+            if (!lote) {
+              throw new BadRequestException(
+                `El lote con ID ${createVentaDto.inmuebleId} no existe o no está disponible`,
+              );
+            }
+          } else if (createVentaDto.inmuebleTipo === TipoInmueble.PROPIEDAD) {
+            const propiedad = await prisma.propiedad.findFirst({
+              where: {
+                id: createVentaDto.inmuebleId,
+                estado: { in: ['DISPONIBLE', 'CON_OFERTA'] },
+              },
+            });
+            if (!propiedad) {
+              throw new BadRequestException(
+                `La propiedad con ID ${createVentaDto.inmuebleId} no existe o no está disponible`,
+              );
+            }
+          }
+          if (
+            createVentaDto.plan_pago.monto_inicial > createVentaDto.precioFinal
+          ) {
+            throw new BadRequestException(
+              'El monto inicial no puede ser mayor al precio final de la venta',
             );
           }
-        } else if (createVentaDto.inmuebleTipo === TipoInmueble.PROPIEDAD) {
-          const propiedad = await prisma.propiedad.findFirst({
-            where: {
-              id: createVentaDto.inmuebleId,
-              estado: { in: ['DISPONIBLE', 'CON_OFERTA'] },
-            },
-          });
-          if (!propiedad) {
-            throw new BadRequestException(
-              `La propiedad con ID ${createVentaDto.inmuebleId} no existe o no está disponible`,
-            );
+          if (
+            !Object.values(PeriodicidadPago).includes(
+              createVentaDto.plan_pago.periodicidad,
+            )
+          ) {
+            throw new BadRequestException('Periodicidad de pago inválida');
           }
-        }
-        if (
-          createVentaDto.plan_pago.monto_inicial > createVentaDto.precioFinal
-        ) {
-          throw new BadRequestException(
-            'El monto inicial no puede ser mayor al precio final de la venta',
-          );
-        }
-        if (
-          !Object.values(PeriodicidadPago).includes(
-            createVentaDto.plan_pago.periodicidad,
-          )
-        ) {
-          throw new BadRequestException('Periodicidad de pago inválida');
-        }
-        const ventaData: any = {
-          clienteId: createVentaDto.clienteId,
-          asesorId,
-          inmuebleTipo: createVentaDto.inmuebleTipo,
-          precioFinal: createVentaDto.precioFinal,
-          estado: createVentaDto.estado || EstadoVenta.PENDIENTE,
-          observaciones: createVentaDto.observaciones || null,
-          cajaId: createVentaDto.cajaId,
-        };
-        if (createVentaDto.inmuebleTipo === TipoInmueble.LOTE) {
-          ventaData.loteId = createVentaDto.inmuebleId;
-        } else if (createVentaDto.inmuebleTipo === TipoInmueble.PROPIEDAD) {
-          ventaData.propiedadId = createVentaDto.inmuebleId;
-        }
-        const venta = await prisma.venta.create({ data: ventaData });
-        const fechaVencimiento = this.calcularFechaVencimiento(
-          createVentaDto.plan_pago.fecha_inicio,
-          createVentaDto.plan_pago.plazo,
-          createVentaDto.plan_pago.periodicidad,
-        );
-        const planPago = await prisma.planPago.create({
-          data: {
-            ventaId: venta.id,
-            total: createVentaDto.precioFinal,
-            monto_inicial: createVentaDto.plan_pago.monto_inicial,
-            plazo: createVentaDto.plan_pago.plazo,
-            periodicidad: createVentaDto.plan_pago.periodicidad,
-            fecha_inicio: createVentaDto.plan_pago.fecha_inicio,
-            fecha_vencimiento: fechaVencimiento,
-            estado: EstadoPlanPago.ACTIVO,
-          },
-        });
-        if (createVentaDto.plan_pago.monto_inicial > 0) {
-          const pagoInicial = await prisma.pagoPlanPago.create({
-            data: {
-              plan_pago_id: planPago.id_plan_pago,
-              monto: createVentaDto.plan_pago.monto_inicial,
-              fecha_pago: new Date(),
-              observacion: 'Pago inicial',
-              metodoPago: 'EFECTIVO',
-            },
-          });
-          await this.registrarMovimientoCaja(
-            createVentaDto.cajaId,
-            {
-              monto: createVentaDto.plan_pago.monto_inicial,
-              metodoPago: 'EFECTIVO',
-              pagoId: pagoInicial.id_pago_plan,
-            },
-            venta,
+          const ventaData: any = {
+            clienteId: createVentaDto.clienteId,
             asesorId,
-            prisma,
+            inmuebleTipo: createVentaDto.inmuebleTipo,
+            precioFinal: createVentaDto.precioFinal,
+            estado: createVentaDto.estado || EstadoVenta.PENDIENTE,
+            observaciones: createVentaDto.observaciones || null,
+            cajaId: createVentaDto.cajaId,
+          };
+          if (createVentaDto.inmuebleTipo === TipoInmueble.LOTE) {
+            ventaData.loteId = createVentaDto.inmuebleId;
+          } else if (createVentaDto.inmuebleTipo === TipoInmueble.PROPIEDAD) {
+            ventaData.propiedadId = createVentaDto.inmuebleId;
+          }
+          const venta = await prisma.venta.create({ data: ventaData });
+          const fechaVencimiento = this.calcularFechaVencimiento(
+            createVentaDto.plan_pago.fecha_inicio,
+            createVentaDto.plan_pago.plazo,
+            createVentaDto.plan_pago.periodicidad,
+          );
+          const planPago = await prisma.planPago.create({
+            data: {
+              ventaId: venta.id,
+              total: createVentaDto.precioFinal,
+              monto_inicial: createVentaDto.plan_pago.monto_inicial,
+              plazo: createVentaDto.plan_pago.plazo,
+              periodicidad: createVentaDto.plan_pago.periodicidad,
+              fecha_inicio: createVentaDto.plan_pago.fecha_inicio,
+              fecha_vencimiento: fechaVencimiento,
+              estado: EstadoPlanPago.ACTIVO,
+            },
+          });
+          if (createVentaDto.plan_pago.monto_inicial > 0) {
+            const pagoInicial = await prisma.pagoPlanPago.create({
+              data: {
+                plan_pago_id: planPago.id_plan_pago,
+                monto: createVentaDto.plan_pago.monto_inicial,
+                fecha_pago: new Date(),
+                observacion: 'Pago inicial',
+                metodoPago: 'EFECTIVO',
+              },
+            });
+            await this.registrarMovimientoCaja(
+              createVentaDto.cajaId,
+              {
+                monto: createVentaDto.plan_pago.monto_inicial,
+                metodoPago: 'EFECTIVO',
+                pagoId: pagoInicial.id_pago_plan,
+              },
+              venta,
+              asesorId,
+              prisma,
+              ip,
+              userAgent,
+            );
+            if (
+              createVentaDto.plan_pago.monto_inicial >=
+              createVentaDto.precioFinal
+            ) {
+              await prisma.planPago.update({
+                where: { id_plan_pago: planPago.id_plan_pago },
+                data: { estado: EstadoPlanPago.PAGADO },
+              });
+              await prisma.venta.update({
+                where: { id: venta.id },
+                data: { estado: EstadoVenta.PAGADO },
+              });
+            } else {
+              await this.generarCuotas(planPago.id_plan_pago, prisma);
+            }
+          } else if (createVentaDto.plan_pago.plazo > 0) {
+            await this.generarCuotas(planPago.id_plan_pago, prisma);
+          }
+          if (createVentaDto.inmuebleTipo === TipoInmueble.LOTE) {
+            await prisma.lote.update({
+              where: { id: createVentaDto.inmuebleId },
+              data: { estado: 'VENDIDO' },
+            });
+          } else if (createVentaDto.inmuebleTipo === TipoInmueble.PROPIEDAD) {
+            await prisma.propiedad.update({
+              where: { id: createVentaDto.inmuebleId },
+              data: { estado: 'VENDIDO' },
+            });
+          }
+          await this.crearAuditoria(
+            asesorId,
+            'CREAR_VENTA',
+            'Venta',
+            venta.id,
             ip,
             userAgent,
           );
-          if (createVentaDto.plan_pago.monto_inicial >= createVentaDto.precioFinal) {
-            await prisma.planPago.update({
-              where: { id_plan_pago: planPago.id_plan_pago },
-              data: { estado: EstadoPlanPago.PAGADO },
-            });
-            await prisma.venta.update({
-              where: { id: venta.id },
-              data: { estado: EstadoVenta.PAGADO },
-            });
-          } else {
-            await this.generarCuotas(planPago.id_plan_pago, prisma);
-          }
-        } else if (createVentaDto.plan_pago.plazo > 0) {
-          await this.generarCuotas(planPago.id_plan_pago, prisma);
-        }
-        if (createVentaDto.inmuebleTipo === TipoInmueble.LOTE) {
-          await prisma.lote.update({
-            where: { id: createVentaDto.inmuebleId },
-            data: { estado: 'VENDIDO' },
-          });
-        } else if (createVentaDto.inmuebleTipo === TipoInmueble.PROPIEDAD) {
-          await prisma.propiedad.update({
-            where: { id: createVentaDto.inmuebleId },
-            data: { estado: 'VENDIDO' },
-          });
-        }
-        await this.crearAuditoria(
-          asesorId,
-          'CREAR_VENTA',
-          'Venta',
-          venta.id,
-          ip,
-          userAgent,
-        );
-        const ventaCompleta = await prisma.venta.findUnique({
-          where: { id: venta.id },
-          include: {
-            cliente: {
-              select: {
-                id: true,
-                fullName: true,
-                ci: true,
-                telefono: true,
-                direccion: true,
+          const ventaCompleta = await prisma.venta.findUnique({
+            where: { id: venta.id },
+            include: {
+              cliente: {
+                select: {
+                  id: true,
+                  fullName: true,
+                  ci: true,
+                  telefono: true,
+                  direccion: true,
+                },
+              },
+              asesor: {
+                select: {
+                  id: true,
+                  fullName: true,
+                  email: true,
+                  telefono: true,
+                },
+              },
+              lote:
+                createVentaDto.inmuebleTipo === TipoInmueble.LOTE
+                  ? { include: { urbanizacion: true } }
+                  : false,
+              propiedad:
+                createVentaDto.inmuebleTipo === TipoInmueble.PROPIEDAD
+                  ? true
+                  : false,
+              planPago: { include: { pagos: true, cuotas: true } },
+              archivos: true,
+              caja: {
+                select: { id: true, nombre: true, estado: true },
               },
             },
-            asesor: {
-              select: { id: true, fullName: true, email: true, telefono: true },
-            },
-            lote:
-              createVentaDto.inmuebleTipo === TipoInmueble.LOTE
-                ? { include: { urbanizacion: true } }
-                : false,
-            propiedad:
-              createVentaDto.inmuebleTipo === TipoInmueble.PROPIEDAD
-                ? true
-                : false,
-            planPago: { include: { pagos: true, cuotas: true } },
-            archivos: true,
-            caja: {
-              select: { id: true, nombre: true, estado: true },
-            },
-          },
-        });
-        return {
-          success: true,
-          message: 'Venta creada correctamente',
-          data: this.agregarCalculosVenta(ventaCompleta),
-        };
-      }, { timeout: 120000 });
+          });
+          return {
+            success: true,
+            message: 'Venta creada correctamente',
+            data: this.agregarCalculosVenta(ventaCompleta),
+          };
+        },
+        { timeout: 120000 },
+      );
     } catch (error) {
       if (
         error instanceof BadRequestException ||
@@ -603,7 +683,10 @@ export class VentasService {
             },
             propiedad: true,
             planPago: {
-              include: { pagos: { orderBy: { fecha_pago: 'desc' } }, cuotas: { orderBy: { fecha: 'asc' } } },
+              include: {
+                pagos: { orderBy: { fecha_pago: 'desc' } },
+                cuotas: { orderBy: { fecha: 'asc' } },
+              },
             },
             archivos: true,
             caja: {
@@ -660,7 +743,12 @@ export class VentasService {
             },
           },
           propiedad: true,
-          planPago: { include: { pagos: { orderBy: { fecha_pago: 'desc' } }, cuotas: { orderBy: { fecha: 'asc' } } } },
+          planPago: {
+            include: {
+              pagos: { orderBy: { fecha_pago: 'desc' } },
+              cuotas: { orderBy: { fecha: 'asc' } },
+            },
+          },
           archivos: true,
           caja: {
             select: {
@@ -698,8 +786,12 @@ export class VentasService {
         },
       });
       if (!venta) throw new NotFoundException('Venta no encontrada');
-      if (!venta.planPago) throw new BadRequestException('La venta no tiene plan de pagos');
-      await this.actualizarEstadoCuotasPorPlan(venta.planPago.id_plan_pago, this.prisma);
+      if (!venta.planPago)
+        throw new BadRequestException('La venta no tiene plan de pagos');
+      await this.actualizarEstadoCuotasPorPlan(
+        venta.planPago.id_plan_pago,
+        this.prisma,
+      );
       const cuotasActualizadas = await this.prisma.cuota.findMany({
         where: { plan_pago_id: venta.planPago.id_plan_pago },
         orderBy: { fecha: 'asc' },
@@ -713,7 +805,11 @@ export class VentasService {
         },
       };
     } catch (error) {
-      if (error instanceof NotFoundException || error instanceof BadRequestException) throw error;
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+      )
+        throw error;
       throw new InternalServerErrorException('Error al obtener cronograma');
     }
   }
@@ -726,52 +822,84 @@ export class VentasService {
     userAgent?: string,
   ) {
     try {
-      return await this.prisma.$transaction(async (prisma) => {
-        const ventaExistente = await prisma.venta.findUnique({
-          where: { id },
-          include: {
-            planPago: true,
-          },
-        });
-        if (!ventaExistente)
-          throw new NotFoundException(`Venta con ID ${id} no encontrada`);
-        const usuario = await this.verificarPermisosUsuario(usuarioId, prisma);
-        if (usuario.role === 'ASESOR' && ventaExistente.asesorId !== usuarioId)
-          throw new ForbiddenException(
-            'Solo puedes actualizar tus propias ventas',
-          );
-        if (updateVentaDto.clienteId) {
-          const cliente = await prisma.user.findFirst({
-            where: {
-              id: updateVentaDto.clienteId,
-              isActive: true,
-              role: 'CLIENTE',
+      return await this.prisma.$transaction(
+        async (prisma) => {
+          const ventaExistente = await prisma.venta.findUnique({
+            where: { id },
+            include: {
+              planPago: true,
             },
           });
-          if (!cliente)
-            throw new BadRequestException(
-              'Cliente no encontrado o no tiene rol de CLIENTE',
+          if (!ventaExistente)
+            throw new NotFoundException(`Venta con ID ${id} no encontrada`);
+          const usuario = await this.verificarPermisosUsuario(
+            usuarioId,
+            prisma,
+          );
+          if (
+            usuario.role === 'ASESOR' &&
+            ventaExistente.asesorId !== usuarioId
+          )
+            throw new ForbiddenException(
+              'Solo puedes actualizar tus propias ventas',
             );
-        }
-        const updateData: any = {};
-        if (updateVentaDto.clienteId !== undefined)
-          updateData.clienteId = updateVentaDto.clienteId;
-        if (updateVentaDto.precioFinal !== undefined) {
-          updateData.precioFinal = updateVentaDto.precioFinal;
-          if (ventaExistente.planPago) {
-            await prisma.planPago.update({
-              where: { id_plan_pago: ventaExistente.planPago.id_plan_pago },
-              data: { total: updateVentaDto.precioFinal },
+          if (updateVentaDto.clienteId) {
+            const cliente = await prisma.user.findFirst({
+              where: {
+                id: updateVentaDto.clienteId,
+                isActive: true,
+                role: 'CLIENTE',
+              },
             });
+            if (!cliente)
+              throw new BadRequestException(
+                'Cliente no encontrado o no tiene rol de CLIENTE',
+              );
           }
-        }
-        if (updateVentaDto.estado !== undefined)
-          updateData.estado = updateVentaDto.estado;
-        if (updateVentaDto.observaciones !== undefined)
-          updateData.observaciones = updateVentaDto.observaciones;
-        if (Object.keys(updateData).length === 0) {
-          const ventaSinCambios = await prisma.venta.findUnique({
+          const updateData: any = {};
+          if (updateVentaDto.clienteId !== undefined)
+            updateData.clienteId = updateVentaDto.clienteId;
+          if (updateVentaDto.precioFinal !== undefined) {
+            updateData.precioFinal = updateVentaDto.precioFinal;
+            if (ventaExistente.planPago) {
+              await prisma.planPago.update({
+                where: { id_plan_pago: ventaExistente.planPago.id_plan_pago },
+                data: { total: updateVentaDto.precioFinal },
+              });
+            }
+          }
+          if (updateVentaDto.estado !== undefined)
+            updateData.estado = updateVentaDto.estado;
+          if (updateVentaDto.observaciones !== undefined)
+            updateData.observaciones = updateVentaDto.observaciones;
+          if (Object.keys(updateData).length === 0) {
+            const ventaSinCambios = await prisma.venta.findUnique({
+              where: { id },
+              include: {
+                cliente: true,
+                asesor: true,
+                lote: { include: { urbanizacion: true } },
+                propiedad: true,
+                planPago: { include: { pagos: true, cuotas: true } },
+                archivos: true,
+                caja: {
+                  select: {
+                    id: true,
+                    nombre: true,
+                    estado: true,
+                  },
+                },
+              },
+            });
+            return {
+              success: true,
+              message: 'No se realizaron cambios',
+              data: { venta: this.agregarCalculosVenta(ventaSinCambios) },
+            };
+          }
+          const ventaActualizada = await prisma.venta.update({
             where: { id },
+            data: updateData,
             include: {
               cliente: true,
               asesor: true,
@@ -788,45 +916,22 @@ export class VentasService {
               },
             },
           });
+          await this.crearAuditoria(
+            usuarioId,
+            'ACTUALIZAR_VENTA',
+            'Venta',
+            id,
+            ip,
+            userAgent,
+          );
           return {
             success: true,
-            message: 'No se realizaron cambios',
-            data: { venta: this.agregarCalculosVenta(ventaSinCambios) },
+            message: 'Venta actualizada correctamente',
+            data: { venta: this.agregarCalculosVenta(ventaActualizada) },
           };
-        }
-        const ventaActualizada = await prisma.venta.update({
-          where: { id },
-          data: updateData,
-          include: {
-            cliente: true,
-            asesor: true,
-            lote: { include: { urbanizacion: true } },
-            propiedad: true,
-            planPago: { include: { pagos: true, cuotas: true } },
-            archivos: true,
-            caja: {
-              select: {
-                id: true,
-                nombre: true,
-                estado: true,
-              },
-            },
-          },
-        });
-        await this.crearAuditoria(
-          usuarioId,
-          'ACTUALIZAR_VENTA',
-          'Venta',
-          id,
-          ip,
-          userAgent,
-        );
-        return {
-          success: true,
-          message: 'Venta actualizada correctamente',
-          data: { venta: this.agregarCalculosVenta(ventaActualizada) },
-        };
-      }, { timeout: 120000 });
+        },
+        { timeout: 120000 },
+      );
     } catch (error) {
       if (
         error instanceof NotFoundException ||
@@ -848,147 +953,164 @@ export class VentasService {
     userAgent?: string,
   ) {
     try {
-      return await this.prisma.$transaction(async (prisma) => {
-        const venta = await prisma.venta.findUnique({
-          where: { id: ventaId },
-          include: {
-            planPago: {
-              include: {
-                pagos: { orderBy: { fecha_pago: 'asc' } },
-                cuotas: true,
+      return await this.prisma.$transaction(
+        async (prisma) => {
+          const venta = await prisma.venta.findUnique({
+            where: { id: ventaId },
+            include: {
+              planPago: {
+                include: {
+                  pagos: { orderBy: { fecha_pago: 'asc' } },
+                  cuotas: true,
+                },
               },
             },
-          },
-        });
-        if (!venta) {
-          throw new NotFoundException(`Venta con ID ${ventaId} no encontrada`);
-        }
-        if (!venta.planPago) {
-          throw new BadRequestException(
-            'La venta no tiene un plan de pago asociado',
-          );
-        }
-        const usuario = await this.verificarPermisosUsuario(usuarioId, prisma);
-        if (usuario.role === 'ASESOR' && venta.asesorId !== usuarioId) {
-          throw new ForbiddenException(
-            'Solo puedes actualizar tus propias ventas',
-          );
-        }
-        if (!venta.cajaId) {
-          throw new BadRequestException('La venta no tiene una caja asociada');
-        }
-        await this.verificarCajaActiva(venta.cajaId, prisma);
-        if (venta.planPago.pagos.some(p => p.observacion !== 'Pago inicial')) {
-          throw new BadRequestException('No se puede modificar el monto inicial porque ya hay pagos adicionales registrados');
-        }
-        const montoInicialActual = Number(venta.planPago.monto_inicial);
-        const diferencia = nuevoMontoInicial - montoInicialActual;
-        let pagoInicialExistente = await prisma.pagoPlanPago.findFirst({
-          where: {
-            plan_pago_id: venta.planPago.id_plan_pago,
-            observacion: 'Pago inicial',
-          },
-        });
-        if (diferencia > 0) {
-          if (pagoInicialExistente) {
-            await prisma.pagoPlanPago.update({
-              where: { id_pago_plan: pagoInicialExistente.id_pago_plan },
-              data: { monto: nuevoMontoInicial },
-            });
-            await this.registrarMovimientoCaja(
-              venta.cajaId,
-              {
-                monto: diferencia,
-                metodoPago: 'EFECTIVO',
-                pagoId: pagoInicialExistente.id_pago_plan,
-              },
-              venta,
-              usuarioId,
-              prisma,
-              ip,
-              userAgent,
-            );
-          } else {
-            const nuevoPagoInicial = await prisma.pagoPlanPago.create({
-              data: {
-                plan_pago_id: venta.planPago.id_plan_pago,
-                monto: nuevoMontoInicial,
-                fecha_pago: new Date(),
-                observacion: 'Pago inicial',
-                metodoPago: 'EFECTIVO',
-              },
-            });
-            await this.registrarMovimientoCaja(
-              venta.cajaId,
-              {
-                monto: nuevoMontoInicial,
-                metodoPago: 'EFECTIVO',
-                pagoId: nuevoPagoInicial.id_pago_plan,
-              },
-              venta,
-              usuarioId,
-              prisma,
-              ip,
-              userAgent,
-            );
-            pagoInicialExistente = nuevoPagoInicial;
-          }
-        } else if (diferencia < 0) {
-          if (pagoInicialExistente) {
-            await prisma.pagoPlanPago.update({
-              where: { id_pago_plan: pagoInicialExistente.id_pago_plan },
-              data: { monto: nuevoMontoInicial },
-            });
-            await this.revertirMovimientoCaja(
-              venta.cajaId,
-              {
-                monto: Math.abs(diferencia),
-                pagoId: pagoInicialExistente.id_pago_plan,
-              },
-              venta,
-              usuarioId,
-              prisma,
-              ip,
-              userAgent,
+          });
+          if (!venta) {
+            throw new NotFoundException(
+              `Venta con ID ${ventaId} no encontrada`,
             );
           }
-        }
-        await prisma.planPago.update({
-          where: { id_plan_pago: venta.planPago.id_plan_pago },
-          data: {
-            monto_inicial: nuevoMontoInicial,
-            actualizado_en: new Date(),
-          },
-        });
-        await prisma.cuota.deleteMany({
-          where: { plan_pago_id: venta.planPago.id_plan_pago },
-        });
-        if (nuevoMontoInicial < Number(venta.planPago.total)) {
-          await this.generarCuotas(venta.planPago.id_plan_pago, prisma);
-        }
-        await this.actualizarEstadoPlan(venta.planPago.id_plan_pago);
-        await this.crearAuditoria(
-          usuarioId,
-          'ACTUALIZAR_MONTO_INICIAL_PLAN_PAGO',
-          'PlanPago',
-          venta.planPago.id_plan_pago,
-          ip,
-          userAgent,
-        );
-        const ventaActualizada = await prisma.venta.findUnique({
-          where: { id: ventaId },
-          include: {
-            planPago: {
-              include: { pagos: { orderBy: { fecha_pago: 'asc' } }, cuotas: { orderBy: { fecha: 'asc' } } },
+          if (!venta.planPago) {
+            throw new BadRequestException(
+              'La venta no tiene un plan de pago asociado',
+            );
+          }
+          const usuario = await this.verificarPermisosUsuario(
+            usuarioId,
+            prisma,
+          );
+          if (usuario.role === 'ASESOR' && venta.asesorId !== usuarioId) {
+            throw new ForbiddenException(
+              'Solo puedes actualizar tus propias ventas',
+            );
+          }
+          if (!venta.cajaId) {
+            throw new BadRequestException(
+              'La venta no tiene una caja asociada',
+            );
+          }
+          await this.verificarCajaActiva(venta.cajaId, prisma);
+          if (
+            venta.planPago.pagos.some((p) => p.observacion !== 'Pago inicial')
+          ) {
+            throw new BadRequestException(
+              'No se puede modificar el monto inicial porque ya hay pagos adicionales registrados',
+            );
+          }
+          const montoInicialActual = Number(venta.planPago.monto_inicial);
+          const diferencia = nuevoMontoInicial - montoInicialActual;
+          let pagoInicialExistente = await prisma.pagoPlanPago.findFirst({
+            where: {
+              plan_pago_id: venta.planPago.id_plan_pago,
+              observacion: 'Pago inicial',
             },
-          },
-        });
-        return {
-          success: true,
-          message: 'Monto inicial actualizado correctamente',
-          data: { venta: this.agregarCalculosVenta(ventaActualizada) },
-        };
-      }, { timeout: 120000 });
+          });
+          if (diferencia > 0) {
+            if (pagoInicialExistente) {
+              await prisma.pagoPlanPago.update({
+                where: { id_pago_plan: pagoInicialExistente.id_pago_plan },
+                data: { monto: nuevoMontoInicial },
+              });
+              await this.registrarMovimientoCaja(
+                venta.cajaId,
+                {
+                  monto: diferencia,
+                  metodoPago: 'EFECTIVO',
+                  pagoId: pagoInicialExistente.id_pago_plan,
+                },
+                venta,
+                usuarioId,
+                prisma,
+                ip,
+                userAgent,
+              );
+            } else {
+              const nuevoPagoInicial = await prisma.pagoPlanPago.create({
+                data: {
+                  plan_pago_id: venta.planPago.id_plan_pago,
+                  monto: nuevoMontoInicial,
+                  fecha_pago: new Date(),
+                  observacion: 'Pago inicial',
+                  metodoPago: 'EFECTIVO',
+                },
+              });
+              await this.registrarMovimientoCaja(
+                venta.cajaId,
+                {
+                  monto: nuevoMontoInicial,
+                  metodoPago: 'EFECTIVO',
+                  pagoId: nuevoPagoInicial.id_pago_plan,
+                },
+                venta,
+                usuarioId,
+                prisma,
+                ip,
+                userAgent,
+              );
+              pagoInicialExistente = nuevoPagoInicial;
+            }
+          } else if (diferencia < 0) {
+            if (pagoInicialExistente) {
+              await prisma.pagoPlanPago.update({
+                where: { id_pago_plan: pagoInicialExistente.id_pago_plan },
+                data: { monto: nuevoMontoInicial },
+              });
+              await this.revertirMovimientoCaja(
+                venta.cajaId,
+                {
+                  monto: Math.abs(diferencia),
+                  pagoId: pagoInicialExistente.id_pago_plan,
+                },
+                venta,
+                usuarioId,
+                prisma,
+                ip,
+                userAgent,
+              );
+            }
+          }
+          await prisma.planPago.update({
+            where: { id_plan_pago: venta.planPago.id_plan_pago },
+            data: {
+              monto_inicial: nuevoMontoInicial,
+              actualizado_en: new Date(),
+            },
+          });
+          await prisma.cuota.deleteMany({
+            where: { plan_pago_id: venta.planPago.id_plan_pago },
+          });
+          if (nuevoMontoInicial < Number(venta.planPago.total)) {
+            await this.generarCuotas(venta.planPago.id_plan_pago, prisma);
+          }
+          await this.actualizarEstadoPlan(venta.planPago.id_plan_pago);
+          await this.crearAuditoria(
+            usuarioId,
+            'ACTUALIZAR_MONTO_INICIAL_PLAN_PAGO',
+            'PlanPago',
+            venta.planPago.id_plan_pago,
+            ip,
+            userAgent,
+          );
+          const ventaActualizada = await prisma.venta.findUnique({
+            where: { id: ventaId },
+            include: {
+              planPago: {
+                include: {
+                  pagos: { orderBy: { fecha_pago: 'asc' } },
+                  cuotas: { orderBy: { fecha: 'asc' } },
+                },
+              },
+            },
+          });
+          return {
+            success: true,
+            message: 'Monto inicial actualizado correctamente',
+            data: { venta: this.agregarCalculosVenta(ventaActualizada) },
+          };
+        },
+        { timeout: 120000 },
+      );
     } catch (error) {
       if (
         error instanceof NotFoundException ||
@@ -1010,94 +1132,102 @@ export class VentasService {
     userAgent?: string,
   ) {
     try {
-      return await this.prisma.$transaction(async (prisma) => {
-        const venta = await prisma.venta.findUnique({
-          where: { id },
-          include: {
-            planPago: { include: { pagos: true, cuotas: true } },
-            archivos: true,
-            ingresos: true,
-          },
-        });
-        if (!venta)
-          throw new NotFoundException(`Venta con ID ${id} no encontrada`);
-        const usuario = await this.verificarPermisosUsuario(usuarioId, prisma);
-        if (usuario.role === 'ASESOR' && venta.asesorId !== usuarioId)
-          throw new ForbiddenException(
-            'Solo puedes eliminar tus propias ventas',
+      return await this.prisma.$transaction(
+        async (prisma) => {
+          const venta = await prisma.venta.findUnique({
+            where: { id },
+            include: {
+              planPago: { include: { pagos: true, cuotas: true } },
+              archivos: true,
+              ingresos: true,
+            },
+          });
+          if (!venta)
+            throw new NotFoundException(`Venta con ID ${id} no encontrada`);
+          const usuario = await this.verificarPermisosUsuario(
+            usuarioId,
+            prisma,
           );
+          if (usuario.role === 'ASESOR' && venta.asesorId !== usuarioId)
+            throw new ForbiddenException(
+              'Solo puedes eliminar tus propias ventas',
+            );
 
-        if (!venta.cajaId) {
-          throw new BadRequestException('La venta no tiene una caja asociada');
-        }
-        await this.verificarCajaActiva(venta.cajaId, prisma);
-        if (venta.planPago && venta.planPago.pagos.length > 0) {
-          const totalPagado = this.calcularTotalPagado(venta.planPago.pagos);
-          if (totalPagado > 0) {
-            await this.revertirMovimientoCaja(
-              venta.cajaId,
-              { monto: totalPagado, pagoId: 0 },
-              venta,
-              usuarioId,
-              prisma,
-              ip,
-              userAgent,
+          if (!venta.cajaId) {
+            throw new BadRequestException(
+              'La venta no tiene una caja asociada',
             );
           }
-          for (const pago of venta.planPago.pagos) {
-            await this.revertirAplicacionPago(pago.id_pago_plan, prisma);
+          await this.verificarCajaActiva(venta.cajaId, prisma);
+          if (venta.planPago && venta.planPago.pagos.length > 0) {
+            const totalPagado = this.calcularTotalPagado(venta.planPago.pagos);
+            if (totalPagado > 0) {
+              await this.revertirMovimientoCaja(
+                venta.cajaId,
+                { monto: totalPagado, pagoId: 0 },
+                venta,
+                usuarioId,
+                prisma,
+                ip,
+                userAgent,
+              );
+            }
+            for (const pago of venta.planPago.pagos) {
+              await this.revertirAplicacionPago(pago.id_pago_plan, prisma);
+            }
+            await prisma.pagoPlanPago.deleteMany({
+              where: { plan_pago_id: venta.planPago.id_plan_pago },
+            });
+            await prisma.cuota.deleteMany({
+              where: { plan_pago_id: venta.planPago.id_plan_pago },
+            });
+            await prisma.planPago.delete({
+              where: { id_plan_pago: venta.planPago.id_plan_pago },
+            });
           }
-          await prisma.pagoPlanPago.deleteMany({
-            where: { plan_pago_id: venta.planPago.id_plan_pago },
-          });
-          await prisma.cuota.deleteMany({
-            where: { plan_pago_id: venta.planPago.id_plan_pago },
-          });
-          await prisma.planPago.delete({
-            where: { id_plan_pago: venta.planPago.id_plan_pago },
-          });
-        }
 
-        await prisma.movimientoCaja.deleteMany({
-          where: { ventaId: id },
-        });
-
-        await prisma.ingreso.deleteMany({
-          where: { ventaId: id },
-        });
-
-        await prisma.recibo.deleteMany({
-          where: { ventaId: id },
-        });
-
-        await prisma.archivo.deleteMany({
-          where: { ventaId: id },
-        });
-        if (venta.inmuebleTipo === TipoInmueble.LOTE && venta.loteId) {
-          await prisma.lote.update({
-            where: { id: venta.loteId },
-            data: { estado: 'DISPONIBLE' },
+          await prisma.movimientoCaja.deleteMany({
+            where: { ventaId: id },
           });
-        } else if (
-          venta.inmuebleTipo === TipoInmueble.PROPIEDAD &&
-          venta.propiedadId
-        ) {
-          await prisma.propiedad.update({
-            where: { id: venta.propiedadId },
-            data: { estado: 'DISPONIBLE' },
+
+          await prisma.ingreso.deleteMany({
+            where: { ventaId: id },
           });
-        }
-        await prisma.venta.delete({ where: { id } });
-        await this.crearAuditoria(
-          usuarioId,
-          'ELIMINAR_VENTA',
-          'Venta',
-          id,
-          ip,
-          userAgent,
-        );
-        return { success: true, message: 'Venta eliminada correctamente' };
-      }, { timeout: 120000 });
+
+          await prisma.recibo.deleteMany({
+            where: { ventaId: id },
+          });
+
+          await prisma.archivo.deleteMany({
+            where: { ventaId: id },
+          });
+          if (venta.inmuebleTipo === TipoInmueble.LOTE && venta.loteId) {
+            await prisma.lote.update({
+              where: { id: venta.loteId },
+              data: { estado: 'DISPONIBLE' },
+            });
+          } else if (
+            venta.inmuebleTipo === TipoInmueble.PROPIEDAD &&
+            venta.propiedadId
+          ) {
+            await prisma.propiedad.update({
+              where: { id: venta.propiedadId },
+              data: { estado: 'DISPONIBLE' },
+            });
+          }
+          await prisma.venta.delete({ where: { id } });
+          await this.crearAuditoria(
+            usuarioId,
+            'ELIMINAR_VENTA',
+            'Venta',
+            id,
+            ip,
+            userAgent,
+          );
+          return { success: true, message: 'Venta eliminada correctamente' };
+        },
+        { timeout: 120000 },
+      );
     } catch (error) {
       if (
         error instanceof NotFoundException ||
@@ -1117,127 +1247,138 @@ export class VentasService {
     userAgent?: string,
   ) {
     try {
-      return await this.prisma.$transaction(async (prisma) => {
-     
-        const usuario = await prisma.user.findUnique({
-          where: { id: usuarioId },
-        });
-        if (!usuario) throw new ForbiddenException('Usuario no encontrado');
-        if (!['ADMINISTRADOR', 'SECRETARIA'].includes(usuario.role)) {
-          throw new ForbiddenException(
-            'No tienes permisos para registrar pagos',
-          );
-        }
+      return await this.prisma.$transaction(
+        async (prisma) => {
+          const usuario = await prisma.user.findUnique({
+            where: { id: usuarioId },
+          });
+          if (!usuario) throw new ForbiddenException('Usuario no encontrado');
+          if (!['ADMINISTRADOR', 'SECRETARIA'].includes(usuario.role)) {
+            throw new ForbiddenException(
+              'No tienes permisos para registrar pagos',
+            );
+          }
 
-        const planPago = await prisma.planPago.findUnique({
-          where: { id_plan_pago: registrarPagoDto.plan_pago_id },
-          include: {
-            venta: { include: { cliente: true, asesor: true } },
-            pagos: { orderBy: { fecha_pago: 'asc' } },
-            cuotas: true,
-          },
-        });
-        if (!planPago) {
-          throw new NotFoundException(
-            `Plan de pago con ID ${registrarPagoDto.plan_pago_id} no encontrado`,
+          const planPago = await prisma.planPago.findUnique({
+            where: { id_plan_pago: registrarPagoDto.plan_pago_id },
+            include: {
+              venta: {
+                include: {
+                  cliente: true,
+                  asesor: true,
+                  lote: { include: { urbanizacion: true } },
+                  propiedad: true,
+                },
+              },
+              pagos: true,
+              cuotas: true,
+            },
+          });
+          if (!planPago) {
+            throw new NotFoundException(
+              `Plan de pago con ID ${registrarPagoDto.plan_pago_id} no encontrado`,
+            );
+          }
+          if (
+            usuario.role === 'ASESOR' &&
+            planPago.venta.asesorId !== usuarioId
+          ) {
+            throw new ForbiddenException(
+              'Solo puedes registrar pagos en tus propias ventas',
+            );
+          }
+          if (planPago.estado !== EstadoPlanPago.ACTIVO) {
+            throw new BadRequestException(
+              `El plan de pago no está activo. Estado actual: ${planPago.estado}`,
+            );
+          }
+          if (!planPago.venta.cajaId) {
+            throw new BadRequestException(
+              'La venta no tiene una caja asociada',
+            );
+          }
+          const cajaId = planPago.venta.cajaId;
+          await this.verificarCajaActiva(cajaId, prisma);
+          const totalPagado = this.calcularTotalPagado(planPago.pagos);
+          const saldoPendiente = this.calcularSaldoPendiente(
+            Number(planPago.total),
+            totalPagado,
           );
-        }
-        if (
-          usuario.role === 'ASESOR' &&
-          planPago.venta.asesorId !== usuarioId
-        ) {
-          throw new ForbiddenException(
-            'Solo puedes registrar pagos en tus propias ventas',
-          );
-        }
-        if (planPago.estado !== EstadoPlanPago.ACTIVO) {
-          throw new BadRequestException(
-            `El plan de pago no está activo. Estado actual: ${planPago.estado}`,
-          );
-        }
-        if (!planPago.venta.cajaId) {
-          throw new BadRequestException('La venta no tiene una caja asociada');
-        }
-        const cajaId = planPago.venta.cajaId;
-        await this.verificarCajaActiva(cajaId, prisma);
-        const totalPagado = this.calcularTotalPagado(planPago.pagos);
-        const saldoPendiente = this.calcularSaldoPendiente(
-          Number(planPago.total),
-          totalPagado,
-        );
-        if (registrarPagoDto.monto <= 0) {
-          throw new BadRequestException('El monto debe ser mayor a cero');
-        }
-        if (registrarPagoDto.monto > saldoPendiente) {
-          throw new BadRequestException(
-            `El monto a pagar (Bs. ${registrarPagoDto.monto}) excede el saldo pendiente (Bs. ${saldoPendiente})`,
-          );
-        }
-        const fechaPago = registrarPagoDto.fecha_pago || new Date();
-        const hoy = new Date();
-        const maxFechaPermitida = new Date(hoy);
-        maxFechaPermitida.setDate(maxFechaPermitida.getDate() + 90);
-        if (fechaPago > maxFechaPermitida) {
-          throw new BadRequestException(
-            'La fecha de pago no puede ser más de 90 días en el futuro',
-          );
-        }
-        const pagoData: any = {
-          plan_pago_id: registrarPagoDto.plan_pago_id,
-          monto: registrarPagoDto.monto,
-          fecha_pago: fechaPago,
-          observacion: registrarPagoDto.observacion || null,
-        };
-        if (registrarPagoDto.metodoPago) {
-          pagoData.metodoPago = registrarPagoDto.metodoPago;
-        }
-        const pago = await prisma.pagoPlanPago.create({ data: pagoData });
-        await this.registrarMovimientoCaja(
-          cajaId,
-          {
+          if (registrarPagoDto.monto <= 0) {
+            throw new BadRequestException('El monto debe ser mayor a cero');
+          }
+          if (registrarPagoDto.monto > saldoPendiente) {
+            throw new BadRequestException(
+              `El monto a pagar (Bs. ${registrarPagoDto.monto}) excede el saldo pendiente (Bs. ${saldoPendiente})`,
+            );
+          }
+          const fechaPago = registrarPagoDto.fecha_pago || new Date();
+          const hoy = new Date();
+          const maxFechaPermitida = new Date(hoy);
+          maxFechaPermitida.setDate(maxFechaPermitida.getDate() + 90);
+          if (fechaPago > maxFechaPermitida) {
+            throw new BadRequestException(
+              'La fecha de pago no puede ser más de 90 días en el futuro',
+            );
+          }
+          const pagoData: any = {
+            plan_pago_id: registrarPagoDto.plan_pago_id,
             monto: registrarPagoDto.monto,
-            metodoPago: registrarPagoDto.metodoPago || 'EFECTIVO',
-            pagoId: pago.id_pago_plan,
-          },
-          planPago.venta,
-          usuarioId,
-          prisma,
-          ip,
-          userAgent,
-        );
-        await this.aplicarPagoACuotas(
-          pago.id_pago_plan,
-          planPago.id_plan_pago,
-          registrarPagoDto.monto,
-          prisma,
-        );
-        await this.actualizarEstadoPlan(planPago.id_plan_pago);
-        await this.crearAuditoria(
-          usuarioId,
-          'CREAR_PAGO',
-          'PagoPlanPago',
-          pago.id_pago_plan,
-          ip,
-          userAgent,
-        );
-        const planActualizado = await prisma.planPago.findUnique({
-          where: { id_plan_pago: registrarPagoDto.plan_pago_id },
-          include: {
-            pagos: { orderBy: { fecha_pago: 'asc' } },
-            cuotas: { orderBy: { fecha: 'asc' } },
-            venta: true,
-          },
-        });
-        return {
-          success: true,
-          message: 'Pago registrado correctamente',
-          data: {
-            pago,
-            planPago: this.agregarCalculosVenta({ planPago: planActualizado })
-              .planPago,
-          },
-        };
-      }, { timeout: 120000 });
+            fecha_pago: fechaPago,
+            observacion: registrarPagoDto.observacion || null,
+          };
+          if (registrarPagoDto.metodoPago) {
+            pagoData.metodoPago = registrarPagoDto.metodoPago;
+          }
+          const pago = await prisma.pagoPlanPago.create({ data: pagoData });
+          await this.registrarMovimientoCaja(
+            cajaId,
+            {
+              monto: registrarPagoDto.monto,
+              metodoPago: registrarPagoDto.metodoPago || 'EFECTIVO',
+              pagoId: pago.id_pago_plan,
+            },
+            planPago.venta,
+            usuarioId,
+            prisma,
+            ip,
+            userAgent,
+          );
+          await this.aplicarPagoACuotas(
+            pago.id_pago_plan,
+            planPago.id_plan_pago,
+            registrarPagoDto.monto,
+            prisma,
+          );
+          await this.actualizarEstadoPlan(planPago.id_plan_pago);
+          await this.crearAuditoria(
+            usuarioId,
+            'CREAR_PAGO',
+            'PagoPlanPago',
+            pago.id_pago_plan,
+            ip,
+            userAgent,
+          );
+          const planActualizado = await prisma.planPago.findUnique({
+            where: { id_plan_pago: registrarPagoDto.plan_pago_id },
+            include: {
+              pagos: { orderBy: { fecha_pago: 'asc' } },
+              cuotas: { orderBy: { fecha: 'asc' } },
+              venta: true,
+            },
+          });
+          return {
+            success: true,
+            message: 'Pago registrado correctamente',
+            data: {
+              pago,
+              planPago: this.agregarCalculosVenta({ planPago: planActualizado })
+                .planPago,
+            },
+          };
+        },
+        { timeout: 120000 },
+      );
     } catch (error) {
       if (
         error instanceof NotFoundException ||
@@ -1321,112 +1462,126 @@ export class VentasService {
     userAgent?: string,
   ) {
     try {
-      return await this.prisma.$transaction(async (prisma) => {
-        const usuario = await this.verificarPermisosUsuario(usuarioId, prisma);
-        const pagoExistente = await prisma.pagoPlanPago.findUnique({
-          where: { id_pago_plan: pagoId },
-          include: {
-            planPago: {
-              include: {
-                venta: true,
-                pagos: { orderBy: { fecha_pago: 'asc' } },
-                cuotas: true,
+      return await this.prisma.$transaction(
+        async (prisma) => {
+          const usuario = await this.verificarPermisosUsuario(
+            usuarioId,
+            prisma,
+          );
+          const pagoExistente = await prisma.pagoPlanPago.findUnique({
+            where: { id_pago_plan: pagoId },
+            include: {
+              planPago: {
+                include: {
+                  venta: {
+                    include: {
+                      lote: { include: { urbanizacion: true } },
+                      propiedad: true,
+                    },
+                  },
+                  pagos: { orderBy: { fecha_pago: 'asc' } },
+                  cuotas: true,
+                },
               },
             },
-          },
-        });
-        if (!pagoExistente)
-          throw new NotFoundException(`Pago con ID ${pagoId} no encontrado`);
-        if (
-          usuario.role === 'ASESOR' &&
-          pagoExistente.planPago.venta.asesorId !== usuarioId
-        )
-          throw new ForbiddenException(
-            'Solo puedes actualizar pagos de tus propias ventas',
-          );
-        if (pagoExistente.planPago.estado === EstadoPlanPago.PAGADO)
-          throw new BadRequestException(
-            'No se puede actualizar un pago de un plan ya pagado',
-          );
-        const montoAnterior = Number(pagoExistente.monto);
-        let diferenciaMonto = 0;
-        if (updatePagoPlanDto.monto !== undefined) {
-          const otrosPagos = pagoExistente.planPago.pagos.filter(
-            (p) => p.id_pago_plan !== pagoId,
-          );
-          const totalOtrosPagos = this.calcularTotalPagado(otrosPagos);
-          const nuevoTotal = totalOtrosPagos + Number(updatePagoPlanDto.monto);
-          if (nuevoTotal > Number(pagoExistente.planPago.total))
-            throw new BadRequestException(
-              `El nuevo monto excede el total del plan. Máximo permitido: ${Number(pagoExistente.planPago.total) - totalOtrosPagos}`,
+          });
+          if (!pagoExistente)
+            throw new NotFoundException(`Pago con ID ${pagoId} no encontrado`);
+          if (
+            usuario.role === 'ASESOR' &&
+            pagoExistente.planPago.venta.asesorId !== usuarioId
+          )
+            throw new ForbiddenException(
+              'Solo puedes actualizar pagos de tus propias ventas',
             );
-          diferenciaMonto = Number(updatePagoPlanDto.monto) - montoAnterior;
-        }
-        if (!pagoExistente.planPago.venta.cajaId) {
-          throw new BadRequestException('La venta no tiene una caja asociada');
-        }
-        const cajaId = pagoExistente.planPago.venta.cajaId;
-        if (diferenciaMonto !== 0) {
-          await this.revertirMovimientoCaja(
-            cajaId,
-            { monto: montoAnterior, pagoId: pagoId },
-            pagoExistente.planPago.venta,
+          if (pagoExistente.planPago.estado === EstadoPlanPago.PAGADO)
+            throw new BadRequestException(
+              'No se puede actualizar un pago de un plan ya pagado',
+            );
+          const montoAnterior = Number(pagoExistente.monto);
+          let diferenciaMonto = 0;
+          if (updatePagoPlanDto.monto !== undefined) {
+            const otrosPagos = pagoExistente.planPago.pagos.filter(
+              (p) => p.id_pago_plan !== pagoId,
+            );
+            const totalOtrosPagos = this.calcularTotalPagado(otrosPagos);
+            const nuevoTotal =
+              totalOtrosPagos + Number(updatePagoPlanDto.monto);
+            if (nuevoTotal > Number(pagoExistente.planPago.total))
+              throw new BadRequestException(
+                `El nuevo monto excede el total del plan. Máximo permitido: ${Number(pagoExistente.planPago.total) - totalOtrosPagos}`,
+              );
+            diferenciaMonto = Number(updatePagoPlanDto.monto) - montoAnterior;
+          }
+          if (!pagoExistente.planPago.venta.cajaId) {
+            throw new BadRequestException(
+              'La venta no tiene una caja asociada',
+            );
+          }
+          const cajaId = pagoExistente.planPago.venta.cajaId;
+          if (diferenciaMonto !== 0) {
+            await this.revertirMovimientoCaja(
+              cajaId,
+              { monto: montoAnterior, pagoId: pagoId },
+              pagoExistente.planPago.venta,
+              usuarioId,
+              prisma,
+              ip,
+              userAgent,
+            );
+            await this.revertirAplicacionPago(pagoId, prisma);
+          }
+          const updateData: any = {};
+          if (updatePagoPlanDto.monto !== undefined)
+            updateData.monto = updatePagoPlanDto.monto;
+          if (updatePagoPlanDto.fecha_pago !== undefined)
+            updateData.fecha_pago = updatePagoPlanDto.fecha_pago;
+          if (updatePagoPlanDto.observacion !== undefined)
+            updateData.observacion = updatePagoPlanDto.observacion;
+          if (updatePagoPlanDto.metodoPago !== undefined)
+            updateData.metodoPago = updatePagoPlanDto.metodoPago;
+          const pagoActualizado = await prisma.pagoPlanPago.update({
+            where: { id_pago_plan: pagoId },
+            data: updateData,
+          });
+          if (diferenciaMonto !== 0) {
+            await this.registrarMovimientoCaja(
+              cajaId,
+              {
+                monto: Number(updatePagoPlanDto.monto),
+                pagoId: pagoId,
+                metodoPago: updatePagoPlanDto.metodoPago || 'EFECTIVO',
+              },
+              pagoExistente.planPago.venta,
+              usuarioId,
+              prisma,
+              ip,
+              userAgent,
+            );
+            await this.aplicarPagoACuotas(
+              pagoId,
+              pagoExistente.planPago.id_plan_pago,
+              Number(updatePagoPlanDto.monto),
+              prisma,
+            );
+          }
+          await this.actualizarEstadoPlan(pagoExistente.planPago.id_plan_pago);
+          await this.crearAuditoria(
             usuarioId,
-            prisma,
-            ip,
-            userAgent,
-          );
-          await this.revertirAplicacionPago(pagoId, prisma);
-        }
-        const updateData: any = {};
-        if (updatePagoPlanDto.monto !== undefined)
-          updateData.monto = updatePagoPlanDto.monto;
-        if (updatePagoPlanDto.fecha_pago !== undefined)
-          updateData.fecha_pago = updatePagoPlanDto.fecha_pago;
-        if (updatePagoPlanDto.observacion !== undefined)
-          updateData.observacion = updatePagoPlanDto.observacion;
-        if (updatePagoPlanDto.metodoPago !== undefined)
-          updateData.metodoPago = updatePagoPlanDto.metodoPago;
-        const pagoActualizado = await prisma.pagoPlanPago.update({
-          where: { id_pago_plan: pagoId },
-          data: updateData,
-        });
-        if (diferenciaMonto !== 0) {
-          await this.registrarMovimientoCaja(
-            cajaId,
-            {
-              monto: Number(updatePagoPlanDto.monto),
-              pagoId: pagoId,
-              metodoPago: updatePagoPlanDto.metodoPago || 'EFECTIVO',
-            },
-            pagoExistente.planPago.venta,
-            usuarioId,
-            prisma,
-            ip,
-            userAgent,
-          );
-          await this.aplicarPagoACuotas(
+            'ACTUALIZAR_PAGO',
+            'PagoPlanPago',
             pagoId,
-            pagoExistente.planPago.id_plan_pago,
-            Number(updatePagoPlanDto.monto),
-            prisma,
+            ip,
+            userAgent,
           );
-        }
-        await this.actualizarEstadoPlan(pagoExistente.planPago.id_plan_pago);
-        await this.crearAuditoria(
-          usuarioId,
-          'ACTUALIZAR_PAGO',
-          'PagoPlanPago',
-          pagoId,
-          ip,
-          userAgent,
-        );
-        return {
-          success: true,
-          message: 'Pago actualizado correctamente',
-          data: { pago: pagoActualizado },
-        };
-      }, { timeout: 120000 });
+          return {
+            success: true,
+            message: 'Pago actualizado correctamente',
+            data: { pago: pagoActualizado },
+          };
+        },
+        { timeout: 120000 },
+      );
     } catch (error) {
       if (
         error instanceof NotFoundException ||
@@ -1446,59 +1601,72 @@ export class VentasService {
     userAgent?: string,
   ) {
     try {
-      return await this.prisma.$transaction(async (prisma) => {
-        const usuario = await this.verificarPermisosUsuario(usuarioId, prisma);
-        const pago = await prisma.pagoPlanPago.findUnique({
-          where: { id_pago_plan: pagoId },
-          include: {
-            planPago: {
-              include: {
-                venta: true,
-                pagos: { orderBy: { fecha_pago: 'asc' } },
+      return await this.prisma.$transaction(
+        async (prisma) => {
+          const usuario = await this.verificarPermisosUsuario(
+            usuarioId,
+            prisma,
+          );
+          const pago = await prisma.pagoPlanPago.findUnique({
+            where: { id_pago_plan: pagoId },
+            include: {
+              planPago: {
+                include: {
+                  venta: {
+                    include: {
+                      lote: { include: { urbanizacion: true } },
+                      propiedad: true,
+                    },
+                  },
+                  pagos: { orderBy: { fecha_pago: 'asc' } },
+                },
               },
             },
-          },
-        });
-        if (!pago)
-          throw new NotFoundException(`Pago con ID ${pagoId} no encontrado`);
-        if (
-          usuario.role === 'ASESOR' &&
-          pago.planPago.venta.asesorId !== usuarioId
-        )
-          throw new ForbiddenException(
-            'Solo puedes eliminar pagos de tus propias ventas',
+          });
+          if (!pago)
+            throw new NotFoundException(`Pago con ID ${pagoId} no encontrado`);
+          if (
+            usuario.role === 'ASESOR' &&
+            pago.planPago.venta.asesorId !== usuarioId
+          )
+            throw new ForbiddenException(
+              'Solo puedes eliminar pagos de tus propias ventas',
+            );
+          if (pago.planPago.estado === EstadoPlanPago.PAGADO)
+            throw new BadRequestException(
+              'No se puede eliminar un pago de un plan ya pagado',
+            );
+          if (!pago.planPago.venta.cajaId) {
+            throw new BadRequestException(
+              'La venta no tiene una caja asociada',
+            );
+          }
+          const cajaOriginalId = pago.planPago.venta.cajaId;
+          await this.verificarCajaActiva(cajaOriginalId, prisma);
+          await this.revertirMovimientoCaja(
+            cajaOriginalId,
+            { monto: pago.monto, pagoId: pagoId },
+            pago.planPago.venta,
+            usuarioId,
+            prisma,
+            ip,
+            userAgent,
           );
-        if (pago.planPago.estado === EstadoPlanPago.PAGADO)
-          throw new BadRequestException(
-            'No se puede eliminar un pago de un plan ya pagado',
+          await this.revertirAplicacionPago(pagoId, prisma);
+          await prisma.pagoPlanPago.delete({ where: { id_pago_plan: pagoId } });
+          await this.actualizarEstadoPlan(pago.planPago.id_plan_pago);
+          await this.crearAuditoria(
+            usuarioId,
+            'ELIMINAR_PAGO',
+            'PagoPlanPago',
+            pagoId,
+            ip,
+            userAgent,
           );
-        if (!pago.planPago.venta.cajaId) {
-          throw new BadRequestException('La venta no tiene una caja asociada');
-        }
-        const cajaOriginalId = pago.planPago.venta.cajaId;
-        await this.verificarCajaActiva(cajaOriginalId, prisma);
-        await this.revertirMovimientoCaja(
-          cajaOriginalId,
-          { monto: pago.monto, pagoId: pagoId },
-          pago.planPago.venta,
-          usuarioId,
-          prisma,
-          ip,
-          userAgent,
-        );
-        await this.revertirAplicacionPago(pagoId, prisma);
-        await prisma.pagoPlanPago.delete({ where: { id_pago_plan: pagoId } });
-        await this.actualizarEstadoPlan(pago.planPago.id_plan_pago);
-        await this.crearAuditoria(
-          usuarioId,
-          'ELIMINAR_PAGO',
-          'PagoPlanPago',
-          pagoId,
-          ip,
-          userAgent,
-        );
-        return { success: true, message: 'Pago eliminado correctamente' };
-      }, { timeout: 120000 });
+          return { success: true, message: 'Pago eliminado correctamente' };
+        },
+        { timeout: 120000 },
+      );
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
       console.error('Error en eliminarPagoPlan:', error);
@@ -1514,83 +1682,97 @@ export class VentasService {
     userAgent?: string,
   ) {
     try {
-      return await this.prisma.$transaction(async (prisma) => {
-        const usuario = await this.verificarPermisosUsuario(usuarioId, prisma);
-        const planPago = await prisma.planPago.findUnique({
-          where: { id_plan_pago: planPagoId },
-          include: { venta: true, pagos: true, cuotas: true },
-        });
-        if (!planPago)
-          throw new NotFoundException(
-            `Plan de pago con ID ${planPagoId} no encontrado`,
+      return await this.prisma.$transaction(
+        async (prisma) => {
+          const usuario = await this.verificarPermisosUsuario(
+            usuarioId,
+            prisma,
           );
-        if (usuario.role === 'ASESOR' && planPago.venta.asesorId !== usuarioId)
-          throw new ForbiddenException(
-            'Solo puedes actualizar planes de pago de tus propias ventas',
-          );
-        if (planPago.estado === EstadoPlanPago.PAGADO)
-          throw new BadRequestException(
-            'No se puede actualizar un plan de pago ya pagado',
-          );
-        if (planPago.pagos.some(p => p.observacion !== 'Pago inicial')) {
-          throw new BadRequestException('No se puede modificar el plan porque ya hay pagos registrados');
-        }
-        const updateData: any = {};
-        let regenerarCuotas = false;
-        if (updatePlanPagoDto.plazo !== undefined) {
-          updateData.plazo = updatePlanPagoDto.plazo;
-          regenerarCuotas = true;
-        }
-        if (updatePlanPagoDto.periodicidad !== undefined) {
-          updateData.periodicidad = updatePlanPagoDto.periodicidad;
-          regenerarCuotas = true;
-        }
-        if (regenerarCuotas) {
-          const plazo = updatePlanPagoDto.plazo !== undefined ? updatePlanPagoDto.plazo : planPago.plazo;
-          const periodicidad = updatePlanPagoDto.periodicidad !== undefined ? updatePlanPagoDto.periodicidad : planPago.periodicidad;
-          updateData.fecha_vencimiento = this.calcularFechaVencimiento(
-            planPago.fecha_inicio,
-            plazo,
-            periodicidad as PeriodicidadPago,
-          );
-        }
-        const planActualizado = await prisma.planPago.update({
-          where: { id_plan_pago: planPagoId },
-          data: updateData,
-        });
-        if (regenerarCuotas) {
-          await prisma.cuota.deleteMany({
-            where: { plan_pago_id: planPagoId },
+          const planPago = await prisma.planPago.findUnique({
+            where: { id_plan_pago: planPagoId },
+            include: { venta: true, pagos: true, cuotas: true },
           });
-          if (Number(planPago.monto_inicial) < Number(planPago.total)) {
-            await this.generarCuotas(planPagoId, prisma);
-            const pagoInicial = await prisma.pagoPlanPago.findFirst({
-              where: { plan_pago_id: planPagoId, observacion: 'Pago inicial' },
-            });
+          if (!planPago)
+            throw new NotFoundException(
+              `Plan de pago con ID ${planPagoId} no encontrado`,
+            );
+          if (
+            usuario.role === 'ASESOR' &&
+            planPago.venta.asesorId !== usuarioId
+          )
+            throw new ForbiddenException(
+              'Solo puedes actualizar planes de pago de tus propias ventas',
+            );
+          if (planPago.estado === EstadoPlanPago.PAGADO)
+            throw new BadRequestException(
+              'No se puede actualizar un plan de pago ya pagado',
+            );
+          if (planPago.pagos.some((p) => p.observacion !== 'Pago inicial')) {
+            throw new BadRequestException(
+              'No se puede modificar el plan porque ya hay pagos registrados',
+            );
           }
-        }
-        await this.actualizarEstadoPlan(planPagoId);
-        await this.crearAuditoria(
-          usuarioId,
-          'ACTUALIZAR_PLAN_PAGO',
-          'PlanPago',
-          planPagoId,
-          ip,
-          userAgent,
-        );
-        const planFinal = await prisma.planPago.findUnique({
-          where: { id_plan_pago: planPagoId },
-          include: { pagos: true, cuotas: true, venta: true },
-        });
-        return {
-          success: true,
-          message: 'Plan de pago actualizado correctamente',
-          data: {
-            planPago: this.agregarCalculosVenta({ planPago: planFinal })
-              .planPago,
-          },
-        };
-      }, { timeout: 120000 });
+          const updateData: any = {};
+          let regenerarCuotas = false;
+          if (updatePlanPagoDto.plazo !== undefined) {
+            updateData.plazo = updatePlanPagoDto.plazo;
+            regenerarCuotas = true;
+          }
+          if (updatePlanPagoDto.periodicidad !== undefined) {
+            updateData.periodicidad = updatePlanPagoDto.periodicidad;
+            regenerarCuotas = true;
+          }
+          if (regenerarCuotas) {
+            const plazo =
+              updatePlanPagoDto.plazo !== undefined
+                ? updatePlanPagoDto.plazo
+                : planPago.plazo;
+            const periodicidad =
+              updatePlanPagoDto.periodicidad !== undefined
+                ? updatePlanPagoDto.periodicidad
+                : planPago.periodicidad;
+            updateData.fecha_vencimiento = this.calcularFechaVencimiento(
+              planPago.fecha_inicio,
+              plazo,
+              periodicidad as PeriodicidadPago,
+            );
+          }
+          const planActualizado = await prisma.planPago.update({
+            where: { id_plan_pago: planPagoId },
+            data: updateData,
+          });
+          if (regenerarCuotas) {
+            await prisma.cuota.deleteMany({
+              where: { plan_pago_id: planPagoId },
+            });
+            if (Number(planPago.monto_inicial) < Number(planPago.total)) {
+              await this.generarCuotas(planPagoId, prisma);
+            }
+          }
+          await this.actualizarEstadoPlan(planPagoId);
+          await this.crearAuditoria(
+            usuarioId,
+            'ACTUALIZAR_PLAN_PAGO',
+            'PlanPago',
+            planPagoId,
+            ip,
+            userAgent,
+          );
+          const planFinal = await prisma.planPago.findUnique({
+            where: { id_plan_pago: planPagoId },
+            include: { pagos: true, cuotas: true, venta: true },
+          });
+          return {
+            success: true,
+            message: 'Plan de pago actualizado correctamente',
+            data: {
+              planPago: this.agregarCalculosVenta({ planPago: planFinal })
+                .planPago,
+            },
+          };
+        },
+        { timeout: 120000 },
+      );
     } catch (error) {
       if (
         error instanceof NotFoundException ||
@@ -1740,7 +1922,10 @@ export class VentasService {
         );
       const planPago = venta.planPago;
       const hoy = new Date();
-      await this.actualizarEstadoCuotasPorPlan(planPago.id_plan_pago, this.prisma);
+      await this.actualizarEstadoCuotasPorPlan(
+        planPago.id_plan_pago,
+        this.prisma,
+      );
       if (
         hoy > planPago.fecha_vencimiento &&
         planPago.estado === EstadoPlanPago.ACTIVO
@@ -1782,7 +1967,12 @@ export class VentasService {
             },
           },
           propiedad: true,
-          planPago: { include: { pagos: { orderBy: { fecha_pago: 'desc' } }, cuotas: { orderBy: { fecha: 'asc' } } } },
+          planPago: {
+            include: {
+              pagos: { orderBy: { fecha_pago: 'desc' } },
+              cuotas: { orderBy: { fecha: 'asc' } },
+            },
+          },
         },
         orderBy: { createdAt: 'desc' },
       });
@@ -1820,5 +2010,78 @@ export class VentasService {
       console.error('Error en obtenerCajasActivas:', error);
       throw new InternalServerErrorException('Error interno del servidor');
     }
+  }
+
+  async obtenerVentasParaCobros(filtros: {
+    cliente?: string;
+    lote?: string;
+    urbanizacion?: string;
+    encargado?: string;
+  }) {
+    const where: any = {};
+    const include: any = {
+      cliente: {
+        select: { id: true, fullName: true, ci: true, telefono: true },
+      },
+      asesor: {
+        select: { id: true, fullName: true, email: true, telefono: true },
+      },
+      lote: {
+        include: {
+          urbanizacion: {
+            select: { id: true, nombre: true, ubicacion: true },
+          },
+        },
+      },
+      propiedad: true,
+      planPago: {
+        include: {
+          pagos: { orderBy: { fecha_pago: 'desc' } },
+          cuotas: { orderBy: { fecha: 'asc' } },
+        },
+      },
+      caja: { select: { id: true, nombre: true, estado: true } },
+    };
+
+    if (filtros.cliente) {
+      where.cliente = {
+        OR: [
+          { fullName: { contains: filtros.cliente, mode: 'insensitive' } },
+          { ci: { contains: filtros.cliente, mode: 'insensitive' } },
+        ],
+      };
+    }
+
+    if (filtros.encargado) {
+      where.asesor = {
+        fullName: { contains: filtros.encargado, mode: 'insensitive' },
+      };
+    }
+
+    if (filtros.lote || filtros.urbanizacion) {
+      const loteWhere: any = {};
+      if (filtros.lote) {
+        loteWhere.numeroLote = { contains: filtros.lote, mode: 'insensitive' };
+      }
+      if (filtros.urbanizacion) {
+        loteWhere.urbanizacion = {
+          nombre: { contains: filtros.urbanizacion, mode: 'insensitive' },
+        };
+      }
+      where.lote = loteWhere;
+    }
+
+    const ventas = await this.prisma.venta.findMany({
+      where,
+      include,
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return {
+      success: true,
+      data: {
+        ventas: ventas.map((v) => this.agregarCalculosVenta(v)),
+      },
+    };
   }
 }

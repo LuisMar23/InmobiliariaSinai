@@ -1015,11 +1015,13 @@ export class VentaEdit implements OnInit {
     return classes[estado] || classes['ACTIVO'];
   }
 
+  // MODIFICACIÓN: Se agregó el estado 'PARCIAL'
   getEstadoCuotaClass(estado: string): string {
     const classes: { [key: string]: string } = {
       PENDIENTE: 'bg-yellow-100 text-yellow-700',
       PAGADA: 'bg-green-100 text-green-700',
       VENCIDA: 'bg-red-100 text-red-700',
+      PARCIAL: 'bg-blue-100 text-blue-700',
     };
     return classes[estado] || classes['PENDIENTE'];
   }
