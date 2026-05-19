@@ -55,6 +55,21 @@ export class VentasController {
     );
   }
 
+  @Get('cobros')
+  obtenerVentasParaCobros(
+    @Query('cliente') cliente?: string,
+    @Query('lote') lote?: string,
+    @Query('urbanizacion') urbanizacion?: string,
+    @Query('encargado') encargado?: string,
+  ) {
+    return this.ventasService.obtenerVentasParaCobros({
+      cliente,
+      lote,
+      urbanizacion,
+      encargado,
+    });
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.ventasService.findOne(+id);

@@ -94,6 +94,11 @@ export const routes: Routes = [
         loadChildren: () =>
           import('./features/visita/visita.routes').then((r) => r.VisitasRoutingModule),
       },
+      {
+        path: 'cobros',
+        loadChildren: () =>
+          import('./features/cobros/cobros.routes').then((r)=> r.CobrosRoutingModule),
+      },
     ],
   },
   { path: '**', redirectTo: '/login' },

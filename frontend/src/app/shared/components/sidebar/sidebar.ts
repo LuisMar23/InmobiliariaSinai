@@ -35,7 +35,7 @@ import {
   faHomeUser,
   faTag,
   faCashRegister,
-  faHouse, // Icono para Propiedades
+  faHouse,
 } from '@fortawesome/free-solid-svg-icons';
 import { AuthService } from '../../../components/services/auth.service';
 
@@ -64,7 +64,9 @@ export class Sidebar implements OnInit {
   faHomeUser = faHomeUser;
   faCog = faCog;
   faTag = faTag;
-  faHouse = faHouse; // Icono para Propiedades
+  faHouse = faHouse;
+  faMoneyBillWave = faMoneyBillWave;
+  faCashRegister = faCashRegister;
 
   @Output() sidebarToggled = new EventEmitter<boolean>();
 
@@ -74,38 +76,82 @@ export class Sidebar implements OnInit {
   isCollapsed = false;
   isMobileOpen = false;
 
-  // Menú - SOLO modificar la opción de Usuarios
-menuItems: { 
-    label: string; 
-    icon: IconDefinition; 
+  menuItems: {
+    label: string;
+    icon: IconDefinition;
     route: string;
-    roles: string[]; // Roles que tienen acceso a este item
+    roles: string[];
   }[] = [
-    // Acceso para todos los roles
-{ label: 'Dashboard', icon: faTachometerAlt, route: '/dashboard', roles: ['ADMINISTRADOR', 'SECRETARIA', 'ASESOR'] },
-
-{ label: 'Urbanizaciones', icon: faCity, route: '/urbanizaciones', roles: ['ADMINISTRADOR','SECRETARIA'] },
-{ label: 'Lotes', icon: faMapMarkedAlt, route: '/lotes', roles: ['ADMINISTRADOR', 'SECRETARIA', 'ASESOR'] },
-{ label: 'Propiedades', icon: faHouse, route: '/propiedades', roles: ['ADMINISTRADOR'] },
-
-{ label: 'Clientes', icon: faHomeUser, route: '/clientes', roles: ['ADMINISTRADOR', 'SECRETARIA'] },
-{ label: 'Creditos', icon: faHomeUser, route: '/creditos', roles: ['ADMINISTRADOR', 'SECRETARIA'] },
-{ label: 'Cotizaciones', icon: faFileInvoiceDollar, route: '/cotizaciones', roles: ['ADMINISTRADOR'] },
-{ label: 'Ventas', icon: faReceipt, route: '/ventas', roles: ['ADMINISTRADOR', 'SECRETARIA','ASESOR'] },
-{ label: 'Reservas', icon: faCalendarCheck, route: '/reservas', roles: ['ADMINISTRADOR', 'SECRETARIA', 'ASESOR'] },
-{ label: 'Visitas', icon: faEye, route: '/visitas', roles: ['ADMINISTRADOR', 'SECRETARIA'] },
-{ label: 'Reportes', icon: faEye, route: '/reportes', roles: ['ADMINISTRADOR', 'SECRETARIA'] },
-{ label: 'Caja', icon: faCashRegister, route: '/caja', roles: ['ADMINISTRADOR', 'SECRETARIA'] },
-
-{ label: 'Gastos', icon: faCashRegister, route: '/egresos', roles: ['ADMINISTRADOR', 'SECRETARIA'] },
-{ label: 'Promociones', icon: faTag, route: '/promociones', roles: ['ADMINISTRADOR'] },
-
-{ label: 'Usuarios', icon: faUsers, route: '/usuarios', roles: ['ADMINISTRADOR'] },
-    
-    // Configuración (solo Admin)
-    // { label: 'Configuración', icon: faCog, route: '/configuracion', roles: ['ADMINISTRADOR'] },
+    {
+      label: 'Dashboard',
+      icon: faTachometerAlt,
+      route: '/dashboard',
+      roles: ['ADMINISTRADOR', 'SECRETARIA', 'ASESOR'],
+    },
+    {
+      label: 'Urbanizaciones',
+      icon: faCity,
+      route: '/urbanizaciones',
+      roles: ['ADMINISTRADOR', 'SECRETARIA'],
+    },
+    {
+      label: 'Lotes',
+      icon: faMapMarkedAlt,
+      route: '/lotes',
+      roles: ['ADMINISTRADOR', 'SECRETARIA', 'ASESOR'],
+    },
+    { label: 'Propiedades', icon: faHouse, route: '/propiedades', roles: ['ADMINISTRADOR'] },
+    {
+      label: 'Clientes',
+      icon: faHomeUser,
+      route: '/clientes',
+      roles: ['ADMINISTRADOR', 'SECRETARIA'],
+    },
+    {
+      label: 'Creditos',
+      icon: faHomeUser,
+      route: '/creditos',
+      roles: ['ADMINISTRADOR', 'SECRETARIA'],
+    },
+    {
+      label: 'Cotizaciones',
+      icon: faFileInvoiceDollar,
+      route: '/cotizaciones',
+      roles: ['ADMINISTRADOR'],
+    },
+    {
+      label: 'Ventas',
+      icon: faReceipt,
+      route: '/ventas',
+      roles: ['ADMINISTRADOR', 'SECRETARIA', 'ASESOR'],
+    },
+    {
+      label: 'Cobros',
+      icon: faMoneyBillWave,
+      route: '/cobros',
+      roles: ['ADMINISTRADOR', 'SECRETARIA', 'ASESOR'], // ✅ Ahora visible para ASESOR también
+    },
+    {
+      label: 'Reservas',
+      icon: faCalendarCheck,
+      route: '/reservas',
+      roles: ['ADMINISTRADOR', 'SECRETARIA', 'ASESOR'],
+    },
+    { label: 'Visitas', icon: faEye, route: '/visitas', roles: ['ADMINISTRADOR', 'SECRETARIA'] },
+    { label: 'Reportes', icon: faEye, route: '/reportes', roles: ['ADMINISTRADOR', 'SECRETARIA'] },
+    { label: 'Caja', icon: faCashRegister, route: '/caja', roles: ['ADMINISTRADOR', 'SECRETARIA'] },
+    {
+      label: 'Gastos',
+      icon: faCashRegister,
+      route: '/egresos',
+      roles: ['ADMINISTRADOR', 'SECRETARIA'],
+    },
+    { label: 'Promociones', icon: faTag, route: '/promociones', roles: ['ADMINISTRADOR'] },
+    { label: 'Usuarios', icon: faUsers, route: '/usuarios', roles: ['ADMINISTRADOR'] },
   ];
+
   filteredMenu: any[] = [];
+
   constructor(private authService: AuthService) {
     this.imagen = 'assets/logoSinai.jpg';
   }
@@ -120,11 +166,7 @@ menuItems: {
       this.filteredMenu = [];
       return;
     }
-
-    // Filtrar menú según el rol del usuario
-    this.filteredMenu = this.menuItems.filter(item => 
-      item.roles.includes(this.currentUser.role)
-    );
+    this.filteredMenu = this.menuItems.filter((item) => item.roles.includes(this.currentUser.role));
   }
 
   toggleSidebar() {
