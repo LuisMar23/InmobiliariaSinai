@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Output, OnInit } from '@angular/core';
+import { Component, EventEmitter, Output, OnInit, inject } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
@@ -35,9 +35,14 @@ import {
   faHomeUser,
   faTag,
   faCashRegister,
-  faHouse, // Icono para Propiedades
+  faHouse,
+  faShieldAlt,
+  faUsersCog,
+  faChevronDown,
+  faChevronUp, // Icono para Propiedades
 } from '@fortawesome/free-solid-svg-icons';
 import { AuthService } from '../../../components/services/auth.service';
+import { PermisosStateService } from '../../../core/services/permisosState.service';
 
 @Component({
   selector: 'app-sidebar',
@@ -65,9 +70,15 @@ export class Sidebar implements OnInit {
   faCog = faCog;
   faTag = faTag;
   faHouse = faHouse; // Icono para Propiedades
+faChartBar     = faChartBar;
+faShieldAlt    = faShieldAlt;
+faMoneyBillWave = faMoneyBillWave;
+faUsersCog     = faUsersCog;
+faChevronDown = faChevronDown;
+faChevronUp   = faChevronUp;
 
   @Output() sidebarToggled = new EventEmitter<boolean>();
-
+  private permisosState = inject(PermisosStateService);
   imagen: string = 'assets/logoSinai.jpg';
   currentUser: any;
 
@@ -75,36 +86,49 @@ export class Sidebar implements OnInit {
   isMobileOpen = false;
 
   // Menú - SOLO modificar la opción de Usuarios
-menuItems: { 
-    label: string; 
-    icon: IconDefinition; 
-    route: string;
-    roles: string[]; // Roles que tienen acceso a este item
-  }[] = [
-    // Acceso para todos los roles
-{ label: 'Dashboard', icon: faTachometerAlt, route: '/dashboard', roles: ['ADMINISTRADOR', 'SECRETARIA', 'ASESOR'] },
-
-{ label: 'Urbanizaciones', icon: faCity, route: '/urbanizaciones', roles: ['ADMINISTRADOR','SECRETARIA'] },
-{ label: 'Lotes', icon: faMapMarkedAlt, route: '/lotes', roles: ['ADMINISTRADOR', 'SECRETARIA', 'ASESOR'] },
-{ label: 'Propiedades', icon: faHouse, route: '/propiedades', roles: ['ADMINISTRADOR'] },
-
-{ label: 'Clientes', icon: faHomeUser, route: '/clientes', roles: ['ADMINISTRADOR', 'SECRETARIA'] },
-{ label: 'Creditos', icon: faHomeUser, route: '/creditos', roles: ['ADMINISTRADOR', 'SECRETARIA'] },
-{ label: 'Cotizaciones', icon: faFileInvoiceDollar, route: '/cotizaciones', roles: ['ADMINISTRADOR'] },
-{ label: 'Ventas', icon: faReceipt, route: '/ventas', roles: ['ADMINISTRADOR', 'SECRETARIA','ASESOR'] },
-{ label: 'Reservas', icon: faCalendarCheck, route: '/reservas', roles: ['ADMINISTRADOR', 'SECRETARIA', 'ASESOR'] },
-{ label: 'Visitas', icon: faEye, route: '/visitas', roles: ['ADMINISTRADOR', 'SECRETARIA'] },
-{ label: 'Reportes', icon: faEye, route: '/reportes', roles: ['ADMINISTRADOR', 'SECRETARIA'] },
-{ label: 'Caja', icon: faCashRegister, route: '/caja', roles: ['ADMINISTRADOR', 'SECRETARIA'] },
-{ label: 'Seguridad', icon: faCashRegister, route: '/seguridad', roles: ['ADMINISTRADOR', 'SECRETARIA'] },
-{ label: 'Gastos', icon: faCashRegister, route: '/egresos', roles: ['ADMINISTRADOR', 'SECRETARIA'] },
-{ label: 'Promociones', icon: faTag, route: '/promociones', roles: ['ADMINISTRADOR'] },
-
-{ label: 'Usuarios', icon: faUsers, route: '/usuarios', roles: ['ADMINISTRADOR'] },
-    
-    // Configuración (solo Admin)
-    // { label: 'Configuración', icon: faCog, route: '/configuracion', roles: ['ADMINISTRADOR'] },
-  ];
+menuGroups = [
+  {
+    label: '',
+    items: [
+      { label: 'Dashboard', icon: faTachometerAlt, route: '/dashboard', clave: 'dashboard' },
+    ]
+  },
+  {
+    label: 'Comercial',
+    items: [
+      { label: 'Urbanizaciones', icon: faCity,              route: '/urbanizaciones', clave: 'urbanizaciones' },
+      { label: 'Lotes',          icon: faMapMarkedAlt,      route: '/lotes',          clave: 'lotes' },
+      { label: 'Propiedades',    icon: faHouse,             route: '/propiedades',    clave: 'propiedades' },
+      { label: 'Cotizaciones',   icon: faFileInvoiceDollar, route: '/cotizaciones',   clave: 'cotizaciones' },
+      { label: 'Ventas',         icon: faReceipt,           route: '/ventas',         clave: 'ventas' },
+      { label: 'Reservas',       icon: faCalendarCheck,     route: '/reservas',       clave: 'reservas' },
+      { label: 'Visitas',        icon: faEye,               route: '/visitas',        clave: 'visitas' },
+      { label: 'Promociones',    icon: faTag,               route: '/promociones',    clave: 'promociones' },
+    ]
+  },
+  {
+    label: 'Finanzas',
+    items: [
+      { label: 'Caja',    icon: faCashRegister,   route: '/caja',     clave: 'caja' },
+      { label: 'Gastos',  icon: faMoneyBillWave,  route: '/egresos',  clave: 'egresos' },
+      { label: 'Créditos',icon: faHandHoldingUsd, route: '/creditos', clave: 'creditos' },
+    ]
+  },
+  {
+    label: 'Reportes',  // ← grupo propio
+    items: [
+      { label: 'Reportes', icon: faChartBar, route: '/reportes', clave: 'reportes' },
+    ]
+  },
+  {
+    label: 'Gestión',
+    items: [
+      { label: 'Clientes',  icon: faUsers,     route: '/clientes',  clave: 'clientes' },
+      { label: 'Usuarios',  icon: faUsersCog,  route: '/usuarios',  clave: 'usuarios' },
+      { label: 'Seguridad', icon: faShieldAlt, route: '/seguridad', clave: 'seguridad' },
+    ]
+  },
+];
   filteredMenu: any[] = [];
   constructor(private authService: AuthService) {
     this.imagen = 'assets/logoSinai.jpg';
@@ -112,20 +136,17 @@ menuItems: {
 
   ngOnInit() {
     this.currentUser = this.authService.getCurrentUser();
-    this.filterMenuByRole();
-  }
 
-  private filterMenuByRole() {
-    if (!this.currentUser) {
-      this.filteredMenu = [];
-      return;
-    }
-
-    // Filtrar menú según el rol del usuario
-    this.filteredMenu = this.menuItems.filter(item => 
-      item.roles.includes(this.currentUser.role)
-    );
   }
+get filteredGroups() {
+  return this.menuGroups
+    .map(group => ({
+      ...group,
+      items: group.items.filter(item => this.permisosState.tieneAcceso(item.clave))
+    }))
+    .filter(group => group.items.length > 0); // oculta el grupo si no tiene ningún item
+}
+private openGroups = new Set<string>(['Comercial', 'Finanzas', 'Reportes', 'Gestión']);
 
   toggleSidebar() {
     this.isCollapsed = !this.isCollapsed;
@@ -135,4 +156,16 @@ menuItems: {
   toggleMobile() {
     this.isMobileOpen = !this.isMobileOpen;
   }
+toggleGroup(label: string) {
+  if (this.openGroups.has(label)) {
+    this.openGroups.delete(label);
+  } else {
+    this.openGroups.add(label);
+  }
+}
+
+isGroupOpen(label: string): boolean {
+  return this.openGroups.has(label);
+}
+
 }

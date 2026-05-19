@@ -13,6 +13,7 @@ export interface LoginResponse {
     user: any;
     accessToken: string;
     refreshToken: string;
+   permisos: Record<string, boolean>;
   };
 }
 
@@ -65,36 +66,37 @@ export class AuthService {
   constructor(private http: HttpClient, private router: Router) {}
 
   // ========== AUTH METHODS ==========
-  login(data: LoginDto): Observable<LoginResponse> {
-    return this.http.post<LoginResponse>(`${this.apiUrl}/auth/login`, data).pipe(
-      tap((res) => {
-        console.log('Respuesta login:', res);
-        if (res.data) {
-          if (data.rememberMe) {
-            localStorage.setItem(this.tokenKey, res.data.accessToken);
-            localStorage.setItem('refresh_token', res.data.refreshToken);
-            localStorage.setItem(this.userKey, JSON.stringify(res.data.user));
-          } else {
-            sessionStorage.setItem(this.tokenKey, res.data.accessToken);
-            sessionStorage.setItem('refresh_token', res.data.refreshToken);
-            sessionStorage.setItem(this.userKey, JSON.stringify(res.data.user));
-          }
+login(data: LoginDto): Observable<LoginResponse> {
+  return this.http.post<LoginResponse>(`${this.apiUrl}/auth/login`, data).pipe(
+    tap((res) => {
+       console.log('permisos que llegan:', res.data.permisos)
+      if (res.data) {
+        if (data.rememberMe) {
+          localStorage.setItem(this.tokenKey, res.data.accessToken);
+          localStorage.setItem('refresh_token', res.data.refreshToken);
+          localStorage.setItem(this.userKey, JSON.stringify(res.data.user));
+          localStorage.setItem('permisos', JSON.stringify(res.data.permisos ?? {})); 
+        } else {
+          sessionStorage.setItem(this.tokenKey, res.data.accessToken);
+          sessionStorage.setItem('refresh_token', res.data.refreshToken);
+          sessionStorage.setItem(this.userKey, JSON.stringify(res.data.user));
+          sessionStorage.setItem('permisos', JSON.stringify(res.data.permisos ?? {})); 
         }
-      }),
-      catchError((error) => {
-        console.error('Error en login service:', error);
-        let errorMessage = 'Error en el login';
-        if (error.error?.message) {
-          errorMessage = error.error.message;
-        } else if (error.status === 401) {
-          errorMessage = 'Credenciales incorrectas';
-        } else if (error.status === 423) {
-          errorMessage = 'Cuenta bloqueada temporalmente';
-        }
-        return throwError(() => new Error(errorMessage));
-      })
-    );
-  }
+      }
+    }),
+    catchError((error) => {
+      let errorMessage = 'Error en el login';
+      if (error.error?.message) {
+        errorMessage = error.error.message;
+      } else if (error.status === 401) {
+        errorMessage = 'Credenciales incorrectas';
+      } else if (error.status === 423) {
+        errorMessage = 'Cuenta bloqueada temporalmente';
+      }
+      return throwError(() => new Error(errorMessage));
+    })
+  );
+}
 
   register(data: RegisterDto): Observable<RegisterResponse> {
     const registerData = {

@@ -19,6 +19,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { PrismaService } from 'src/config/prisma.service';
 
 @Controller('lotes')
+  @UseGuards(AuthGuard('jwt'))
 @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
 export class LoteController {
   constructor(
@@ -47,7 +48,7 @@ async getLotesSinUrbanizacion() {
 
   // ===== RUTAS PROTEGIDAS =====
   @Post()
-  @UseGuards(AuthGuard('jwt'))
+
   create(@Body() createLoteDto: CreateLoteDto, @Request() req) {
     createLoteDto.usuarioId = req.user.id;
     return this.loteService.create(createLoteDto);
@@ -88,19 +89,17 @@ async getLotesSinUrbanizacion() {
     return ciudadesUnicas;
   }
 
-  @Get()
-  @UseGuards(AuthGuard('jwt'))
-  findAll(
-    @Request() req,
-    @Query('urbanizacionId') urbanizacionId?: string,
-  ) {
-    return this.loteService.findAll(
-      urbanizacionId ? +urbanizacionId : undefined,
-      req.user.id,
-      req.user.role,
-      req.user.ciudadesAsignadas ?? [], // 👈 array en lugar de string
-    );
-  }
+@Get()
+findAll(
+  @Request() req,
+  @Query('urbanizacionId') urbanizacionId?: string,
+) {
+  return this.loteService.findAll(
+    urbanizacionId ? +urbanizacionId : undefined,
+    req.user.id,
+    req.user.role,
+  );
+}
 
   @Get('independientes/todos')
   @UseGuards(AuthGuard('jwt'))
@@ -152,4 +151,23 @@ async getLotesSinUrbanizacion() {
   ) {
     return this.loteService.asignarEncargado(+id, body.encargadoId, req.user.id);
   }
+
+  // @Get()
+  // @UseGuards(AuthGuard('jwt'))
+  // getAll(
+  //   @Request() req,
+  //   @Query('page') page?: string,
+  //   @Query('limit') limit?: string,
+  // ) {
+  //   const pageNum = page ? +page : 1;
+  //   const limitNum = limit ? +limit : 10;
+  //   return this.loteService.findAllUrba(
+  //     pageNum,
+  //     limitNum,
+  //     req.user.id, // ← agregar
+  //     req.user.role,
+  //     req.user.ciudadAsignada,
+  //   );
+  // }
+
 }

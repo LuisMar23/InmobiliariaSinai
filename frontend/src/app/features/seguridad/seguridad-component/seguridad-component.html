@@ -1,322 +1,310 @@
-<div class="min-h-screen bg-gray-50 p-6">
+<div class="min-h-screen bg-gradient-to-br from-green-50 via-white to-green-50 py-4 px-2 sm:px-4 lg:px-8">
+  <div class="max-w-auto mx-auto">
 
-  <!-- Header -->
-  <div class="mb-6">
-    <div class="flex items-center gap-3 mb-1">
-      <fa-icon [icon]="faShieldHalved" class="text-2xl text-indigo-600"></fa-icon>
-      <h1 class="text-2xl font-bold text-gray-800">Seguridad del Sistema</h1>
-    </div>
-    <p class="text-gray-500 text-sm ml-9">Gestiona permisos por rol, módulos y acceso a urbanizaciones</p>
-  </div>
-
-  <!-- Tabs -->
-  <div class="flex gap-2 mb-6 border-b border-gray-200">
-    <button
-      (click)="cambiarTab('permisos')"
-      [class]="tabActivo() === 'permisos'
-        ? 'px-5 py-2.5 text-sm font-semibold text-indigo-600 border-b-2 border-indigo-600 -mb-px bg-white rounded-t-lg'
-        : 'px-5 py-2.5 text-sm text-gray-500 hover:text-gray-700 rounded-t-lg'">
-      <fa-icon [icon]="faKey" class="mr-2"></fa-icon>Permisos por Rol
-    </button>
-    <button
-      (click)="cambiarTab('urbanizaciones')"
-      [class]="tabActivo() === 'urbanizaciones'
-        ? 'px-5 py-2.5 text-sm font-semibold text-indigo-600 border-b-2 border-indigo-600 -mb-px bg-white rounded-t-lg'
-        : 'px-5 py-2.5 text-sm text-gray-500 hover:text-gray-700 rounded-t-lg'">
-      <fa-icon [icon]="faBuilding" class="mr-2"></fa-icon>Urbanizaciones por Usuario
-    </button>
-    <button
-      (click)="cambiarTab('modulos')"
-      [class]="tabActivo() === 'modulos'
-        ? 'px-5 py-2.5 text-sm font-semibold text-indigo-600 border-b-2 border-indigo-600 -mb-px bg-white rounded-t-lg'
-        : 'px-5 py-2.5 text-sm text-gray-500 hover:text-gray-700 rounded-t-lg'">
-      <fa-icon [icon]="faCubes" class="mr-2"></fa-icon>Módulos del Sistema
-    </button>
-  </div>
-
-  <!-- ============================================================ -->
-  <!-- TAB: PERMISOS POR ROL -->
-  <!-- ============================================================ -->
-  <div *ngIf="tabActivo() === 'permisos'" class="space-y-4">
-
-    <!-- Selector de rol -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-      <p class="text-sm font-medium text-gray-600 mb-3">Seleccionar Rol</p>
-      <div class="flex gap-2 flex-wrap">
-        <button
-          *ngFor="let role of roles"
-          (click)="seleccionarRole(role)"
-          [class]="roleSeleccionado() === role
-            ? 'px-4 py-2 rounded-lg text-sm font-semibold bg-indigo-600 text-white shadow'
-            : 'px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200'">
-          {{ role }}
-        </button>
-      </div>
-    </div>
-
-    <!-- Tabla de permisos -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-      <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-        <h2 class="font-semibold text-gray-700">
-          Permisos para: <span class="text-indigo-600">{{ roleSeleccionado() }}</span>
-        </h2>
-        <button
-          (click)="guardarPermisos()"
-          [disabled]="guardandoPermisos()"
-          class="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition">
-          <fa-icon [icon]="guardandoPermisos() ? faSpinner : faSave"
-                  ></fa-icon>
-          {{ guardandoPermisos() ? 'Guardando...' : 'Guardar Permisos' }}
-        </button>
-      </div>
-
-      <!-- Loading -->
-      <div *ngIf="cargandoPermisos()" class="p-10 text-center text-gray-400">
-        <fa-icon [icon]="faSpinner"  class="text-2xl mb-2"></fa-icon>
-        <p class="text-sm">Cargando permisos...</p>
-      </div>
-
-      <!-- Tabla -->
-      <div *ngIf="!cargandoPermisos()" class="overflow-x-auto">
-        <table class="w-full text-sm">
-          <thead class="bg-gray-50 text-gray-500 uppercase text-xs">
-            <tr>
-              <th class="px-5 py-3 text-left">Módulo</th>
-              <th class="px-4 py-3 text-center">Ver</th>
-              <th class="px-4 py-3 text-center">Crear</th>
-              <th class="px-4 py-3 text-center">Editar</th>
-              <th class="px-4 py-3 text-center">Eliminar</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-100">
-            <ng-container *ngFor="let modulo of modulos()">
-              <!-- Fila módulo padre -->
-              <tr class="bg-gray-50/60 font-medium text-gray-700">
-                <td class="px-5 py-3">
-                  <span class="flex items-center gap-2">
-                    <fa-icon [icon]="faCubes" class="text-indigo-400 text-xs"></fa-icon>
-                    {{ modulo.nombre }}
-                  </span>
-                </td>
-                <td class="px-4 py-3 text-center">
-                  <input type="checkbox"
-                    [checked]="getPermiso(modulo.id).puedeVer"
-                    (change)="togglePermiso(modulo.id, 'puedeVer')"
-                    class="w-4 h-4 accent-indigo-600 cursor-pointer">
-                </td>
-                <td class="px-4 py-3 text-center">
-                  <input type="checkbox"
-                    [checked]="getPermiso(modulo.id).puedeCrear"
-                    (change)="togglePermiso(modulo.id, 'puedeCrear')"
-                    class="w-4 h-4 accent-indigo-600 cursor-pointer">
-                </td>
-                <td class="px-4 py-3 text-center">
-                  <input type="checkbox"
-                    [checked]="getPermiso(modulo.id).puedeEditar"
-                    (change)="togglePermiso(modulo.id, 'puedeEditar')"
-                    class="w-4 h-4 accent-indigo-600 cursor-pointer">
-                </td>
-                <td class="px-4 py-3 text-center">
-                  <input type="checkbox"
-                    [checked]="getPermiso(modulo.id).puedeEliminar"
-                    (change)="togglePermiso(modulo.id, 'puedeEliminar')"
-                    class="w-4 h-4 accent-indigo-600 cursor-pointer">
-                </td>
-              </tr>
-              <!-- Filas hijos -->
-              <tr *ngFor="let hijo of modulo.hijos" class="text-gray-600 hover:bg-gray-50">
-                <td class="px-5 py-2.5 pl-10">
-                  <span class="flex items-center gap-2 text-xs">
-                    <span class="w-1.5 h-1.5 rounded-full bg-indigo-300 inline-block"></span>
-                    {{ hijo.nombre }}
-                  </span>
-                </td>
-                <td class="px-4 py-2.5 text-center">
-                  <input type="checkbox"
-                    [checked]="getPermiso(hijo.id).puedeVer"
-                    (change)="togglePermiso(hijo.id, 'puedeVer')"
-                    class="w-4 h-4 accent-indigo-600 cursor-pointer">
-                </td>
-                <td class="px-4 py-2.5 text-center">
-                  <input type="checkbox"
-                    [checked]="getPermiso(hijo.id).puedeCrear"
-                    (change)="togglePermiso(hijo.id, 'puedeCrear')"
-                    class="w-4 h-4 accent-indigo-600 cursor-pointer">
-                </td>
-                <td class="px-4 py-2.5 text-center">
-                  <input type="checkbox"
-                    [checked]="getPermiso(hijo.id).puedeEditar"
-                    (change)="togglePermiso(hijo.id, 'puedeEditar')"
-                    class="w-4 h-4 accent-indigo-600 cursor-pointer">
-                </td>
-                <td class="px-4 py-2.5 text-center">
-                  <input type="checkbox"
-                    [checked]="getPermiso(hijo.id).puedeEliminar"
-                    (change)="togglePermiso(hijo.id, 'puedeEliminar')"
-                    class="w-4 h-4 accent-indigo-600 cursor-pointer">
-                </td>
-              </tr>
-            </ng-container>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <!-- ============================================================ -->
-  <!-- TAB: URBANIZACIONES POR USUARIO -->
-  <!-- ============================================================ -->
-  <div *ngIf="tabActivo() === 'urbanizaciones'" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-    <!-- Panel izquierdo: lista de usuarios -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-      <div class="px-5 py-4 border-b border-gray-100">
-        <h2 class="font-semibold text-gray-700 flex items-center gap-2">
-          <fa-icon [icon]="faUsers" class="text-indigo-500"></fa-icon>
-          Seleccionar Usuario
-        </h2>
-      </div>
-      <div class="divide-y divide-gray-100 max-h-[500px] overflow-y-auto">
-        <button
-          *ngFor="let usuario of usuarios()"
-          (click)="seleccionarUsuario(usuario)"
-          [class]="usuarioSeleccionado()?.id === usuario.id
-            ? 'w-full text-left px-5 py-3.5 bg-indigo-50 border-l-4 border-indigo-600'
-            : 'w-full text-left px-5 py-3.5 hover:bg-gray-50 border-l-4 border-transparent'">
-          <p class="font-medium text-gray-800 text-sm">{{ usuario.fullName }}</p>
-          <p class="text-xs text-gray-400 mt-0.5">
-            <span class="inline-block px-2 py-0.5 rounded-full text-xs mr-1"
-              [class]="usuario.role === 'ADMINISTRADOR' ? 'bg-red-100 text-red-600' :
-                       usuario.role === 'ASESOR'         ? 'bg-blue-100 text-blue-600' :
-                       usuario.role === 'SECRETARIA'     ? 'bg-green-100 text-green-600' :
-                                                           'bg-gray-100 text-gray-500'">
-              {{ usuario.role }}
-            </span>
-            {{ usuario.email || usuario.telefono }}
-          </p>
-        </button>
-        <p *ngIf="usuarios().length === 0" class="px-5 py-6 text-sm text-gray-400 text-center">
-          No hay usuarios disponibles
-        </p>
-      </div>
-    </div>
-
-    <!-- Panel derecho: urbanizaciones del usuario seleccionado -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-      <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-        <h2 class="font-semibold text-gray-700 flex items-center gap-2">
-          <fa-icon [icon]="faBuilding" class="text-indigo-500"></fa-icon>
-          Urbanizaciones Asignadas
-        </h2>
-        <button
-          *ngIf="usuarioSeleccionado()"
-          (click)="guardarUrbanizaciones()"
-          [disabled]="guardandoUrb()"
-          class="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white text-xs rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition">
-          <fa-icon [icon]="guardandoUrb() ? faSpinner : faSave" ></fa-icon>
-          {{ guardandoUrb() ? 'Guardando...' : 'Guardar' }}
-        </button>
-      </div>
-
-      <!-- Sin usuario seleccionado -->
-      <div *ngIf="!usuarioSeleccionado()" class="p-10 text-center text-gray-400">
-        <fa-icon [icon]="faUsers" class="text-3xl mb-3 opacity-40"></fa-icon>
-        <p class="text-sm">Selecciona un usuario de la lista</p>
-      </div>
-
-      <!-- Con usuario seleccionado -->
-      <div *ngIf="usuarioSeleccionado()" class="p-5 space-y-4">
-
-        <p class="text-sm font-medium text-gray-600">
-          Usuario: <span class="text-indigo-600 font-semibold">{{ usuarioSeleccionado().fullName }}</span>
-        </p>
-
-        <!-- Agregar urbanización -->
-        <div class="flex gap-2">
-          <select
-            [(ngModel)]="urbParaAgregar"
-            [ngModel]="urbParaAgregar()"
-            (ngModelChange)="urbParaAgregar.set($event)"
-            class="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400">
-            <option [value]="null">— Seleccionar urbanización —</option>
-            <option *ngFor="let urb of urbDisponibles" [value]="urb.id">
-              {{ urb.nombre }} · {{ urb.ciudad }}
-            </option>
-          </select>
-          <button
-            (click)="agregarUrbanizacion()"
-            [disabled]="!urbParaAgregar()"
-            class="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-40 transition">
-            Agregar
-          </button>
+    <!-- Header -->
+    <div class="bg-gradient-to-r from-green-800 to-green-600 rounded-t-2xl shadow-lg p-4 sm:p-6">
+      <div class="flex items-center gap-3">
+        <div class="bg-white/20 backdrop-blur-sm rounded-lg p-2">
+          <fa-icon [icon]="faShieldHalved" class="text-white text-2xl"></fa-icon>
         </div>
-
-        <!-- Lista asignadas -->
-        <div *ngIf="cargandoUrb()" class="text-center py-4 text-gray-400 text-sm">
-          <fa-icon [icon]="faSpinner" ></fa-icon> Cargando...
+        <div>
+          <h1 class="text-xl sm:text-2xl font-bold text-white">Seguridad del Sistema</h1>
+          <p class="text-green-100 text-xs sm:text-sm mt-1">Gestiona acceso por rol y urbanizaciones por usuario</p>
         </div>
+      </div>
+    </div>
 
-        <div *ngIf="!cargandoUrb()" class="space-y-2 max-h-64 overflow-y-auto">
-          <div
-            *ngFor="let urb of urbAsignadas()"
-            class="flex items-center justify-between px-4 py-2.5 bg-indigo-50 rounded-lg border border-indigo-100">
-            <div>
-              <p class="text-sm font-medium text-gray-700">{{ urb.nombre }}</p>
-              <p class="text-xs text-gray-400">{{ urb.ciudad }}</p>
-            </div>
+    <!-- Tabs -->
+    <div class="bg-white border-x border-gray-200 px-4 sm:px-6 pt-4 flex gap-1 overflow-x-auto">
+      <button
+        (click)="cambiarTab('permisos')"
+        [class]="tabActivo() === 'permisos'
+          ? 'flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-green-700 border-b-2 border-green-700 whitespace-nowrap'
+          : 'flex items-center gap-2 px-4 py-2.5 text-sm text-gray-500 hover:text-gray-700 whitespace-nowrap'">
+        <fa-icon [icon]="faKey"></fa-icon> Permisos por Rol
+      </button>
+      <button
+        (click)="cambiarTab('urbanizaciones')"
+        [class]="tabActivo() === 'urbanizaciones'
+          ? 'flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-green-700 border-b-2 border-green-700 whitespace-nowrap'
+          : 'flex items-center gap-2 px-4 py-2.5 text-sm text-gray-500 hover:text-gray-700 whitespace-nowrap'">
+        <fa-icon [icon]="faBuilding"></fa-icon> Urbanizaciones
+      </button>
+      <button
+        (click)="cambiarTab('modulos')"
+        [class]="tabActivo() === 'modulos'
+          ? 'flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-green-700 border-b-2 border-green-700 whitespace-nowrap'
+          : 'flex items-center gap-2 px-4 py-2.5 text-sm text-gray-500 hover:text-gray-700 whitespace-nowrap'">
+        <fa-icon [icon]="faCubes"></fa-icon> Módulos
+      </button>
+    </div>
+
+    <!-- Contenido -->
+    <div class="bg-white rounded-b-2xl shadow-xl border-x border-b border-gray-200 p-4 sm:p-6">
+
+      <!-- ══ TAB: PERMISOS ══ -->
+      @if (tabActivo() === 'permisos') {
+        <div class="space-y-4">
+
+          <!-- Selector de rol -->
+          <div class="flex flex-wrap gap-2">
+            @for (role of roles; track role) {
+              <button
+                (click)="seleccionarRole(role)"
+                [class]="roleSeleccionado() === role
+                  ? 'px-4 py-2 rounded-xl text-sm font-semibold bg-green-800 text-white shadow-sm'
+                  : 'px-4 py-2 rounded-xl text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors'">
+                {{ role }}
+              </button>
+            }
+          </div>
+
+          <!-- Cabecera tabla -->
+          <div class="flex items-center justify-between">
+            <p class="text-sm text-gray-500">
+              Acceso para: <span class="font-semibold text-green-700">{{ roleSeleccionado() }}</span>
+            </p>
             <button
-              (click)="quitarUrbanizacion(urb.id)"
-              class="text-red-400 hover:text-red-600 transition">
-              <fa-icon [icon]="faTimes"></fa-icon>
+              (click)="guardarPermisos()"
+              [disabled]="guardandoPermisos()"
+              class="flex items-center gap-2 px-4 py-2 bg-green-800 text-white text-sm rounded-xl hover:bg-green-900 disabled:opacity-50 transition-colors">
+              <fa-icon [icon]="guardandoPermisos() ? faSpinner : faSave"></fa-icon>
+              {{ guardandoPermisos() ? 'Guardando...' : 'Guardar' }}
             </button>
           </div>
-          <p *ngIf="urbAsignadas().length === 0" class="text-sm text-gray-400 text-center py-4">
-            Sin urbanizaciones asignadas
-          </p>
+
+          <!-- Loading -->
+          @if (cargandoPermisos()) {
+            <div class="text-center py-16">
+              <fa-icon [icon]="faSpinner" class="text-green-600 text-3xl animate-spin"></fa-icon>
+              <p class="text-gray-400 text-sm mt-3">Cargando permisos...</p>
+            </div>
+          } @else {
+            <!-- Módulos -->
+            <div class="space-y-3">
+              @for (modulo of modulos(); track modulo.id) {
+                <div class="border border-gray-200 rounded-xl overflow-hidden">
+
+                  <!-- Fila padre -->
+                  <div class="flex items-center justify-between px-4 py-3 bg-green-50">
+                    <div class="flex items-center gap-2">
+                      <fa-icon [icon]="faCubes" class="text-green-600 text-sm"></fa-icon>
+                      <span class="font-semibold text-sm text-gray-800">{{ modulo.nombre }}</span>
+                      @if (modulo.hijos?.length) {
+                        <span class="text-xs text-green-500 font-normal">
+                          · {{ modulo.hijos.length }} submódulo{{ modulo.hijos.length !== 1 ? 's' : '' }}
+                        </span>
+                      }
+                    </div>
+                    <button
+                      (click)="togglePermiso(modulo.id)"
+                      [class]="getPermiso(modulo.id)
+                        ? 'flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium bg-green-800 text-white transition-colors'
+                        : 'flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium bg-gray-200 text-gray-500 hover:bg-gray-300 transition-colors'">
+                      <fa-icon [icon]="getPermiso(modulo.id) ? faToggleOn : faToggleOff"></fa-icon>
+                      {{ getPermiso(modulo.id) ? 'Acceso' : 'Sin acceso' }}
+                    </button>
+                  </div>
+
+                  <!-- Hijos -->
+                  @if (modulo.hijos?.length) {
+                    <div class="divide-y divide-gray-100">
+                      @for (hijo of modulo.hijos; track hijo.id) {
+                        <div class="flex items-center justify-between px-4 py-2.5 pl-10 bg-white hover:bg-gray-50 transition-colors">
+                          <div class="flex items-center gap-2">
+                            <span class="w-1.5 h-1.5 rounded-full bg-green-400 inline-block"></span>
+                            <span class="text-sm text-gray-700">{{ hijo.nombre }}</span>
+                          </div>
+                          <button
+                            (click)="togglePermiso(hijo.id)"
+                            [class]="getPermiso(hijo.id)
+                              ? 'flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium bg-green-600 text-white transition-colors'
+                              : 'flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium bg-gray-200 text-gray-500 hover:bg-gray-300 transition-colors'">
+                            <fa-icon [icon]="getPermiso(hijo.id) ? faToggleOn : faToggleOff"></fa-icon>
+                            {{ getPermiso(hijo.id) ? 'Acceso' : 'Sin acceso' }}
+                          </button>
+                        </div>
+                      }
+                    </div>
+                  }
+
+                </div>
+              }
+
+              @if (modulos().length === 0) {
+                <div class="text-center py-16 text-gray-400">
+                  <fa-icon [icon]="faCubes" class="text-4xl mb-3"></fa-icon>
+                  <p class="text-sm">No hay módulos registrados</p>
+                </div>
+              }
+            </div>
+          }
         </div>
-      </div>
-    </div>
-  </div>
+      }
 
-  <!-- ============================================================ -->
-  <!-- TAB: MÓDULOS DEL SISTEMA -->
-  <!-- ============================================================ -->
-  <div *ngIf="tabActivo() === 'modulos'" class="space-y-3">
-    <div
-      *ngFor="let modulo of modulos()"
-      class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <!-- ══ TAB: URBANIZACIONES ══ -->
+      @if (tabActivo() === 'urbanizaciones') {
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
-      <button
-        (click)="toggleModulo(modulo.id)"
-        class="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition">
-        <div class="flex items-center gap-3">
-          <span class="w-8 h-8 flex items-center justify-center rounded-lg bg-indigo-100">
-            <fa-icon [icon]="faCubes" class="text-indigo-600 text-sm"></fa-icon>
-          </span>
-          <div class="text-left">
-            <p class="font-semibold text-gray-700 text-sm">{{ modulo.nombre }}</p>
-            <p class="text-xs text-gray-400">Clave: <code class="bg-gray-100 px-1 rounded">{{ modulo.clave }}</code>
-              · {{ modulo.hijos?.length || 0 }} submódulos</p>
+          <!-- Lista usuarios -->
+          <div class="border border-gray-200 rounded-xl overflow-hidden">
+            <div class="px-4 py-3 bg-green-50 border-b border-green-100 flex items-center gap-2">
+              <fa-icon [icon]="faUsers" class="text-green-600"></fa-icon>
+              <h2 class="font-semibold text-sm text-gray-700">Seleccionar Usuario</h2>
+            </div>
+            <div class="divide-y divide-gray-100 max-h-[480px] overflow-y-auto">
+              @for (usuario of usuarios(); track usuario.id) {
+                <button
+                  (click)="seleccionarUsuario(usuario)"
+                  [class]="usuarioSeleccionado()?.id === usuario.id
+                    ? 'w-full text-left px-4 py-3 bg-green-50 border-l-4 border-green-700 transition-colors'
+                    : 'w-full text-left px-4 py-3 hover:bg-gray-50 border-l-4 border-transparent transition-colors'">
+                  <p class="font-medium text-sm text-gray-800">{{ usuario.fullName }}</p>
+                  <div class="flex items-center gap-2 mt-0.5">
+                    <span class="text-xs px-2 py-0.5 rounded-full font-medium" [class]="getRoleBadge(usuario.role)">
+                      {{ usuario.role }}
+                    </span>
+                    <span class="text-xs text-gray-400">{{ usuario.email || usuario.telefono }}</span>
+                  </div>
+                </button>
+              }
+              @if (usuarios().length === 0) {
+                <p class="px-4 py-8 text-sm text-gray-400 text-center">No hay usuarios</p>
+              }
+            </div>
+          </div>
+
+          <!-- Urbanizaciones del usuario -->
+          <div class="border border-gray-200 rounded-xl overflow-hidden">
+            <div class="px-4 py-3 bg-green-50 border-b border-green-100 flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <fa-icon [icon]="faBuilding" class="text-green-600"></fa-icon>
+                <h2 class="font-semibold text-sm text-gray-700">Urbanizaciones Asignadas</h2>
+              </div>
+              @if (usuarioSeleccionado()) {
+                <button
+                  (click)="guardarUrbanizaciones()"
+                  [disabled]="guardandoUrb()"
+                  class="flex items-center gap-1.5 px-3 py-1.5 bg-green-800 text-white text-xs rounded-lg hover:bg-green-900 disabled:opacity-50 transition-colors">
+                  <fa-icon [icon]="guardandoUrb() ? faSpinner : faSave"></fa-icon>
+                  {{ guardandoUrb() ? 'Guardando...' : 'Guardar' }}
+                </button>
+              }
+            </div>
+
+            @if (!usuarioSeleccionado()) {
+              <div class="p-10 text-center text-gray-400">
+                <fa-icon [icon]="faUsers" class="text-4xl mb-3 opacity-30"></fa-icon>
+                <p class="text-sm">Selecciona un usuario</p>
+              </div>
+            } @else {
+              <div class="p-4 space-y-4">
+                <p class="text-sm text-gray-500">
+                  Usuario: <span class="font-semibold text-green-700">{{ usuarioSeleccionado().fullName }}</span>
+                </p>
+
+                <!-- Agregar -->
+                <div class="flex gap-2">
+                  <select
+                    [ngModel]="urbParaAgregar()"
+                    (ngModelChange)="urbParaAgregar.set($event)"
+                    class="flex-1 text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-300 focus:border-green-400">
+                    <option [ngValue]="null">— Seleccionar —</option>
+                    @for (urb of urbDisponibles; track urb.id) {
+                      <option [ngValue]="urb.id">{{ urb.nombre }} · {{ urb.ciudad }}</option>
+                    }
+                  </select>
+                  <button
+                    (click)="agregarUrbanizacion()"
+                    [disabled]="!urbParaAgregar()"
+                    class="px-4 py-2 bg-green-600 text-white text-sm rounded-xl hover:bg-green-700 disabled:opacity-40 transition-colors">
+                    Agregar
+                  </button>
+                </div>
+
+                <!-- Lista asignadas -->
+                @if (cargandoUrb()) {
+                  <div class="text-center py-6 text-gray-400">
+                    <fa-icon [icon]="faSpinner" class="animate-spin"></fa-icon>
+                  </div>
+                } @else {
+                  <div class="space-y-2 max-h-64 overflow-y-auto">
+                    @for (urb of urbAsignadas(); track urb.id) {
+                      <div class="flex items-center justify-between px-4 py-2.5 bg-green-50 rounded-xl border border-green-100">
+                        <div>
+                          <p class="text-sm font-medium text-gray-700">{{ urb.nombre }}</p>
+                          <p class="text-xs text-gray-400">{{ urb.ciudad }}</p>
+                        </div>
+                        <button
+                          (click)="quitarUrbanizacion(urb.id)"
+                          class="text-red-400 hover:text-red-600 transition-colors p-1">
+                          <fa-icon [icon]="faTimes"></fa-icon>
+                        </button>
+                      </div>
+                    }
+                    @if (urbAsignadas().length === 0) {
+                      <p class="text-sm text-gray-400 text-center py-6">Sin urbanizaciones asignadas</p>
+                    }
+                  </div>
+                }
+              </div>
+            }
           </div>
         </div>
-        <fa-icon [icon]="isExpanded(modulo.id) ? faChevronUp : faChevronDown"
-                 class="text-gray-400 text-sm"></fa-icon>
-      </button>
+      }
 
-      <div *ngIf="isExpanded(modulo.id)" class="border-t border-gray-100 divide-y divide-gray-50">
-        <div *ngFor="let hijo of modulo.hijos" class="px-5 py-3 flex items-center gap-3 pl-14 bg-gray-50/40">
-          <span class="w-1.5 h-1.5 rounded-full bg-indigo-400 inline-block"></span>
-          <div>
-            <p class="text-sm text-gray-700">{{ hijo.nombre }}</p>
-            <p class="text-xs text-gray-400">Clave: <code class="bg-gray-100 px-1 rounded">{{ hijo.clave }}</code></p>
-          </div>
+      <!-- ══ TAB: MÓDULOS ══ -->
+      @if (tabActivo() === 'modulos') {
+        <div class="space-y-3">
+          @for (modulo of modulos(); track modulo.id) {
+            <div class="border border-gray-200 rounded-xl overflow-hidden">
+              <button
+                (click)="toggleModulo(modulo.id)"
+                class="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors">
+                <div class="flex items-center gap-3">
+                  <div class="w-8 h-8 flex items-center justify-center rounded-lg bg-green-100">
+                    <fa-icon [icon]="faCubes" class="text-green-700 text-sm"></fa-icon>
+                  </div>
+                  <div class="text-left">
+                    <p class="font-semibold text-sm text-gray-700">{{ modulo.nombre }}</p>
+                    <p class="text-xs text-gray-400">
+                      <code class="bg-gray-100 px-1 rounded">{{ modulo.clave }}</code>
+                      · {{ modulo.hijos?.length || 0 }} submódulo{{ (modulo.hijos?.length || 0) !== 1 ? 's' : '' }}
+                    </p>
+                  </div>
+                </div>
+                <fa-icon [icon]="isExpanded(modulo.id) ? faChevronUp : faChevronDown" class="text-gray-400 text-sm"></fa-icon>
+              </button>
+
+              @if (isExpanded(modulo.id)) {
+                <div class="border-t border-gray-100 divide-y divide-gray-50">
+                  @for (hijo of modulo.hijos; track hijo.id) {
+                    <div class="px-4 py-2.5 pl-14 flex items-center gap-3 bg-gray-50/50">
+                      <span class="w-1.5 h-1.5 rounded-full bg-green-400 inline-block"></span>
+                      <div>
+                        <p class="text-sm text-gray-700">{{ hijo.nombre }}</p>
+                        <p class="text-xs text-gray-400">
+                          <code class="bg-gray-100 px-1 rounded">{{ hijo.clave }}</code>
+                        </p>
+                      </div>
+                    </div>
+                  }
+                  @if (!modulo.hijos?.length) {
+                    <p class="px-4 py-3 pl-14 text-xs text-gray-400">Sin submódulos</p>
+                  }
+                </div>
+              }
+            </div>
+          }
+          @if (modulos().length === 0) {
+            <div class="text-center py-16 text-gray-400">
+              <fa-icon [icon]="faCubes" class="text-4xl mb-3"></fa-icon>
+              <p class="text-sm">No hay módulos registrados</p>
+            </div>
+          }
         </div>
-        <p *ngIf="!modulo.hijos?.length" class="px-5 py-3 pl-14 text-xs text-gray-400">Sin submódulos</p>
-      </div>
-    </div>
-    <p *ngIf="modulos().length === 0" class="text-center text-gray-400 py-10 text-sm">
-      No hay módulos registrados
-    </p>
-  </div>
+      }
 
+    </div>
+  </div>
 </div>

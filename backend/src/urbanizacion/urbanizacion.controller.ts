@@ -10,7 +10,7 @@ import {
   ValidationPipe,
   Query,
   UseGuards,
-    Request,
+  Request,
 } from '@nestjs/common';
 import { UrbanizacionService } from './urbanizacion.service';
 import { CreateUrbanizacionDto } from './dto/create-urbanizacion.dto';
@@ -28,16 +28,21 @@ export class UrbanizacionController {
     return this.urbanizacionService.create(createUrbanizacionDto);
   }
 
-@Get()
-findAll(
-  @Request() req,
-  @Query('page') page?: string,
-  @Query('limit') limit?: string,
-) {
-  const pageNum = page ? +page : 1;
-  const limitNum = limit ? +limit : 10;
-  return this.urbanizacionService.findAll(pageNum, limitNum, req.user.role, req.user.ciudadAsignada);
-}
+  @Get()
+  findAll(
+    @Request() req,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const pageNum = page ? +page : 1;
+    const limitNum = limit ? +limit : 10;
+    return this.urbanizacionService.findAll(
+      pageNum,
+      limitNum,
+      req.user.role,
+      req.user.ciudadAsignada,
+    );
+  }
 
   @Get(':id')
   findOne(@Param('id') id: string) {
@@ -45,10 +50,9 @@ findAll(
   }
   @Get('uuid/:uuid')
   findOneUUID(@Param('uuid') id: string) {
-    console.log(id)
+    console.log(id);
     return this.urbanizacionService.findOneUUID(id);
   }
-
 
   @Patch(':id')
   update(
@@ -62,4 +66,6 @@ findAll(
   remove(@Param('id') id: string) {
     return this.urbanizacionService.remove(+id);
   }
+
+
 }

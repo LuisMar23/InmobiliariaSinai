@@ -1,4 +1,3 @@
-// src/seguridad/seguridad.service.ts
 import {
   Injectable,
   NotFoundException,
@@ -6,7 +5,6 @@ import {
 } from '@nestjs/common';
 import { UserRole } from 'generated/prisma';
 import { PrismaService } from 'src/config/prisma.service';
-
 
 @Injectable()
 export class SeguridadService {
@@ -19,7 +17,7 @@ export class SeguridadService {
   async getModulos() {
     try {
       const modulos = await this.prisma.modulo.findMany({
-        where: { activo: true },
+        where: { activo: true, padreId: null }, // solo padres
         include: {
           hijos: {
             where: { activo: true },
@@ -29,11 +27,8 @@ export class SeguridadService {
         orderBy: { nombre: 'asc' },
       });
 
-      // Solo retornar padres (los hijos vienen incluidos)
-      const padres = modulos.filter((m) => m.padreId === null);
-
-      return { success: true, data: { modulos: padres } };
-    } catch (error) {
+      return { success: true, data: { modulos } };
+    } catch {
       throw new InternalServerErrorException('Error al obtener módulos');
     }
   }
@@ -44,52 +39,53 @@ export class SeguridadService {
 
   async getPermisosPorRole(role: UserRole) {
     try {
-      const permisos = await this.prisma.permisoRole.findMany({
-        where: { role },
+      // Traemos todos los módulos activos con sus hijos
+      const modulos = await this.prisma.modulo.findMany({
+        where: { activo: true, padreId: null },
         include: {
-          modulo: {
-            include: {
-              hijos: { where: { activo: true } },
-            },
-          },
+          hijos: { where: { activo: true }, orderBy: { nombre: 'asc' } },
         },
+        orderBy: { nombre: 'asc' },
       });
 
-      return { success: true, data: { role, permisos } };
-    } catch (error) {
+      // Traemos los permisos existentes para el rol
+      const permisos = await this.prisma.permisoRole.findMany({
+        where: { role },
+      });
+
+      const permisosMap = new Map(permisos.map((p) => [p.moduloId, p.tieneAcceso]));
+
+      // Armamos la respuesta combinando módulos + permisos actuales
+      const resultado = modulos.map((padre) => ({
+        id: padre.id,
+        clave: padre.clave,
+        nombre: padre.nombre,
+        tieneAcceso: permisosMap.get(padre.id) ?? false,
+        hijos: padre.hijos.map((hijo) => ({
+          id: hijo.id,
+          clave: hijo.clave,
+          nombre: hijo.nombre,
+          tieneAcceso: permisosMap.get(hijo.id) ?? false,
+        })),
+      }));
+
+      return { success: true, data: { role, modulos: resultado } };
+    } catch {
       throw new InternalServerErrorException('Error al obtener permisos');
     }
   }
 
   async updatePermisosRole(
     role: UserRole,
-    permisos: {
-      moduloId: number;
-      puedeVer: boolean;
-      puedeCrear: boolean;
-      puedeEditar: boolean;
-      puedeEliminar: boolean;
-    }[],
+    permisos: { moduloId: number; tieneAcceso: boolean }[],
   ) {
     try {
       const results = await Promise.all(
         permisos.map((p) =>
           this.prisma.permisoRole.upsert({
             where: { role_moduloId: { role, moduloId: p.moduloId } },
-            update: {
-              puedeVer: p.puedeVer,
-              puedeCrear: p.puedeCrear,
-              puedeEditar: p.puedeEditar,
-              puedeEliminar: p.puedeEliminar,
-            },
-            create: {
-              role,
-              moduloId: p.moduloId,
-              puedeVer: p.puedeVer,
-              puedeCrear: p.puedeCrear,
-              puedeEditar: p.puedeEditar,
-              puedeEliminar: p.puedeEliminar,
-            },
+            update: { tieneAcceso: p.tieneAcceso },
+            create: { role, moduloId: p.moduloId, tieneAcceso: p.tieneAcceso },
           }),
         ),
       );
@@ -99,38 +95,33 @@ export class SeguridadService {
         message: `Permisos actualizados para ${role}`,
         data: { permisos: results },
       };
-    } catch (error) {
+    } catch {
       throw new InternalServerErrorException('Error al actualizar permisos');
     }
   }
 
   // ============================================================
-  // PERMISOS DE UN USUARIO (para el frontend al hacer login)
+  // PERMISOS DEL USUARIO ACTUAL (se llama al login)
   // ============================================================
 
   async getPermisosUsuario(role: UserRole) {
     try {
       const permisos = await this.prisma.permisoRole.findMany({
-        where: { role },
+        where: { role, tieneAcceso: true }, // solo los que tienen acceso
         include: { modulo: true },
       });
 
-      // Formato simplificado para el frontend
+      // { 'lotes': true, 'reportes.ventas': true, ... }
       const permisosMap = permisos.reduce(
         (acc, p) => {
-          acc[p.modulo.clave] = {
-            ver: p.puedeVer,
-            crear: p.puedeCrear,
-            editar: p.puedeEditar,
-            eliminar: p.puedeEliminar,
-          };
+          acc[p.modulo.clave] = true;
           return acc;
         },
-        {} as Record<string, { ver: boolean; crear: boolean; editar: boolean; eliminar: boolean }>,
+        {} as Record<string, boolean>,
       );
 
-      return { success: true, data: { permisos: permisosMap } };
-    } catch (error) {
+      return { success: true, data: { role, permisos: permisosMap } };
+    } catch {
       throw new InternalServerErrorException('Error al obtener permisos del usuario');
     }
   }
@@ -145,9 +136,7 @@ export class SeguridadService {
         where: { id: usuarioId },
         include: {
           urbanizacionesAsignadas: {
-            include: {
-              urbanizacion: true,
-            },
+            include: { urbanizacion: true },
           },
         },
       });
@@ -168,23 +157,15 @@ export class SeguridadService {
 
   async asignarUrbanizaciones(usuarioId: number, urbanizacionIds: number[]) {
     try {
-      const usuario = await this.prisma.user.findUnique({
-        where: { id: usuarioId },
-      });
-
+      const usuario = await this.prisma.user.findUnique({ where: { id: usuarioId } });
       if (!usuario) throw new NotFoundException('Usuario no encontrado');
 
-      // Borrar las actuales y reasignar
-      await this.prisma.usuarioUrbanizacion.deleteMany({
-        where: { usuarioId },
-      });
+      // Reemplaza todas las asignaciones
+      await this.prisma.usuarioUrbanizacion.deleteMany({ where: { usuarioId } });
 
       if (urbanizacionIds.length > 0) {
         await this.prisma.usuarioUrbanizacion.createMany({
-          data: urbanizacionIds.map((urbanizacionId) => ({
-            usuarioId,
-            urbanizacionId,
-          })),
+          data: urbanizacionIds.map((urbanizacionId) => ({ usuarioId, urbanizacionId })),
           skipDuplicates: true,
         });
       }
@@ -197,9 +178,7 @@ export class SeguridadService {
       return {
         success: true,
         message: 'Urbanizaciones asignadas correctamente',
-        data: {
-          urbanizaciones: resultado.map((r) => r.urbanizacion),
-        },
+        data: { urbanizaciones: resultado.map((r) => r.urbanizacion) },
       };
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
@@ -213,11 +192,8 @@ export class SeguridadService {
         where: { usuarioId, urbanizacionId },
       });
 
-      return {
-        success: true,
-        message: 'Urbanización removida correctamente',
-      };
-    } catch (error) {
+      return { success: true, message: 'Urbanización removida correctamente' };
+    } catch {
       throw new InternalServerErrorException('Error al remover urbanización');
     }
   }

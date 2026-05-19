@@ -636,14 +636,11 @@ model Modulo {
 
 
 model PermisoRole {
-  id            Int      @id @default(autoincrement())
-  uuid          String   @unique @default(uuid())
-  role          UserRole
-  moduloId      Int      @map("modulo_id")
-  puedeVer      Boolean  @default(false) @map("puede_ver")
-  puedeCrear    Boolean  @default(false) @map("puede_crear")
-  puedeEditar   Boolean  @default(false) @map("puede_editar")
-  puedeEliminar Boolean  @default(false) @map("puede_eliminar")
+  id        Int      @id @default(autoincrement())
+  uuid      String   @unique @default(uuid())
+  role      UserRole
+  moduloId  Int      @map("modulo_id")
+  tieneAcceso Boolean @default(false) @map("tiene_acceso")
 
   modulo Modulo @relation(fields: [moduloId], references: [id])
 

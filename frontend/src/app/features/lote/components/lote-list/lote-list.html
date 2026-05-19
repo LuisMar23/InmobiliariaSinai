@@ -25,7 +25,15 @@
             </p>
           </div>
         </div>
-        @if (isAdmin) {
+              <button [routerLink]="['/lotes/listaUrbanizaciones']"
+                    class="flex items-center gap-2 bg-white text-emerald-500 font-semibold px-4 py-2 rounded-lg shadow-md hover:bg-emerald-50 transition-all text-sm sm:text-base w-full sm:w-auto justify-center">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                    Volver al Listado
+                </button>
+        <!-- @if (isAdmin) {
           <button
             [routerLink]="['/lotes/crear']"
             class="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white px-4 py-2 sm:px-6 sm:py-3 rounded-lg shadow-lg transition-all duration-200 transform hover:scale-105 w-full sm:w-auto justify-center font-semibold text-sm sm:text-base"
@@ -45,7 +53,7 @@
             </svg>
             Nuevo Lote
           </button>
-        }
+        } -->
       </div>
     </div>
 

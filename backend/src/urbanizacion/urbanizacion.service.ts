@@ -8,6 +8,7 @@ import { CreateUrbanizacionDto } from './dto/create-urbanizacion.dto';
 import { UpdateUrbanizacionDto } from './dto/update-urbanizacion.dto';
 import * as fs from 'fs';
 import * as path from 'path';
+import { UserRole } from 'generated/prisma';
 
 @Injectable()
 export class UrbanizacionService {
@@ -372,4 +373,6 @@ async findAll(page: number = 1, limit: number = 10, userRole?: string, ciudadAsi
       };
     });
   }
+
+
 }

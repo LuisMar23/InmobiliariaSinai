@@ -13,6 +13,7 @@ import {
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { AuthService } from '../services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
+import { PermisosStateService } from '../../core/services/permisosState.service';
 
 @Component({
   selector: 'app-login',
@@ -34,6 +35,8 @@ export class LoginComponent {
   _authService = inject(AuthService);
   _notificationService = inject(NotificationService);
 
+
+  private permisosState=inject(PermisosStateService)
   constructor(private fb: FormBuilder, private router: Router) {
     this.loginForm = this.fb.group({
       identifier: ['', [Validators.required]],
@@ -46,34 +49,32 @@ export class LoginComponent {
     this.showPassword = !this.showPassword;
   }
 
-  onSubmit() {
-    if (this.loginForm.valid) {
-      this.isLoading = true;
-      const data = this.loginForm.getRawValue();
+onSubmit() {
+  if (this.loginForm.valid) {
+    this.isLoading = true;
+    const data = this.loginForm.getRawValue();
 
-      this._authService.login(data).subscribe({
-        next: (response) => {
-          this.isLoading = false;
-          this._notificationService.showSuccess('¡Bienvenido!');
-          setTimeout(() => {
-            this.router.navigate(['/dashboard']);
-          }, 500);
-        },
-        error: (error) => {
-          this.isLoading = false;
-          console.error('Error completo en login:', error);
-          this._notificationService.showError(
-            error.message || 'Credenciales incorrectas. Por favor, verifica tus datos.'
-          );
-        },
-      });
-    } else {
-      Object.keys(this.loginForm.controls).forEach((key) => {
-        this.loginForm.get(key)?.markAsTouched();
-      });
-      this._notificationService.showError('Por favor completa todos los campos requeridos');
-    }
+    this._authService.login(data).subscribe({
+      next: (response) => {
+        this.permisosState.cargar(response.data.permisos);
+        this.isLoading = false;
+        this._notificationService.showSuccess('¡Bienvenido!');
+        setTimeout(() => this.router.navigate(['/dashboard']), 500);
+      },
+      error: (error) => {
+        this.isLoading = false;
+        this._notificationService.showError(
+          error.message || 'Credenciales incorrectas. Por favor, verifica tus datos.'
+        );
+      },
+    });
+  } else {
+    Object.keys(this.loginForm.controls).forEach((key) => {
+      this.loginForm.get(key)?.markAsTouched();
+    });
+    this._notificationService.showError('Por favor completa todos los campos requeridos');
   }
+}
 
   isFieldInvalid(fieldName: string): boolean {
     const field = this.loginForm.get(fieldName);

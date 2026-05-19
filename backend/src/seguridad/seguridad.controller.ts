@@ -1,9 +1,7 @@
-// src/seguridad/seguridad.controller.ts
 import {
   Controller,
   Get,
   Put,
-  Post,
   Delete,
   Body,
   Param,
@@ -11,79 +9,76 @@ import {
   UseGuards,
   UsePipes,
   ValidationPipe,
+  Request,
 } from '@nestjs/common';
 import { SeguridadService } from './seguridad.service';
 import { UserRole } from 'generated/prisma';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth/jwt-auth.guard';
-import { RequierePermiso } from 'src/auth/guards/permisos/decorator/permisos.decorator';
-import { PermisosGuard } from 'src/auth/guards/permisos/permisos.guard';
 
+
+import { AdminGuard } from 'src/auth/guards/permisos/admin.guard';
 
 @Controller('seguridad')
-@UseGuards(JwtAuthGuard, PermisosGuard)
+@UseGuards(JwtAuthGuard)
 @UsePipes(new ValidationPipe({ whitelist: true }))
 export class SeguridadController {
   constructor(private readonly seguridadService: SeguridadService) {}
 
   // ============================================================
-  // MÓDULOS
+  // MÓDULOS — solo admin
   // ============================================================
 
   @Get('modulos')
-  @RequierePermiso('usuarios', 'puedeVer')
+  // @UseGuards(AdminGuard)
   async getModulos() {
     return this.seguridadService.getModulos();
   }
 
   // ============================================================
-  // PERMISOS POR ROL
+  // PERMISOS POR ROL — solo admin
   // ============================================================
 
   @Get('permisos/:role')
-  @RequierePermiso('usuarios', 'puedeVer')
+  // @UseGuards(AdminGuard)
   async getPermisosPorRole(@Param('role') role: UserRole) {
     return this.seguridadService.getPermisosPorRole(role);
   }
 
   @Put('permisos/:role')
-  @RequierePermiso('usuarios', 'puedeEditar')
+  // @UseGuards(AdminGuard)
   async updatePermisosRole(
     @Param('role') role: UserRole,
-    @Body()
-    body: {
-      permisos: {
-        moduloId: number;
-        puedeVer: boolean;
-        puedeCrear: boolean;
-        puedeEditar: boolean;
-        puedeEliminar: boolean;
-      }[];
-    },
+    @Body() body: { permisos: { moduloId: number; tieneAcceso: boolean }[] },
   ) {
     return this.seguridadService.updatePermisosRole(role, body.permisos);
   }
 
   // ============================================================
-  // PERMISOS DE USUARIO ACTUAL (para el frontend)
+  // PERMISOS PROPIOS — cualquier usuario autenticado
   // ============================================================
 
-  @Get('mis-permisos/:role')
-  async getMisPermisos(@Param('role') role: UserRole) {
-    return this.seguridadService.getPermisosUsuario(role);
+  @Get('mis-permisos')
+  async getMisPermisos(@Request() req: any) {
+    return this.seguridadService.getPermisosUsuario(req.user.role);
   }
 
   // ============================================================
-  // URBANIZACIONES POR USUARIO
+  // URBANIZACIONES — admin gestiona, asesor ve las suyas
   // ============================================================
 
+  @Get('mis-urbanizaciones')
+  async getMisUrbanizaciones(@Request() req: any) {
+    return this.seguridadService.getUrbanizacionesUsuario(req.user.id);
+  }
+
   @Get('usuarios/:id/urbanizaciones')
-  @RequierePermiso('usuarios', 'puedeVer')
+  // @UseGuards(AdminGuard)
   async getUrbanizacionesUsuario(@Param('id', ParseIntPipe) id: number) {
     return this.seguridadService.getUrbanizacionesUsuario(id);
   }
 
   @Put('usuarios/:id/urbanizaciones')
-  @RequierePermiso('usuarios', 'puedeEditar')
+  // @UseGuards(AdminGuard)
   async asignarUrbanizaciones(
     @Param('id', ParseIntPipe) id: number,
     @Body() body: { urbanizacionIds: number[] },
@@ -92,7 +87,7 @@ export class SeguridadController {
   }
 
   @Delete('usuarios/:id/urbanizaciones/:urbanizacionId')
-  @RequierePermiso('usuarios', 'puedeEditar')
+  // @UseGuards(AdminGuard)
   async removerUrbanizacion(
     @Param('id', ParseIntPipe) id: number,
     @Param('urbanizacionId', ParseIntPipe) urbanizacionId: number,

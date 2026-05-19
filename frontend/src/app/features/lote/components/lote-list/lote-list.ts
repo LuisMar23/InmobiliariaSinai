@@ -28,10 +28,10 @@ export class LoteList implements OnInit {
   error = signal<string | null>(null);
   loteSeleccionado = signal<LoteDto | null>(null);
   mostrarModal = signal<boolean>(false);
-
+filtroUuid = signal<string | null>(null);
   sortColumn = signal<keyof LoteDto>('id');
   sortDirection = signal<'asc' | 'desc'>('desc');
-
+filtroIndependientes = signal<boolean>(false); 
   columns: ColumnConfig[] = [
     { key: 'numeroLote', label: 'Lote', sortable: true },
     { key: 'urbanizacion', label: 'Urbanización', sortable: true },
@@ -118,17 +118,18 @@ export class LoteList implements OnInit {
     const direction = this.sortDirection();
     const uuid = this.filtroUuid();
 
-    let lotes = this.allLotes().filter((lote: LoteDto) => {
-      if (uuid && lote.urbanizacion?.uuid !== uuid) return false; // <-- esto es lo nuevo
-      return (
-        !term ||
-        lote.numeroLote?.toLowerCase().includes(term) ||
-        lote.urbanizacion?.nombre?.toLowerCase().includes(term) ||
-        lote.ciudad?.toLowerCase().includes(term) ||
-        lote.estado?.toLowerCase().includes(term) ||
-        lote.descripcion?.toLowerCase().includes(term)
-      );
-    });
+let lotes = this.allLotes().filter((lote: LoteDto) => {
+  const uuid = this.filtroUuid();
+  const soloIndependientes = this.filtroIndependientes();
+
+  if (soloIndependientes) {
+    return lote.esIndependiente || !lote.urbanizacion; // <-- solo independientes
+  }
+  if (uuid) {
+    return lote.urbanizacion?.uuid === uuid; // <-- solo los de esa urb
+  }
+  return true; // sin filtro, todos
+});
 
     if (column) {
       lotes = [...lotes].sort((a, b) => {
@@ -208,14 +209,15 @@ export class LoteList implements OnInit {
   countDisponibles(lotes: LoteDto[]): number {
     return lotes.filter((l) => l.estado === 'DISPONIBLE').length;
   }
-filtroUuid = signal<string | null>(null);
+
 private route = inject(ActivatedRoute);
 
 ngOnInit(): void {
-  // Primero lee el param, luego carga
   this.route.queryParams.subscribe(params => {
     const uuid = params['urbanizacion'] ?? null;
+    const independientes = params['independientes'] === 'true';
     this.filtroUuid.set(uuid);
+    this.filtroIndependientes.set(independientes);
   });
   
   this.obtenerLotes();

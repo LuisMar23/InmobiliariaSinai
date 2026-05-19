@@ -1,6 +1,6 @@
 import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterLink } from '@angular/router';
+import { Router, RouterLink, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import {
@@ -17,6 +17,8 @@ import {
 import { UrbanizacionService } from '../../../urbanizacion/services/urbanizacion.service';
 import { AuthService } from '../../../../components/services/auth.service';
 import { NotificationService } from '../../../../core/services/notification.service';
+import { LoteDto, UrbanizacionGroup } from '../../../../core/interfaces/lote.interface';
+import { LoteService } from '../../service/lote.service';
 
 export interface Urbanizacion {
   id: number;
@@ -37,7 +39,7 @@ export interface CiudadGroup {
 
 @Component({
   selector: 'app-urbanizacion-list',
-  imports: [FontAwesomeModule,FormsModule],
+  imports: [FontAwesomeModule, FormsModule, RouterModule, CommonModule],
   templateUrl: './urbanizacion-list.html',
   styleUrl: './urbanizacion-list.css',
 })
@@ -50,49 +52,59 @@ export class UrbanizacionList {
   faSearch = faSearch;
   faSpinner = faSpinner;
   faPlus = faPlus;
-faFolderOpen=faFolderOpen;
+  faFolderOpen = faFolderOpen;
   cargando = signal(true);
   error = signal<string | null>(null);
   urbanizaciones = signal<Urbanizacion[]>([]);
   busqueda = signal('');
   eliminandoId = signal<number | null>(null);
+  lotes = signal<LoteDto[]>([]);
 
-ciudadGroups = computed<CiudadGroup[]>(() => {
-  const q = this.busqueda().toLowerCase().trim();
-  const todas = this.urbanizaciones();
+  urbanizacionGroups = computed<UrbanizacionGroup[]>(() => {
+    const q = this.busqueda().toLowerCase().trim();
+    const todos = this.lotes();
 
-  const filtradas = q
-    ? todas.filter(
-        (u) =>
-          u.nombre.toLowerCase().includes(q) ||
-          u.ciudad.toLowerCase().includes(q) ||
-          u.ubicacion?.toLowerCase().includes(q),
-      )
-    : todas;
+    const filtrados = q
+      ? todos.filter(
+          (l) =>
+            l.numeroLote.toLowerCase().includes(q) ||
+            l.urbanizacion?.nombre.toLowerCase().includes(q) ||
+            l.ciudad.toLowerCase().includes(q) ||
+            l.manzano?.toLowerCase().includes(q),
+        )
+      : todos;
 
-  const map = new Map<string, Urbanizacion[]>();
-  filtradas.forEach((u) => {
-    const ciudad = u.ciudad?.trim() || 'Sin ciudad';
-    if (!map.has(ciudad)) map.set(ciudad, []);
-    map.get(ciudad)!.push(u);
+    const map = new Map<string, LoteDto[]>();
+    filtrados.forEach((l) => {
+      const key =
+        l.esIndependiente || !l.urbanizacion ? 'Independientes' : l.urbanizacion.nombre.trim();
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(l);
+    });
+
+    return Array.from(map.entries())
+      .map(([urbanizacion, lotes]) => ({
+        urbanizacion,
+        uuid: lotes[0]?.urbanizacion?.uuid,
+        ciudad: lotes[0]?.urbanizacion?.ciudad,
+        ubicacion: lotes[0]?.urbanizacion?.ubicacion,
+        independiente: !lotes[0]?.urbanizacion, // true si no tiene urbanización
+        lotes: lotes.sort((a, b) => a.numeroLote.localeCompare(b.numeroLote)),
+      }))
+      .sort((a, b) => {
+        if (a.urbanizacion === 'Independientes') return 1;
+        if (b.urbanizacion === 'Independientes') return -1;
+        return a.urbanizacion.localeCompare(b.urbanizacion);
+      });
   });
 
-  return Array.from(map.entries())
-    .map(([ciudad, urbanizaciones]) => ({
-      ciudad,
-      urbanizaciones: urbanizaciones.sort((a, b) => a.nombre.localeCompare(b.nombre)), // <-- orden alfabético dentro de cada grupo
-    }))
-    .sort((a, b) => a.ciudad.localeCompare(b.ciudad)); // ciudades también alfabético
-});
+  totalLotes = computed(() => this.lotes().length);
+  totalUrbanizaciones = computed(() => this.urbanizacionGroups().length);
 
-  totalUrbanizaciones = computed(() => this.urbanizaciones().length);
-  totalCiudades = computed(() => this.ciudadGroups().length);
-
-  private urbanizacionService = inject(UrbanizacionService);
   private authService = inject(AuthService);
   private notificationService = inject(NotificationService);
   private router = inject(Router);
-
+  private loteService = inject(LoteService);
   // Paleta de colores por índice de ciudad
   readonly COLORES = [
     { bg: '#E6F1FB', border: '#B5D4F4', text: '#185FA5' },
@@ -107,29 +119,33 @@ ciudadGroups = computed<CiudadGroup[]>(() => {
   }
 
   ngOnInit(): void {
-    this.cargarUrbanizaciones();
+    this.cargarLotes();
   }
 
-  cargarUrbanizaciones(): void {
-    this.cargando.set(true);
-    this.error.set(null);
+cargarLotes(): void {
+  this.cargando.set(true);
+  this.error.set(null);
 
-    this.urbanizacionService.getAll().subscribe({
-      next: (res: any) => {
-        const lista: Urbanizacion[] = res.data ?? res;
-        this.urbanizaciones.set(lista);
-        this.cargando.set(false);
-      },
-      error: (err: any) => {
-        this.error.set(err.message || 'Error al cargar urbanizaciones');
-        this.cargando.set(false);
-      },
-    });
-  }
-
-irALotes(uuid: string): void {
-  this.router.navigate(['/lotes/lista'], { queryParams: { urbanizacion: uuid } });
+  this.loteService.getAll().subscribe({
+    next: (lista: LoteDto[]) => {  // ← ya viene mapeado, no necesitas res.data
+      this.lotes.set(lista);
+      this.cargando.set(false);
+    },
+    error: (err: any) => {
+      this.error.set(err.message || 'Error al cargar lotes');
+      this.cargando.set(false);
+    },
+  });
 }
-
-  
+  contarEstado(lotes: LoteDto[], estado: string): number {
+    return lotes.filter((l) => l.estado === estado).length;
+  }
+  irALotes(uuid: string | undefined): void {
+    if (!uuid) {
+      // son independientes, filtrás por esIndependiente en la lista
+      this.router.navigate(['/lotes/lista'], { queryParams: { independientes: true } });
+      return;
+    }
+    this.router.navigate(['/lotes/lista'], { queryParams: { urbanizacion: uuid } });
+  }
 }

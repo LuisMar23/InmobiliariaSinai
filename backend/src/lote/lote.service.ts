@@ -123,122 +123,108 @@ export class LoteService {
     });
   }
 
-  async findAll(
-    urbanizacionId?: number,
-    usuarioId?: number,
-    userRole?: string,
-    ciudadesAsignadas: string[] = [],
-  ) {
-    const where: any = {};
+async findAll(
+  urbanizacionId?: number,
+  usuarioId?: number,
+  userRole?: string,
+) {
+  const where: any = {};
 
-    if (urbanizacionId) {
-      where.urbanizacionId = urbanizacionId;
-    }
+  if (urbanizacionId) {
+    where.urbanizacionId = urbanizacionId;
+  }
 
-    if (userRole !== 'ADMINISTRADOR') {
-      if (userRole === 'SECRETARIA' && ciudadesAsignadas.length > 0) {
-        // Secretaria ve todos los lotes de sus ciudades asignadas
-        const ciudadesLower = ciudadesAsignadas.map((c) => c.toLowerCase());
-        where.AND = [
-          {
-            OR: [
-              { ciudad: { in: ciudadesAsignadas, mode: 'insensitive' } },
-              {
-                urbanizacion: {
-                  ciudad: { in: ciudadesAsignadas, mode: 'insensitive' },
-                },
-              },
-              {
-                urbanizacion: {
-                  ubicacion: { in: ciudadesAsignadas, mode: 'insensitive' },
-                },
-              },
-            ],
-          },
-        ];
-      } else {
-        // Asesor — solo sus lotes asignados
-        where.encargadoId = usuarioId;
-      }
-    }
+  if (userRole !== 'ADMINISTRADOR') {
+    const asignaciones = await this.prisma.usuarioUrbanizacion.findMany({
+      where: { usuarioId },
+      select: { urbanizacionId: true },
+    });
 
-    const lotes = await this.prisma.lote.findMany({
-      where,
-      include: {
-        archivos: {
-          select: {
-            id: true,
-            urlArchivo: true,
-            tipoArchivo: true,
-            nombreArchivo: true,
+    const urbanizacionIds = asignaciones.map((a) => a.urbanizacionId);
+
+    where.OR = [
+      { urbanizacionId: { in: urbanizacionIds } },
+      { esIndependiente: true },
+    ];
+  }
+
+  const lotes = await this.prisma.lote.findMany({
+    where,
+    include: {
+      archivos: {
+        select: {
+          id: true,
+          urlArchivo: true,
+          tipoArchivo: true,
+          nombreArchivo: true,
+        },
+      },
+      urbanizacion: {
+        select: {
+          id: true,
+          nombre: true,
+          ubicacion: true,
+          ciudad: true,
+          uuid: true,
+        },
+      },
+      LotePromocion: {
+        where: {
+          promocion: {
+            isActive: true,
+            fechaInicio: { lte: new Date() },
+            fechaFin: { gte: new Date() },
           },
         },
-        urbanizacion: {
-          select: {
-            id: true,
-            nombre: true,
-            ubicacion: true,
-            ciudad: true,
-            uuid: true,
-          },
-        },
-        LotePromocion: {
-          where: {
-            promocion: {
-              isActive: true,
-              fechaInicio: { lte: new Date() },
-              fechaFin: { gte: new Date() },
+        include: {
+          promocion: {
+            select: {
+              id: true,
+              titulo: true,
+              descuento: true,
+              fechaInicio: true,
+              fechaFin: true,
             },
-          },
-          include: {
-            promocion: {
-              select: {
-                id: true,
-                titulo: true,
-                descuento: true,
-                fechaInicio: true,
-                fechaFin: true,
-              },
-            },
-          },
-        },
-        _count: {
-          select: {
-            cotizaciones: true,
-            ventas: true,
-            reservas: true,
-            visitas: true,
-            archivos: true,
           },
         },
       },
-      orderBy: { createdAt: 'desc' },
-    });
+      _count: {
+        select: {
+          cotizaciones: true,
+          ventas: true,
+          reservas: true,
+          visitas: true,
+          archivos: true,
+        },
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
 
-    const lotesConPrecioActual = lotes.map((lote) => {
-      const promocionActiva = lote.LotePromocion[0];
-      const precioActual = lote.precioBase;
-
-      return {
-        ...lote,
-        precioActual,
-        tienePromocionActiva: !!promocionActiva,
-        promocionActiva: promocionActiva
-          ? {
-              id: promocionActiva.promocion.id,
-              titulo: promocionActiva.promocion.titulo,
-              descuento: promocionActiva.promocion.descuento,
-              fechaFin: promocionActiva.promocion.fechaFin,
-            }
-          : null,
-      };
-    });
+  const lotesConPrecioActual = lotes.map((lote) => {
+    const promocionActiva = lote.LotePromocion[0];
+    const precioActual = lote.precioBase;
 
     return {
-      success: true,
-      data: lotesConPrecioActual,
+      ...lote,
+      precioActual,
+      tienePromocionActiva: !!promocionActiva,
+      promocionActiva: promocionActiva
+        ? {
+            id: promocionActiva.promocion.id,
+            titulo: promocionActiva.promocion.titulo,
+            descuento: promocionActiva.promocion.descuento,
+            fechaFin: promocionActiva.promocion.fechaFin,
+          }
+        : null,
     };
-  }
+  });
+
+  return {
+    success: true,
+    data: lotesConPrecioActual,
+  };
+}
 
   async getAll(
     userId: number,
@@ -1000,4 +986,69 @@ async getLotesSinUrbanizacion() {
     });
   }
   // lote.service.ts
+
+async findAllUrba(
+  page: number = 1,
+  limit: number = 10,
+  usuarioId: number,
+  userRole?: string,
+  ciudadAsignada?: string | null,
+) {
+  const skip = (page - 1) * limit;
+  const where: any = {};
+
+  // ADMINISTRADOR ve todo
+  if (userRole === 'ADMINISTRADOR') {
+    // no filtra nada, where queda vacío
+  }
+  // SECRETARIA filtra por ciudad
+  else if (userRole === 'SECRETARIA' && ciudadAsignada) {
+    where.OR = [
+      { ciudad: { equals: ciudadAsignada.trim(), mode: 'insensitive' } },
+      { ubicacion: { equals: ciudadAsignada.trim(), mode: 'insensitive' } },
+    ];
+  }
+  // ASESOR y otros: solo urbanizaciones asignadas
+  else {
+    const asignaciones = await this.prisma.usuarioUrbanizacion.findMany({
+      where: { usuarioId },
+      select: { urbanizacionId: true },
+    });
+
+    const ids = asignaciones.map((a) => a.urbanizacionId);
+    where.id = { in: ids };
+  }
+
+  const [urbanizaciones, total] = await Promise.all([
+    this.prisma.urbanizacion.findMany({
+      where,
+      skip,
+      take: limit,
+      include: {
+        archivos: true,
+        _count: {
+          select: {
+            lotes: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    }),
+    this.prisma.urbanizacion.count({ where }),
+  ]);
+
+  return {
+    success: true,
+    data: urbanizaciones,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
+}
+
 }

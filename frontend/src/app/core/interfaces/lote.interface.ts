@@ -85,3 +85,11 @@ export interface UpdateLoteDto {
   estado?: string;
   encargadoId?: number;
 }
+export interface UrbanizacionGroup {
+  urbanizacion: string;
+  uuid?: string;
+  ciudad?: string;
+  ubicacion?: string;
+  independiente: boolean;
+  lotes: LoteDto[];
+}
