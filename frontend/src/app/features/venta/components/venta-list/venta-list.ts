@@ -50,36 +50,24 @@ export class VentaList implements OnInit {
   private archivoService = inject(UploadArchivosService);
   private urbanizacionContext = inject(UrbanizacionContextService);
 
-  // Signal reactiva de la urbanización activa
   urbanizacionActiva = this.urbanizacionContext.urbanizacion;
 
-  // Ventas filtradas por urbanización activa
   ventasFiltradasPorUrbanizacion = computed(() => {
     const urbanizacion = this.urbanizacionActiva();
     const ventas = this.allVentas();
-    
-    // Si no hay urbanización activa, mostrar todas las ventas
     if (!urbanizacion) return ventas;
 
-    // Filtrar ventas que pertenecen a la urbanización activa
     return ventas.filter(venta => {
-      // Si es un lote y tiene urbanización
       if (venta.inmuebleTipo === 'LOTE' && venta.lote?.urbanizacion) {
         return venta.lote.urbanizacion.id === urbanizacion.id;
       }
-      // Si es una propiedad (necesitas que el backend incluya urbanizacion en propiedad)
-      else if (venta.inmuebleTipo === 'PROPIEDAD' && venta.propiedad) {
-        // ⚠️ IMPORTANTE: Tu interfaz no tiene urbanizacion en propiedad
-        // Por ahora, si no podemos filtrar por propiedad, las excluimos
-        // o las mostramos según tu necesidad
-        console.warn('Propiedad sin urbanización en interfaz:', venta.propiedad);
-        return false; // O true si quieres mostrarlas de todas formas
+      else if (venta.inmuebleTipo === 'PROPIEDAD' && venta.propiedad?.urbanizacion) {
+        return venta.propiedad.urbanizacion.id === urbanizacion.id;
       }
       return false;
     });
   });
 
-  // Ventas filtradas por búsqueda Y urbanización
   filteredVentas = computed(() => {
     const term = this.searchTerm().toLowerCase();
     let ventas = this.ventasFiltradasPorUrbanizacion();
@@ -100,7 +88,6 @@ export class VentaList implements OnInit {
   });
 
   ngOnInit(): void {
-    // Recuperar urbanización guardada
     this.urbanizacionContext.recuperar();
     this.obtenerVentas();
   }
@@ -139,8 +126,6 @@ export class VentaList implements OnInit {
     });
   }
 
-  // ... Todos tus métodos existentes se mantienen igual ...
-  
   getTotalPagado(venta: VentaDto): number {
     if (!venta.planPago) return 0;
 
@@ -353,7 +338,6 @@ export class VentaList implements OnInit {
     return '-';
   }
 
-  // Método auxiliar para obtener el nombre de la urbanización activa
   getNombreUrbanizacionActiva(): string {
     return this.urbanizacionActiva()?.nombre || 'Todas';
   }

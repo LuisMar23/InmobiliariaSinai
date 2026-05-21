@@ -17,6 +17,7 @@ import {
 } from '../../../../components/seleccion-modal/seleccion-modal';
 import { VentaDto, Cuota } from '../../../../core/interfaces/venta.interface';
 import { AnticipoPdfService } from '../../../../core/services/pdf-anticipo.service';
+import { UrbanizacionContextService } from '../../../../core/services/urbanizacion-context.service';
 
 @Component({
   selector: 'app-venta-create',
@@ -57,6 +58,7 @@ export class VentaCreate implements OnInit {
   private propiedadSvc = inject(PropiedadService);
   private notificationService = inject(NotificationService);
   private anticipoPdfService = inject(AnticipoPdfService);
+  private urbanizacionContext = inject(UrbanizacionContextService);
 
   constructor() {
     this.ventaForm = this.crearFormularioVenta();
@@ -229,17 +231,22 @@ export class VentaCreate implements OnInit {
   cargarLotes(): void {
     const currentUser = this.authService.getCurrentUser();
     const rolesFullAccess = ['ADMINISTRADOR', 'SECRETARIA'];
+    const urbanizacionActiva = this.urbanizacionContext.urbanizacion();
+
     this.loteSvc.getAll().subscribe({
       next: (lotes: LoteDto[]) => {
-        const lotesDisponibles = lotes.filter(
+        let lotesDisponibles = lotes.filter(
           (lote) => lote.estado === 'DISPONIBLE' || lote.estado === 'CON_OFERTA',
         );
-        if (rolesFullAccess.includes(currentUser?.role)) {
-          this.lotes.set(lotesDisponibles);
-          return;
+        if (!rolesFullAccess.includes(currentUser?.role)) {
+          lotesDisponibles = lotesDisponibles.filter((lote) => lote.encargadoId?.toString() === currentUser?.id?.toString());
         }
-        const lotesFiltrados = lotesDisponibles.filter((lote) => lote.encargadoId?.toString() === currentUser?.id?.toString());
-        this.lotes.set(lotesFiltrados);
+        if (urbanizacionActiva) {
+          lotesDisponibles = lotesDisponibles.filter(
+            (lote) => lote.urbanizacion?.id === urbanizacionActiva.id
+          );
+        }
+        this.lotes.set(lotesDisponibles);
       },
       error: (err: any) => {
         this.notificationService.showError('No se pudieron cargar los lotes');
@@ -249,15 +256,22 @@ export class VentaCreate implements OnInit {
 
   cargarPropiedades(): void {
     const currentUser = this.authService.getCurrentUser();
+    const urbanizacionActiva = this.urbanizacionContext.urbanizacion();
+
     this.propiedadSvc.getAll().subscribe({
       next: (propiedades: PropiedadDto[]) => {
-        const propiedadesParaVenta = propiedades.filter(
+        let propiedadesParaVenta = propiedades.filter(
           (propiedad) =>
             propiedad.estadoPropiedad === 'VENTA' &&
             (propiedad.tipo === 'CASA' || propiedad.tipo === 'DEPARTAMENTO') &&
             (propiedad.estado === 'DISPONIBLE' || propiedad.estado === 'CON_OFERTA') &&
             propiedad.encargadoId === currentUser?.id,
         );
+        if (urbanizacionActiva) {
+          propiedadesParaVenta = propiedadesParaVenta.filter(
+            (propiedad) => propiedad.urbanizacion?.id === urbanizacionActiva.id
+          );
+        }
         this.propiedades.set(propiedadesParaVenta);
       },
       error: (err: any) => {
@@ -600,7 +614,6 @@ export class VentaCreate implements OnInit {
     }
   }
 
-  // MODIFICACIÓN: Se agregó el estado 'PARCIAL'
   getEstadoCuotaClass(estado: string): string {
     const classes: { [key: string]: string } = {
       PENDIENTE: 'bg-yellow-100 text-yellow-700',

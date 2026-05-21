@@ -5,7 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { VisitaDto } from '../../../../core/interfaces/visita.interface';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { VisitaService } from '../../service/visita.service';
-import { UrbanizacionContextService, UrbanizacionActiva } from '../../../../core/services/urbanizacion-context.service';
+import { UrbanizacionContextService } from '../../../../core/services/urbanizacion-context.service';
 
 interface ColumnConfig {
   key: keyof VisitaDto | 'inmuebleInfo';
@@ -51,8 +51,15 @@ export class VisitaList implements OnInit {
 
   filteredVisitas = computed(() => {
     const term = this.searchTerm().toLowerCase();
+    const urbanizacionActiva = this.urbanizacionContext.urbanizacion();
     let visitas = this.allVisitas();
-    const activeUrb = this.urbanizacionContext.urbanizacion();
+
+    if (urbanizacionActiva) {
+      visitas = visitas.filter((visita) => {
+        const urbanizacionNombre = this.getUrbanizacionNombre(visita);
+        return urbanizacionNombre === urbanizacionActiva.nombre;
+      });
+    }
 
     if (term) {
       visitas = visitas.filter(
@@ -63,10 +70,6 @@ export class VisitaList implements OnInit {
           visita.estado?.toLowerCase().includes(term) ||
           visita.inmuebleTipo?.toLowerCase().includes(term)
       );
-    }
-
-    if (activeUrb) {
-      visitas = visitas.filter(visita => this.getUrbanizacionId(visita) === activeUrb.id);
     }
 
     const column = this.sortColumn();
@@ -154,16 +157,13 @@ export class VisitaList implements OnInit {
     return 'No especificado';
   }
 
-  private getUrbanizacionId(visita: VisitaDto): number | null {
+  private getUrbanizacionNombre(visita: VisitaDto): string {
     if (visita.inmuebleTipo === 'LOTE' && visita.inmueble && 'urbanizacion' in visita.inmueble) {
-      const lote = visita.inmueble as any;
-      return lote.urbanizacion?.id ?? null;
+      return visita.inmueble.urbanizacion?.nombre || '';
+    } else if (visita.inmuebleTipo === 'PROPIEDAD' && visita.inmueble && 'urbanizacion' in visita.inmueble) {
+      return visita.inmueble.urbanizacion?.nombre || '';
     }
-    if (visita.inmuebleTipo === 'PROPIEDAD' && visita.inmueble && 'urbanizacionId' in visita.inmueble) {
-      const propiedad = visita.inmueble as any;
-      return propiedad.urbanizacionId ?? null;
-    }
-    return null;
+    return '';
   }
 
   cambiarOrden(columna: keyof VisitaDto | 'inmuebleInfo') {

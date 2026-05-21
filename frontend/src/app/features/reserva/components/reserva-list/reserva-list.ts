@@ -7,6 +7,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
 import { ReservaService } from '../../service/reserva.service';
 import { ReciboService, Recibo } from '../../../../core/services/recibo.service';
 import { PdfService } from '../../../../core/services/pdf.service';
+import { UrbanizacionContextService } from '../../../../core/services/urbanizacion-context.service';
 
 interface ColumnConfig {
   key: keyof ReservaDto;
@@ -56,10 +57,19 @@ export class ReservaList implements OnInit {
   private notificationService = inject(NotificationService);
   private reciboSvc = inject(ReciboService);
   private pdfService = inject(PdfService);
+  private urbanizacionContext = inject(UrbanizacionContextService);
 
   filteredReservas = computed(() => {
     const term = this.searchTerm().toLowerCase();
+    const urbanizacionActiva = this.urbanizacionContext.urbanizacion();
     let reservas = this.allReservas();
+
+    if (urbanizacionActiva) {
+      reservas = reservas.filter((reserva) => {
+        const urbanizacionNombre = this.getUrbanizacionNombre(reserva);
+        return urbanizacionNombre === urbanizacionActiva.nombre;
+      });
+    }
 
     if (term) {
       reservas = reservas.filter(
@@ -111,6 +121,10 @@ export class ReservaList implements OnInit {
 
   ngOnInit(): void {
     this.obtenerReservas();
+  }
+
+  private getUrbanizacionNombre(reserva: ReservaDto): string {
+    return reserva.lote?.urbanizacion?.nombre || '';
   }
 
   obtenerReservas() {
