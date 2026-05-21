@@ -12,7 +12,14 @@ export const routes: Routes = [
   { path: 'login', component: LoginComponent },
   { path: 'login/registrar', component: RegisterComponent },
   { path: 'login/cambiar-contraseña', component: ChangePasswordComponent },
-
+  {
+    path: 'lotes/listaUrbanizaciones',
+    canActivate: [AuthGuard],
+    loadComponent: () =>
+      import('./features/lote/components/urbanizacion-list/urbanizacion-list').then(
+        (c) => c.UrbanizacionList,
+      ),
+  },
   {
     path: '',
     component: LayoutComponent,

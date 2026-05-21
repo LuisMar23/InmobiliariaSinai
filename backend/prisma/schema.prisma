@@ -143,30 +143,30 @@ model User {
   estado        Boolean   @default(true)
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
-urbanizacionesAsignadas UsuarioUrbanizacion[]
-  failedAttempts       Int       @default(0) @map("failed_attempts")
-  lockUntil            DateTime? @map("lock_until")
-  resetPasswordToken   String?   @map("reset_password_token")
-  resetPasswordExpires DateTime? @map("reset_password_expires")
+  urbanizacionesAsignadas UsuarioUrbanizacion[]
+  failedAttempts          Int                   @default(0) @map("failed_attempts")
+  lockUntil               DateTime?             @map("lock_until")
+  resetPasswordToken      String?               @map("reset_password_token")
+  resetPasswordExpires    DateTime?             @map("reset_password_expires")
 
-  cotizacionesComoAsesor  Cotizacion[]     @relation("CotizacionesAsesor")
-  ventasComoCliente       Venta[]          @relation("VentasCliente")
-  ventasComoAsesor        Venta[]          @relation("VentasAsesor")
-  reservasComoCliente     Reserva[]        @relation("ReservasCliente")
-  reservasComoAsesor      Reserva[]        @relation("ReservasAsesor")
-  visitasComoCliente      Visita[]         @relation("VisitasCliente")
-  visitasComoAsesor       Visita[]         @relation("VisitasAsesor")
-  ticketsCreados          Ticket[]         @relation("TicketsCliente")
-  ticketsAtendidos        Ticket[]         @relation("TicketsAtendidos")
-  auditorias              Auditoria[]
-  ingresosRegistrados     Ingreso[]
-  egresosRegistrados      Egreso[]
-  cajasApertura           Caja[]           @relation("UsuarioApertura")
-  movimientosCaja         MovimientoCaja[]
-  cierresCaja             CierreCaja[]
-  recibosCreados          Recibo[]
-  lotesEncargado          Lote[]           @relation("LotesEncargado")
-  propiedadesEncargado    Propiedad[]      @relation("PropiedadesEncargado")
+  cotizacionesComoAsesor Cotizacion[]     @relation("CotizacionesAsesor")
+  ventasComoCliente      Venta[]          @relation("VentasCliente")
+  ventasComoAsesor       Venta[]          @relation("VentasAsesor")
+  reservasComoCliente    Reserva[]        @relation("ReservasCliente")
+  reservasComoAsesor     Reserva[]        @relation("ReservasAsesor")
+  visitasComoCliente     Visita[]         @relation("VisitasCliente")
+  visitasComoAsesor      Visita[]         @relation("VisitasAsesor")
+  ticketsCreados         Ticket[]         @relation("TicketsCliente")
+  ticketsAtendidos       Ticket[]         @relation("TicketsAtendidos")
+  auditorias             Auditoria[]
+  ingresosRegistrados    Ingreso[]
+  egresosRegistrados     Egreso[]
+  cajasApertura          Caja[]           @relation("UsuarioApertura")
+  movimientosCaja        MovimientoCaja[]
+  cierresCaja            CierreCaja[]
+  recibosCreados         Recibo[]
+  lotesEncargado         Lote[]           @relation("LotesEncargado")
+  propiedadesEncargado   Propiedad[]      @relation("PropiedadesEncargado")
 }
 
 model Lote {
@@ -205,59 +205,62 @@ model Urbanizacion {
   ubicacion   String
   ciudad      String
   descripcion String?
-  maps        String?  
+  maps        String?
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
-usuariosAsignados UsuarioUrbanizacion[]
-  lotes     Lote[]
-  archivos  Archivo[]
-  Promocion Promocion[]
+
+  usuariosAsignados UsuarioUrbanizacion[]
+  lotes             Lote[]
+  archivos          Archivo[]
+  Promocion         Promocion[]
+  cajas             Caja[]
+  propiedades       Propiedad[]
 }
 
 model Cotizacion {
-  id             Int              @id @default(autoincrement())
-  uuid           String           @unique @default(uuid())
-  nombreCliente  String           @map("nombre_cliente")
-  contactoCliente String          @map("contacto_cliente")
-  detalle        String?          @map("detalle")
-  asesorId       Int
-  inmuebleTipo   TipoInmueble     @default(LOTE)
-  inmuebleId     Int
-  precioOfertado Decimal          @map("precio_ofertado") @db.Decimal(12, 2)
-  estado         EstadoCotizacion @default(PENDIENTE)
-  createdAt      DateTime         @default(now()) @map("created_at")
-  updatedAt      DateTime         @updatedAt @map("updated_at")
+  id              Int              @id @default(autoincrement())
+  uuid            String           @unique @default(uuid())
+  nombreCliente   String           @map("nombre_cliente")
+  contactoCliente String           @map("contacto_cliente")
+  detalle         String?          @map("detalle")
+  asesorId        Int
+  inmuebleTipo    TipoInmueble     @default(LOTE)
+  inmuebleId      Int
+  precioOfertado  Decimal          @map("precio_ofertado") @db.Decimal(12, 2)
+  estado          EstadoCotizacion @default(PENDIENTE)
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
 
   asesor User  @relation("CotizacionesAsesor", fields: [asesorId], references: [id])
   lote   Lote? @relation("CotizacionesLote", fields: [inmuebleId], references: [id], map: "fk_cotizacion_lote")
 }
 
 model Venta {
-  id            Int          @id @default(autoincrement())
-  uuid          String       @unique @default(uuid())
-  clienteId     Int
-  asesorId      Int
-  inmuebleTipo  TipoInmueble @default(LOTE)
+  id           Int          @id @default(autoincrement())
+  uuid         String       @unique @default(uuid())
+  clienteId    Int
+  asesorId     Int
+  inmuebleTipo TipoInmueble @default(LOTE)
 
-  precioFinal   Decimal      @map("precio_final") @db.Decimal(12, 2)
-  estado        EstadoVenta  @default(PENDIENTE)
-  createdAt     DateTime     @default(now()) @map("created_at")
-  updatedAt     DateTime     @updatedAt @map("updated_at")
+  precioFinal   Decimal     @map("precio_final") @db.Decimal(12, 2)
+  estado        EstadoVenta @default(PENDIENTE)
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
   observaciones String?
-  loteId        Int?         @map("lote_id")
-  propiedadId   Int?         @map("propiedad_id")
-  cajaId        Int?         @map("caja_id")
-  
-  cliente   User       @relation("VentasCliente", fields: [clienteId], references: [id])
-  asesor    User       @relation("VentasAsesor", fields: [asesorId], references: [id])
-  lote      Lote?      @relation("VentasLote", fields: [loteId], references: [id], map: "fk_venta_lote")
-  propiedad Propiedad? @relation("VentasPropiedad", fields: [propiedadId], references: [id], map: "fk_venta_propiedad")
-  caja      Caja?      @relation(fields: [cajaId], references: [id])
-  archivos  Archivo[]
-  ingresos  Ingreso[]
-  planPago  PlanPago?
-  recibos   Recibo[]
-  movimientosCaja MovimientoCaja[] 
+  loteId        Int?        @map("lote_id")
+  propiedadId   Int?        @map("propiedad_id")
+  cajaId        Int?        @map("caja_id")
+
+  cliente         User             @relation("VentasCliente", fields: [clienteId], references: [id])
+  asesor          User             @relation("VentasAsesor", fields: [asesorId], references: [id])
+  lote            Lote?            @relation("VentasLote", fields: [loteId], references: [id], map: "fk_venta_lote")
+  propiedad       Propiedad?       @relation("VentasPropiedad", fields: [propiedadId], references: [id], map: "fk_venta_propiedad")
+  caja            Caja?            @relation(fields: [cajaId], references: [id])
+  archivos        Archivo[]
+  ingresos        Ingreso[]
+  planPago        PlanPago?
+  recibos         Recibo[]
+  movimientosCaja MovimientoCaja[]
 }
 
 model Reserva {
@@ -393,29 +396,29 @@ model PlanPago {
 }
 
 model Cuota {
-  id_cuota     Int           @id @default(autoincrement())
-  uuid         String        @unique @default(uuid())
+  id_cuota     Int         @id @default(autoincrement())
+  uuid         String      @unique @default(uuid())
   plan_pago_id Int
   numero       Int
   fecha        DateTime
-  monto        Decimal       @db.Decimal(12, 2)
-  estado       EstadoCuota   @default(PENDIENTE)
-  creado_en    DateTime      @default(now())
+  monto        Decimal     @db.Decimal(12, 2)
+  estado       EstadoCuota @default(PENDIENTE)
+  creado_en    DateTime    @default(now())
 
-  planPago     PlanPago      @relation(fields: [plan_pago_id], references: [id_plan_pago], onDelete: Cascade)
-  pagoCuotas   PagoCuota[]
+  planPago   PlanPago    @relation(fields: [plan_pago_id], references: [id_plan_pago], onDelete: Cascade)
+  pagoCuotas PagoCuota[]
 
   @@map("cuotas")
 }
 
 model PagoPlanPago {
-  id_pago_plan Int      @id @default(autoincrement())
-  uuid         String   @unique @default(uuid())
+  id_pago_plan Int         @id @default(autoincrement())
+  uuid         String      @unique @default(uuid())
   plan_pago_id Int
-  monto        Decimal  @db.Decimal(12, 2)
-  fecha_pago   DateTime @default(now())
+  monto        Decimal     @db.Decimal(12, 2)
+  fecha_pago   DateTime    @default(now())
   observacion  String?
-  creado_en    DateTime @default(now())
+  creado_en    DateTime    @default(now())
   metodoPago   MetodoPago?
 
   planPago   PlanPago    @relation(fields: [plan_pago_id], references: [id_plan_pago], onDelete: Cascade)
@@ -425,10 +428,10 @@ model PagoPlanPago {
 }
 
 model PagoCuota {
-  id_pago_cuota Int           @id @default(autoincrement())
-  pago_id       Int
-  cuota_id      Int
-  monto_aplicado Decimal       @db.Decimal(12, 2)
+  id_pago_cuota  Int     @id @default(autoincrement())
+  pago_id        Int
+  cuota_id       Int
+  monto_aplicado Decimal @db.Decimal(12, 2)
 
   pago  PagoPlanPago @relation(fields: [pago_id], references: [id_pago_plan], onDelete: Cascade)
   cuota Cuota        @relation(fields: [cuota_id], references: [id_cuota], onDelete: Cascade)
@@ -479,9 +482,9 @@ model Egreso {
   cajaId        Int?     @map("caja_id")
   caja          Caja?    @relation(fields: [cajaId], references: [id])
 
-  categoria CategoriaContable? @relation(fields: [categoriaId], references: [id])
-  usuario   User              @relation(fields: [registradoPor], references: [id])
-    movimientosCaja MovimientoCaja[]
+  categoria       CategoriaContable? @relation(fields: [categoriaId], references: [id])
+  usuario         User               @relation(fields: [registradoPor], references: [id])
+  movimientosCaja MovimientoCaja[]
 }
 
 model BalanceMensual {
@@ -506,12 +509,16 @@ model Caja {
   actualizadoEn     DateTime   @updatedAt
   estado            EstadoCaja @default(ABIERTA)
   usuarioAperturaId Int
-  usuarioApertura   User       @relation("UsuarioApertura", fields: [usuarioAperturaId], references: [id])
+  urbanizacionId    Int?       @map("urbanizacion_id") // ← nuevo
+
+  usuarioApertura User          @relation("UsuarioApertura", fields: [usuarioAperturaId], references: [id])
+  urbanizacion    Urbanizacion? @relation(fields: [urbanizacionId], references: [id]) // ← nuevo
 
   movimientos MovimientoCaja[]
   cierreCaja  CierreCaja[]
   ventas      Venta[]
-egresos     Egreso[]
+  egresos     Egreso[]
+
   @@map("cajas")
 }
 
@@ -525,13 +532,14 @@ model MovimientoCaja {
   fecha       DateTime       @default(now())
   descripcion String?
   referencia  String?
-  ventaId     Int?           @map("venta_id") 
+  ventaId     Int?           @map("venta_id")
   metodoPago  MetodoPago     @default(EFECTIVO)
   caja        Caja           @relation(fields: [cajaId], references: [id])
   usuario     User           @relation(fields: [usuarioId], references: [id])
-    egresoId    Int?   @map("egreso_id")
-  egreso      Egreso? @relation(fields: [egresoId], references: [id])
-  venta   Venta? @relation(fields: [ventaId], references: [id]) // 
+  egresoId    Int?           @map("egreso_id")
+  egreso      Egreso?        @relation(fields: [egresoId], references: [id])
+  venta       Venta?         @relation(fields: [ventaId], references: [id]) // 
+
   @@map("movimientos_caja")
 }
 
@@ -610,23 +618,24 @@ model Propiedad {
   estado          EstadoInmueble  @default(DISPONIBLE)
   estadoPropiedad EstadoPropiedad @default(VENTA)
   encargadoId     Int?            @map("encargado_id")
+  urbanizacionId  Int?            @map("urbanizacion_id") // ← nuevo
   createdAt       DateTime        @default(now()) @map("created_at")
   updatedAt       DateTime        @updatedAt @map("updated_at")
 
-  archivos  Archivo[]
-  ventas    Venta[]   @relation("VentasPropiedad")
-  visitas   Visita[]  @relation("VisitasPropiedad")
-  encargado User?     @relation("PropiedadesEncargado", fields: [encargadoId], references: [id])
+  archivos     Archivo[]
+  ventas       Venta[]       @relation("VentasPropiedad")
+  visitas      Visita[]      @relation("VisitasPropiedad")
+  encargado    User?         @relation("PropiedadesEncargado", fields: [encargadoId], references: [id])
+  urbanizacion Urbanizacion? @relation(fields: [urbanizacionId], references: [id]) // ← nuevo
 }
 
-
 model Modulo {
-  id       Int      @id @default(autoincrement())
-  uuid     String   @unique @default(uuid())
-  clave    String   @unique
-  nombre   String
-  padreId  Int?     @map("padre_id")
-  activo   Boolean  @default(true)
+  id      Int     @id @default(autoincrement())
+  uuid    String  @unique @default(uuid())
+  clave   String  @unique
+  nombre  String
+  padreId Int?    @map("padre_id")
+  activo  Boolean @default(true)
 
   padre    Modulo?       @relation("ModuloHijos", fields: [padreId], references: [id])
   hijos    Modulo[]      @relation("ModuloHijos")
@@ -635,13 +644,12 @@ model Modulo {
   @@map("modulos")
 }
 
-
 model PermisoRole {
-  id        Int      @id @default(autoincrement())
-  uuid      String   @unique @default(uuid())
-  role      UserRole
-  moduloId  Int      @map("modulo_id")
-  tieneAcceso Boolean @default(false) @map("tiene_acceso")
+  id          Int      @id @default(autoincrement())
+  uuid        String   @unique @default(uuid())
+  role        UserRole
+  moduloId    Int      @map("modulo_id")
+  tieneAcceso Boolean  @default(false) @map("tiene_acceso")
 
   modulo Modulo @relation(fields: [moduloId], references: [id])
 
@@ -649,11 +657,10 @@ model PermisoRole {
   @@map("permisos_role")
 }
 
-
 model UsuarioUrbanizacion {
-  id             Int          @id @default(autoincrement())
-  usuarioId      Int          @map("usuario_id")
-  urbanizacionId Int          @map("urbanizacion_id")
+  id             Int @id @default(autoincrement())
+  usuarioId      Int @map("usuario_id")
+  urbanizacionId Int @map("urbanizacion_id")
 
   usuario      User         @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
   urbanizacion Urbanizacion @relation(fields: [urbanizacionId], references: [id], onDelete: Cascade)

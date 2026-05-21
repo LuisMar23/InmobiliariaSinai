@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { VisitaDto } from '../../../../core/interfaces/visita.interface';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { VisitaService } from '../../service/visita.service';
+import { UrbanizacionContextService, UrbanizacionActiva } from '../../../../core/services/urbanizacion-context.service';
 
 interface ColumnConfig {
   key: keyof VisitaDto | 'inmuebleInfo';
@@ -46,10 +47,12 @@ export class VisitaList implements OnInit {
 
   private visitaSvc = inject(VisitaService);
   private notificationService = inject(NotificationService);
+  private urbanizacionContext = inject(UrbanizacionContextService);
 
   filteredVisitas = computed(() => {
     const term = this.searchTerm().toLowerCase();
     let visitas = this.allVisitas();
+    const activeUrb = this.urbanizacionContext.urbanizacion();
 
     if (term) {
       visitas = visitas.filter(
@@ -60,6 +63,10 @@ export class VisitaList implements OnInit {
           visita.estado?.toLowerCase().includes(term) ||
           visita.inmuebleTipo?.toLowerCase().includes(term)
       );
+    }
+
+    if (activeUrb) {
+      visitas = visitas.filter(visita => this.getUrbanizacionId(visita) === activeUrb.id);
     }
 
     const column = this.sortColumn();
@@ -145,6 +152,18 @@ export class VisitaList implements OnInit {
       return `${propiedad.nombre || ''} - ${propiedad.tipo || ''} - ${propiedad.ciudad || ''}`;
     }
     return 'No especificado';
+  }
+
+  private getUrbanizacionId(visita: VisitaDto): number | null {
+    if (visita.inmuebleTipo === 'LOTE' && visita.inmueble && 'urbanizacion' in visita.inmueble) {
+      const lote = visita.inmueble as any;
+      return lote.urbanizacion?.id ?? null;
+    }
+    if (visita.inmuebleTipo === 'PROPIEDAD' && visita.inmueble && 'urbanizacionId' in visita.inmueble) {
+      const propiedad = visita.inmueble as any;
+      return propiedad.urbanizacionId ?? null;
+    }
+    return null;
   }
 
   cambiarOrden(columna: keyof VisitaDto | 'inmuebleInfo') {

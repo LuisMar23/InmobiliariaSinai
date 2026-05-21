@@ -2,11 +2,12 @@ import { Component, inject, signal, OnInit, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { LoteDto } from '../../../../core/interfaces/lote.interface';
+import { LoteDto, LoteGroup } from '../../../../core/interfaces/lote.interface';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { LoteService } from '../../service/lote.service';
 import { ArchivosComponent } from '../../../../components/archivos/archivos/archivos';
 import { AuthService } from '../../../../components/services/auth.service';
+import { UrbanizacionContextService } from '../../../../core/services/urbanizacion-context.service'; // ← AÑADIR
 
 interface ColumnConfig {
   key: keyof LoteDto;
@@ -28,10 +29,11 @@ export class LoteList implements OnInit {
   error = signal<string | null>(null);
   loteSeleccionado = signal<LoteDto | null>(null);
   mostrarModal = signal<boolean>(false);
-filtroUuid = signal<string | null>(null);
+  filtroUuid = signal<string | null>(null);
   sortColumn = signal<keyof LoteDto>('id');
   sortDirection = signal<'asc' | 'desc'>('desc');
-filtroIndependientes = signal<boolean>(false); 
+  filtroIndependientes = signal<boolean>(false);
+
   columns: ColumnConfig[] = [
     { key: 'numeroLote', label: 'Lote', sortable: true },
     { key: 'urbanizacion', label: 'Urbanización', sortable: true },
@@ -41,7 +43,6 @@ filtroIndependientes = signal<boolean>(false);
     { key: 'estado', label: 'Estado', sortable: true },
   ];
 
-  //cambios
   readonly COLORES = [
     { c: '#185FA5', bg: '#E6F1FB', bdr: '#B5D4F4' },
     { c: '#0F6E56', bg: '#E1F5EE', bdr: '#9FE1CB' },
@@ -64,170 +65,102 @@ filtroIndependientes = signal<boolean>(false);
   private loteSvc = inject(LoteService);
   private authService = inject(AuthService);
   private notificationService = inject(NotificationService);
+  private urbCtx = inject(UrbanizacionContextService); // ← AÑADIR
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
+
   currentUser = this.authService.getCurrentUser();
 
-  // filteredLotes = computed(() => {
-  //   const term = this.searchTerm().toLowerCase();
-  //   let lotes = this.allLotes();
-
-  //   if (term) {
-  //     lotes = lotes.filter(
-  //       (lote: LoteDto) =>
-  //         lote.numeroLote?.toLowerCase().includes(term) ||
-  //         lote.urbanizacion?.nombre?.toLowerCase().includes(term) ||
-  //         lote.ciudad?.toLowerCase().includes(term) ||
-  //         lote.estado?.toLowerCase().includes(term) ||
-  //         lote.descripcion?.toLowerCase().includes(term),
-  //     );
-  //   }
-
-  //   const column = this.sortColumn();
-  //   const direction = this.sortDirection();
-
-  //   if (!column) return lotes;
-
-  //   return [...lotes].sort((a, b) => {
-  //     let aValue: any = a[column];
-  //     let bValue: any = b[column];
-
-  //     if (column === 'urbanizacion') {
-  //       aValue = a.urbanizacion?.nombre;
-  //       bValue = b.urbanizacion?.nombre;
-  //     }
-
-  //     if (aValue === undefined || aValue === null) aValue = '';
-  //     if (bValue === undefined || bValue === null) bValue = '';
-
-  //     if (typeof aValue === 'number' && typeof bValue === 'number') {
-  //       return direction === 'asc' ? aValue - bValue : bValue - aValue;
-  //     }
-
-  //     const aString = aValue.toString().toLowerCase();
-  //     const bString = bValue.toString().toLowerCase();
-
-  //     if (direction === 'asc') {
-  //       return aString.localeCompare(bString);
-  //     } else {
-  //       return bString.localeCompare(aString);
-  //     }
-  //   });
-  // });
-  loteGroups = computed(() => {
-    const term = this.searchTerm().toLowerCase();
-    const column = this.sortColumn();
-    const direction = this.sortDirection();
-    const uuid = this.filtroUuid();
-
-let lotes = this.allLotes().filter((lote: LoteDto) => {
-  const uuid = this.filtroUuid();
+  // ─── COMPUTED PRINCIPAL ────────────────────────────────────────────────────
+loteGroups = computed(() => {
+  const column = this.sortColumn();
+  const direction = this.sortDirection();
+  const urbActiva = this.urbCtx.urbanizacion();
+  const uuidFiltro = urbActiva?.uuid ?? this.filtroUuid();
   const soloIndependientes = this.filtroIndependientes();
 
-  if (soloIndependientes) {
-    return lote.esIndependiente || !lote.urbanizacion; // <-- solo independientes
+  let lotes = this.allLotes().filter((lote: LoteDto) => {
+    if (soloIndependientes) return lote.esIndependiente || !lote.urbanizacion;
+    if (uuidFiltro) return lote.urbanizacion?.uuid === uuidFiltro;
+    return true;
+  });
+
+  if (column) {
+    lotes = [...lotes].sort((a, b) => {
+      let aVal: any = column === 'urbanizacion' ? a.urbanizacion?.nombre : a[column];
+      let bVal: any = column === 'urbanizacion' ? b.urbanizacion?.nombre : b[column];
+      aVal = aVal ?? '';
+      bVal = bVal ?? '';
+      if (typeof aVal === 'number' && typeof bVal === 'number')
+        return direction === 'asc' ? aVal - bVal : bVal - aVal;
+      return direction === 'asc'
+        ? aVal.toString().localeCompare(bVal.toString())
+        : bVal.toString().localeCompare(aVal.toString());
+    });
   }
-  if (uuid) {
-    return lote.urbanizacion?.uuid === uuid; // <-- solo los de esa urb
-  }
-  return true; // sin filtro, todos
+
+  // ✅ new Map va AQUÍ DENTRO, no fuera
+  const map = new Map<string, LoteGroup>();
+  let colorIdx = 0;
+
+  lotes.forEach((lote) => {
+    if (lote.esIndependiente || !lote.urbanizacion) {
+      if (!map.has('__ind__'))
+        map.set('__ind__', {
+          key: '__ind__',
+          nombre: 'Lotes Independientes',
+          ciudad: '',
+          independiente: true,
+          colorIndex: -1,
+          lotes: [],
+        });
+      map.get('__ind__')!.lotes.push(lote);
+    } else {
+      const key = String(lote.urbanizacion.id ?? lote.urbanizacion.nombre);
+      if (!map.has(key))
+        map.set(key, {
+          key,
+          nombre: lote.urbanizacion.nombre,
+          ciudad: lote.urbanizacion.ciudad ?? lote.ciudad,
+          independiente: false,
+          colorIndex: colorIdx++,
+          lotes: [],
+        });
+      map.get(key)!.lotes.push(lote);
+    }
+  });
+
+  const ind = map.get('__ind__');
+  map.delete('__ind__');
+  const result = Array.from(map.values()).sort((a, b) => a.nombre.localeCompare(b.nombre));
+  if (ind) result.push(ind);
+  return result;
 });
 
-    if (column) {
-      lotes = [...lotes].sort((a, b) => {
-        let aVal: any = column === 'urbanizacion' ? a.urbanizacion?.nombre : a[column];
-        let bVal: any = column === 'urbanizacion' ? b.urbanizacion?.nombre : b[column];
-        aVal = aVal ?? '';
-        bVal = bVal ?? '';
-        if (typeof aVal === 'number' && typeof bVal === 'number')
-          return direction === 'asc' ? aVal - bVal : bVal - aVal;
-        return direction === 'asc'
-          ? aVal.toString().localeCompare(bVal.toString())
-          : bVal.toString().localeCompare(aVal.toString());
-      });
-    }
+  filteredLotes = computed(() => this.loteGroups().flatMap((g) => g.lotes));
 
-    const map = new Map<
-      string,
-      {
-        key: string;
-        nombre: string;
-        ciudad: string;
-        independiente: boolean;
-        colorIndex: number;
-        lotes: LoteDto[];
-      }
-    >();
-    let colorIdx = 0;
+  // ─── INIT ──────────────────────────────────────────────────────────────────
+  ngOnInit(): void {
+    // Recuperar contexto persistido si el usuario recargó la página
+    this.urbCtx.recuperar();
 
-    lotes.forEach((lote) => {
-      if (lote.esIndependiente || !lote.urbanizacion) {
-        if (!map.has('__ind__'))
-          map.set('__ind__', {
-            key: '__ind__',
-            nombre: 'Lotes Independientes',
-            ciudad: '',
-            independiente: true,
-            colorIndex: -1,
-            lotes: [],
-          });
-        map.get('__ind__')!.lotes.push(lote);
-      } else {
-        const key = String(lote.urbanizacion.id ?? lote.urbanizacion.nombre);
-        if (!map.has(key))
-          map.set(key, {
-            key,
-            nombre: lote.urbanizacion.nombre,
-            ciudad: lote.urbanizacion.ciudad ?? lote.ciudad,
-            independiente: false,
-            colorIndex: colorIdx++,
-            lotes: [],
-          });
-        map.get(key)!.lotes.push(lote);
-      }
+    this.route.queryParams.subscribe((params) => {
+      const uuid = params['urbanizacion'] ?? null;
+      const independientes = params['independientes'] === 'true';
+      this.filtroUuid.set(uuid);
+      this.filtroIndependientes.set(independientes);
     });
 
-    const ind = map.get('__ind__');
-    map.delete('__ind__');
-    const result = Array.from(map.values()).sort((a, b) => a.nombre.localeCompare(b.nombre));
-    if (ind) result.push(ind);
-    return result;
-  });
-
-  // Mantén filteredLotes para que el paginado del HTML siga funcionando
-  filteredLotes = computed(() => {
-    return this.loteGroups().flatMap((g) => g.lotes);
-  });
-
-  getGroupColor(group: { independiente: boolean; colorIndex: number }) {
-    if (group.independiente) return { c: '#4B5563', bg: '#F3F4F6', bdr: '#D1D5DB' };
-    return this.COLORES[group.colorIndex % this.COLORES.length];
+    this.obtenerLotes();
   }
 
-  getChip(estado: string) {
-    return this.CHIPS[estado] ?? this.CHIPS['DISPONIBLE'];
-  }
+  // ─── El resto de métodos queda exactamente igual ───────────────────────────
 
-  countDisponibles(lotes: LoteDto[]): number {
-    return lotes.filter((l) => l.estado === 'DISPONIBLE').length;
-  }
-
-private route = inject(ActivatedRoute);
-
-ngOnInit(): void {
-  this.route.queryParams.subscribe(params => {
-    const uuid = params['urbanizacion'] ?? null;
-    const independientes = params['independientes'] === 'true';
-    this.filtroUuid.set(uuid);
-    this.filtroIndependientes.set(independientes);
-  });
-  
-  this.obtenerLotes();
-}
   obtenerLotes() {
     this.cargando.set(true);
     this.error.set(null);
     this.loteSvc.getAll().subscribe({
       next: (lotes) => {
-        console.log(lotes)
         const lotesConIndicador = lotes.map((lote) => ({
           ...lote,
           esMiLote: lote.encargadoId === this.currentUser?.id,
@@ -245,23 +178,30 @@ ngOnInit(): void {
     });
   }
 
+  getGroupColor(group: { independiente: boolean; colorIndex: number }) {
+    if (group.independiente) return { c: '#4B5563', bg: '#F3F4F6', bdr: '#D1D5DB' };
+    return this.COLORES[group.colorIndex % this.COLORES.length];
+  }
+
+  getChip(estado: string) {
+    return this.CHIPS[estado] ?? this.CHIPS['DISPONIBLE'];
+  }
+
+  countDisponibles(lotes: LoteDto[]): number {
+    return lotes.filter((l) => l.estado === 'DISPONIBLE').length;
+  }
+
   getEncargadoBadgeClass(lote: LoteDto): string {
-    if (lote.encargadoId === this.currentUser?.id) {
+    if (lote.encargadoId === this.currentUser?.id)
       return 'px-2 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-700 border border-blue-200';
-    }
-    if (!lote.encargadoId) {
+    if (!lote.encargadoId)
       return 'px-2 py-0.5 rounded-full text-xs font-bold bg-gray-100 text-gray-700 border border-gray-200';
-    }
     return 'px-2 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-700 border border-purple-200';
   }
 
   getEncargadoText(lote: LoteDto): string {
-    if (lote.encargadoId === this.currentUser?.id) {
-      return '👤 Mi lote';
-    }
-    if (!lote.encargadoId) {
-      return '📦 Sin encargado';
-    }
+    if (lote.encargadoId === this.currentUser?.id) return '👤 Mi lote';
+    if (!lote.encargadoId) return '📦 Sin encargado';
     return '👥 Otro asesor';
   }
 
@@ -275,9 +215,7 @@ ngOnInit(): void {
   }
 
   getClaseFlecha(columna: keyof LoteDto): string {
-    if (this.sortColumn() !== columna) {
-      return 'opacity-30';
-    }
+    if (this.sortColumn() !== columna) return 'opacity-30';
     return this.sortDirection() === 'asc' ? '' : 'rotate-180';
   }
 
@@ -302,9 +240,7 @@ ngOnInit(): void {
               this.allLotes.update((list) => list.filter((l) => l.id !== id));
               this.total.update((total) => total - 1);
               this.notificationService.showSuccess('Lote eliminado correctamente');
-              if (this.loteSeleccionado()?.id === id) {
-                this.cerrarModal();
-              }
+              if (this.loteSeleccionado()?.id === id) this.cerrarModal();
             },
             error: (err) => {
               console.error('Error al eliminar lote:', err);
@@ -344,21 +280,15 @@ ngOnInit(): void {
   }
 
   nextPage() {
-    if (this.currentPage() < this.totalPages()) {
-      this.currentPage.update((v) => v + 1);
-    }
+    if (this.currentPage() < this.totalPages()) this.currentPage.update((v) => v + 1);
   }
 
   prevPage() {
-    if (this.currentPage() > 1) {
-      this.currentPage.update((v) => v - 1);
-    }
+    if (this.currentPage() > 1) this.currentPage.update((v) => v - 1);
   }
 
   goToPage(page: number) {
-    if (page >= 1 && page <= this.totalPages()) {
-      this.currentPage.set(page);
-    }
+    if (page >= 1 && page <= this.totalPages()) this.currentPage.set(page);
   }
 
   totalPages() {
@@ -380,13 +310,11 @@ ngOnInit(): void {
 
   getLotesPaginados(): LoteDto[] {
     const startIndex = (this.currentPage() - 1) * this.pageSize();
-    const endIndex = startIndex + this.pageSize();
-    return this.filteredLotes().slice(startIndex, endIndex);
+    return this.filteredLotes().slice(startIndex, startIndex + this.pageSize());
   }
 
   onSearchChange(event: Event): void {
-    const value = (event.target as HTMLInputElement).value;
-    this.searchTerm.set(value);
+    this.searchTerm.set((event.target as HTMLInputElement).value);
   }
 
   tieneUbicacion(lote: LoteDto): boolean {
@@ -394,6 +322,7 @@ ngOnInit(): void {
   }
 
   mostrarUploader = signal(false);
+
   abrirModalSubirArchivos(lote: LoteDto) {
     this.loteSeleccionado.set(lote);
     this.mostrarUploader.set(true);
@@ -403,33 +332,32 @@ ngOnInit(): void {
     this.mostrarUploader.set(false);
     this.loteSeleccionado.set(null);
   }
+
   onSubidaCompleta() {
     this.cerrarModalUploader();
     this.notificationService.showSuccess('Archivos subidos correctamente');
   }
 
-  // Agregar este getter después de currentUser
   get isAdmin(): boolean {
     return this.currentUser.role === 'ADMINISTRADOR';
   }
-  private router = inject(Router);
-crearLote(): void {
-  const uuid = this.filtroUuid();
-  if (uuid) {
-    // Busca el grupo activo para sacar el nombre y datos
-    const grupo = this.loteGroups().find(g => 
-      g.lotes.some(l => l.urbanizacion?.uuid === uuid)
-    );
-    this.router.navigate(['/lotes/crear'], {
-      queryParams: { urbanizacion: uuid },
-      state: { 
-        urbanizacionNombre: grupo?.nombre,
-        urbanizacionCiudad: grupo?.ciudad
-      }
-    });
-  } else {
-    this.router.navigate(['/lotes/crear']);
-  }
-}
 
+  crearLote(): void {
+    const urbActiva = this.urbCtx.urbanizacion();
+    const uuid = urbActiva?.uuid ?? this.filtroUuid();
+    if (uuid) {
+      const grupo = this.loteGroups().find((g) =>
+        g.lotes.some((l) => l.urbanizacion?.uuid === uuid),
+      );
+      this.router.navigate(['/lotes/crear'], {
+        queryParams: { urbanizacion: uuid },
+        state: {
+          urbanizacionNombre: urbActiva?.nombre ?? grupo?.nombre,
+          urbanizacionCiudad: urbActiva?.ciudad ?? grupo?.ciudad,
+        },
+      });
+    } else {
+      this.router.navigate(['/lotes/crear']);
+    }
+  }
 }

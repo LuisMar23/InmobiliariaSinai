@@ -59,6 +59,11 @@ export interface VentaDto {
     habitaciones?: number;
     banos?: number;
     descripcion?: string;
+    urbanizacion?: {  // ← AÑADE ESTO
+      id: number;
+      nombre: string;
+      ubicacion: string;
+    };
   };
   planPago?: {
     id_plan_pago: number;

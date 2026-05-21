@@ -93,3 +93,16 @@ export interface UrbanizacionGroup {
   independiente: boolean;
   lotes: LoteDto[];
 }
+
+// Definir el tipo fuera del computed (a nivel de clase o archivo)
+export interface LoteGroup {
+  key: string;
+  nombre: string;
+  ciudad: string;
+  independiente: boolean;
+  colorIndex: number;
+  lotes: LoteDto[];
+}
+
+// Dentro del computed, usar así:
+const map = new Map<string, LoteGroup>();

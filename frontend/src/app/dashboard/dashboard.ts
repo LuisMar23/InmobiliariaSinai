@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import {
@@ -30,6 +30,7 @@ import { BaseChartDirective } from 'ng2-charts';
 import { AuthService } from '../components/services/auth.service';
 import { CotizacionService } from '../features/cotizacion/service/cotizacion.service';
 import { ReservaService } from '../features/reserva/service/reserva.service';
+import { UrbanizacionContextService } from '../core/services/urbanizacion-context.service';
 
 @Component({
   selector: 'app-dashboard',
@@ -46,7 +47,11 @@ export class DashboardComponent implements OnInit {
   faMapMarkedAlt = faMapMarkedAlt;
   faFileInvoiceDollar = faFileInvoiceDollar;
   faCalendarCheck = faCalendarCheck;
+private urbContext = inject(UrbanizacionContextService);
 
+get urbanizacionActiva() {
+  return this.urbContext.urbanizacion();
+}
   usuariosTotales = 0;
   totalClientes = 0;
   totalVentas = 0;

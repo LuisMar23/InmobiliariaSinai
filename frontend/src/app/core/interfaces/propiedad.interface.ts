@@ -14,6 +14,14 @@ export interface PropiedadDto {
   estado: string;
   estadoPropiedad: string;
   encargadoId?: number;
+    urbanizacionId?: number;  
+      urbanizacion?: {                 // ← agregar
+    id: number;
+    uuid: string;
+    nombre: string;
+    ciudad: string;
+    ubicacion: string;
+  };
   encargado?: {
     id: number;
     fullName: string;

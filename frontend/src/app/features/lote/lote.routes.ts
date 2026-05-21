@@ -8,7 +8,7 @@ import { LoteDetail } from './components/lote-detail/lote-detail';
 import { UrbanizacionList } from './components/urbanizacion-list/urbanizacion-list';
 
 const routes: Routes = [
-  { path: '', component: UrbanizacionList, canActivate: [AuthGuard] },
+  { path: '', component:LoteList, canActivate: [AuthGuard] },
   { path: 'lista', component: LoteList, canActivate: [AuthGuard] },
   { path:'detalle/:id',component:LoteDetail,canActivate:[AuthGuard]},
   { path: 'crear', component: LoteCreate, canActivate: [AuthGuard] },
