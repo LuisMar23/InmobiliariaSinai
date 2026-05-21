@@ -59,7 +59,7 @@ onSubmit() {
         this.permisosState.cargar(response.data.permisos);
         this.isLoading = false;
         this._notificationService.showSuccess('¡Bienvenido!');
-        setTimeout(() => this.router.navigate(['/dashboard']), 500);
+        setTimeout(() => this.router.navigate(['/lotes/listaUrbanizaciones']), 500);
       },
       error: (error) => {
         this.isLoading = false;

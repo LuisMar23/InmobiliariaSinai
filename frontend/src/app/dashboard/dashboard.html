@@ -1,5 +1,12 @@
 <div class="p-6 space-y-6 bg-gradient-to-br from-emerald-50 to-teal-100 min-h-screen">
   <!-- Widgets Grid (igual) -->
+ @if (urbanizacionActiva) {
+  <div class="px-4 py-2 mx-3 mb-2 bg-green-50 border border-green-200 rounded-xl">
+    <p class="text-xs text-green-600 font-medium">Proyecto activo</p>
+    <p class="text-sm font-semibold text-green-800">{{ urbanizacionActiva.nombre }}</p>
+    <p class="text-xs text-green-500">{{ urbanizacionActiva.ciudad }}</p>
+  </div>
+}
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
     <div class="bg-white shadow-lg p-6 flex items-center gap-4 border border-emerald-100 rounded-2xl transform hover:shadow-xl hover:scale-105 transition duration-300">
       <div class="bg-emerald-100 text-emerald-600 w-12 h-12 flex items-center justify-center rounded-full">
