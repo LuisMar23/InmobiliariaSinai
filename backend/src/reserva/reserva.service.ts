@@ -1,3 +1,4 @@
+// src/reserva/reserva.service.ts (corregido)
 import {
   Injectable,
   NotFoundException,
@@ -58,14 +59,14 @@ export class ReservasService {
 
   private async verificarYActualizarReservasVencidas() {
     const ahora = this.getCurrentTimeLaPaz();
-    
+
     const reservasVencidas = await this.prisma.reserva.findMany({
       where: {
         estado: EstadoReserva.ACTIVA,
         fechaVencimiento: {
-          lt: ahora
-        }
-      }
+          lt: ahora,
+        },
+      },
     });
 
     for (const reserva of reservasVencidas) {
@@ -93,7 +94,6 @@ export class ReservasService {
         estado: 'DISPONIBLE',
       };
 
-      // Tanto ASESOR como ADMINISTRADOR solo ven los lotes donde son encargados
       if (usuarioRole === 'ASESOR' || usuarioRole === 'ADMINISTRADOR') {
         whereClause.encargadoId = usuarioId;
       }
@@ -117,11 +117,9 @@ export class ReservasService {
               role: true,
             },
           },
+          manzano: true,
         },
-        orderBy: [
-          { urbanizacionId: 'asc' },
-          { numeroLote: 'asc' }
-        ],
+        orderBy: [{ urbanizacionId: 'asc' }, { numeroLote: 'asc' }],
       });
 
       return {
@@ -130,7 +128,9 @@ export class ReservasService {
       };
     } catch (error) {
       console.error('Error en getLotesDisponiblesParaReserva:', error);
-      throw new InternalServerErrorException('Error al obtener lotes disponibles');
+      throw new InternalServerErrorException(
+        'Error al obtener lotes disponibles',
+      );
     }
   }
 
@@ -248,7 +248,8 @@ export class ReservasService {
 
         return {
           success: true,
-          message: 'Reserva creada correctamente. La reserva expirará en 24 horas.',
+          message:
+            'Reserva creada correctamente. La reserva expirará en 24 horas.',
           data: reserva,
         };
       });
@@ -316,6 +317,7 @@ export class ReservasService {
                     role: true,
                   },
                 },
+                manzano: true,
               },
             });
 
@@ -394,6 +396,7 @@ export class ReservasService {
                 role: true,
               },
             },
+            manzano: true,
           },
         });
 
@@ -515,7 +518,8 @@ export class ReservasService {
         if (updateReservaDto.fechaInicio !== undefined) {
           const fechaInicio = new Date(updateReservaDto.fechaInicio);
           dataActualizada.fechaInicio = fechaInicio;
-          dataActualizada.fechaVencimiento = this.calcularFechaVencimiento(fechaInicio);
+          dataActualizada.fechaVencimiento =
+            this.calcularFechaVencimiento(fechaInicio);
         }
 
         if (Object.keys(dataActualizada).length === 0) {
@@ -677,6 +681,7 @@ export class ReservasService {
                     role: true,
                   },
                 },
+                manzano: true,
               },
             });
 

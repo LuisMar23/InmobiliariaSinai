@@ -7,7 +7,13 @@ import { LoteService } from '../../service/lote.service';
 import { UrbanizacionService } from '../../../urbanizacion/services/urbanizacion.service';
 import { UrbanizacionDto } from '../../../../core/interfaces/urbanizacion.interface';
 import { UserService } from '../../../users/services/users.service';
-import { ModalConfig, SeleccionModalComponent } from "../../../../components/seleccion-modal/seleccion-modal";
+import { ManzanoDto } from '../../../../core/interfaces/manzano.interface';
+import {
+  ModalConfig,
+  SeleccionModalComponent,
+} from '../../../../components/seleccion-modal/seleccion-modal';
+import { ManzanoService } from '../../../manzano/service/manzano.service';
+import { CreateLoteDto } from '../../../../core/interfaces/lote.interface';
 
 @Component({
   selector: 'app-lote-create',
@@ -16,17 +22,19 @@ import { ModalConfig, SeleccionModalComponent } from "../../../../components/sel
   templateUrl: './lote-create.html',
 })
 export class LoteCreate implements OnInit {
-  loteForm: FormGroup;
+  loteForm!: FormGroup;
   enviando = signal<boolean>(false);
   urbanizaciones = signal<UrbanizacionDto[]>([]);
   asesores = signal<any[]>([]);
+  todosManzanos = signal<ManzanoDto[]>([]);
+  manzanosFiltrados = signal<ManzanoDto[]>([]);
   searchUrbanizacion = signal<string>('');
-  showUrbanizacionDropdown = signal<boolean>(false);
   router = inject(Router);
   private fb = inject(FormBuilder);
   private loteSvc = inject(LoteService);
   private urbanizacionSvc = inject(UrbanizacionService);
   private userSvc = inject(UserService);
+  private manzanoSvc = inject(ManzanoService);
   private notificationService = inject(NotificationService);
 
   constructor() {
@@ -36,6 +44,7 @@ export class LoteCreate implements OnInit {
   ngOnInit(): void {
     this.cargarUrbanizaciones();
     this.cargarAsesores();
+    this.cargarTodosManzanos();
     this.setupFormListeners();
   }
 
@@ -49,7 +58,7 @@ export class LoteCreate implements OnInit {
       ciudad: [''],
       descripcion: [''],
       ubicacion: [''],
-      manzano:[''],
+      manzanoId: [''],
       estado: ['DISPONIBLE'],
       encargadoId: [''],
     });
@@ -62,19 +71,42 @@ export class LoteCreate implements OnInit {
           this.asesores.set(response.data.users);
         }
       },
-      error: (err) => {
-        console.error('Error al cargar asesores:', err);
+      error: () => {
         this.notificationService.showError('No se pudieron cargar los encargados disponibles');
       },
     });
+  }
+
+  cargarTodosManzanos(): void {
+    this.manzanoSvc.getAll().subscribe({
+      next: (manzanos) => {
+        this.todosManzanos.set(manzanos);
+        this.filtrarManzanosPorUrbanizacion(this.loteForm.get('urbanizacionId')?.value);
+      },
+      error: () => console.error('Error al cargar manzanos'),
+    });
+  }
+
+  filtrarManzanosPorUrbanizacion(urbanizacionId: string | number): void {
+    if (!urbanizacionId) {
+      this.manzanosFiltrados.set([]);
+      return;
+    }
+    const id = Number(urbanizacionId);
+    const filtrados = this.todosManzanos().filter((m) => m.urbanizacionId === id);
+    this.manzanosFiltrados.set(filtrados);
   }
 
   setupFormListeners(): void {
     this.loteForm.get('esIndependiente')?.valueChanges.subscribe((esIndependiente) => {
       this.onEsIndependienteChange(esIndependiente);
     });
-    this.loteForm.get('urbanizacionId')?.valueChanges.subscribe(() => {
+    this.loteForm.get('urbanizacionId')?.valueChanges.subscribe((urbanizacionId) => {
       this.generarNumeroLoteAutomatico();
+      this.filtrarManzanosPorUrbanizacion(urbanizacionId);
+      if (!urbanizacionId) {
+        this.loteForm.patchValue({ manzanoId: '' });
+      }
     });
     this.onEsIndependienteChange(this.loteForm.get('esIndependiente')?.value);
   }
@@ -84,8 +116,7 @@ export class LoteCreate implements OnInit {
       next: (response) => {
         this.urbanizaciones.set(response.data);
       },
-      error: (err) => {
-        console.error('Error al cargar urbanizaciones:', err);
+      error: () => {
         this.notificationService.showError('No se pudieron cargar las urbanizaciones');
       },
     });
@@ -100,18 +131,17 @@ export class LoteCreate implements OnInit {
         next: (lotes) => {
           const lotesIndependientes = lotes.filter((lote) => lote.esIndependiente);
           const numeros = lotesIndependientes
-            .map(lote => {
+            .map((lote) => {
               const match = lote.numeroLote?.match(/\d+/);
               return match ? parseInt(match[0]) : 0;
             })
-            .filter(num => !isNaN(num));
+            .filter((num) => !isNaN(num));
           const maxNumero = numeros.length > 0 ? Math.max(...numeros) : 0;
           const siguienteNumero = maxNumero + 1;
           const numeroFormateado = `Lote-${siguienteNumero.toString().padStart(3, '0')}`;
           this.loteForm.patchValue({ numeroLote: numeroFormateado }, { emitEvent: false });
         },
-        error: (err) => {
-          console.error('Error al cargar lotes:', err);
+        error: () => {
           this.loteForm.patchValue({ numeroLote: 'Lote-001' }, { emitEvent: false });
         },
       });
@@ -119,18 +149,17 @@ export class LoteCreate implements OnInit {
       this.loteSvc.getAll(Number(urbanizacionId)).subscribe({
         next: (lotes) => {
           const numeros = lotes
-            .map(lote => {
+            .map((lote) => {
               const match = lote.numeroLote?.match(/\d+/);
               return match ? parseInt(match[0]) : 0;
             })
-            .filter(num => !isNaN(num));
+            .filter((num) => !isNaN(num));
           const maxNumero = numeros.length > 0 ? Math.max(...numeros) : 0;
           const siguienteNumero = maxNumero + 1;
           const numeroFormateado = `Lote-${siguienteNumero.toString().padStart(3, '0')}`;
           this.loteForm.patchValue({ numeroLote: numeroFormateado }, { emitEvent: false });
         },
-        error: (err) => {
-          console.error('Error al cargar lotes:', err);
+        error: () => {
           this.loteForm.patchValue({ numeroLote: 'Lote-001' }, { emitEvent: false });
         },
       });
@@ -140,20 +169,23 @@ export class LoteCreate implements OnInit {
   onEsIndependienteChange(esIndependiente: boolean): void {
     const urbanizacionIdControl = this.loteForm.get('urbanizacionId');
     const ciudadControl = this.loteForm.get('ciudad');
+    const manzanoIdControl = this.loteForm.get('manzanoId');
 
     if (esIndependiente) {
       urbanizacionIdControl?.clearValidators();
       urbanizacionIdControl?.setValue('');
       ciudadControl?.setValidators([Validators.required]);
+      manzanoIdControl?.clearValidators();
+      manzanoIdControl?.setValue('');
+      this.manzanosFiltrados.set([]);
     } else {
       urbanizacionIdControl?.setValidators([Validators.required]);
       ciudadControl?.clearValidators();
       ciudadControl?.setValue('');
+      manzanoIdControl?.setValidators([]);
     }
-
     urbanizacionIdControl?.updateValueAndValidity();
     ciudadControl?.updateValueAndValidity();
-
     this.generarNumeroLoteAutomatico();
   }
 
@@ -164,8 +196,7 @@ export class LoteCreate implements OnInit {
         ciudad: urbanizacion.ciudad,
       });
       this.searchUrbanizacion.set(urbanizacion.nombre || '');
-      this.showUrbanizacionDropdown.set(false);
-      this.generarNumeroLoteAutomatico();
+      this.filtrarManzanosPorUrbanizacion(urbanizacion.id);
     }
   }
 
@@ -178,15 +209,19 @@ export class LoteCreate implements OnInit {
 
     this.enviando.set(true);
     const formValue = this.loteForm.value;
-    const loteData = {
-      ...formValue,
-      urbanizacionId: formValue.esIndependiente ? null : Number(formValue.urbanizacionId),
+    const loteData: CreateLoteDto = {
+      numeroLote: formValue.numeroLote,
       superficieM2: Number(formValue.superficieM2),
       precioBase: Number(formValue.precioBase),
       esIndependiente: Boolean(formValue.esIndependiente),
+      estado: formValue.estado,
+      descripcion: formValue.descripcion,
+      ubicacion: formValue.ubicacion,
+      ciudad: formValue.ciudad,
+      urbanizacionId: formValue.esIndependiente ? undefined : Number(formValue.urbanizacionId),
       encargadoId: formValue.encargadoId ? Number(formValue.encargadoId) : undefined,
+      manzanoId: formValue.manzanoId ? Number(formValue.manzanoId) : undefined,
     };
-    console.log(loteData)
     this.loteSvc.create(loteData).subscribe({
       next: (response: any) => {
         this.enviando.set(false);
@@ -231,11 +266,6 @@ export class LoteCreate implements OnInit {
       : 'Lote en Urbanización';
   }
 
-  limpiarBusquedaUrbanizacion(): void {
-    this.searchUrbanizacion.set('');
-    this.loteForm.patchValue({ urbanizacionId: '' });
-  }
-
   @ViewChild('urbanizacionModal') urbanizacionModal!: SeleccionModalComponent;
   urbanizacionModalConfig: ModalConfig = {
     title: 'Seleccionar Urbanización',
@@ -245,6 +275,6 @@ export class LoteCreate implements OnInit {
       { key: 'nombre', label: 'Nombre' },
       { key: 'ciudad', label: 'Ciudad' },
       { key: 'ubicacion', label: 'Ubicación' },
-    ]
+    ],
   };
 }

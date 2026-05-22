@@ -1,6 +1,6 @@
-import { Component, OnInit, signal, computed, inject } from '@angular/core';
+import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterLink, RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import {
@@ -43,9 +43,10 @@ export interface CiudadGroup {
   selector: 'app-urbanizacion-list',
   imports: [FontAwesomeModule, FormsModule, RouterModule, CommonModule],
   templateUrl: './urbanizacion-list.html',
-  styleUrl: './urbanizacion-list.css',
+  styleUrls: ['./urbanizacion-list.css'],
 })
-export class UrbanizacionList {
+export class UrbanizacionList implements OnInit {
+  // Iconos
   faMapMarkerAlt = faMapMarkerAlt;
   faBuilding = faBuilding;
   faEdit = faEdit;
@@ -55,16 +56,22 @@ export class UrbanizacionList {
   faSpinner = faSpinner;
   faPlus = faPlus;
   faFolderOpen = faFolderOpen;
+  faSignOut = faSignOutAlt;
+
   cargando = signal(true);
   error = signal<string | null>(null);
   urbanizaciones = signal<Urbanizacion[]>([]);
   busqueda = signal('');
   eliminandoId = signal<number | null>(null);
   lotes = signal<LoteDto[]>([]);
-  faSignOut = faSignOutAlt;
 
   private authService = inject(AuthService);
+  private notificationService = inject(NotificationService);
+  private router = inject(Router);
+  private loteService = inject(LoteService);
+  private urbContext = inject(UrbanizacionContextService);
 
+  // ✅ Groups computados
   urbanizacionGroups = computed<UrbanizacionGroup[]>(() => {
     const q = this.busqueda().toLowerCase().trim();
     const todos = this.lotes();
@@ -75,7 +82,7 @@ export class UrbanizacionList {
             l.numeroLote.toLowerCase().includes(q) ||
             l.urbanizacion?.nombre.toLowerCase().includes(q) ||
             l.ciudad.toLowerCase().includes(q) ||
-            l.manzano?.toLowerCase().includes(q),
+            l.manzano?.nombre?.toLowerCase().includes(q), // ✅ corregido
         )
       : todos;
 
@@ -105,10 +112,6 @@ export class UrbanizacionList {
 
   totalLotes = computed(() => this.lotes().length);
   totalUrbanizaciones = computed(() => this.urbanizacionGroups().length);
-
-  private notificationService = inject(NotificationService);
-  private router = inject(Router);
-  private loteService = inject(LoteService);
 
   readonly COLORES = [
     { bg: '#E6F1FB', border: '#B5D4F4', text: '#185FA5' },
@@ -141,25 +144,17 @@ export class UrbanizacionList {
       },
     });
   }
+
   contarEstado(lotes: LoteDto[], estado: string): number {
     return lotes.filter((l) => l.estado === estado).length;
   }
-  private urbContext = inject(UrbanizacionContextService);
 
-  // irALotes(uuid: string | undefined): void {
-  //   if (!uuid) {
-  //     this.router.navigate(['/lotes/lista'], { queryParams: { independientes: true } });
-  //     return;
-  //   }
-  //   this.router.navigate(['/lotes/lista'], { queryParams: { urbanizacion: uuid } });
-  // }
   irALotes(uuid: string | undefined): void {
     if (!uuid) {
       this.router.navigate(['/lotes/lista'], { queryParams: { independientes: true } });
       return;
     }
 
-    // Guardar contexto antes de navegar
     const group = this.urbanizacionGroups().find((g) => g.uuid === uuid);
     if (group) {
       const urbId = group.lotes[0]?.urbanizacion?.id;
@@ -173,9 +168,7 @@ export class UrbanizacionList {
       }
     }
 
-    this.router.navigate(['/dashboard']);
-
-    this.router.navigate(['/dashboard']);
+    this.router.navigate(['/lotes/lista']);
   }
 
   cerrarSesion(): void {

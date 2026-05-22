@@ -178,7 +178,7 @@ model Lote {
   precioBase      Decimal        @map("precio_base") @db.Decimal(12, 2)
   descripcion     String?
   ubicacion       String?
-  manzano         String?
+  manzanoId     Int?     
   ciudad          String
   latitud         Decimal?       @db.Decimal(10, 7)
   longitud        Decimal?       @db.Decimal(10, 7)
@@ -195,6 +195,7 @@ model Lote {
   ventas        Venta[]         @relation("VentasLote")
   reservas      Reserva[]       @relation("ReservasLote")
   visitas       Visita[]        @relation("VisitasLote")
+  manzano Manzano? @relation(fields: [manzanoId], references: [id])
   LotePromocion LotePromocion[]
 }
 
@@ -215,6 +216,7 @@ model Urbanizacion {
   Promocion         Promocion[]
   cajas             Caja[]
   propiedades       Propiedad[]
+  manzanos          Manzano[] 
 }
 
 model Cotizacion {
@@ -667,4 +669,18 @@ model UsuarioUrbanizacion {
 
   @@unique([usuarioId, urbanizacionId])
   @@map("usuario_urbanizacion")
+}
+
+model Manzano {
+  id             Int      @id @default(autoincrement())
+  uuid           String   @unique @default(uuid())
+  nombre         String
+  urbanizacionId Int      @map("urbanizacion_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  urbanizacion Urbanizacion @relation(fields: [urbanizacionId], references: [id], onDelete: Cascade)
+  lotes        Lote[]
+
+  @@map("manzanos")
 }

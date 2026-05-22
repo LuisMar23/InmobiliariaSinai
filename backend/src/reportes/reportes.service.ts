@@ -1,16 +1,13 @@
+// src/reportes/reportes-ventas.service.ts (corregido)
 import { Injectable } from '@nestjs/common';
 import { Prisma, TipoInmueble, EstadoVenta } from 'generated/prisma';
 import { PrismaService } from 'src/config/prisma.service';
 import { FiltrosReporteDto, FiltrosClienteDto } from './dto/create-reporte.dto';
 
-
 @Injectable()
 export class ReportesVentasService {
   constructor(private readonly prisma: PrismaService) {}
 
-  // ─────────────────────────────────────────────
-  //  HELPER: WHERE base para Venta
-  // ─────────────────────────────────────────────
   private buildWhereVenta(filtros: FiltrosReporteDto): Prisma.VentaWhereInput {
     const where: Prisma.VentaWhereInput = {};
 
@@ -32,7 +29,7 @@ export class ReportesVentasService {
     }
 
     if (filtros.manzano) {
-      where.lote = { manzano: filtros.manzano };
+      where.lote = { manzano: { nombre: filtros.manzano } };
     }
 
     if (filtros.ciudad) {
@@ -45,13 +42,16 @@ export class ReportesVentasService {
     return where;
   }
 
-  // ─────────────────────────────────────────────
-  //  INCLUDE reutilizable
-  // ─────────────────────────────────────────────
   private get includeVentaBase() {
     return {
       cliente: {
-        select: { id: true, fullName: true, ci: true, telefono: true, email: true },
+        select: {
+          id: true,
+          fullName: true,
+          ci: true,
+          telefono: true,
+          email: true,
+        },
       },
       asesor: {
         select: { id: true, fullName: true, telefono: true },
@@ -79,9 +79,6 @@ export class ReportesVentasService {
     } satisfies Prisma.VentaInclude;
   }
 
-  // ─────────────────────────────────────────────
-  //  1. REPORTE DE VENTAS — resumen + listado
-  // ─────────────────────────────────────────────
   async getReporteVentas(filtros: FiltrosReporteDto) {
     const where = this.buildWhereVenta(filtros);
 
@@ -109,9 +106,11 @@ export class ReportesVentasService {
       totalVentas: ventas.length,
       montoTotal: ventas.reduce((s, v) => s + Number(v.precioFinal), 0),
       porEstado: {
-        pendiente: ventas.filter((v) => v.estado === EstadoVenta.PENDIENTE).length,
-        pagado:    ventas.filter((v) => v.estado === EstadoVenta.PAGADO).length,
-        cancelado: ventas.filter((v) => v.estado === EstadoVenta.CANCELADO).length,
+        pendiente: ventas.filter((v) => v.estado === EstadoVenta.PENDIENTE)
+          .length,
+        pagado: ventas.filter((v) => v.estado === EstadoVenta.PAGADO).length,
+        cancelado: ventas.filter((v) => v.estado === EstadoVenta.CANCELADO)
+          .length,
       },
       montoPagado: ventas
         .filter((v) => v.estado === EstadoVenta.PAGADO)
@@ -124,9 +123,6 @@ export class ReportesVentasService {
     return { resumen, ventas };
   }
 
-  // ─────────────────────────────────────────────
-  //  2. DETALLE DE VENTAS
-  // ─────────────────────────────────────────────
   async getDetalleVentas(filtros: FiltrosReporteDto) {
     const where = this.buildWhereVenta(filtros);
 
@@ -165,9 +161,6 @@ export class ReportesVentasService {
     });
   }
 
-  // ─────────────────────────────────────────────
-  //  3. VENTAS POR VENDEDOR
-  // ─────────────────────────────────────────────
   async getVentasPorVendedor(filtros: FiltrosReporteDto) {
     const where = this.buildWhereVenta(filtros);
 
@@ -223,13 +216,12 @@ export class ReportesVentasService {
         totalVentas: ventas.length,
         montoTotal: ventas.reduce((s, v) => s + Number(v.precioFinal), 0),
       },
-      vendedores: Array.from(mapa.values()).sort((a, b) => b.montoTotal - a.montoTotal),
+      vendedores: Array.from(mapa.values()).sort(
+        (a, b) => b.montoTotal - a.montoTotal,
+      ),
     };
   }
 
-  // ─────────────────────────────────────────────
-  //  4. CUOTAS POR COBRAR
-  // ─────────────────────────────────────────────
   async getCuotasPorCobrar(filtros: FiltrosReporteDto) {
     const whereVenta = this.buildWhereVenta(filtros);
 
@@ -241,8 +233,10 @@ export class ReportesVentasService {
       include: {
         venta: {
           include: {
-            cliente: { select: { id: true, fullName: true, ci: true, telefono: true } },
-            asesor:  { select: { id: true, fullName: true } },
+            cliente: {
+              select: { id: true, fullName: true, ci: true, telefono: true },
+            },
+            asesor: { select: { id: true, fullName: true } },
             lote: {
               select: {
                 numeroLote: true,
@@ -260,9 +254,9 @@ export class ReportesVentasService {
     });
 
     const resultado = planes.map((plan) => {
-      const totalPagado     = plan.pagos.reduce((s, p) => s + Number(p.monto), 0);
-      const saldoPendiente  = Number(plan.total) - totalPagado;
-      const estaVencido     = new Date(plan.fecha_vencimiento) < new Date();
+      const totalPagado = plan.pagos.reduce((s, p) => s + Number(p.monto), 0);
+      const saldoPendiente = Number(plan.total) - totalPagado;
+      const estaVencido = new Date(plan.fecha_vencimiento) < new Date();
 
       return {
         planId: plan.id_plan_pago,
@@ -298,19 +292,18 @@ export class ReportesVentasService {
     });
 
     const resumen = {
-      totalPlanes:          resultado.length,
-      totalPorCobrar:       resultado.reduce((s, p) => s + p.saldoPendiente, 0),
-      planesVencidos:       resultado.filter((p) => p.estaVencido).length,
-      montoPlanesVencidos:  resultado.filter((p) => p.estaVencido).reduce((s, p) => s + p.saldoPendiente, 0),
-      planesAlDia:          resultado.filter((p) => !p.estaVencido).length,
+      totalPlanes: resultado.length,
+      totalPorCobrar: resultado.reduce((s, p) => s + p.saldoPendiente, 0),
+      planesVencidos: resultado.filter((p) => p.estaVencido).length,
+      montoPlanesVencidos: resultado
+        .filter((p) => p.estaVencido)
+        .reduce((s, p) => s + p.saldoPendiente, 0),
+      planesAlDia: resultado.filter((p) => !p.estaVencido).length,
     };
 
     return { resumen, cuotas: resultado };
   }
 
-  // ─────────────────────────────────────────────
-  //  5. VENTAS COMPLETADAS (estado PAGADO)
-  // ─────────────────────────────────────────────
   async getVentasCompletadas(filtros: FiltrosReporteDto) {
     const where = this.buildWhereVenta(filtros);
     where.estado = EstadoVenta.PAGADO;
@@ -338,9 +331,6 @@ export class ReportesVentasService {
     };
   }
 
-  // ─────────────────────────────────────────────
-  //  6. VENTAS POR CLIENTE
-  // ─────────────────────────────────────────────
   async getVentasPorCliente(filtros: FiltrosClienteDto) {
     const clienteId = Number(filtros.clienteId);
 
@@ -407,11 +397,13 @@ export class ReportesVentasService {
     ]);
 
     const resumen = {
-      totalVentas:      ventas.length,
-      montoTotal:       ventas.reduce((s, v) => s + Number(v.precioFinal), 0),
-      ventasPagadas:    ventas.filter((v) => v.estado === EstadoVenta.PAGADO).length,
-      ventasPendientes: ventas.filter((v) => v.estado === EstadoVenta.PENDIENTE).length,
-      tieneCredito:     ventas.some((v) => v.planPago !== null),
+      totalVentas: ventas.length,
+      montoTotal: ventas.reduce((s, v) => s + Number(v.precioFinal), 0),
+      ventasPagadas: ventas.filter((v) => v.estado === EstadoVenta.PAGADO)
+        .length,
+      ventasPendientes: ventas.filter((v) => v.estado === EstadoVenta.PENDIENTE)
+        .length,
+      tieneCredito: ventas.some((v) => v.planPago !== null),
     };
 
     return { cliente, resumen, ventas };

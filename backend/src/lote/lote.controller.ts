@@ -12,14 +12,14 @@ import {
   UseGuards,
   Request,
 } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
 import { LoteService } from './lote.service';
 import { CreateLoteDto } from './dto/create-lote.dto';
 import { UpdateLoteDto } from './dto/update-lote.dto';
-import { AuthGuard } from '@nestjs/passport';
 import { PrismaService } from 'src/config/prisma.service';
 
 @Controller('lotes')
-  @UseGuards(AuthGuard('jwt'))
+@UseGuards(AuthGuard('jwt'))
 @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
 export class LoteController {
   constructor(
@@ -27,15 +27,16 @@ export class LoteController {
     private readonly prisma: PrismaService,
   ) {}
 
-  // ===== RUTAS PÚBLICAS =====
   @Get('publicos/todos')
   async findAllPublicos() {
     return this.loteService.findAllPublicos();
   }
-@Get('sin-urbanizacion')
-async getLotesSinUrbanizacion() {
-  return this.loteService.getLotesSinUrbanizacion();
-}
+
+  @Get('sin-urbanizacion')
+  async getLotesSinUrbanizacion() {
+    return this.loteService.getLotesSinUrbanizacion();
+  }
+
   @Get('publicos/uuid/:id')
   async findOneUUIDPublic(@Param('id') id: string) {
     return this.loteService.findOneUUID(id);
@@ -46,16 +47,13 @@ async getLotesSinUrbanizacion() {
     return this.loteService.obtenerLotesConPromocion();
   }
 
-  // ===== RUTAS PROTEGIDAS =====
   @Post()
-
   create(@Body() createLoteDto: CreateLoteDto, @Request() req) {
     createLoteDto.usuarioId = req.user.id;
     return this.loteService.create(createLoteDto);
   }
 
   @Get('con-promocion')
-  @UseGuards(AuthGuard('jwt'))
   async obtenerLotesConPromocion() {
     return this.loteService.obtenerLotesConPromocion();
   }
@@ -89,44 +87,36 @@ async getLotesSinUrbanizacion() {
     return ciudadesUnicas;
   }
 
-@Get()
-findAll(
-  @Request() req,
-  @Query('urbanizacionId') urbanizacionId?: string,
-) {
-  return this.loteService.findAll(
-    urbanizacionId ? +urbanizacionId : undefined,
-    req.user.id,
-    req.user.role,
-  );
-}
+  @Get()
+  findAll(@Request() req, @Query('urbanizacionId') urbanizacionId?: string) {
+    return this.loteService.findAll(
+      urbanizacionId ? +urbanizacionId : undefined,
+      req.user.id,
+      req.user.role,
+    );
+  }
 
   @Get('independientes/todos')
-  @UseGuards(AuthGuard('jwt'))
   findAllIndependientes() {
     return this.loteService.findAllIndependientes();
   }
 
   @Get('para-cotizacion')
-  @UseGuards(AuthGuard('jwt'))
   getLotesParaCotizacion() {
     return this.loteService.getLotesParaCotizacion();
   }
 
   @Get(':id')
-  @UseGuards(AuthGuard('jwt'))
   findOne(@Param('id') id: string) {
     return this.loteService.findOne(+id);
   }
 
   @Get('uuid/:id')
-  @UseGuards(AuthGuard('jwt'))
   findOneUUID(@Param('id') id: string) {
     return this.loteService.findOneUUID(id);
   }
 
   @Patch(':id')
-  @UseGuards(AuthGuard('jwt'))
   update(
     @Param('id') id: string,
     @Body() updateLoteDto: UpdateLoteDto,
@@ -137,13 +127,11 @@ findAll(
   }
 
   @Delete(':id')
-  @UseGuards(AuthGuard('jwt'))
   remove(@Param('id') id: string, @Request() req) {
     return this.loteService.remove(+id, req.user.id);
   }
 
   @Patch(':id/asignar-encargado')
-  @UseGuards(AuthGuard('jwt'))
   asignarEncargado(
     @Param('id') id: string,
     @Body() body: { encargadoId: number },
@@ -151,23 +139,4 @@ findAll(
   ) {
     return this.loteService.asignarEncargado(+id, body.encargadoId, req.user.id);
   }
-
-  // @Get()
-  // @UseGuards(AuthGuard('jwt'))
-  // getAll(
-  //   @Request() req,
-  //   @Query('page') page?: string,
-  //   @Query('limit') limit?: string,
-  // ) {
-  //   const pageNum = page ? +page : 1;
-  //   const limitNum = limit ? +limit : 10;
-  //   return this.loteService.findAllUrba(
-  //     pageNum,
-  //     limitNum,
-  //     req.user.id, // ← agregar
-  //     req.user.role,
-  //     req.user.ciudadAsignada,
-  //   );
-  // }
-
 }

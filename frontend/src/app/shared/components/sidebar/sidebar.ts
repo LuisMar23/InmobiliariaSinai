@@ -40,6 +40,7 @@ import {
   faUsersCog,
   faChevronDown,
   faChevronUp,
+  faTree,
 } from '@fortawesome/free-solid-svg-icons';
 import { AuthService } from '../../../components/services/auth.service';
 import { PermisosStateService } from '../../../core/services/permisosState.service';
@@ -76,6 +77,7 @@ export class Sidebar implements OnInit {
   faUsersCog = faUsersCog;
   faChevronDown = faChevronDown;
   faChevronUp = faChevronUp;
+  faTree = faTree;
 
   @Output() sidebarToggled = new EventEmitter<boolean>();
   private permisosState = inject(PermisosStateService);
@@ -95,10 +97,21 @@ export class Sidebar implements OnInit {
     {
       label: 'Comercial',
       items: [
-        { label: 'Urbanizaciones', icon: faCity, route: '/urbanizaciones', clave: 'urbanizaciones' },
+        {
+          label: 'Urbanizaciones',
+          icon: faCity,
+          route: '/urbanizaciones',
+          clave: 'urbanizaciones',
+        },
         { label: 'Lotes', icon: faMapMarkedAlt, route: '/lotes', clave: 'lotes' },
+        { label: 'Manzanos', icon: faTree, route: '/manzanos', clave: 'manzanos' },
         { label: 'Propiedades', icon: faHouse, route: '/propiedades', clave: 'propiedades' },
-        { label: 'Cotizaciones', icon: faFileInvoiceDollar, route: '/cotizaciones', clave: 'cotizaciones' },
+        {
+          label: 'Cotizaciones',
+          icon: faFileInvoiceDollar,
+          route: '/cotizaciones',
+          clave: 'cotizaciones',
+        },
         { label: 'Ventas', icon: faReceipt, route: '/ventas', clave: 'ventas' },
         { label: 'Reservas', icon: faCalendarCheck, route: '/reservas', clave: 'reservas' },
         { label: 'Visitas', icon: faEye, route: '/visitas', clave: 'visitas' },
