@@ -7,6 +7,7 @@ import { LoteDto } from '../../../../core/interfaces/lote.interface';
 import { CotizacionService } from '../../service/cotizacion.service';
 import { LoteService } from '../../../lote/service/lote.service';
 import { AuthService } from '../../../../components/services/auth.service';
+import { UrbanizacionContextService } from '../../../../core/services/urbanizacion-context.service';
 
 @Component({
   selector: 'app-cotizacion-create',
@@ -27,6 +28,7 @@ export class CotizacionCreate implements OnInit {
   private loteSvc = inject(LoteService);
   private notificationService = inject(NotificationService);
   private authService = inject(AuthService);
+  private urbanizacionContext = inject(UrbanizacionContextService);
 
   constructor() {
     this.cotizacionForm = this.crearFormularioCotizacion();
@@ -49,6 +51,8 @@ export class CotizacionCreate implements OnInit {
   }
 
   cargarLotes(): void {
+    const urbanizacionActiva = this.urbanizacionContext.urbanizacion();
+
     this.loteSvc.getAll().subscribe({
       next: (response: any) => {
         let lotes: any[] = [];
@@ -62,9 +66,15 @@ export class CotizacionCreate implements OnInit {
           return;
         }
 
-        const lotesDisponibles = lotes.filter(
+        let lotesDisponibles = lotes.filter(
           (lote) => lote.estado === 'DISPONIBLE' || lote.estado === 'CON_OFERTA'
         );
+
+        if (urbanizacionActiva) {
+          lotesDisponibles = lotesDisponibles.filter(
+            (lote) => lote.urbanizacion?.id === urbanizacionActiva.id
+          );
+        }
 
         this.lotes.set(lotesDisponibles);
 

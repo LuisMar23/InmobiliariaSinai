@@ -39,7 +39,7 @@ import {
   faShieldAlt,
   faUsersCog,
   faChevronDown,
-  faChevronUp, // Icono para Propiedades
+  faChevronUp,
 } from '@fortawesome/free-solid-svg-icons';
 import { AuthService } from '../../../components/services/auth.service';
 import { PermisosStateService } from '../../../core/services/permisosState.service';
@@ -49,7 +49,7 @@ import { PermisosStateService } from '../../../core/services/permisosState.servi
   standalone: true,
   imports: [CommonModule, RouterModule, FontAwesomeModule],
   templateUrl: './sidebar.html',
-  styleUrl: './sidebar.css',
+  styleUrls: ['./sidebar.css'],
 })
 export class Sidebar implements OnInit {
   faTimes = faTimes;
@@ -69,7 +69,7 @@ export class Sidebar implements OnInit {
   faHomeUser = faHomeUser;
   faCog = faCog;
   faTag = faTag;
-  faHouse = faHouse; // Icono para Propiedades
+  faHouse = faHouse;
   faChartBar = faChartBar;
   faShieldAlt = faShieldAlt;
   faMoneyBillWave = faMoneyBillWave;
@@ -85,7 +85,6 @@ export class Sidebar implements OnInit {
   isCollapsed = false;
   isMobileOpen = false;
 
-  // Menú - SOLO modificar la opción de Usuarios
   menuGroups = [
     {
       label: '',
@@ -96,20 +95,10 @@ export class Sidebar implements OnInit {
     {
       label: 'Comercial',
       items: [
-        {
-          label: 'Urbanizaciones',
-          icon: faCity,
-          route: '/urbanizaciones',
-          clave: 'urbanizaciones',
-        },
+        { label: 'Urbanizaciones', icon: faCity, route: '/urbanizaciones', clave: 'urbanizaciones' },
         { label: 'Lotes', icon: faMapMarkedAlt, route: '/lotes', clave: 'lotes' },
         { label: 'Propiedades', icon: faHouse, route: '/propiedades', clave: 'propiedades' },
-        {
-          label: 'Cotizaciones',
-          icon: faFileInvoiceDollar,
-          route: '/cotizaciones',
-          clave: 'cotizaciones',
-        },
+        { label: 'Cotizaciones', icon: faFileInvoiceDollar, route: '/cotizaciones', clave: 'cotizaciones' },
         { label: 'Ventas', icon: faReceipt, route: '/ventas', clave: 'ventas' },
         { label: 'Reservas', icon: faCalendarCheck, route: '/reservas', clave: 'reservas' },
         { label: 'Visitas', icon: faEye, route: '/visitas', clave: 'visitas' },
@@ -122,11 +111,11 @@ export class Sidebar implements OnInit {
         { label: 'Caja', icon: faCashRegister, route: '/caja', clave: 'caja' },
         { label: 'Gastos', icon: faMoneyBillWave, route: '/egresos', clave: 'egresos' },
         { label: 'Créditos', icon: faHandHoldingUsd, route: '/creditos', clave: 'creditos' },
-        { label: 'Cobros', icon:faMoneyBillWave, route: '/cobros', clave: 'cobros' },
+        { label: 'Cobros', icon: faMoneyBillWave, route: '/cobros', clave: 'cobros' },
       ],
     },
     {
-      label: 'Reportes', // ← grupo propio
+      label: 'Reportes',
       items: [{ label: 'Reportes', icon: faChartBar, route: '/reportes', clave: 'reportes' }],
     },
     {
@@ -138,23 +127,22 @@ export class Sidebar implements OnInit {
       ],
     },
   ];
-  filteredMenu: any[] = [];
 
-  constructor(private authService: AuthService) {
-    this.imagen = 'assets/logoSinai.jpg';
-  }
+  constructor(private authService: AuthService) {}
 
   ngOnInit() {
     this.currentUser = this.authService.getCurrentUser();
   }
+
   get filteredGroups() {
     return this.menuGroups
       .map((group) => ({
         ...group,
         items: group.items.filter((item) => this.permisosState.tieneAcceso(item.clave)),
       }))
-      .filter((group) => group.items.length > 0); // oculta el grupo si no tiene ningún item
+      .filter((group) => group.items.length > 0);
   }
+
   private openGroups = new Set<string>(['Comercial', 'Finanzas', 'Reportes', 'Gestión']);
 
   toggleSidebar() {
@@ -165,6 +153,7 @@ export class Sidebar implements OnInit {
   toggleMobile() {
     this.isMobileOpen = !this.isMobileOpen;
   }
+
   toggleGroup(label: string) {
     if (this.openGroups.has(label)) {
       this.openGroups.delete(label);
