@@ -74,7 +74,9 @@ export interface FiltrosReporteDto {
   tipoVenta?: string;
   asesorId?: number;
   manzano?: string;
+  urbanizacionId?: number;
   ciudad?: string;
+  global?: boolean;
 }
 
 export interface FiltrosClienteDto {
@@ -315,11 +317,11 @@ export type TipoInmueble = 'LOTE' | 'PROPIEDAD';
 // UTILITY TYPES
 // ============================================
 
-export type ReporteData = 
-  | ReporteVentasResponse 
-  | VentasPorVendedorResponse 
-  | CuotasPorCobrarResponse 
-  | VentasCompletadasResponse 
+export type ReporteData =
+  | ReporteVentasResponse
+  | VentasPorVendedorResponse
+  | CuotasPorCobrarResponse
+  | VentasCompletadasResponse
   | VentasPorClienteResponse
   | DetalleVenta[];
 

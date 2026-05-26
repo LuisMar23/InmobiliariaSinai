@@ -40,6 +40,11 @@ import {
   faUsersCog,
   faChevronDown,
   faChevronUp,
+  faLock,
+  faStore,
+  faPiggyBank,
+  faChartColumn,
+  faScrewdriverWrench,
   faTree,
 } from '@fortawesome/free-solid-svg-icons';
 import { AuthService } from '../../../components/services/auth.service';
@@ -53,40 +58,55 @@ import { PermisosStateService } from '../../../core/services/permisosState.servi
   styleUrls: ['./sidebar.css'],
 })
 export class Sidebar implements OnInit {
-  faTimes = faTimes;
-  faBars = faBars;
-  faChevronLeft = faChevronLeft;
-  faUsers = faUsers;
-  faTachometerAlt = faTachometerAlt;
-  faCity = faCity;
-  faMapMarkedAlt = faMapMarkedAlt;
+  // ─── Iconos generales ────────────────────────────────────────────────────────
+  faTimes            = faTimes;
+  faBars             = faBars;
+  faChevronLeft      = faChevronLeft;
+  faChevronDown      = faChevronDown;
+  faChevronUp        = faChevronUp;
+  faUsers            = faUsers;
+  faTachometerAlt    = faTachometerAlt;
+  faCity             = faCity;
+  faMapMarkedAlt     = faMapMarkedAlt;
   faFileInvoiceDollar = faFileInvoiceDollar;
-  faReceipt = faReceipt;
-  faCalendarCheck = faCalendarCheck;
-  faEye = faEye;
-  faDollarSign = faDollarSign;
-  faHandHoldingUsd = faHandHoldingUsd;
-  faBuilding = faBuilding;
-  faHomeUser = faHomeUser;
-  faCog = faCog;
-  faTag = faTag;
-  faHouse = faHouse;
-  faChartBar = faChartBar;
-  faShieldAlt = faShieldAlt;
-  faMoneyBillWave = faMoneyBillWave;
-  faUsersCog = faUsersCog;
-  faChevronDown = faChevronDown;
-  faChevronUp = faChevronUp;
-  faTree = faTree;
+  faReceipt          = faReceipt;
+  faCalendarCheck    = faCalendarCheck;
+  faEye              = faEye;
+  faDollarSign       = faDollarSign;
+  faHandHoldingUsd   = faHandHoldingUsd;
+  faBuilding         = faBuilding;
+  faHomeUser         = faHomeUser;
+  faCog              = faCog;
+  faTag              = faTag;
+  faHouse            = faHouse;
+  faChartBar         = faChartBar;
+  faShieldAlt        = faShieldAlt;
+  faMoneyBillWave    = faMoneyBillWave;
+  faUsersCog         = faUsersCog;
+faTree=faTree
+  // ─── Iconos de grupo ─────────────────────────────────────────────────────────
+  private readonly groupIcons: Record<string, IconDefinition> = {
+    'Seguridad':  faLock,
+    'Comercial':  faStore,
+    'Tesorería':  faPiggyBank,
+    'Reportes':   faChartColumn,
+    'Ajustes':    faScrewdriverWrench,
+  };
 
+  /** Devuelve el icono asociado al grupo, o un fallback genérico */
+  getGroupIcon(label: string): IconDefinition {
+    return this.groupIcons[label] ?? faCog;
+  }
+
+  // ─── Estado ──────────────────────────────────────────────────────────────────
   @Output() sidebarToggled = new EventEmitter<boolean>();
   private permisosState = inject(PermisosStateService);
   imagen: string = 'assets/logoSinai.jpg';
   currentUser: any;
+  isCollapsed   = false;
+  isMobileOpen  = false;
 
-  isCollapsed = false;
-  isMobileOpen = false;
-
+  // ─── Menú ─────────────────────────────────────────────────────────────────────
   menuGroups = [
     {
       label: '',
@@ -95,48 +115,47 @@ export class Sidebar implements OnInit {
       ],
     },
     {
-      label: 'Comercial',
+      label: 'Seguridad',
       items: [
-        {
-          label: 'Urbanizaciones',
-          icon: faCity,
-          route: '/urbanizaciones',
-          clave: 'urbanizaciones',
-        },
-        { label: 'Lotes', icon: faMapMarkedAlt, route: '/lotes', clave: 'lotes' },
-        { label: 'Manzanos', icon: faTree, route: '/manzanos', clave: 'manzanos' },
-        { label: 'Propiedades', icon: faHouse, route: '/propiedades', clave: 'propiedades' },
-        {
-          label: 'Cotizaciones',
-          icon: faFileInvoiceDollar,
-          route: '/cotizaciones',
-          clave: 'cotizaciones',
-        },
-        { label: 'Ventas', icon: faReceipt, route: '/ventas', clave: 'ventas' },
-        { label: 'Reservas', icon: faCalendarCheck, route: '/reservas', clave: 'reservas' },
-        { label: 'Visitas', icon: faEye, route: '/visitas', clave: 'visitas' },
-        { label: 'Promociones', icon: faTag, route: '/promociones', clave: 'promociones' },
+        { label: 'Grupos',   icon: faShieldAlt, route: '/seguridad', clave: 'grupos'   },
+        { label: 'Usuarios', icon: faUsersCog,  route: '/usuarios',  clave: 'usuarios' },
+        { label: 'Clientes', icon: faUsers,     route: '/clientes',  clave: 'clientes' },
       ],
     },
     {
-      label: 'Finanzas',
+      label: 'Comercial',
       items: [
-        { label: 'Caja', icon: faCashRegister, route: '/caja', clave: 'caja' },
-        { label: 'Gastos', icon: faMoneyBillWave, route: '/egresos', clave: 'egresos' },
-        { label: 'Créditos', icon: faHandHoldingUsd, route: '/creditos', clave: 'creditos' },
-        { label: 'Cobros', icon: faMoneyBillWave, route: '/cobros', clave: 'cobros' },
+        { label: 'Ventas',       icon: faReceipt,          route: '/ventas',       clave: 'ventas'       },
+        { label: 'Créditos',     icon: faHandHoldingUsd,   route: '/creditos',     clave: 'creditos'     },
+        { label: 'Cobros',       icon: faMoneyBillWave,    route: '/cobros',       clave: 'cobros'       },
+        { label: 'Cotizaciones', icon: faFileInvoiceDollar,route: '/cotizaciones', clave: 'cotizaciones' },
+        { label: 'Reservas',     icon: faCalendarCheck,    route: '/reservas',     clave: 'reservas'     },
+        { label: 'Visitas',      icon: faEye,              route: '/visitas',      clave: 'visitas'      },
+        { label: 'Lotes',        icon: faMapMarkedAlt,     route: '/lotes',        clave: 'lotes'        },
+        { label: 'Propiedades',  icon: faHouse,            route: '/propiedades',  clave: 'propiedades'  },
+             { label: 'Manzanos', icon: faTree, route: '/manzanos', clave: 'manzanos' },
+      ],
+    },
+    {
+      label: 'Tesorería',
+      items: [
+        { label: 'Gastos', icon: faMoneyBillWave, route: '/egresos', clave: 'gastos' },
+      ],
+    },
+    {
+      label: 'Ajustes',
+      items: [
+        { label: 'Caja',          icon: faCashRegister, route: '/caja',          clave: 'caja'          },
+        { label: 'Urbanizaciones',icon: faCity,         route: '/urbanizaciones',clave: 'urbanizaciones'},
+        { label: 'Promociones',   icon: faTag,          route: '/promociones',   clave: 'promociones'   },
       ],
     },
     {
       label: 'Reportes',
-      items: [{ label: 'Reportes', icon: faChartBar, route: '/reportes', clave: 'reportes' }],
-    },
-    {
-      label: 'Gestión',
       items: [
-        { label: 'Clientes', icon: faUsers, route: '/clientes', clave: 'clientes' },
-        { label: 'Usuarios', icon: faUsersCog, route: '/usuarios', clave: 'usuarios' },
-        { label: 'Seguridad', icon: faShieldAlt, route: '/seguridad', clave: 'seguridad' },
+        { label: 'Reportes',         icon: faChartBar,    route: '/reportes',          clave: 'reportes_view' },
+        { label: 'Reporte Clientes', icon: faUsers,       route: '/reportes/clientes', clave: 'reportescliente' },
+        { label: 'Reporte Lotes',    icon: faMapMarkedAlt,route: '/reportes/lotes',    clave: 'reporteslote' },
       ],
     },
   ];
