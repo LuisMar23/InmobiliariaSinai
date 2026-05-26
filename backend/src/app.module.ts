@@ -21,9 +21,35 @@ import { CreditosModule } from './creditos/creditos.module';
 import { ReportesModule } from './reportes/reportes.module';
 import { EgresosModule } from './egresos/egresos.module';
 import { SeguridadModule } from './seguridad/seguridad.module';
+import { ReportesClientesModule } from './reportes-clientes-service/reportes-clientes-service.module';
+import { ReporteslotesModule } from './reporteslotes/reporteslotes.module';
+
 
 @Module({
-  imports: [AuthModule, UsersModule, UrbanizacionModule, PromocionModule, LotesModule, VentasModule, ReservasModule, CotizacionesModule, CajaModule, MovimientoModule, CierreModule, VisitasModule, ArchivosModule, ReciboModule,DashboardModule, PropiedadModule, CreditosModule, ReportesModule, EgresosModule, SeguridadModule],
+  imports: [
+    AuthModule,
+    UsersModule,
+    UrbanizacionModule,
+    PromocionModule,
+    LotesModule,
+    VentasModule,
+    ReservasModule,
+    CotizacionesModule,
+    CajaModule,
+    MovimientoModule,
+    CierreModule,
+    VisitasModule,
+    ArchivosModule,
+    ReciboModule,
+    DashboardModule,
+    PropiedadModule,
+    CreditosModule,
+    ReportesModule,
+    EgresosModule,
+    SeguridadModule,
+    ReportesClientesModule,
+    ReporteslotesModule,
+  ],
 
   controllers: [],
   providers: [],

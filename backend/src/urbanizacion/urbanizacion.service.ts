@@ -77,16 +77,18 @@ export class UrbanizacionService {
     });
   }
 
-async findAll(page: number = 1, limit: number = 10, userRole?: string, ciudadAsignada?: string | null) {
+async findAll(page: number = 1, limit: number = 10, userId?: number, userRole?: string) {
   const skip = (page - 1) * limit;
 
   const where: any = {};
 
-  if (userRole === 'SECRETARIA' && ciudadAsignada) {
-    where.OR = [
-      { ciudad: { equals: ciudadAsignada.trim(), mode: 'insensitive' } },
-      { ubicacion: { equals: ciudadAsignada.trim(), mode: 'insensitive' } },
-    ];
+  // Si no es ADMINISTRADOR, filtrar solo las urbanizaciones asignadas al usuario
+  if (userRole && userRole !== 'ADMINISTRADOR') {
+    where.usuariosAsignados = {
+      some: {
+        usuarioId: userId,
+      },
+    };
   }
 
   const [urbanizaciones, total] = await Promise.all([

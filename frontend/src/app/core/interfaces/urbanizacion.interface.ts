@@ -1,6 +1,6 @@
 export interface UrbanizacionDto {
   id?: number;
-  uuid?: string;
+  uuid?: string |undefined;
   nombre: string;
   ubicacion: string;
   ciudad: string;
@@ -28,4 +28,9 @@ export interface UpdateUrbanizacionDto {
   ciudad?: string;
   descripcion?: string;
   maps?: string; // URL de Google Maps
+}
+
+export interface CiudadGroup {
+  ciudad: string;
+  urbanizaciones: UrbanizacionDto[];  // ← cambia Urbanizacion[] por UrbanizacionDto[]
 }

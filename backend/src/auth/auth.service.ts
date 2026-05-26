@@ -167,126 +167,126 @@ export class AuthService {
   // ============================================================
   // LOGIN
   // ============================================================
-async login(loginDto: LoginDto) {
-  const { identifier, password } = loginDto;
+  async login(loginDto: LoginDto) {
+    const { identifier, password } = loginDto;
 
-  try {
-    const normalizedIdentifier = identifier.toLowerCase().trim();
+    try {
+      const normalizedIdentifier = identifier.toLowerCase().trim();
 
-    const user = await this.prisma.user.findFirst({
-      where: {
-        OR: [
-          { email: { equals: normalizedIdentifier, mode: 'insensitive' } },
-          { username: { equals: normalizedIdentifier, mode: 'insensitive' } },
-        ],
-        isActive: true,
-        role: { not: UserRole.CLIENTE },
-      },
-    });
-
-    if (!user) throw new UnauthorizedException('Credenciales inválidas');
-    if (!user.passwordHash)
-      throw new UnauthorizedException(
-        'Este usuario no tiene credenciales de acceso',
-      );
-
-    const now = this.getCurrentTimeLaPaz();
-
-    if (user.lockUntil && user.lockUntil > now) {
-      const diffMs = user.lockUntil.getTime() - now.getTime();
-      const diffMin = Math.ceil(diffMs / (1000 * 60));
-      throw new UnauthorizedException(
-        `Cuenta bloqueada. Intenta nuevamente en ${diffMin} minutos.`,
-      );
-    }
-
-    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
-
-    if (!isPasswordValid) {
-      const failedAttempts = (user.failedAttempts || 0) + 1;
-      const lockUntil =
-        failedAttempts >= 5 ? new Date(now.getTime() + 5 * 60 * 1000) : null;
-
-      await this.prisma.user.update({
-        where: { id: user.id },
-        data: { failedAttempts, lockUntil },
-      });
-
-      const message =
-        failedAttempts >= 5
-          ? 'Demasiados intentos fallidos. Tu cuenta se bloqueó por 5 minutos.'
-          : 'Credenciales inválidas';
-
-      throw new UnauthorizedException(message);
-    }
-
-    if (user.failedAttempts > 0 || user.lockUntil) {
-      await this.prisma.user.update({
-        where: { id: user.id },
-        data: { failedAttempts: 0, lockUntil: null, lastLogin: now },
-      });
-    }
-
-    // Obtener todos los módulos activos
-    const todosLosModulos = await this.prisma.modulo.findMany({
-      where: { activo: true },
-    });
-
-    // Obtener permisos del role
-    const permisos = await this.prisma.permisoRole.findMany({
-      where: { role: user.role },
-      include: { modulo: true },
-    });
-
-    // Construir map con todos los módulos, true o false
-    const permisosConAcceso = new Set(
-      permisos.filter((p) => p.tieneAcceso).map((p) => p.modulo.clave),
-    );
-
-    const permisosMap = todosLosModulos.reduce(
-      (acc, modulo) => {
-        acc[modulo.clave] = permisosConAcceso.has(modulo.clave);
-        return acc;
-      },
-      {} as Record<string, boolean>,
-    );
-
-    const userEmail = user.email ?? `user${user.id}@inmobiliaria.com`;
-    const tokens = await this.generateTokens(user.id, userEmail, user.role);
-
-    await this.prisma.auditoria.create({
-      data: {
-        usuarioId: user.id,
-        accion: 'LOGIN',
-        tablaAfectada: 'User',
-        registroId: user.id,
-        ip: '127.0.0.1',
-        dispositivo: 'API',
-      },
-    });
-
-    return {
-      success: true,
-      message: 'Login exitoso',
-      data: {
-        user: {
-          id: user.id,
-          uuid: user.uuid,
-          username: user.username,
-          email: user.email,
-          fullName: user.fullName,
-          avatarUrl: user.avatarUrl,
-          role: user.role,
+      const user = await this.prisma.user.findFirst({
+        where: {
+          OR: [
+            { email: { equals: normalizedIdentifier, mode: 'insensitive' } },
+            { username: { equals: normalizedIdentifier, mode: 'insensitive' } },
+          ],
+          isActive: true,
+          role: { not: UserRole.CLIENTE },
         },
-        permisos: permisosMap,
-        ...tokens,
-      },
-    };
-  } catch (error) {
-  console.error('LOGIN ERROR:', JSON.stringify(error, null, 2));
-  throw error;
-}
-}
+      });
+
+      if (!user) throw new UnauthorizedException('Credenciales inválidas');
+      if (!user.passwordHash)
+        throw new UnauthorizedException(
+          'Este usuario no tiene credenciales de acceso',
+        );
+
+      const now = this.getCurrentTimeLaPaz();
+
+      if (user.lockUntil && user.lockUntil > now) {
+        const diffMs = user.lockUntil.getTime() - now.getTime();
+        const diffMin = Math.ceil(diffMs / (1000 * 60));
+        throw new UnauthorizedException(
+          `Cuenta bloqueada. Intenta nuevamente en ${diffMin} minutos.`,
+        );
+      }
+
+      const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+
+      if (!isPasswordValid) {
+        const failedAttempts = (user.failedAttempts || 0) + 1;
+        const lockUntil =
+          failedAttempts >= 5 ? new Date(now.getTime() + 5 * 60 * 1000) : null;
+
+        await this.prisma.user.update({
+          where: { id: user.id },
+          data: { failedAttempts, lockUntil },
+        });
+
+        const message =
+          failedAttempts >= 5
+            ? 'Demasiados intentos fallidos. Tu cuenta se bloqueó por 5 minutos.'
+            : 'Credenciales inválidas';
+
+        throw new UnauthorizedException(message);
+      }
+
+      if (user.failedAttempts > 0 || user.lockUntil) {
+        await this.prisma.user.update({
+          where: { id: user.id },
+          data: { failedAttempts: 0, lockUntil: null, lastLogin: now },
+        });
+      }
+
+      // Obtener todos los módulos activos
+      const todosLosModulos = await this.prisma.modulo.findMany({
+        where: { activo: true },
+      });
+
+      // Obtener permisos del role
+      const permisos = await this.prisma.permisoRole.findMany({
+        where: { role: user.role },
+        include: { modulo: true },
+      });
+
+      // Construir map con todos los módulos, true o false
+      const permisosConAcceso = new Set(
+        permisos.filter((p) => p.tieneAcceso).map((p) => p.modulo.clave),
+      );
+
+      const permisosMap = todosLosModulos.reduce(
+        (acc, modulo) => {
+          acc[modulo.clave] = permisosConAcceso.has(modulo.clave);
+          return acc;
+        },
+        {} as Record<string, boolean>,
+      );
+
+      const userEmail = user.email ?? `user${user.id}@inmobiliaria.com`;
+      const tokens = await this.generateTokens(user.id, userEmail, user.role);
+
+      await this.prisma.auditoria.create({
+        data: {
+          usuarioId: user.id,
+          accion: 'LOGIN',
+          tablaAfectada: 'User',
+          registroId: user.id,
+          ip: '127.0.0.1',
+          dispositivo: 'API',
+        },
+      });
+
+      return {
+        success: true,
+        message: 'Login exitoso',
+        data: {
+          user: {
+            id: user.id,
+            uuid: user.uuid,
+            username: user.username,
+            email: user.email,
+            fullName: user.fullName,
+            avatarUrl: user.avatarUrl,
+            role: user.role,
+          },
+          permisos: permisosMap,
+          ...tokens,
+        },
+      };
+    } catch (error) {
+      console.error('LOGIN ERROR:', JSON.stringify(error, null, 2));
+      throw error;
+    }
+  }
 
   // ============================================================
   // REFRESH TOKEN

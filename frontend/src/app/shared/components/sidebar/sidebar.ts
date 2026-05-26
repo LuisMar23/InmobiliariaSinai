@@ -39,7 +39,12 @@ import {
   faShieldAlt,
   faUsersCog,
   faChevronDown,
-  faChevronUp, // Icono para Propiedades
+  faChevronUp,
+  faLock,
+  faStore,
+  faPiggyBank,
+  faChartColumn,
+  faScrewdriverWrench,
 } from '@fortawesome/free-solid-svg-icons';
 import { AuthService } from '../../../components/services/auth.service';
 import { PermisosStateService } from '../../../core/services/permisosState.service';
@@ -52,40 +57,55 @@ import { PermisosStateService } from '../../../core/services/permisosState.servi
   styleUrl: './sidebar.css',
 })
 export class Sidebar implements OnInit {
-  faTimes = faTimes;
-  faBars = faBars;
-  faChevronLeft = faChevronLeft;
-  faUsers = faUsers;
-  faTachometerAlt = faTachometerAlt;
-  faCity = faCity;
-  faMapMarkedAlt = faMapMarkedAlt;
+  // ─── Iconos generales ────────────────────────────────────────────────────────
+  faTimes            = faTimes;
+  faBars             = faBars;
+  faChevronLeft      = faChevronLeft;
+  faChevronDown      = faChevronDown;
+  faChevronUp        = faChevronUp;
+  faUsers            = faUsers;
+  faTachometerAlt    = faTachometerAlt;
+  faCity             = faCity;
+  faMapMarkedAlt     = faMapMarkedAlt;
   faFileInvoiceDollar = faFileInvoiceDollar;
-  faReceipt = faReceipt;
-  faCalendarCheck = faCalendarCheck;
-  faEye = faEye;
-  faDollarSign = faDollarSign;
-  faHandHoldingUsd = faHandHoldingUsd;
-  faBuilding = faBuilding;
-  faHomeUser = faHomeUser;
-  faCog = faCog;
-  faTag = faTag;
-  faHouse = faHouse; // Icono para Propiedades
-  faChartBar = faChartBar;
-  faShieldAlt = faShieldAlt;
-  faMoneyBillWave = faMoneyBillWave;
-  faUsersCog = faUsersCog;
-  faChevronDown = faChevronDown;
-  faChevronUp = faChevronUp;
+  faReceipt          = faReceipt;
+  faCalendarCheck    = faCalendarCheck;
+  faEye              = faEye;
+  faDollarSign       = faDollarSign;
+  faHandHoldingUsd   = faHandHoldingUsd;
+  faBuilding         = faBuilding;
+  faHomeUser         = faHomeUser;
+  faCog              = faCog;
+  faTag              = faTag;
+  faHouse            = faHouse;
+  faChartBar         = faChartBar;
+  faShieldAlt        = faShieldAlt;
+  faMoneyBillWave    = faMoneyBillWave;
+  faUsersCog         = faUsersCog;
 
+  // ─── Iconos de grupo ─────────────────────────────────────────────────────────
+  private readonly groupIcons: Record<string, IconDefinition> = {
+    'Seguridad':  faLock,
+    'Comercial':  faStore,
+    'Tesorería':  faPiggyBank,
+    'Reportes':   faChartColumn,
+    'Ajustes':    faScrewdriverWrench,
+  };
+
+  /** Devuelve el icono asociado al grupo, o un fallback genérico */
+  getGroupIcon(label: string): IconDefinition {
+    return this.groupIcons[label] ?? faCog;
+  }
+
+  // ─── Estado ──────────────────────────────────────────────────────────────────
   @Output() sidebarToggled = new EventEmitter<boolean>();
   private permisosState = inject(PermisosStateService);
   imagen: string = 'assets/logoSinai.jpg';
   currentUser: any;
+  isCollapsed   = false;
+  isMobileOpen  = false;
 
-  isCollapsed = false;
-  isMobileOpen = false;
-
-  // Menú - SOLO modificar la opción de Usuarios
+  // ─── Menú ─────────────────────────────────────────────────────────────────────
   menuGroups = [
     {
       label: '',
@@ -94,51 +114,49 @@ export class Sidebar implements OnInit {
       ],
     },
     {
+      label: 'Seguridad',
+      items: [
+        { label: 'Grupos',   icon: faShieldAlt, route: '/seguridad', clave: 'grupos'   },
+        { label: 'Usuarios', icon: faUsersCog,  route: '/usuarios',  clave: 'usuarios' },
+        { label: 'Clientes', icon: faUsers,     route: '/clientes',  clave: 'clientes' },
+      ],
+    },
+    {
       label: 'Comercial',
       items: [
-        {
-          label: 'Urbanizaciones',
-          icon: faCity,
-          route: '/urbanizaciones',
-          clave: 'urbanizaciones',
-        },
-        { label: 'Lotes', icon: faMapMarkedAlt, route: '/lotes', clave: 'lotes' },
-        { label: 'Propiedades', icon: faHouse, route: '/propiedades', clave: 'propiedades' },
-        {
-          label: 'Cotizaciones',
-          icon: faFileInvoiceDollar,
-          route: '/cotizaciones',
-          clave: 'cotizaciones',
-        },
-        { label: 'Ventas', icon: faReceipt, route: '/ventas', clave: 'ventas' },
-        { label: 'Reservas', icon: faCalendarCheck, route: '/reservas', clave: 'reservas' },
-        { label: 'Visitas', icon: faEye, route: '/visitas', clave: 'visitas' },
-        { label: 'Promociones', icon: faTag, route: '/promociones', clave: 'promociones' },
+        { label: 'Ventas',       icon: faReceipt,          route: '/ventas',       clave: 'ventas'       },
+        { label: 'Créditos',     icon: faHandHoldingUsd,   route: '/creditos',     clave: 'creditos'     },
+        { label: 'Cobros',       icon: faMoneyBillWave,    route: '/cobros',       clave: 'cobros'       },
+        { label: 'Cotizaciones', icon: faFileInvoiceDollar,route: '/cotizaciones', clave: 'cotizaciones' },
+        { label: 'Reservas',     icon: faCalendarCheck,    route: '/reservas',     clave: 'reservas'     },
+        { label: 'Visitas',      icon: faEye,              route: '/visitas',      clave: 'visitas'      },
+        { label: 'Lotes',        icon: faMapMarkedAlt,     route: '/lotes',        clave: 'lotes'        },
+        { label: 'Propiedades',  icon: faHouse,            route: '/propiedades',  clave: 'propiedades'  },
       ],
     },
     {
-      label: 'Finanzas',
+      label: 'Tesorería',
       items: [
-        { label: 'Caja', icon: faCashRegister, route: '/caja', clave: 'caja' },
-        { label: 'Gastos', icon: faMoneyBillWave, route: '/egresos', clave: 'egresos' },
-        { label: 'Créditos', icon: faHandHoldingUsd, route: '/creditos', clave: 'creditos' },
-        { label: 'Cobros', icon:faMoneyBillWave, route: '/cobros', clave: 'cobros' },
+        { label: 'Gastos', icon: faMoneyBillWave, route: '/egresos', clave: 'gastos' },
       ],
     },
     {
-      label: 'Reportes', // ← grupo propio
-      items: [{ label: 'Reportes', icon: faChartBar, route: '/reportes', clave: 'reportes' }],
+      label: 'Ajustes',
+      items: [
+        { label: 'Caja',          icon: faCashRegister, route: '/caja',          clave: 'caja'          },
+        { label: 'Urbanizaciones',icon: faCity,         route: '/urbanizaciones',clave: 'urbanizaciones'},
+        { label: 'Promociones',   icon: faTag,          route: '/promociones',   clave: 'promociones'   },
+      ],
     },
     {
-      label: 'Gestión',
+      label: 'Reportes',
       items: [
-        { label: 'Clientes', icon: faUsers, route: '/clientes', clave: 'clientes' },
-        { label: 'Usuarios', icon: faUsersCog, route: '/usuarios', clave: 'usuarios' },
-        { label: 'Seguridad', icon: faShieldAlt, route: '/seguridad', clave: 'seguridad' },
+        { label: 'Reportes',         icon: faChartBar,    route: '/reportes',          clave: 'reportes_view' },
+        { label: 'Reporte Clientes', icon: faUsers,       route: '/reportes/clientes', clave: 'reportescliente' },
+        { label: 'Reporte Lotes',    icon: faMapMarkedAlt,route: '/reportes/lotes',    clave: 'reporteslote' },
       ],
     },
   ];
-  filteredMenu: any[] = [];
 
   constructor(private authService: AuthService) {
     this.imagen = 'assets/logoSinai.jpg';
@@ -147,14 +165,17 @@ export class Sidebar implements OnInit {
   ngOnInit() {
     this.currentUser = this.authService.getCurrentUser();
   }
+
   get filteredGroups() {
     return this.menuGroups
       .map((group) => ({
         ...group,
         items: group.items.filter((item) => this.permisosState.tieneAcceso(item.clave)),
       }))
-      .filter((group) => group.items.length > 0); // oculta el grupo si no tiene ningún item
+      .filter((group) => group.items.length > 0);
   }
+
+  // Grupos abiertos por defecto
   private openGroups = new Set<string>(['Comercial', 'Finanzas', 'Reportes', 'Gestión']);
 
   toggleSidebar() {
@@ -165,6 +186,7 @@ export class Sidebar implements OnInit {
   toggleMobile() {
     this.isMobileOpen = !this.isMobileOpen;
   }
+
   toggleGroup(label: string) {
     if (this.openGroups.has(label)) {
       this.openGroups.delete(label);

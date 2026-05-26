@@ -1,19 +1,72 @@
-// reportes.component.ts
-import { Component, inject, signal, OnInit, effect } from '@angular/core';
+import { Component, inject, signal, OnInit, effect, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { FiltrosReporteDto } from '../../../core/interfaces/reportes.interface';
 import { ReportesService } from '../services/reportes.service';
 import { PdfGeneratorService } from '../services/pdf-generator.service';
+import { UrbanizacionContextService } from '../../../core/services/urbanizacion-context.service';
+import { AuthService } from '../../../components/services/auth.service';
+
 
 type TipoReporte = 'general' | 'vendedores' | 'detalle' | 'cuotas' | 'completadas' | 'cliente' | 'creditos' | 'anuladas';
-
+type TipoAlcance = 'global' | 'urbanizacion';
 @Component({
   selector: 'app-reportes',
   standalone: true,
   imports: [CommonModule, FormsModule],
 template: `
-  <div class="w-full max-w-8xl mx-auto px-4 py-4 flex flex-col gap-3">
+<div class="w-full max-w-8xl mx-auto px-4 py-4 flex flex-col gap-3">
+
+    <!-- ─── Selector de Alcance (Global vs Urbanización) ─── -->
+    <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
+      <div class="flex items-center gap-2 px-4 py-3 border-b border-slate-100">
+        <i class="fa-solid fa-chart-pie text-emerald-700 text-sm"></i>
+        <span class="text-sm font-semibold text-slate-800">Alcance del Reporte</span>
+      </div>
+      <div class="px-4 py-3 flex flex-wrap items-center gap-3">
+        <!-- Botón: Por Urbanización (todos los usuarios) -->
+        <button 
+          class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all"
+          [class.bg-emerald-700]="tipoAlcance() === 'urbanizacion'"
+          [class.text-white]="tipoAlcance() === 'urbanizacion'"
+          [class.border]="tipoAlcance() === 'urbanizacion'"
+          [class.border-emerald-700]="tipoAlcance() === 'urbanizacion'"
+          [class.bg-white]="tipoAlcance() !== 'urbanizacion'"
+          [class.text-slate-700]="tipoAlcance() !== 'urbanizacion'"
+          [class.border]="tipoAlcance() !== 'urbanizacion'"
+          [class.border-slate-300]="tipoAlcance() !== 'urbanizacion'"
+          (click)="cambiarAlcance('urbanizacion')">
+          <i class="fa-solid fa-building"></i>
+          Por Urbanización: <strong>{{ nombreUrbanizacionActual() }}</strong>
+        </button>
+
+        <!-- Botón: Global (solo visible para ADMIN) -->
+        @if (isAdmin()) {
+          <button 
+            class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all"
+            [class.bg-purple-700]="tipoAlcance() === 'global'"
+            [class.text-white]="tipoAlcance() === 'global'"
+            [class.border]="tipoAlcance() === 'global'"
+            [class.border-purple-700]="tipoAlcance() === 'global'"
+            [class.bg-white]="tipoAlcance() !== 'global'"
+            [class.text-slate-700]="tipoAlcance() !== 'global'"
+            [class.border]="tipoAlcance() !== 'global'"
+            [class.border-slate-300]="tipoAlcance() !== 'global'"
+            (click)="cambiarAlcance('global')">
+            <i class="fa-solid fa-globe"></i>
+            Global (Todos los datos)
+          </button>
+        }
+
+        <!-- Indicador de urbanización activa -->
+        @if (tipoAlcance() === 'urbanizacion' && !urbanizacionActiva()) {
+          <div class="flex items-center gap-2 text-amber-700 bg-amber-50 px-3 py-1.5 rounded-lg text-xs">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            ⚠️ No hay urbanización seleccionada. Selecciona una urbanización en el contexto.
+          </div>
+        }
+      </div>
+    </div>
 
     <!-- ─── Filtros Generales ─── -->
     <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
@@ -54,7 +107,10 @@ template: `
           <i class="fa-solid fa-chart-line text-emerald-700 text-sm"></i>
           <span class="text-sm font-semibold text-slate-800">
             Reporte de Ventas
-            <span class="text-emerald-700 font-bold ml-1">{{ urbanizacionActual }}</span>
+            <span class="text-emerald-700 font-bold ml-1">{{ nombreUrbanizacionActual() }}</span>
+            @if (tipoAlcance() === 'global') {
+              <span class="text-purple-700 font-bold ml-1">(Global)</span>
+            }
           </span>
           <i class="fa-regular fa-circle-play text-slate-400 text-sm cursor-pointer" title="Ver tutorial"></i>
         </div>
@@ -134,12 +190,6 @@ template: `
           (click)="seleccionarReporte('completadas')">
           <i class="fa-regular fa-circle-check text-xs"></i> Ventas Completadas
         </button>
-        <!-- <button class="inline-flex items-center gap-1.5 border-[1.5px] border-amber-700 text-amber-700 rounded-lg px-3 text-xs font-medium h-8 cursor-pointer bg-transparent hover:bg-amber-700 hover:text-white transition-colors"
-          [class.!bg-amber-700]="reporteActual() === 'anuladas'"
-          [class.!text-white]="reporteActual() === 'anuladas'"
-          (click)="seleccionarReporte('anuladas')">
-          <i class="fa-solid fa-list-check text-xs"></i> Ventas Anuladas
-        </button> -->
       </div>
     </div>
 
@@ -271,18 +321,34 @@ styles: [`
 export class ReportesComponent implements OnInit {
   reportesService = inject(ReportesService);
   private pdfService = inject(PdfGeneratorService);
+  private urbanizacionContext = inject(UrbanizacionContextService);
+  private authService = inject(AuthService);
 
   reporteActual = signal<TipoReporte | null>(null);
-filtrarPorFechas = false;
+  tipoAlcance = signal<TipoAlcance>('urbanizacion'); // Por defecto: urbanización
+  filtrarPorFechas = false;
 
   filtros: FiltrosReporteDto & { clienteId?: number; manzana?: string; vendedorId?: number } = {};
 
-  urbanizacionActual = 'NUEVA ESPERANZA (BERMEJO)';
+  // Computed: urbanización activa
+  urbanizacionActiva = this.urbanizacionContext.urbanizacion;
+  
+  // Computed: mostrar opción global solo si es admin
+  isAdmin = computed(() => {
+    const user = this.authService.getCurrentUser();
+    return user?.role === 'ADMINISTRADOR';
+  });
 
-  // Listas para selects (poblar desde tu servicio si tienes endpoints)
-get manzanas(): string[] {
-  return this.reportesService.manzanas();
-}
+  // Nombre de la urbanización para mostrar en UI
+  nombreUrbanizacionActual = computed(() => {
+    return this.urbanizacionActiva()?.nombre || 'Sin urbanización seleccionada';
+  });
+
+  // Listas para selects
+  get manzanas(): string[] {
+    return this.reportesService.manzanas();
+  }
+  
   vendedores: { id: number; nombre: string }[] = [];
 
   constructor() {
@@ -296,10 +362,19 @@ get manzanas(): string[] {
       }
     });
   }
-ngOnInit() {
-  this.reportesService.getManzanas(); // carga sin filtros → todas las manzanas
-  this.seleccionarReporte('general');
-}
+
+  ngOnInit() {
+    // Recuperar urbanización guardada
+    this.urbanizacionContext.recuperar();
+    this.reportesService.getManzanas();
+    this.seleccionarReporte('general');
+  }
+
+  // Cambiar entre reporte global y por urbanización
+  cambiarAlcance(alcance: TipoAlcance) {
+    this.tipoAlcance.set(alcance);
+    this.aplicarFiltros();
+  }
 
   seleccionarReporte(tipo: TipoReporte) {
     this.reporteActual.set(tipo);
@@ -310,21 +385,47 @@ ngOnInit() {
     if (!this.reporteActual()) return;
 
     const f: any = {};
+    
+    // Filtros de fechas
     if (this.filtrarPorFechas) {
       if (this.filtros.fechaInicio) f.fechaInicio = this.filtros.fechaInicio;
       if (this.filtros.fechaFin)    f.fechaFin    = this.filtros.fechaFin;
     }
+    
+    // Filtros comunes
     if (this.filtros.tipoVenta)  f.tipoVenta  = this.filtros.tipoVenta;
-  if (this.filtros.manzana) f.manzano = this.filtros.manzana
+    if (this.filtros.manzana)    f.manzano    = this.filtros.manzana;
     if (this.filtros.vendedorId) f.vendedorId = this.filtros.vendedorId;
+    
+    // 🔥 FILTRO POR URBANIZACIÓN (según alcance seleccionado)
+    if (this.tipoAlcance() === 'global') {
+      // Reporte GLOBAL: solo admin puede verlo
+      if (!this.isAdmin()) {
+        console.warn('Usuario no autorizado para ver reporte global');
+        return;
+      }
+      f.global = true;
+      // No aplicar filtro de urbanización
+    } else {
+      // Reporte por URBANIZACIÓN: filtrar por la urbanización activa
+      const urbanizacion = this.urbanizacionActiva();
+      if (urbanizacion?.id) {
+        f.urbanizacionId = urbanizacion.id;
+      } else {
+        console.warn('No hay urbanización activa seleccionada');
+        // Opcional: mostrar mensaje al usuario
+        return;
+      }
+    }
 
+    // Llamar al servicio correspondiente
     switch (this.reporteActual()) {
       case 'general':      this.reportesService.getReporteVentas(f);        break;
       case 'vendedores':   this.reportesService.getVentasPorVendedor(f);    break;
       case 'detalle':      this.reportesService.getDetalleVentas(f);        break;
       case 'cuotas':       this.reportesService.getCuotasPorCobrar(f);      break;
       case 'completadas':  this.reportesService.getVentasCompletadas(f);    break;
-      case 'creditos':     this.reportesService.getCuotasPorCobrar(f);      break; // ajusta al endpoint real
+      case 'creditos':     this.reportesService.getCuotasPorCobrar(f);      break;
       case 'anuladas':     this.reportesService.getReporteVentas({ ...f, estado: 'ANULADO' }); break;
       case 'cliente':
         if (this.filtros.clienteId) {
@@ -337,14 +438,59 @@ ngOnInit() {
   async descargarPDF() {
     const tipo = this.reporteActual();
     if (!tipo) return;
+    
+    // Incluir información del alcance en el PDF
+    const infoAdicional = {
+      alcance: this.tipoAlcance(),
+      urbanizacionNombre: this.urbanizacionActiva()?.nombre,
+      fechaGeneracion: new Date().toLocaleString(),
+      usuario: this.authService.getCurrentUser()?.fullName
+    };
+    
     try {
       switch (tipo) {
-        case 'general':     await this.pdfService.generarReporteGeneral(this.reportesService.reporteVentas(), this.filtros); break;
-        case 'vendedores':  await this.pdfService.generarReporteVendedores(this.reportesService.ventasPorVendedor(), this.filtros); break;
-        case 'detalle':     await this.pdfService.generarReporteDetalle(this.reportesService.detalleVentas(), this.filtros); break;
-        case 'cuotas':      await this.pdfService.generarReporteCuotas(this.reportesService.cuotasPorCobrar(), this.filtros); break;
-        case 'completadas': await this.pdfService.generarReporteCompletadas(this.reportesService.ventasCompletadas(), this.filtros); break;
-        case 'cliente':     await this.pdfService.generarReporteCliente(this.reportesService.ventasPorCliente(), this.filtros); break;
+        case 'general':     
+          await this.pdfService.generarReporteGeneral(
+            this.reportesService.reporteVentas(), 
+            this.filtros, 
+            infoAdicional
+          ); 
+          break;
+        case 'vendedores':  
+          await this.pdfService.generarReporteVendedores(
+            this.reportesService.ventasPorVendedor(), 
+            this.filtros, 
+            infoAdicional
+          ); 
+          break;
+        case 'detalle':     
+          await this.pdfService.generarReporteDetalle(
+            this.reportesService.detalleVentas(), 
+            this.filtros, 
+            infoAdicional
+          ); 
+          break;
+        case 'cuotas':      
+          await this.pdfService.generarReporteCuotas(
+            this.reportesService.cuotasPorCobrar(), 
+            this.filtros, 
+            infoAdicional
+          ); 
+          break;
+        case 'completadas': 
+          await this.pdfService.generarReporteCompletadas(
+            this.reportesService.ventasCompletadas(), 
+            this.filtros, 
+            infoAdicional
+          ); 
+          break;
+        case 'cliente':     
+          await this.pdfService.generarReporteCliente(
+            this.reportesService.ventasPorCliente(), 
+            this.filtros, 
+            infoAdicional
+          ); 
+          break;
       }
     } catch (e) {
       console.error('Error generando PDF:', e);
@@ -352,7 +498,7 @@ ngOnInit() {
   }
 
   getTituloReporte(): string {
-    const t: Record<TipoReporte, string> = {
+    const baseTitulo: Record<TipoReporte, string> = {
       general:     'Reporte General de Ventas',
       vendedores:  'Ventas por Vendedor',
       detalle:     'Detalle de Ventas',
@@ -362,7 +508,12 @@ ngOnInit() {
       creditos:    'Créditos por Cobrar',
       anuladas:    'Ventas Anuladas',
     };
-    return t[this.reporteActual() as TipoReporte] ?? '';
+    
+    const alcance = this.tipoAlcance() === 'global' 
+      ? ' (Global - Todos los datos)' 
+      : ` (${this.nombreUrbanizacionActual()})`;
+    
+    return (baseTitulo[this.reporteActual() as TipoReporte] || 'Reporte') + alcance;
   }
 
   getEstadoClass(estado: string): string {

@@ -36,11 +36,12 @@ export class UrbanizacionController {
   ) {
     const pageNum = page ? +page : 1;
     const limitNum = limit ? +limit : 10;
+
     return this.urbanizacionService.findAll(
       pageNum,
       limitNum,
+      req.user.id,
       req.user.role,
-      req.user.ciudadAsignada,
     );
   }
 
@@ -66,6 +67,4 @@ export class UrbanizacionController {
   remove(@Param('id') id: string) {
     return this.urbanizacionService.remove(+id);
   }
-
-
 }

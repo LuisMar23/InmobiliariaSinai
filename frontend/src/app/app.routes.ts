@@ -54,14 +54,14 @@ export const routes: Routes = [
         loadChildren: () =>
           import('./features/egresos/egresos.routes').then((r) => r.EgresosRoutingModule),
       },
-      
+
       {
         path: 'propiedades', // Nueva ruta para Propiedades
         loadChildren: () =>
           import('./features/propiedad/propiedad.routes').then((r) => r.PropiedadRoutingModule),
       },
 
-         {
+      {
         path: 'seguridad', // Nueva ruta para Propiedades
         loadChildren: () =>
           import('./features/seguridad/seguridad.routes').then((r) => r.SeguridadRoutingModule),
@@ -110,8 +110,23 @@ export const routes: Routes = [
       {
         path: 'cobros',
         loadChildren: () =>
-          import('./features/cobros/cobros.routes').then((r)=> r.CobrosRoutingModule),
+          import('./features/cobros/cobros.routes').then((r) => r.CobrosRoutingModule),
       },
+      {
+        path: 'cobros',
+        loadChildren: () =>
+          import('./features/cobros/cobros.routes').then((r) => r.CobrosRoutingModule),
+      },
+      //       {
+      //   path: 'reportesclientes',
+      //   loadChildren: () =>
+      //     import('./features/cobros/cobros.routes').then((r) => r.CobrosRoutingModule),
+      // },
+      //       {
+      //   path: 'reporteslotes',
+      //   loadChildren: () =>
+      //     import('./features/cobros/cobros.routes').then((r) => r.CobrosRoutingModule),
+      // },
     ],
   },
   { path: '**', redirectTo: '/login' },

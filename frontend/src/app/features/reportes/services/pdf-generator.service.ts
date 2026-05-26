@@ -182,15 +182,28 @@ export class PdfGeneratorService {
   };
 
   // ── 1. REPORTE GENERAL ────────────────────────────────────────
-  async generarReporteGeneral(data: any, filtros: any) {
+  // ── 1. REPORTE GENERAL ────────────────────────────────────────
+async generarReporteGeneral(data: any, filtros: any, infoAdicional?: any) {
     const logo    = await this.getLogoBase64('assets/logoSinai.jpg');
     const resumen = data?.resumen || {};
     const ventas  = data?.ventas  || [];
+
+    const alcanceTexto = infoAdicional?.alcance === 'global' 
+      ? 'GLOBAL (Todos los datos)' 
+      : `URBANIZACIÓN: ${infoAdicional?.urbanizacionNombre || 'Sin urbanización'}`;
 
     const doc: any = {
       pageSize: 'A4', pageOrientation: 'landscape', pageMargins: [40, 40, 40, 40],
       content: [
         ...this.header(logo, 'REPORTE GENERAL DE VENTAS', true),
+        // Solo agregar esta línea después del header
+        {
+          text: `Alcance: ${alcanceTexto} | Generado por: ${infoAdicional?.usuario || 'Sistema'} | Fecha: ${infoAdicional?.fechaGeneracion || new Date().toLocaleString()}`,
+          fontSize: 8,
+          color: infoAdicional?.alcance === 'global' ? C.azul : C.verde,
+          alignment: 'center',
+          margin: [0, 0, 0, 15]
+        },
         this.subHeader(filtros),
 
         // Stats
@@ -242,14 +255,19 @@ export class PdfGeneratorService {
 
     const tag = filtros.fechaInicio && filtros.fechaFin
       ? `${filtros.fechaInicio}_al_${filtros.fechaFin}` : 'todos';
-    pdfMake.createPdf(doc).download(`Reporte_General_${tag}.pdf`);
-  }
+    const alcanceTag = infoAdicional?.alcance === 'global' ? 'global' : (infoAdicional?.urbanizacionNombre || 'urbanizacion');
+    pdfMake.createPdf(doc).download(`Reporte_General_${alcanceTag}_${tag}.pdf`);
+}
 
-  // ── 2. VENTAS POR VENDEDOR ────────────────────────────────────
-  async generarReporteVendedores(data: any, filtros: any) {
+// ── 2. VENTAS POR VENDEDOR ────────────────────────────────────
+async generarReporteVendedores(data: any, filtros: any, infoAdicional?: any) {
     const logo      = await this.getLogoBase64('assets/logoSinai.jpg');
     const vendedores = data?.vendedores || [];
     const resumen    = data?.resumen    || {};
+
+    const alcanceTexto = infoAdicional?.alcance === 'global' 
+      ? 'GLOBAL (Todos los datos)' 
+      : `URBANIZACIÓN: ${infoAdicional?.urbanizacionNombre || 'Sin urbanización'}`;
 
     const posiciones = ['1er', '2do', '3er'];
 
@@ -294,6 +312,13 @@ export class PdfGeneratorService {
       pageSize: 'A4', pageMargins: [40, 40, 40, 40],
       content: [
         ...this.header(logo, 'REPORTE DE VENTAS POR VENDEDOR'),
+        {
+          text: `Alcance: ${alcanceTexto} | Generado por: ${infoAdicional?.usuario || 'Sistema'} | Fecha: ${infoAdicional?.fechaGeneracion || new Date().toLocaleString()}`,
+          fontSize: 8,
+          color: infoAdicional?.alcance === 'global' ? C.azul : C.verde,
+          alignment: 'center',
+          margin: [0, 0, 0, 15]
+        },
         this.subHeader(filtros),
 
         // Stats
@@ -340,19 +365,31 @@ export class PdfGeneratorService {
 
     const tag = filtros.fechaInicio && filtros.fechaFin
       ? `${filtros.fechaInicio}_al_${filtros.fechaFin}` : 'todos';
-    pdfMake.createPdf(doc).download(`Reporte_Vendedores_${tag}.pdf`);
-  }
+    const alcanceTag = infoAdicional?.alcance === 'global' ? 'global' : (infoAdicional?.urbanizacionNombre || 'urbanizacion');
+    pdfMake.createPdf(doc).download(`Reporte_Vendedores_${alcanceTag}_${tag}.pdf`);
+}
 
-  // ── 3. CUOTAS POR COBRAR ──────────────────────────────────────
-  async generarReporteCuotas(data: any, filtros: any) {
+// ── 3. CUOTAS POR COBRAR ──────────────────────────────────────
+async generarReporteCuotas(data: any, filtros: any, infoAdicional?: any) {
     const logo   = await this.getLogoBase64('assets/logoSinai.jpg');
     const cuotas  = data?.cuotas  || [];
     const resumen = data?.resumen || {};
+
+    const alcanceTexto = infoAdicional?.alcance === 'global' 
+      ? 'GLOBAL (Todos los datos)' 
+      : `URBANIZACIÓN: ${infoAdicional?.urbanizacionNombre || 'Sin urbanización'}`;
 
     const doc: any = {
       pageSize: 'A4', pageOrientation: 'landscape', pageMargins: [40, 40, 40, 40],
       content: [
         ...this.header(logo, 'REPORTE DE CUOTAS POR COBRAR', true),
+        {
+          text: `Alcance: ${alcanceTexto} | Generado por: ${infoAdicional?.usuario || 'Sistema'} | Fecha: ${infoAdicional?.fechaGeneracion || new Date().toLocaleString()}`,
+          fontSize: 8,
+          color: infoAdicional?.alcance === 'global' ? C.azul : C.verde,
+          alignment: 'center',
+          margin: [0, 0, 0, 15]
+        },
         this.subHeader(filtros),
 
         {
@@ -417,18 +454,30 @@ export class PdfGeneratorService {
 
     const tag = filtros.fechaInicio && filtros.fechaFin
       ? `${filtros.fechaInicio}_al_${filtros.fechaFin}` : 'todos';
-    pdfMake.createPdf(doc).download(`Cuotas_por_Cobrar_${tag}.pdf`);
-  }
+    const alcanceTag = infoAdicional?.alcance === 'global' ? 'global' : (infoAdicional?.urbanizacionNombre || 'urbanizacion');
+    pdfMake.createPdf(doc).download(`Cuotas_por_Cobrar_${alcanceTag}_${tag}.pdf`);
+}
 
-  // ── 4. DETALLE DE VENTAS ──────────────────────────────────────
-  async generarReporteDetalle(data: any, filtros: any) {
+// ── 4. DETALLE DE VENTAS ──────────────────────────────────────
+async generarReporteDetalle(data: any, filtros: any, infoAdicional?: any) {
     const logo  = await this.getLogoBase64('assets/logoSinai.jpg');
     const ventas = data || [];
+
+    const alcanceTexto = infoAdicional?.alcance === 'global' 
+      ? 'GLOBAL (Todos los datos)' 
+      : `URBANIZACIÓN: ${infoAdicional?.urbanizacionNombre || 'Sin urbanización'}`;
 
     const doc: any = {
       pageSize: 'A4', pageOrientation: 'landscape', pageMargins: [40, 40, 40, 40],
       content: [
         ...this.header(logo, 'DETALLE COMPLETO DE VENTAS', true),
+        {
+          text: `Alcance: ${alcanceTexto} | Generado por: ${infoAdicional?.usuario || 'Sistema'} | Fecha: ${infoAdicional?.fechaGeneracion || new Date().toLocaleString()}`,
+          fontSize: 8,
+          color: infoAdicional?.alcance === 'global' ? C.azul : C.verde,
+          alignment: 'center',
+          margin: [0, 0, 0, 15]
+        },
         this.subHeader(filtros),
 
         this.statCard('TOTAL REGISTROS', String(ventas.length), C.azulPale, C.azul),
@@ -471,19 +520,31 @@ export class PdfGeneratorService {
 
     const tag = filtros.fechaInicio && filtros.fechaFin
       ? `${filtros.fechaInicio}_al_${filtros.fechaFin}` : 'todos';
-    pdfMake.createPdf(doc).download(`Detalle_Ventas_${tag}.pdf`);
-  }
+    const alcanceTag = infoAdicional?.alcance === 'global' ? 'global' : (infoAdicional?.urbanizacionNombre || 'urbanizacion');
+    pdfMake.createPdf(doc).download(`Detalle_Ventas_${alcanceTag}_${tag}.pdf`);
+}
 
-  // ── 5. VENTAS COMPLETADAS ─────────────────────────────────────
-  async generarReporteCompletadas(data: any, filtros: any) {
+// ── 5. VENTAS COMPLETADAS ─────────────────────────────────────
+async generarReporteCompletadas(data: any, filtros: any, infoAdicional?: any) {
     const logo   = await this.getLogoBase64('assets/logoSinai.jpg');
     const resumen = data?.resumen || {};
     const ventas  = data?.ventas  || [];
+
+    const alcanceTexto = infoAdicional?.alcance === 'global' 
+      ? 'GLOBAL (Todos los datos)' 
+      : `URBANIZACIÓN: ${infoAdicional?.urbanizacionNombre || 'Sin urbanización'}`;
 
     const doc: any = {
       pageSize: 'A4', pageMargins: [40, 40, 40, 40],
       content: [
         ...this.header(logo, 'VENTAS COMPLETADAS - 100% PAGADAS'),
+        {
+          text: `Alcance: ${alcanceTexto} | Generado por: ${infoAdicional?.usuario || 'Sistema'} | Fecha: ${infoAdicional?.fechaGeneracion || new Date().toLocaleString()}`,
+          fontSize: 8,
+          color: infoAdicional?.alcance === 'global' ? C.azul : C.verde,
+          alignment: 'center',
+          margin: [0, 0, 0, 15]
+        },
         this.subHeader(filtros),
 
         {
@@ -530,15 +591,20 @@ export class PdfGeneratorService {
 
     const tag = filtros.fechaInicio && filtros.fechaFin
       ? `${filtros.fechaInicio}_al_${filtros.fechaFin}` : 'todos';
-    pdfMake.createPdf(doc).download(`Ventas_Completadas_${tag}.pdf`);
-  }
+    const alcanceTag = infoAdicional?.alcance === 'global' ? 'global' : (infoAdicional?.urbanizacionNombre || 'urbanizacion');
+    pdfMake.createPdf(doc).download(`Ventas_Completadas_${alcanceTag}_${tag}.pdf`);
+}
 
-  // ── 6. VENTAS POR CLIENTE ─────────────────────────────────────
-  async generarReporteCliente(data: any, filtros: any) {
+// ── 6. VENTAS POR CLIENTE ─────────────────────────────────────
+async generarReporteCliente(data: any, filtros: any, infoAdicional?: any) {
     const logo    = await this.getLogoBase64('assets/logoSinai.jpg');
     const cliente  = data?.cliente || {};
     const resumen  = data?.resumen || {};
     const ventas   = data?.ventas  || [];
+
+    const alcanceTexto = infoAdicional?.alcance === 'global' 
+      ? 'GLOBAL (Todos los datos)' 
+      : `URBANIZACIÓN: ${infoAdicional?.urbanizacionNombre || 'Sin urbanización'}`;
 
     const fichaRow = (label: string, value: string) => ({
       columns: [
@@ -552,6 +618,13 @@ export class PdfGeneratorService {
       pageSize: 'A4', pageMargins: [40, 40, 40, 40],
       content: [
         ...this.header(logo, 'HISTORIAL DE VENTAS POR CLIENTE'),
+        {
+          text: `Alcance: ${alcanceTexto} | Generado por: ${infoAdicional?.usuario || 'Sistema'} | Fecha: ${infoAdicional?.fechaGeneracion || new Date().toLocaleString()}`,
+          fontSize: 8,
+          color: infoAdicional?.alcance === 'global' ? C.azul : C.verde,
+          alignment: 'center',
+          margin: [0, 0, 0, 15]
+        },
         this.subHeader(filtros),
 
         // Ficha del cliente
@@ -612,6 +685,7 @@ export class PdfGeneratorService {
     };
 
     const nombre = cliente?.fullName?.replace(/\s+/g, '_') || 'Cliente';
-    pdfMake.createPdf(doc).download(`Historial_${nombre}.pdf`);
-  }
+    const alcanceTag = infoAdicional?.alcance === 'global' ? 'global' : (infoAdicional?.urbanizacionNombre || 'urbanizacion');
+    pdfMake.createPdf(doc).download(`Historial_${nombre}_${alcanceTag}.pdf`);
+}
 }
