@@ -51,14 +51,24 @@ export class CreateLoteDto {
   ciudad: string;
 
   @IsOptional()
-  @IsNumber({ maxDecimalPlaces: 7 })
+  @IsNumber({ maxDecimalPlaces: 2 })
   @Type(() => Number)
-  latitud?: number;
+  medidaFrente?: number;
 
   @IsOptional()
-  @IsNumber({ maxDecimalPlaces: 7 })
+  @IsNumber({ maxDecimalPlaces: 2 })
   @Type(() => Number)
-  longitud?: number;
+  medidaIzquierda?: number;
+
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Type(() => Number)
+  medidaDerecha?: number;
+
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Type(() => Number)
+  medidaFondo?: number;
 
   @IsBoolean()
   @Type(() => Boolean)

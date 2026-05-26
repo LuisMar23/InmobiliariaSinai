@@ -112,6 +112,74 @@
                 {{ loteSeleccionado()!.precioBase | number:'1.2-2' }} Bs.
               </span>
             </div>
+
+            <!-- Medida Frente -->
+            @if (loteSeleccionado()!.medidaFrente) {
+            <div
+              class="flex justify-between items-center py-3 px-4 bg-white rounded-xl border border-gray-100 hover:border-emerald-200 transition-colors">
+              <span class="text-sm font-medium text-gray-500 flex items-center gap-2">
+                <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                </svg>
+                Medida Frente
+              </span>
+              <span class="text-sm font-bold text-gray-900 bg-purple-50 px-3 py-1 rounded-lg">
+                {{ loteSeleccionado()!.medidaFrente }} m
+              </span>
+            </div>
+            }
+
+            <!-- Medida Izquierda -->
+            @if (loteSeleccionado()!.medidaIzquierda) {
+            <div
+              class="flex justify-between items-center py-3 px-4 bg-white rounded-xl border border-gray-100 hover:border-emerald-200 transition-colors">
+              <span class="text-sm font-medium text-gray-500 flex items-center gap-2">
+                <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                </svg>
+                Medida Izquierda
+              </span>
+              <span class="text-sm font-bold text-gray-900 bg-indigo-50 px-3 py-1 rounded-lg">
+                {{ loteSeleccionado()!.medidaIzquierda }} m
+              </span>
+            </div>
+            }
+
+            <!-- Medida Derecha -->
+            @if (loteSeleccionado()!.medidaDerecha) {
+            <div
+              class="flex justify-between items-center py-3 px-4 bg-white rounded-xl border border-gray-100 hover:border-emerald-200 transition-colors">
+              <span class="text-sm font-medium text-gray-500 flex items-center gap-2">
+                <svg class="w-4 h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                </svg>
+                Medida Derecha
+              </span>
+              <span class="text-sm font-bold text-gray-900 bg-violet-50 px-3 py-1 rounded-lg">
+                {{ loteSeleccionado()!.medidaDerecha }} m
+              </span>
+            </div>
+            }
+
+            <!-- Medida Fondo -->
+            @if (loteSeleccionado()!.medidaFondo) {
+            <div
+              class="flex justify-between items-center py-3 px-4 bg-white rounded-xl border border-gray-100 hover:border-emerald-200 transition-colors">
+              <span class="text-sm font-medium text-gray-500 flex items-center gap-2">
+                <svg class="w-4 h-4 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                </svg>
+                Medida Fondo
+              </span>
+              <span class="text-sm font-bold text-gray-900 bg-pink-50 px-3 py-1 rounded-lg">
+                {{ loteSeleccionado()!.medidaFondo }} m
+              </span>
+            </div>
+            }
           </div>
         </div>
 

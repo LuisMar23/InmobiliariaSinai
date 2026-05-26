@@ -61,6 +61,10 @@ export class LoteCreate implements OnInit {
       manzanoId: [''],
       estado: ['DISPONIBLE'],
       encargadoId: [''],
+      medidaFrente: ['', Validators.min(0.01)],
+      medidaIzquierda: ['', Validators.min(0.01)],
+      medidaDerecha: ['', Validators.min(0.01)],
+      medidaFondo: ['', Validators.min(0.01)],
     });
   }
 
@@ -221,6 +225,10 @@ export class LoteCreate implements OnInit {
       urbanizacionId: formValue.esIndependiente ? undefined : Number(formValue.urbanizacionId),
       encargadoId: formValue.encargadoId ? Number(formValue.encargadoId) : undefined,
       manzanoId: formValue.manzanoId ? Number(formValue.manzanoId) : undefined,
+      medidaFrente: formValue.medidaFrente ? Number(formValue.medidaFrente) : undefined,
+      medidaIzquierda: formValue.medidaIzquierda ? Number(formValue.medidaIzquierda) : undefined,
+      medidaDerecha: formValue.medidaDerecha ? Number(formValue.medidaDerecha) : undefined,
+      medidaFondo: formValue.medidaFondo ? Number(formValue.medidaFondo) : undefined,
     };
     this.loteSvc.create(loteData).subscribe({
       next: (response: any) => {

@@ -69,6 +69,10 @@ export class LoteEdit implements OnInit {
       manzanoId: [''],
       estado: ['DISPONIBLE'],
       encargadoId: [''],
+      medidaFrente: ['', Validators.min(0.01)],
+      medidaIzquierda: ['', Validators.min(0.01)],
+      medidaDerecha: ['', Validators.min(0.01)],
+      medidaFondo: ['', Validators.min(0.01)],
     });
   }
 
@@ -204,6 +208,10 @@ export class LoteEdit implements OnInit {
       ubicacion: lote.ubicacion || '',
       estado: lote.estado || 'DISPONIBLE',
       encargadoId: lote.encargadoId || '',
+      medidaFrente: lote.medidaFrente || '',
+      medidaIzquierda: lote.medidaIzquierda || '',
+      medidaDerecha: lote.medidaDerecha || '',
+      medidaFondo: lote.medidaFondo || '',
     });
 
     if (urbanizacionSeleccionada) {
@@ -250,6 +258,10 @@ export class LoteEdit implements OnInit {
       ubicacion: formValue.ubicacion,
       estado: formValue.estado,
       manzanoId: formValue.manzanoId ? Number(formValue.manzanoId) : undefined,
+      medidaFrente: formValue.medidaFrente ? Number(formValue.medidaFrente) : undefined,
+      medidaIzquierda: formValue.medidaIzquierda ? Number(formValue.medidaIzquierda) : undefined,
+      medidaDerecha: formValue.medidaDerecha ? Number(formValue.medidaDerecha) : undefined,
+      medidaFondo: formValue.medidaFondo ? Number(formValue.medidaFondo) : undefined,
       ...(formValue.encargadoId && { encargadoId: Number(formValue.encargadoId) }),
     };
     this.loteSvc.update(this.loteId, dataActualizada).subscribe({

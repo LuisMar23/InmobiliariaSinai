@@ -180,8 +180,10 @@ model Lote {
   ubicacion       String?
   manzanoId     Int?     
   ciudad          String
-  latitud         Decimal?       @db.Decimal(10, 7)
-  longitud        Decimal?       @db.Decimal(10, 7)
+  medidaFrente    Decimal?       @map("medida_frente") @db.Decimal(10, 2)
+  medidaIzquierda Decimal?       @map("medida_izquierda") @db.Decimal(10, 2)
+  medidaDerecha   Decimal?       @map("medida_derecha") @db.Decimal(10, 2)
+  medidaFondo     Decimal?       @map("medida_fondo") @db.Decimal(10, 2)
   esIndependiente Boolean        @default(false) @map("es_independiente")
   estado          EstadoInmueble @default(DISPONIBLE)
   encargadoId     Int?           @map("encargado_id")
@@ -252,6 +254,10 @@ model Venta {
   loteId        Int?        @map("lote_id")
   propiedadId   Int?        @map("propiedad_id")
   cajaId        Int?        @map("caja_id")
+  medidaFrente  Decimal?    @map("medida_frente") @db.Decimal(10, 2)
+  medidaIzquierda Decimal?  @map("medida_izquierda") @db.Decimal(10, 2)
+  medidaDerecha Decimal?    @map("medida_derecha") @db.Decimal(10, 2)
+  medidaFondo   Decimal?    @map("medida_fondo") @db.Decimal(10, 2)
 
   cliente         User             @relation("VentasCliente", fields: [clienteId], references: [id])
   asesor          User             @relation("VentasAsesor", fields: [asesorId], references: [id])

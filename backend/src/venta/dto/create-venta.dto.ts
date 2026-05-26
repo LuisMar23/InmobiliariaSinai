@@ -100,6 +100,26 @@ export class CreateVentaDto {
   @ValidateNested()
   @Type(() => CreatePlanPagoDto)
   plan_pago: CreatePlanPagoDto;
+
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Type(() => Number)
+  medidaFrente?: number;
+
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Type(() => Number)
+  medidaIzquierda?: number;
+
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Type(() => Number)
+  medidaDerecha?: number;
+
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Type(() => Number)
+  medidaFondo?: number;
 }
 
 export class RegistrarPagoDto {

@@ -1,71 +1,92 @@
-import { Component, Input, signal, PLATFORM_ID, inject, afterNextRender, ElementRef, viewChild } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
-import type * as L from 'leaflet'; // ← Importación de tipos solamente
+import { Component, Input, AfterViewInit, ElementRef, ViewChild } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { Lote } from '../../../../core/interfaces/datos.interface';
+
+declare let L: any;
 
 @Component({
   selector: 'app-vista-mapa',
-  imports: [],
+  standalone: false, // Ajusta según tu configuración (si es standalone o no)
   templateUrl: './vista-mapa.html',
-  styleUrl: './vista-mapa.css',
+  styleUrls: ['./vista-mapa.css'],
 })
-export class VistaMapa {
+export class VistaMapa implements AfterViewInit {
   @Input() lotes: Lote[] = [];
+  @ViewChild('mapContainer') mapContainer!: ElementRef;
+  private map: any;
+  private markers: any[] = [];
 
-  private map?: L.Map;
-  private platformId = inject(PLATFORM_ID);
-  private L?: typeof L; // Referencia a la librería Leaflet
-
-  constructor() {
-    // Inicializar el mapa solo en el navegador
-    afterNextRender(() => {
-      this.initMap();
-    });
+  get lotesConUbicacion(): Lote[] {
+    return this.lotes.filter((lote) => lote.ubicacion && lote.ubicacion.trim() !== '');
   }
 
-  private async initMap(): Promise<void> {
-    if (!isPlatformBrowser(this.platformId)) return;
+  ngAfterViewInit(): void {
+    if (this.lotesConUbicacion.length > 0) {
+      this.initMap();
+    }
+  }
 
-    // Importación dinámica de Leaflet solo en el navegador
-    this.L = (await import('leaflet')).default;
+  private initMap(): void {
+    if (!this.mapContainer) return;
 
-    this.map = this.L.map('map', {
-      center: [-17.3895, -66.1568], // Cochabamba por defecto
-      zoom: 13,
-    });
+    let center: [number, number] = [-16.5, -68.15];
+    const firstLote = this.lotesConUbicacion[0];
+    if (firstLote && firstLote.ubicacion) {
+      const coords = this.extraerCoordenadas(firstLote.ubicacion);
+      if (coords) center = coords;
+    }
 
-    this.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    this.map = L.map(this.mapContainer.nativeElement).setView(center, 13);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; CartoDB',
+      subdomains: 'abcd',
       maxZoom: 19,
-      attribution: '© OpenStreetMap',
     }).addTo(this.map);
 
     this.agregarMarcadores();
   }
 
-  private agregarMarcadores() {
-    if (!this.lotes.length || !this.map || !this.L) return;
+  private extraerCoordenadas(ubicacion: string): [number, number] | null {
+    const regex = /@(-?\d+\.\d+),(-?\d+\.\d+)/;
+    const match = ubicacion.match(regex);
+    if (match) {
+      return [parseFloat(match[1]), parseFloat(match[2])];
+    }
 
-    const bounds = this.L.latLngBounds([]);
-
-    this.lotes.forEach((l) => {
-      if (l.latitud && l.longitud && this.map && this.L) {
-        const marker = this.L.marker([l.latitud, l.longitud]).addTo(this.map);
-        marker.bindPopup(`
-          <strong>Lote ${l.numeroLote}</strong><br>
-          ${l.ciudad} - ${l.urbanizacion?.nombre || ''}
-          <br>Bs ${l.precioBase.toLocaleString()}
-        `);
-        bounds.extend([l.latitud, l.longitud]);
+    try {
+      const url = new URL(ubicacion);
+      const params = new URLSearchParams(url.search);
+      const q = params.get('q');
+      if (q) {
+        const parts = q.split(',');
+        if (parts.length >= 2) {
+          return [parseFloat(parts[0]), parseFloat(parts[1])];
+        }
       }
-    });
+    } catch (e) {}
 
-    if (bounds.isValid() && this.map) this.map.fitBounds(bounds);
+    return null;
   }
 
-  // Si necesitas actualizar los marcadores cuando cambian los lotes
-  ngOnChanges() {
-    if (this.map && isPlatformBrowser(this.platformId)) {
-      this.agregarMarcadores();
+  private agregarMarcadores(): void {
+    this.lotesConUbicacion.forEach((lote) => {
+      const coords = this.extraerCoordenadas(lote.ubicacion!);
+      if (!coords) return;
+
+      const marker = L.marker(coords).addTo(this.map);
+      marker.bindPopup(`
+        <b>Lote ${lote.numeroLote}</b><br>
+        Ciudad: ${lote.ciudad}<br>
+        Superficie: ${lote.superficieM2} m²<br>
+        <a href="/lotes/${lote.uuid}" target="_blank">Ver detalle</a>
+      `);
+      this.markers.push(marker);
+    });
+
+    if (this.markers.length > 0) {
+      const group = L.featureGroup(this.markers);
+      this.map.fitBounds(group.getBounds().pad(0.1));
     }
   }
 }

@@ -1,28 +1,15 @@
-// lote-detalle.component.ts
-import {
-  afterNextRender,
-  Component,
-  CUSTOM_ELEMENTS_SCHEMA,
-  ElementRef,
-  inject,
-  PLATFORM_ID,
-  signal,
-  ViewChild,
-} from '@angular/core';
+import { Component, inject, PLATFORM_ID, signal, ViewChild, ElementRef } from '@angular/core';
 import { ActivatedRoute, RouterModule } from '@angular/router';
-
 import { LoteService } from '../../services/lote.service';
 import { Lote } from '../../../../core/interfaces/datos.interface';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { SwiperOptions } from 'swiper/types';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { environment } from '../../../../../environments/environment';
 import { DomSanitizer } from '@angular/platform-browser';
-import { SafeUrlPipe } from './safe-url.pipe';
 
 @Component({
   selector: 'app-lote-detalle',
-  imports: [CommonModule, ReactiveFormsModule, RouterModule, SafeUrlPipe],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule],
   templateUrl: './lote-detalle.html',
   styleUrl: './lote-detalle.css',
 })
@@ -42,7 +29,7 @@ export class LoteDetalle {
     private route: ActivatedRoute,
     private loteSvc: LoteService,
     private fb: FormBuilder,
-    public sanitizer: DomSanitizer
+    public sanitizer: DomSanitizer,
   ) {}
 
   ngOnInit(): void {
@@ -63,29 +50,6 @@ export class LoteDetalle {
         error: () => this.cargando.set(false),
       });
     }
-  }
-
-  get mapIframeUrl(): string {
-    const loteData = this.lote();
-    let lat = -21.5153775;
-    let lon = -64.73239;
-    let zoom = 15;
-    
-    if (loteData?.ubicacion) {
-      const match1 = loteData.ubicacion.match(/@(-?\d+\.\d+),(-?\d+\.\d+),?(\d+)?z?/);
-      const match2 = loteData.ubicacion.match(/3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
-      
-      if (match1) {
-        lat = parseFloat(match1[1]);
-        lon = parseFloat(match1[2]);
-        zoom = match1[3] ? parseInt(match1[3]) : 15;
-      } else if (match2) {
-        lat = parseFloat(match2[1]);
-        lon = parseFloat(match2[2]);
-      }
-    }
-    
-    return `https://maps.google.com/maps?q=${lat},${lon}&z=${zoom}&output=embed`;
   }
 
   obtenerEstadoClase(estado: string) {
@@ -132,35 +96,12 @@ export class LoteDetalle {
     window.open(url, '_blank');
   }
 
-  osmIframeUrl(ubicacion?: string): string {
-    const coords = ubicacion ? this.coordenadas(ubicacion) : { lat: -21.5319, lon: -64.7296 };
-    const zoom = 16;
-    return `https://www.openstreetmap.org/export/embed.html?bbox=${coords.lon - 0.005},${
-      coords.lat - 0.005
-    },${coords.lon + 0.005},${coords.lat + 0.005}&layer=mapnik&marker=${coords.lat},${coords.lon}`;
-  }
-
-  coordenadas(ubicacion: string): { lat: number; lon: number } {
-    const parts = ubicacion.split(',');
-    if (parts.length >= 2) return { lat: parseFloat(parts[0]), lon: parseFloat(parts[1]) };
-    return { lat: -21.5319, lon: -64.7296 };
-  }
-
   get mapaUrl(): string | null {
     const loteData = this.lote();
-
-    if (loteData?.latitud && loteData?.longitud) {
-      return `https://www.google.com/maps?q=${loteData.latitud},${loteData.longitud}&output=embed`;
-    } else if (loteData?.ubicacion) {
+    if (loteData?.ubicacion) {
       return loteData.ubicacion;
     }
-
     return null;
-  }
-
-  get esEmbed(): boolean {
-    const loteData = this.lote();
-    return !!(loteData?.latitud && loteData?.longitud);
   }
 
   prevImage() {

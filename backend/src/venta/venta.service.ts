@@ -504,6 +504,18 @@ export class VentasService {
           };
           if (createVentaDto.inmuebleTipo === TipoInmueble.LOTE) {
             ventaData.loteId = createVentaDto.inmuebleId;
+            if (createVentaDto.medidaFrente !== undefined) {
+              ventaData.medidaFrente = createVentaDto.medidaFrente;
+            }
+            if (createVentaDto.medidaIzquierda !== undefined) {
+              ventaData.medidaIzquierda = createVentaDto.medidaIzquierda;
+            }
+            if (createVentaDto.medidaDerecha !== undefined) {
+              ventaData.medidaDerecha = createVentaDto.medidaDerecha;
+            }
+            if (createVentaDto.medidaFondo !== undefined) {
+              ventaData.medidaFondo = createVentaDto.medidaFondo;
+            }
           } else if (createVentaDto.inmuebleTipo === TipoInmueble.PROPIEDAD) {
             ventaData.propiedadId = createVentaDto.inmuebleId;
           }
@@ -869,6 +881,14 @@ export class VentasService {
             updateData.estado = updateVentaDto.estado;
           if (updateVentaDto.observaciones !== undefined)
             updateData.observaciones = updateVentaDto.observaciones;
+          if (updateVentaDto.medidaFrente !== undefined)
+            updateData.medidaFrente = updateVentaDto.medidaFrente;
+          if (updateVentaDto.medidaIzquierda !== undefined)
+            updateData.medidaIzquierda = updateVentaDto.medidaIzquierda;
+          if (updateVentaDto.medidaDerecha !== undefined)
+            updateData.medidaDerecha = updateVentaDto.medidaDerecha;
+          if (updateVentaDto.medidaFondo !== undefined)
+            updateData.medidaFondo = updateVentaDto.medidaFondo;
           if (Object.keys(updateData).length === 0) {
             const ventaSinCambios = await prisma.venta.findUnique({
               where: { id },

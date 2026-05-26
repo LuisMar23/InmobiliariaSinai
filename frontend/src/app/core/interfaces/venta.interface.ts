@@ -40,6 +40,10 @@ export interface VentaDto {
     superficieM2: number;
     precioBase: number;
     estado: string;
+    medidaFrente?: number;
+    medidaIzquierda?: number;
+    medidaDerecha?: number;
+    medidaFondo?: number;
     urbanizacion?: {
       id: number;
       nombre: string;

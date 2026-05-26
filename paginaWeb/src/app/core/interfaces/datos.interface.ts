@@ -1,5 +1,3 @@
-// src/app/core/models/interfaces.ts
-
 export enum EstadoInmueble {
   DISPONIBLE = 'DISPONIBLE',
   RESERVADO = 'RESERVADO',
@@ -26,7 +24,7 @@ export interface Urbanizacion {
   ubicacion: string;
   ciudad: string;
   descripcion?: string;
-  maps?: string; // NUEVO: URL de Google Maps
+  maps?: string;
   archivos?: any;
   createdAt: Date;
   updatedAt: Date;
@@ -78,9 +76,11 @@ export interface Lote {
   descripcion?: string;
   ubicacion?: string;
   ciudad: string;
-  manzano?: string; // AGREGADO: Número de manzano
-  latitud?: number;
-  longitud?: number;
+  manzano?: string;
+  medidaFrente?: number;
+  medidaIzquierda?: number;
+  medidaDerecha?: number;
+  medidaFondo?: number;
   esIndependiente: boolean;
   estado: EstadoInmueble;
   createdAt: Date;

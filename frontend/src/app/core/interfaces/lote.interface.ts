@@ -18,8 +18,10 @@ export interface LoteDto {
   ciudad: string;
   manzanoId?: number;
   manzano?: { id: number; nombre: string };
-  latitud?: number;
-  longitud?: number;
+  medidaFrente?: number;
+  medidaIzquierda?: number;
+  medidaDerecha?: number;
+  medidaFondo?: number;
   esIndependiente: boolean;
   estado: string;
   createdAt: string;
@@ -65,8 +67,10 @@ export interface CreateLoteDto {
   descripcion?: string;
   ubicacion?: string;
   ciudad: string;
-  latitud?: number;
-  longitud?: number;
+  medidaFrente?: number;
+  medidaIzquierda?: number;
+  medidaDerecha?: number;
+  medidaFondo?: number;
   esIndependiente: boolean;
   estado: string;
   encargadoId?: number;
@@ -81,8 +85,10 @@ export interface UpdateLoteDto {
   descripcion?: string;
   ubicacion?: string;
   ciudad?: string;
-  latitud?: number;
-  longitud?: number;
+  medidaFrente?: number;
+  medidaIzquierda?: number;
+  medidaDerecha?: number;
+  medidaFondo?: number;
   esIndependiente?: boolean;
   estado?: string;
   encargadoId?: number;

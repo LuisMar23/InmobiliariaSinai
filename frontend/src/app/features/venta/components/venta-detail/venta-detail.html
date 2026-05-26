@@ -133,11 +133,37 @@
                                 <span class="text-sm font-semibold text-gray-700">{{
                                     ventaData()!.lote!.urbanizacion?.nombre || '-' }}</span>
                             </div>
-                            <div class="flex justify-between items-center py-2">
+                            <div class="flex justify-between items-center py-2 border-b border-gray-200">
                                 <span class="text-sm font-medium text-gray-500">Estado:</span>
                                 <span class="text-sm font-semibold text-gray-900">{{ ventaData()!.lote!.estado || '-'
                                     }}</span>
                             </div>
+                            
+                            <!-- Medidas del Lote -->
+                            @if (ventaData()!.lote!.medidaFrente) {
+                            <div class="flex justify-between items-center py-2 border-b border-gray-200">
+                                <span class="text-sm font-medium text-gray-500">Medida Frente:</span>
+                                <span class="text-sm font-semibold text-gray-900">{{ ventaData()!.lote!.medidaFrente }} m</span>
+                            </div>
+                            }
+                            @if (ventaData()!.lote!.medidaIzquierda) {
+                            <div class="flex justify-between items-center py-2 border-b border-gray-200">
+                                <span class="text-sm font-medium text-gray-500">Medida Izquierda:</span>
+                                <span class="text-sm font-semibold text-gray-900">{{ ventaData()!.lote!.medidaIzquierda }} m</span>
+                            </div>
+                            }
+                            @if (ventaData()!.lote!.medidaDerecha) {
+                            <div class="flex justify-between items-center py-2 border-b border-gray-200">
+                                <span class="text-sm font-medium text-gray-500">Medida Derecha:</span>
+                                <span class="text-sm font-semibold text-gray-900">{{ ventaData()!.lote!.medidaDerecha }} m</span>
+                            </div>
+                            }
+                            @if (ventaData()!.lote!.medidaFondo) {
+                            <div class="flex justify-between items-center py-2">
+                                <span class="text-sm font-medium text-gray-500">Medida Fondo:</span>
+                                <span class="text-sm font-semibold text-gray-900">{{ ventaData()!.lote!.medidaFondo }} m</span>
+                            </div>
+                            }
                             } @else if (ventaData()!.propiedad) {
                             <div class="flex justify-between items-center py-2 border-b border-gray-200">
                                 <span class="text-sm font-medium text-gray-500">Tipo:</span>

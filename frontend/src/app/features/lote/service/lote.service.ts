@@ -80,8 +80,10 @@ export class LoteService {
       superficieM2: Number(lote.superficieM2),
       precioBase: Number(lote.precioBase),
       esIndependiente: Boolean(lote.esIndependiente),
-      latitud: lote.latitud ? Number(lote.latitud) : null,
-      longitud: lote.longitud ? Number(lote.longitud) : null,
+      medidaFrente: lote.medidaFrente ? Number(lote.medidaFrente) : null,
+      medidaIzquierda: lote.medidaIzquierda ? Number(lote.medidaIzquierda) : null,
+      medidaDerecha: lote.medidaDerecha ? Number(lote.medidaDerecha) : null,
+      medidaFondo: lote.medidaFondo ? Number(lote.medidaFondo) : null,
       manzanoId: lote.manzanoId ? Number(lote.manzanoId) : undefined,
     };
     return this.http.post<ApiResponse<any>>(this.apiUrl, loteData).pipe(
