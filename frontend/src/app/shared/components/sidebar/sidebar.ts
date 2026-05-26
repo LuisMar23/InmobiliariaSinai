@@ -146,7 +146,7 @@ faTree=faTree
       label: 'Ajustes',
       items: [
         { label: 'Caja',          icon: faCashRegister, route: '/caja',          clave: 'caja'          },
-        { label: 'Urbanizaciones',icon: faCity,         route: '/urbanizaciones',clave: 'urbanizaciones'},
+        { label: 'Proyectos',icon: faCity,         route: '/urbanizaciones',clave: 'urbanizaciones'},
         { label: 'Promociones',   icon: faTag,          route: '/promociones',   clave: 'promociones'   },
       ],
     },

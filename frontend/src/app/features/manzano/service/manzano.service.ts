@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { firstValueFrom, Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { environment } from '../../../../environments/environment.prod';
 import {
@@ -8,6 +8,8 @@ import {
   CreateManzanoDto,
   UpdateManzanoDto,
 } from '../../../core/interfaces/manzano.interface';
+import { inject } from '@angular/core/primitives/di';
+import { UrbanizacionContextService } from '../../../core/services/urbanizacion-context.service';
 
 interface ApiResponse<T> {
   success: boolean;
@@ -18,6 +20,9 @@ interface ApiResponse<T> {
 @Injectable({ providedIn: 'root' })
 export class ManzanoService {
   private apiUrl = `${environment.apiUrl}/manzanos`;
+  private readonly urbanizacionContext = inject(UrbanizacionContextService);
+
+
 
   constructor(private http: HttpClient) {}
 
@@ -30,7 +35,23 @@ export class ManzanoService {
         ),
       );
   }
+  getByUrbanizacionActiva(): Observable<ManzanoDto[]> {
+    const urbId = this.urbanizacionContext.urbanizacionId;
+    return this.getAll().pipe(
+      map((manzanos) =>
+        urbId ? manzanos.filter((m) => m.urbanizacionId === urbId) : manzanos,
+      ),
+    );
+  }
 
+  // ─── Async/await: para componentes con signals ───────────────────────────
+  async getManzanosDeUrbanizacionActiva(): Promise<ManzanoDto[]> {
+    try {
+      return await firstValueFrom(this.getByUrbanizacionActiva());
+    } catch {
+      return [];
+    }
+  }
   getById(id: number): Observable<ManzanoDto> {
     return this.http.get<ApiResponse<ManzanoDto>>(`${this.apiUrl}/${id}`).pipe(
       map((res) => {
