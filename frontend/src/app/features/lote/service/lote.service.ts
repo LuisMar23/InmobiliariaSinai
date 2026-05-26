@@ -11,9 +11,7 @@ interface ApiResponse<T> {
   data: T;
 }
 
-@Injectable({
-  providedIn: 'root',
-})
+@Injectable({ providedIn: 'root' })
 export class LoteService {
   apiUrl = `${environment.apiUrl}/lotes`;
 
@@ -27,7 +25,7 @@ export class LoteService {
           return Array.isArray(response.data) ? response.data : [response.data];
         }
         return [];
-      })
+      }),
     );
   }
 
@@ -38,7 +36,7 @@ export class LoteService {
           return Array.isArray(response.data) ? response.data : [response.data];
         }
         return [];
-      })
+      }),
     );
   }
 
@@ -49,7 +47,7 @@ export class LoteService {
           return response.data;
         }
         throw new Error(response.message || 'Error al obtener el lote');
-      })
+      }),
     );
   }
 
@@ -60,7 +58,7 @@ export class LoteService {
           return Array.isArray(response.data) ? response.data : [response.data];
         }
         return [];
-      })
+      }),
     );
   }
 
@@ -71,7 +69,7 @@ export class LoteService {
           return Array.isArray(response.data) ? response.data : [response.data];
         }
         return [];
-      })
+      }),
     );
   }
 
@@ -84,30 +82,28 @@ export class LoteService {
       esIndependiente: Boolean(lote.esIndependiente),
       latitud: lote.latitud ? Number(lote.latitud) : null,
       longitud: lote.longitud ? Number(lote.longitud) : null,
+      manzanoId: lote.manzanoId ? Number(lote.manzanoId) : undefined,
     };
-
     return this.http.post<ApiResponse<any>>(this.apiUrl, loteData).pipe(
       map((response) => {
         if (response.success) {
           return response;
         }
         throw new Error(response.message || 'Error al crear el lote');
-      })
+      }),
     );
   }
 
-update(id: number, lote: UpdateLoteDto): Observable<any> {
-  console.log('📤 Datos enviados al backend:', lote);
-  
-  return this.http.patch<ApiResponse<any>>(`${this.apiUrl}/${id}`, lote).pipe(
-    map((response) => {
-      if (response.success) {
-        return response;
-      }
-      throw new Error(response.message || 'Error al actualizar el lote');
-    })
-  );
-}
+  update(id: number, lote: UpdateLoteDto): Observable<any> {
+    return this.http.patch<ApiResponse<any>>(`${this.apiUrl}/${id}`, lote).pipe(
+      map((response) => {
+        if (response.success) {
+          return response;
+        }
+        throw new Error(response.message || 'Error al actualizar el lote');
+      }),
+    );
+  }
 
   delete(id: number): Observable<any> {
     return this.http.delete<ApiResponse<any>>(`${this.apiUrl}/${id}`).pipe(
@@ -116,20 +112,15 @@ update(id: number, lote: UpdateLoteDto): Observable<any> {
           return response;
         }
         throw new Error(response.message || 'Error al eliminar el lote');
-      })
+      }),
     );
   }
 
-  // lote.service.ts
-getCiudades(): Observable<string[]> {
-  
-  return this.http.get<string[]>(`${this.apiUrl}/ciudades`);
-}
-// ── AGREGAR en urbanizacion.service.ts ──
+  getCiudades(): Observable<string[]> {
+    return this.http.get<string[]>(`${this.apiUrl}/ciudades`);
+  }
 
-
-// En lote.service.ts
-getLotesSinUrbanizacion(): Observable<any> {
-  return this.http.get(`${this.apiUrl}/sin-urbanizacion`);
-}
+  getLotesSinUrbanizacion(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/sin-urbanizacion`);
+  }
 }

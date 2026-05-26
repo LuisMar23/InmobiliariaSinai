@@ -7,6 +7,7 @@ import { LoteDto } from '../../../../core/interfaces/lote.interface';
 import { CotizacionService } from '../../service/cotizacion.service';
 import { LoteService } from '../../../lote/service/lote.service';
 import { AuthService } from '../../../../components/services/auth.service';
+import { UrbanizacionContextService } from '../../../../core/services/urbanizacion-context.service';
 
 @Component({
   selector: 'app-cotizacion-edit',
@@ -34,6 +35,7 @@ export class CotizacionEdit implements OnInit {
   private notificationService = inject(NotificationService);
   private datePipe = inject(DatePipe);
   private authService = inject(AuthService);
+  private urbanizacionContext = inject(UrbanizacionContextService);
 
   constructor() {
     this.cotizacionForm = this.crearFormularioCotizacion();
@@ -57,6 +59,9 @@ export class CotizacionEdit implements OnInit {
   }
 
   cargarLotes(): void {
+    const urbanizacionActiva = this.urbanizacionContext.urbanizacion();
+    const loteActualId = this.cotizacionData?.inmuebleId;
+
     this.loteSvc.getAll().subscribe({
       next: (response: any) => {
         let lotes: any[] = [];
@@ -70,14 +75,31 @@ export class CotizacionEdit implements OnInit {
           return;
         }
 
-        const lotesDisponibles = lotes.filter(
+        let lotesDisponibles = lotes.filter(
           (lote) => lote.estado === 'DISPONIBLE' || lote.estado === 'CON_OFERTA',
         );
+
+        if (urbanizacionActiva) {
+          lotesDisponibles = lotesDisponibles.filter(
+            (lote) => lote.urbanizacion?.id === urbanizacionActiva.id
+          );
+        }
+
+        if (loteActualId) {
+          const loteActual = lotes.find(l => l.id === loteActualId);
+          if (loteActual && !lotesDisponibles.some(l => l.id === loteActualId)) {
+            lotesDisponibles = [...lotesDisponibles, loteActual];
+          }
+        }
 
         this.lotes.set(lotesDisponibles);
 
         if (lotesDisponibles.length === 0) {
           this.notificationService.showWarning('No hay lotes disponibles para cotización');
+        }
+
+        if (this.cotizacionData) {
+          this.cargarDatosFormulario(this.cotizacionData);
         }
       },
       error: (err: any) => {
@@ -131,11 +153,11 @@ export class CotizacionEdit implements OnInit {
       next: (cotizacion: any) => {
         if (cotizacion) {
           this.cotizacionData = cotizacion;
-          this.cargarDatosFormulario(cotizacion);
+          this.cargarLotes(); // esto llamará a cargarDatosFormulario después
         } else {
           this.error.set('No se encontró la cotización');
+          this.cargando.set(false);
         }
-        this.cargando.set(false);
       },
       error: (err: any) => {
         this.error.set('No se pudo cargar la cotización');
@@ -164,6 +186,8 @@ export class CotizacionEdit implements OnInit {
         } - $${this.formatMonto(loteSeleccionado.precioBase)}`,
       );
     }
+
+    this.cargando.set(false);
   }
 
   formatDate(date: any): string {

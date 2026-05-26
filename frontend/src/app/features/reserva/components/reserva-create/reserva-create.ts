@@ -9,6 +9,7 @@ import { LoteService } from '../../../lote/service/lote.service';
 import { ReservaService } from '../../service/reserva.service';
 import { AuthService } from '../../../../components/services/auth.service';
 import { CreateReservaDto } from '../../../../core/interfaces/reserva.interface';
+import { UrbanizacionContextService } from '../../../../core/services/urbanizacion-context.service';
 
 @Component({
   selector: 'app-reserva-create',
@@ -33,6 +34,7 @@ export class ReservaCreate implements OnInit {
   private loteSvc = inject(LoteService);
   private notificationService = inject(NotificationService);
   private authService = inject(AuthService);
+  private urbanizacionContext = inject(UrbanizacionContextService);
 
   constructor() {
     this.reservaForm = this.crearFormularioReserva();
@@ -105,16 +107,21 @@ export class ReservaCreate implements OnInit {
   cargarLotesDisponibles(): void {
     const currentUser = this.authService.getCurrentUser();
     const rolesFullAccess = ['ADMINISTRADOR', 'SECRETARIA'];
+    const urbanizacionActiva = this.urbanizacionContext.urbanizacion();
 
     this.reservaSvc.getLotesDisponibles().subscribe({
       next: (lotes: LoteDto[]) => {
-        if (rolesFullAccess.includes(currentUser?.role)) {
-          this.lotes.set(lotes);
-          return;
+        let lotesFiltrados = lotes;
+        if (!rolesFullAccess.includes(currentUser?.role)) {
+          lotesFiltrados = lotes.filter(
+            (lote) => lote.encargadoId?.toString() === currentUser?.id?.toString()
+          );
         }
-        const lotesFiltrados = lotes.filter(
-          (lote) => lote.encargadoId?.toString() === currentUser?.id?.toString()
-        );
+        if (urbanizacionActiva) {
+          lotesFiltrados = lotesFiltrados.filter(
+            (lote) => lote.urbanizacion?.id === urbanizacionActiva.id
+          );
+        }
         this.lotes.set(lotesFiltrados);
       },
       error: () => {

@@ -113,6 +113,11 @@ export const routes: Routes = [
           import('./features/cobros/cobros.routes').then((r) => r.CobrosRoutingModule),
       },
       {
+        path: 'manzanos',
+        loadChildren: () =>
+          import('./features/manzano/manzano.route').then((r) => r.ManzanoRoutingModule),
+      },
+      {
         path: 'cobros',
         loadChildren: () =>
           import('./features/cobros/cobros.routes').then((r) => r.CobrosRoutingModule),

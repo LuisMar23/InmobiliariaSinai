@@ -45,6 +45,7 @@ import {
   faPiggyBank,
   faChartColumn,
   faScrewdriverWrench,
+  faTree,
 } from '@fortawesome/free-solid-svg-icons';
 import { AuthService } from '../../../components/services/auth.service';
 import { PermisosStateService } from '../../../core/services/permisosState.service';
@@ -54,7 +55,7 @@ import { PermisosStateService } from '../../../core/services/permisosState.servi
   standalone: true,
   imports: [CommonModule, RouterModule, FontAwesomeModule],
   templateUrl: './sidebar.html',
-  styleUrl: './sidebar.css',
+  styleUrls: ['./sidebar.css'],
 })
 export class Sidebar implements OnInit {
   // ─── Iconos generales ────────────────────────────────────────────────────────
@@ -82,7 +83,7 @@ export class Sidebar implements OnInit {
   faShieldAlt        = faShieldAlt;
   faMoneyBillWave    = faMoneyBillWave;
   faUsersCog         = faUsersCog;
-
+faTree=faTree
   // ─── Iconos de grupo ─────────────────────────────────────────────────────────
   private readonly groupIcons: Record<string, IconDefinition> = {
     'Seguridad':  faLock,
@@ -132,6 +133,7 @@ export class Sidebar implements OnInit {
         { label: 'Visitas',      icon: faEye,              route: '/visitas',      clave: 'visitas'      },
         { label: 'Lotes',        icon: faMapMarkedAlt,     route: '/lotes',        clave: 'lotes'        },
         { label: 'Propiedades',  icon: faHouse,            route: '/propiedades',  clave: 'propiedades'  },
+             { label: 'Manzanos', icon: faTree, route: '/manzanos', clave: 'manzanos' },
       ],
     },
     {
@@ -158,9 +160,7 @@ export class Sidebar implements OnInit {
     },
   ];
 
-  constructor(private authService: AuthService) {
-    this.imagen = 'assets/logoSinai.jpg';
-  }
+  constructor(private authService: AuthService) {}
 
   ngOnInit() {
     this.currentUser = this.authService.getCurrentUser();
@@ -175,7 +175,6 @@ export class Sidebar implements OnInit {
       .filter((group) => group.items.length > 0);
   }
 
-  // Grupos abiertos por defecto
   private openGroups = new Set<string>(['Comercial', 'Finanzas', 'Reportes', 'Gestión']);
 
   toggleSidebar() {

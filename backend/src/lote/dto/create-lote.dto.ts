@@ -74,6 +74,8 @@ export class CreateLoteDto {
   @Type(() => Number)
   encargadoId?: number;
 
-   @IsOptional()
-   manzano?:string;
+  @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  manzanoId?: number;
 }

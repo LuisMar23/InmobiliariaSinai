@@ -19,6 +19,7 @@ import {
   RegistrarPagoDto,
   Cuota,
 } from '../../../../core/interfaces/venta.interface';
+import { UrbanizacionContextService } from '../../../../core/services/urbanizacion-context.service';
 
 @Component({
   selector: 'app-venta-edit',
@@ -157,6 +158,7 @@ export class VentaEdit implements OnInit {
   private datePipe = inject(DatePipe);
   private authService = inject(AuthService);
   private reciboSvc = inject(ReciboService);
+  private urbanizacionContext = inject(UrbanizacionContextService);
 
   constructor() {
     this.ventaForm = this.crearFormularioVenta();
@@ -237,14 +239,27 @@ export class VentaEdit implements OnInit {
 
   cargarLotes(): void {
     const currentUser = this.authService.getCurrentUser();
+    const urbanizacionActiva = this.urbanizacionContext.urbanizacion();
+    const ventaActual = this.ventaData();
+    const loteActualId = ventaActual?.inmuebleId;
 
     this.loteSvc.getAll().subscribe({
       next: (lotes: LoteDto[]) => {
         let lotesFiltrados = lotes.filter((lote) => lote.encargadoId === currentUser?.id);
+        if (urbanizacionActiva) {
+          lotesFiltrados = lotesFiltrados.filter(
+            (lote) => lote.urbanizacion?.id === urbanizacionActiva.id
+          );
+        }
+        if (loteActualId) {
+          const loteActual = lotes.find(l => l.id === loteActualId);
+          if (loteActual && !lotesFiltrados.some(l => l.id === loteActualId)) {
+            lotesFiltrados = [...lotesFiltrados, loteActual];
+          }
+        }
         this.lotes.set(lotesFiltrados);
-        const venta = this.ventaData();
-        if (venta) {
-          this.setupSearchValues(venta);
+        if (ventaActual) {
+          this.setupSearchValues(ventaActual);
         }
       },
       error: (err: any) => {
@@ -256,19 +271,32 @@ export class VentaEdit implements OnInit {
 
   cargarPropiedades(): void {
     const currentUser = this.authService.getCurrentUser();
+    const urbanizacionActiva = this.urbanizacionContext.urbanizacion();
+    const ventaActual = this.ventaData();
+    const propiedadActualId = ventaActual?.inmuebleId;
 
     this.propiedadSvc.getAll().subscribe({
       next: (propiedades: PropiedadDto[]) => {
-        const propiedadesParaVenta = propiedades.filter(
+        let propiedadesParaVenta = propiedades.filter(
           (propiedad) =>
             propiedad.estadoPropiedad === 'VENTA' &&
             (propiedad.tipo === 'CASA' || propiedad.tipo === 'DEPARTAMENTO') &&
             propiedad.encargadoId === currentUser?.id,
         );
+        if (urbanizacionActiva) {
+          propiedadesParaVenta = propiedadesParaVenta.filter(
+            (propiedad) => propiedad.urbanizacion?.id === urbanizacionActiva.id
+          );
+        }
+        if (propiedadActualId) {
+          const propiedadActual = propiedades.find(p => p.id === propiedadActualId);
+          if (propiedadActual && !propiedadesParaVenta.some(p => p.id === propiedadActualId)) {
+            propiedadesParaVenta = [...propiedadesParaVenta, propiedadActual];
+          }
+        }
         this.propiedades.set(propiedadesParaVenta);
-        const venta = this.ventaData();
-        if (venta) {
-          this.setupSearchValues(venta);
+        if (ventaActual) {
+          this.setupSearchValues(ventaActual);
         }
       },
       error: (err: any) => {
@@ -1015,7 +1043,6 @@ export class VentaEdit implements OnInit {
     return classes[estado] || classes['ACTIVO'];
   }
 
-  // MODIFICACIÓN: Se agregó el estado 'PARCIAL'
   getEstadoCuotaClass(estado: string): string {
     const classes: { [key: string]: string } = {
       PENDIENTE: 'bg-yellow-100 text-yellow-700',

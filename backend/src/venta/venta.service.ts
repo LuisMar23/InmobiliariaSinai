@@ -301,7 +301,6 @@ export class VentasService {
     });
   }
 
-  // Nueva función para recalcular estado de una cuota basado en los pagos aplicados
   private async actualizarEstadoCuota(cuotaId: number, prisma: any) {
     const cuota = await prisma.cuota.findUnique({
       where: { id_cuota: cuotaId },
@@ -373,7 +372,6 @@ export class VentasService {
       });
       montoRestante -= aplicar;
 
-      // Actualizar estado de la cuota después de aplicar el pago
       await this.actualizarEstadoCuota(cuota.id_cuota, prisma);
     }
     if (montoRestante > 0) {
@@ -391,13 +389,12 @@ export class VentasService {
       await prisma.pagoCuota.delete({
         where: { id_pago_cuota: asig.id_pago_cuota },
       });
-      // Recalcular estado de la cuota después de eliminar esta asignación
       await this.actualizarEstadoCuota(asig.cuota_id, prisma);
     }
   }
 
-  private async actualizarEstadoPlan(planPagoId: number) {
-    const planPago = await this.prisma.planPago.findUnique({
+  private async actualizarEstadoPlan(planPagoId: number, prisma: any) {
+    const planPago = await prisma.planPago.findUnique({
       where: { id_plan_pago: planPagoId },
       include: { pagos: true, cuotas: true, venta: true },
     });
@@ -415,11 +412,11 @@ export class VentasService {
         nuevoEstadoPlan = EstadoPlanPago.MOROSO;
       }
     }
-    await this.prisma.planPago.update({
+    await prisma.planPago.update({
       where: { id_plan_pago: planPagoId },
       data: { estado: nuevoEstadoPlan, actualizado_en: new Date() },
     });
-    await this.prisma.venta.update({
+    await prisma.venta.update({
       where: { id: planPago.ventaId },
       data: { estado: nuevoEstadoVenta },
     });
@@ -629,7 +626,7 @@ export class VentasService {
             data: this.agregarCalculosVenta(ventaCompleta),
           };
         },
-        { timeout: 120000 },
+        { timeout: 180000 },
       );
     } catch (error) {
       if (
@@ -930,7 +927,7 @@ export class VentasService {
             data: { venta: this.agregarCalculosVenta(ventaActualizada) },
           };
         },
-        { timeout: 120000 },
+        { timeout: 180000 },
       );
     } catch (error) {
       if (
@@ -1083,7 +1080,7 @@ export class VentasService {
           if (nuevoMontoInicial < Number(venta.planPago.total)) {
             await this.generarCuotas(venta.planPago.id_plan_pago, prisma);
           }
-          await this.actualizarEstadoPlan(venta.planPago.id_plan_pago);
+          await this.actualizarEstadoPlan(venta.planPago.id_plan_pago, prisma);
           await this.crearAuditoria(
             usuarioId,
             'ACTUALIZAR_MONTO_INICIAL_PLAN_PAGO',
@@ -1109,7 +1106,7 @@ export class VentasService {
             data: { venta: this.agregarCalculosVenta(ventaActualizada) },
           };
         },
-        { timeout: 120000 },
+        { timeout: 180000 },
       );
     } catch (error) {
       if (
@@ -1226,7 +1223,7 @@ export class VentasService {
           );
           return { success: true, message: 'Venta eliminada correctamente' };
         },
-        { timeout: 120000 },
+        { timeout: 180000 },
       );
     } catch (error) {
       if (
@@ -1350,7 +1347,7 @@ export class VentasService {
             registrarPagoDto.monto,
             prisma,
           );
-          await this.actualizarEstadoPlan(planPago.id_plan_pago);
+          await this.actualizarEstadoPlan(planPago.id_plan_pago, prisma);
           await this.crearAuditoria(
             usuarioId,
             'CREAR_PAGO',
@@ -1377,7 +1374,7 @@ export class VentasService {
             },
           };
         },
-        { timeout: 120000 },
+        { timeout: 180000 },
       );
     } catch (error) {
       if (
@@ -1565,7 +1562,7 @@ export class VentasService {
               prisma,
             );
           }
-          await this.actualizarEstadoPlan(pagoExistente.planPago.id_plan_pago);
+          await this.actualizarEstadoPlan(pagoExistente.planPago.id_plan_pago, prisma);
           await this.crearAuditoria(
             usuarioId,
             'ACTUALIZAR_PAGO',
@@ -1580,7 +1577,7 @@ export class VentasService {
             data: { pago: pagoActualizado },
           };
         },
-        { timeout: 120000 },
+        { timeout: 180000 },
       );
     } catch (error) {
       if (
@@ -1654,7 +1651,7 @@ export class VentasService {
           );
           await this.revertirAplicacionPago(pagoId, prisma);
           await prisma.pagoPlanPago.delete({ where: { id_pago_plan: pagoId } });
-          await this.actualizarEstadoPlan(pago.planPago.id_plan_pago);
+          await this.actualizarEstadoPlan(pago.planPago.id_plan_pago, prisma);
           await this.crearAuditoria(
             usuarioId,
             'ELIMINAR_PAGO',
@@ -1665,7 +1662,7 @@ export class VentasService {
           );
           return { success: true, message: 'Pago eliminado correctamente' };
         },
-        { timeout: 120000 },
+        { timeout: 180000 },
       );
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
@@ -1749,7 +1746,7 @@ export class VentasService {
               await this.generarCuotas(planPagoId, prisma);
             }
           }
-          await this.actualizarEstadoPlan(planPagoId);
+          await this.actualizarEstadoPlan(planPagoId, prisma);
           await this.crearAuditoria(
             usuarioId,
             'ACTUALIZAR_PLAN_PAGO',
@@ -1771,7 +1768,7 @@ export class VentasService {
             },
           };
         },
-        { timeout: 120000 },
+        { timeout: 180000 },
       );
     } catch (error) {
       if (

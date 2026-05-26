@@ -1,8 +1,16 @@
+// create-reporteslote.dto.ts
+
+export class ManzanoDto {
+  id: number;
+  uuid: string;
+  nombre: string;
+}
+
 export class LoteReporteDto {
   id: number;
   uuid: string;
   numeroLote: string;
-  manzano: string | null;
+  manzano: ManzanoDto | null; // ahora es objeto, no string
   superficieM2: number;
   precioBase: number;
   ubicacion: string | null;
@@ -35,8 +43,4 @@ export class ReporteLotesDetalleResponseDto {
   totalSuperficieM2: number;
   totalPrecioBase: number;
   generadoEn: Date;
-}
-
-export class ManzanoDto {
-  manzano: string;
 }

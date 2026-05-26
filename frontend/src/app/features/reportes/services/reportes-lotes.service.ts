@@ -12,10 +12,15 @@ import * as pdfFonts from 'pdfmake/build/vfs_fonts';
 const pdfMake: any = pdfMakeLib;
 pdfMake.vfs = pdfFonts as any;
 
+interface ManzanoDto {
+  id: number;
+  uuid: string;
+  nombre: string;
+}
 interface LoteReporte {
   id: number;
   numeroLote: string;
-  manzano: string | null;
+  manzano: ManzanoDto | null; // ← ahora es objeto
   superficieM2: number;
   precioBase: number;
   ubicacion: string | null;
@@ -84,20 +89,21 @@ export class ReportesLotesService {
     });
   }
 
-  private buildParams(urbanizacionId?: number, manzano?: string): HttpParams {
-    let params = new HttpParams();
-    if (urbanizacionId) params = params.set('urbanizacionId', urbanizacionId);
-    if (manzano && manzano !== 'todas') params = params.set('manzano', manzano);
-    return params;
-  }
+private buildParams(urbanizacionId?: number, manzanoId?: number): HttpParams {
+  let params = new HttpParams();
+  if (urbanizacionId) params = params.set('urbanizacionId', urbanizacionId);
+  if (manzanoId)      params = params.set('manzanoId', manzanoId);
+  return params;
+}
 
-  async getManzanos(urbanizacionId?: number): Promise<string[]> {
-    let params = new HttpParams();
-    if (urbanizacionId) params = params.set('urbanizacionId', urbanizacionId);
-    return firstValueFrom(
-      this.http.get<string[]>(`${this.baseUrl}/manzanos`, { params })
-    );
-  }
+
+async getManzanos(urbanizacionId?: number): Promise<ManzanoDto[]> {
+  let params = new HttpParams();
+  if (urbanizacionId) params = params.set('urbanizacionId', urbanizacionId);
+  return firstValueFrom(
+    this.http.get<ManzanoDto[]>(`${this.baseUrl}/manzanos`, { params })
+  );
+}
 
   private async getLogoBase64(): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -178,50 +184,50 @@ export class ReportesLotesService {
 
   // ─── Tabla Nº | MANZANA-LOTE | ÁREA | PRECIO ─────────────────────────────────
 
-  private buildTablaLotes(
-    lotes: LoteReporte[],
-    headerMonto: string,
-    campoMonto: (l: LoteReporte) => number,
-  ): Content {
-    const totalSuperficie = lotes.reduce((s, l) => s + l.superficieM2, 0);
-    const totalMonto      = lotes.reduce((s, l) => s + campoMonto(l), 0);
+ private buildTablaLotes(
+  lotes: LoteReporte[],
+  headerMonto: string,
+  campoMonto: (l: LoteReporte) => number,
+): Content {
+  const totalSuperficie = lotes.reduce((s, l) => s + l.superficieM2, 0);
+  const totalMonto      = lotes.reduce((s, l) => s + campoMonto(l), 0);
 
-    const filas: any[][] = lotes.map((l, i) => [
-      { text: String(i + 1),
-        style: 'celda', alignment: 'center' as const },
-      { text: `LOTE ${l.numeroLote}${l.manzano ? ' - MANZANO ' + l.manzano : ''}`,
-        style: 'celda' },
-      { text: `${l.superficieM2} M²`,
-        style: 'celda', alignment: 'center' as const },
-      { text: `BS ${this.formatMonto(campoMonto(l))}`,
-        style: 'celdaMonto', alignment: 'right' as const },
-    ]);
+  const filas: any[][] = lotes.map((l, i) => [
+    { text: String(i + 1),
+      style: 'celda', alignment: 'center' as const },
+    { text: `LOTE ${l.numeroLote}${l.manzano ? ' - MANZANO ' + l.manzano.nombre : ''}`, // ← .nombre
+      style: 'celda' },
+    { text: `${l.superficieM2} M²`,
+      style: 'celda', alignment: 'center' as const },
+    { text: `BS ${this.formatMonto(campoMonto(l))}`,
+      style: 'celdaMonto', alignment: 'right' as const },
+  ]);
 
-    const totalRowIndex = filas.length + 1; // header(1) + filas + total
+  const totalRowIndex = filas.length + 1;
 
-    return {
-      table: {
-        headerRows: 1,
-        widths: [25, '*', 80, 90],
-        body: [
-          [
-            { text: 'Nº',           style: 'th', alignment: 'center' as const },
-            { text: 'MANZANA - LOTE', style: 'th', alignment: 'center' as const },
-            { text: 'ÁREA',         style: 'th', alignment: 'center' as const },
-            { text: headerMonto,    style: 'th', alignment: 'center' as const },
-          ],
-          ...filas,
-          [
-            { text: '',                                              style: 'celdaTotal' },
-            { text: 'TOTAL',                                         style: 'celdaTotal', alignment: 'right' as const },
-            { text: `${totalSuperficie.toFixed(2)} M²`,              style: 'celdaTotal', alignment: 'center' as const },
-            { text: `BS ${this.formatMonto(totalMonto)}`,            style: 'celdaTotal', alignment: 'right' as const },
-          ],
+  return {
+    table: {
+      headerRows: 1,
+      widths: [25, '*', 80, 90],
+      body: [
+        [
+          { text: 'Nº',              style: 'th', alignment: 'center' as const },
+          { text: 'MANZANA - LOTE',  style: 'th', alignment: 'center' as const },
+          { text: 'ÁREA',            style: 'th', alignment: 'center' as const },
+          { text: headerMonto,       style: 'th', alignment: 'center' as const },
         ],
-      },
-      layout: this.layoutConTotal(totalRowIndex),
-    } as Content;
-  }
+        ...filas,
+        [
+          { text: '',                                               style: 'celdaTotal' },
+          { text: 'TOTAL',                                          style: 'celdaTotal', alignment: 'right' as const },
+          { text: `${totalSuperficie.toFixed(2)} M²`,               style: 'celdaTotal', alignment: 'center' as const },
+          { text: `BS ${this.formatMonto(totalMonto)}`,             style: 'celdaTotal', alignment: 'right' as const },
+        ],
+      ],
+    },
+    layout: this.layoutConTotal(totalRowIndex),
+  } as Content;
+}
 
   // ─── Generador PDF portrait ───────────────────────────────────────────────────
 
@@ -271,62 +277,77 @@ export class ReportesLotesService {
     return u ? `${u.nombre} (${u.ubicacion})` : 'URBANIZACIÓN';
   }
 
-  async exportarLotesVendidosPdf(urbanizacionId?: number, manzano?: string): Promise<void> {
-    const [res, logo] = await Promise.all([
-      firstValueFrom(this.http.get<ReporteLotesResponse>(`${this.baseUrl}/vendidos`, { params: this.buildParams(urbanizacionId, manzano) })),
-      this.getLogoBase64(),
-    ]);
-    await this.generarPdfPortrait(res.data, logo, this.nombreUrb(res.data),
-      'LISTA DE LOTES VENDIDOS', 'lotes_vendidos', 'PRECIO VENTA', (l) => l.precioBase);
-  }
+async exportarLotesVendidosPdf(urbanizacionId?: number, manzanoId?: number): Promise<void> {
+  const [res, logo] = await Promise.all([
+    firstValueFrom(this.http.get<ReporteLotesResponse>(
+      `${this.baseUrl}/vendidos`,
+      { params: this.buildParams(urbanizacionId, manzanoId) }
+    )),
+    this.getLogoBase64(),
+  ]);
+  await this.generarPdfPortrait(res.data, logo, this.nombreUrb(res.data),
+    'LISTA DE LOTES VENDIDOS', 'lotes_vendidos', 'PRECIO VENTA', (l) => l.precioBase);
+}
 
-  async exportarLotesDisponiblesPdf(urbanizacionId?: number, manzano?: string): Promise<void> {
-    const [res, logo] = await Promise.all([
-      firstValueFrom(this.http.get<ReporteLotesResponse>(`${this.baseUrl}/disponibles`, { params: this.buildParams(urbanizacionId, manzano) })),
-      this.getLogoBase64(),
-    ]);
-    await this.generarPdfPortrait(res.data, logo, this.nombreUrb(res.data),
-      'LISTA DE LOTES DISPONIBLES', 'lotes_disponibles', 'PRECIO BASE', (l) => l.precioBase);
-  }
+ async exportarLotesDisponiblesPdf(urbanizacionId?: number, manzanoId?: number): Promise<void> {
+  const [res, logo] = await Promise.all([
+    firstValueFrom(this.http.get<ReporteLotesResponse>(
+      `${this.baseUrl}/disponibles`,
+      { params: this.buildParams(urbanizacionId, manzanoId) }
+    )),
+    this.getLogoBase64(),
+  ]);
+  await this.generarPdfPortrait(res.data, logo, this.nombreUrb(res.data),
+    'LISTA DE LOTES DISPONIBLES', 'lotes_disponibles', 'PRECIO BASE', (l) => l.precioBase);
+}
 
-  async exportarLotesReservadosPdf(urbanizacionId?: number, manzano?: string): Promise<void> {
-    const [res, logo] = await Promise.all([
-      firstValueFrom(this.http.get<ReporteLotesResponse>(`${this.baseUrl}/reservados`, { params: this.buildParams(urbanizacionId, manzano) })),
-      this.getLogoBase64(),
-    ]);
-    await this.generarPdfPortrait(res.data, logo, this.nombreUrb(res.data),
-      'LISTA DE LOTES RESERVADOS', 'lotes_reservados', 'MONTO', (l) => l.precioBase);
-  }
+ async exportarLotesReservadosPdf(urbanizacionId?: number, manzanoId?: number): Promise<void> {
+  const [res, logo] = await Promise.all([
+    firstValueFrom(this.http.get<ReporteLotesResponse>(
+      `${this.baseUrl}/reservados`,
+      { params: this.buildParams(urbanizacionId, manzanoId) }
+    )),
+    this.getLogoBase64(),
+  ]);
+  await this.generarPdfPortrait(res.data, logo, this.nombreUrb(res.data),
+    'LISTA DE LOTES RESERVADOS', 'lotes_reservados', 'MONTO', (l) => l.precioBase);
+}
 
-  async exportarTotalLotesPdf(urbanizacionId?: number, manzano?: string): Promise<void> {
-    const [res, logo] = await Promise.all([
-      firstValueFrom(this.http.get<ReporteLotesResponse>(`${this.baseUrl}`, { params: this.buildParams(urbanizacionId, manzano) })),
-      this.getLogoBase64(),
-    ]);
-    await this.generarPdfPortrait(res.data, logo, this.nombreUrb(res.data),
-      'LISTA TOTAL DE LOTES', 'total_lotes', 'PRECIO BASE', (l) => l.precioBase);
-  }
+async exportarTotalLotesPdf(urbanizacionId?: number, manzanoId?: number): Promise<void> {
+  const [res, logo] = await Promise.all([
+    firstValueFrom(this.http.get<ReporteLotesResponse>(
+      `${this.baseUrl}`,
+      { params: this.buildParams(urbanizacionId, manzanoId) }
+    )),
+    this.getLogoBase64(),
+  ]);
+  await this.generarPdfPortrait(res.data, logo, this.nombreUrb(res.data),
+    'LISTA TOTAL DE LOTES', 'total_lotes', 'PRECIO BASE', (l) => l.precioBase);
+}
 
   // ─── Reporte detallado (landscape por cantidad de columnas) ──────────────────
 
-  async exportarDetalleLotesPdf(urbanizacionId?: number, manzano?: string): Promise<void> {
-    const [res, logo] = await Promise.all([
-      firstValueFrom(this.http.get<ReporteLotesDetalleResponse>(`${this.baseUrl}/detalle`, { params: this.buildParams(urbanizacionId, manzano) })),
-      this.getLogoBase64(),
-    ]);
+async exportarDetalleLotesPdf(urbanizacionId?: number, manzanoId?: number): Promise<void> {
+  const [res, logo] = await Promise.all([
+    firstValueFrom(this.http.get<ReporteLotesDetalleResponse>(
+      `${this.baseUrl}/detalle`,
+      { params: this.buildParams(urbanizacionId, manzanoId) }
+    )),
+    this.getLogoBase64(),
+  ]);
 
-    const hoy = this.formatFecha();
+  const hoy = this.formatFecha();
 
-    const filas: any[][] = res.data.map((l, i) => [
-      { text: String(i + 1),                                                              style: 'celda',      alignment: 'center' as const },
-      { text: `LOTE ${l.numeroLote}${l.manzano ? ' - MANZANO ' + l.manzano : ''}`,       style: 'celdaNegrita' },
-      { text: `${l.superficieM2} M²`,                                                     style: 'celda',      alignment: 'center' as const },
-      { text: `BS ${this.formatMonto(l.precioBase)}`,                                     style: 'celdaMonto', alignment: 'right'  as const },
-      { text: l.estado,                                                                   style: 'celda',      alignment: 'center' as const },
-      { text: String(l.totalVentas),                                                      style: 'celda',      alignment: 'center' as const },
-      { text: String(l.totalReservas),                                                    style: 'celda',      alignment: 'center' as const },
-      { text: l.encargado ?? '-',                                                         style: 'celda'                                   },
-    ]);
+  const filas: any[][] = res.data.map((l, i) => [
+    { text: String(i + 1),                                                                         style: 'celda',      alignment: 'center' as const },
+    { text: `LOTE ${l.numeroLote}${l.manzano ? ' - MANZANO ' + l.manzano.nombre : ''}`,           style: 'celdaNegrita' }, // ← .nombre
+    { text: `${l.superficieM2} M²`,                                                                style: 'celda',      alignment: 'center' as const },
+    { text: `BS ${this.formatMonto(l.precioBase)}`,                                                style: 'celdaMonto', alignment: 'right'  as const },
+    { text: l.estado,                                                                              style: 'celda',      alignment: 'center' as const },
+    { text: String(l.totalVentas),                                                                 style: 'celda',      alignment: 'center' as const },
+    { text: String(l.totalReservas),                                                               style: 'celda',      alignment: 'center' as const },
+    { text: l.encargado ?? '-',                                                                    style: 'celda'                                    },
+  ]);
 
     const totalRowIndex = filas.length + 1;
 

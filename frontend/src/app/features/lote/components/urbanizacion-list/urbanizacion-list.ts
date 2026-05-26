@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, computed, inject } from '@angular/core';
+import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -20,7 +20,7 @@ import { forkJoin } from 'rxjs';
   selector: 'app-urbanizacion-list',
   imports: [FontAwesomeModule, FormsModule, RouterModule, CommonModule,ReactiveFormsModule],
   templateUrl: './urbanizacion-list.html',
-  styleUrl: './urbanizacion-list.css',
+  styleUrls: ['./urbanizacion-list.css'],
 })
 export class UrbanizacionList implements OnInit {
   faMapMarkerAlt = faMapMarkerAlt;
@@ -93,8 +93,7 @@ export class UrbanizacionList implements OnInit {
     return lotes.filter(
       (l) =>
         l.numeroLote.toLowerCase().includes(q) ||
-        l.ciudad?.toLowerCase().includes(q) ||
-        l.manzano?.toLowerCase().includes(q),
+        l.ciudad?.toLowerCase().includes(q) 
     );
   });
 

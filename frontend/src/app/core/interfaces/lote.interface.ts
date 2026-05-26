@@ -16,7 +16,8 @@ export interface LoteDto {
   descripcion?: string;
   ubicacion?: string;
   ciudad: string;
-  manzano?: string;
+  manzanoId?: number;
+  manzano?: { id: number; nombre: string };
   latitud?: number;
   longitud?: number;
   esIndependiente: boolean;
@@ -69,6 +70,7 @@ export interface CreateLoteDto {
   esIndependiente: boolean;
   estado: string;
   encargadoId?: number;
+  manzanoId?: number;
 }
 
 export interface UpdateLoteDto {
@@ -84,17 +86,9 @@ export interface UpdateLoteDto {
   esIndependiente?: boolean;
   estado?: string;
   encargadoId?: number;
-}
-export interface UrbanizacionGroup {
-  urbanizacion: string;
-  uuid?: string;
-  ciudad?: string;
-  ubicacion?: string;
-  independiente: boolean;
-  lotes: LoteDto[];
+  manzanoId?: number;
 }
 
-// Definir el tipo fuera del computed (a nivel de clase o archivo)
 export interface LoteGroup {
   key: string;
   nombre: string;
@@ -104,5 +98,11 @@ export interface LoteGroup {
   lotes: LoteDto[];
 }
 
-// Dentro del computed, usar así:
-const map = new Map<string, LoteGroup>();
+export interface UrbanizacionGroup {
+  urbanizacion: string;
+  uuid?: string;
+  ciudad?: string;
+  ubicacion?: string;
+  independiente: boolean;
+  lotes: LoteDto[];
+}

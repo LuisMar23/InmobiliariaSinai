@@ -10,6 +10,7 @@ import { VisitaService } from '../../service/visita.service';
 import { LoteService } from '../../../lote/service/lote.service';
 import { PropiedadService } from '../../../propiedad/service/propiedad.service';
 import { AuthService } from '../../../../components/services/auth.service';
+import { UrbanizacionContextService } from '../../../../core/services/urbanizacion-context.service';
 
 @Component({
   selector: 'app-visita-edit',
@@ -46,6 +47,7 @@ export class VisitaEdit implements OnInit {
   private route = inject(ActivatedRoute);
   private notificationService = inject(NotificationService);
   private authService = inject(AuthService);
+  private urbanizacionContext = inject(UrbanizacionContextService);
 
   constructor() {
     this.visitaForm = this.crearFormularioVisita();
@@ -95,14 +97,20 @@ export class VisitaEdit implements OnInit {
 
   cargarLotes(): void {
     const currentUser = this.authService.getCurrentUser();
+    const urbanizacionActiva = this.urbanizacionContext.urbanizacion();
 
     this.loteSvc.getAll().subscribe({
       next: (lotes: LoteDto[]) => {
-        const lotesFiltrados = lotes.filter(
+        let lotesFiltrados = lotes.filter(
           (lote) => 
             lote.encargadoId === currentUser?.id && 
             (lote.estado === 'DISPONIBLE' || lote.estado === 'CON_OFERTA')
         );
+        if (urbanizacionActiva) {
+          lotesFiltrados = lotesFiltrados.filter(
+            (lote) => lote.urbanizacion?.id === urbanizacionActiva.id
+          );
+        }
         this.lotes.set(lotesFiltrados);
       },
       error: (err: any) => {
@@ -113,14 +121,20 @@ export class VisitaEdit implements OnInit {
 
   cargarPropiedades(): void {
     const currentUser = this.authService.getCurrentUser();
+    const urbanizacionActiva = this.urbanizacionContext.urbanizacion();
 
     this.propiedadSvc.getAll().subscribe({
       next: (propiedades: PropiedadDto[]) => {
-        const propiedadesFiltradas = propiedades.filter(
+        let propiedadesFiltradas = propiedades.filter(
           (propiedad) => 
             propiedad.encargadoId === currentUser?.id && 
             (propiedad.estado === 'DISPONIBLE' || propiedad.estado === 'CON_OFERTA')
         );
+        if (urbanizacionActiva) {
+          propiedadesFiltradas = propiedadesFiltradas.filter(
+            (propiedad) => propiedad.urbanizacion?.id === urbanizacionActiva.id
+          );
+        }
         this.propiedades.set(propiedadesFiltradas);
       },
       error: (err: any) => {
@@ -283,7 +297,6 @@ export class VisitaEdit implements OnInit {
     const inmuebleTipo = visita.inmuebleTipo || 'LOTE';
     this.inmuebleTipoSeleccionado.set(inmuebleTipo);
 
-    // Determinar el inmuebleId correcto
     let inmuebleId = '';
     if (inmuebleTipo === 'LOTE' && visita.loteId) {
       inmuebleId = visita.loteId;

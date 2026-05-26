@@ -4,6 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { ReportesLotesService } from '../services/reportes-lotes.service';
 import { UrbanizacionContextService } from '../../../core/services/urbanizacion-context.service';
 
+interface ManzanoDto {
+  id: number;
+  uuid: string;
+  nombre: string;
+}
+
 @Component({
   selector: 'app-reportes-lotes',
   standalone: true,
@@ -14,18 +20,16 @@ export class ReportesLotesComponent implements OnInit {
   private readonly reportesService = inject(ReportesLotesService);
   private readonly urbanizacionContext = inject(UrbanizacionContextService);
 
-  // Ya no necesitas mantener urbanizacionId como signal, lo obtienes del contexto
-  manzanoSeleccionado = signal<string>('todas');
-  manzanos = signal<string[]>([]);
+  manzanoSeleccionadoId = signal<number | null>(null); 
+  manzanos = signal<ManzanoDto[]>([]);                
 
-  cargandoTotal        = signal(false);
-  cargandoDisponibles  = signal(false);
-  cargandoVendidos     = signal(false);
-  cargandoReservados   = signal(false);
-  cargandoDetalle      = signal(false);
-  cargandoGeneral      = signal(false);
+  cargandoTotal       = signal(false);
+  cargandoDisponibles = signal(false);
+  cargandoVendidos    = signal(false);
+  cargandoReservados  = signal(false);
+  cargandoDetalle     = signal(false);
+  cargandoGeneral     = signal(false);
 
-  // Getter para obtener el ID actual
   private get urbanizacionId(): number | null {
     return this.urbanizacionContext.urbanizacionId;
   }
@@ -36,14 +40,10 @@ export class ReportesLotesComponent implements OnInit {
 
   async cargarManzanos() {
     const id = this.urbanizacionId;
-    console.log('urbanizacionId:', id);
-    
     if (!id) {
-      console.warn('No hay urbanización seleccionada');
       this.manzanos.set([]);
       return;
     }
-    
     try {
       const lista = await this.reportesService.getManzanos(id);
       this.manzanos.set(lista);
@@ -54,19 +54,16 @@ export class ReportesLotesComponent implements OnInit {
   }
 
   onManzanoChange(value: string) {
-    this.manzanoSeleccionado.set(value);
+    // El select emite string; convertimos a número o null si es "todas"
+    this.manzanoSeleccionadoId.set(value === 'todas' ? null : Number(value));
   }
 
   async descargarTotalLotes() {
     const id = this.urbanizacionId;
     if (!id) return;
-    
     this.cargandoTotal.set(true);
     try {
-      await this.reportesService.exportarTotalLotesPdf(
-        id,
-        this.manzanoSeleccionado(),
-      );
+      await this.reportesService.exportarTotalLotesPdf(id, this.manzanoSeleccionadoId() ?? undefined);
     } finally {
       this.cargandoTotal.set(false);
     }
@@ -75,13 +72,9 @@ export class ReportesLotesComponent implements OnInit {
   async descargarDisponibles() {
     const id = this.urbanizacionId;
     if (!id) return;
-    
     this.cargandoDisponibles.set(true);
     try {
-      await this.reportesService.exportarLotesDisponiblesPdf(
-        id,
-        this.manzanoSeleccionado(),
-      );
+      await this.reportesService.exportarLotesDisponiblesPdf(id, this.manzanoSeleccionadoId() ?? undefined);
     } finally {
       this.cargandoDisponibles.set(false);
     }
@@ -90,13 +83,9 @@ export class ReportesLotesComponent implements OnInit {
   async descargarVendidos() {
     const id = this.urbanizacionId;
     if (!id) return;
-    
     this.cargandoVendidos.set(true);
     try {
-      await this.reportesService.exportarLotesVendidosPdf(
-        id,
-        this.manzanoSeleccionado(),
-      );
+      await this.reportesService.exportarLotesVendidosPdf(id, this.manzanoSeleccionadoId() ?? undefined);
     } finally {
       this.cargandoVendidos.set(false);
     }
@@ -105,13 +94,9 @@ export class ReportesLotesComponent implements OnInit {
   async descargarReservados() {
     const id = this.urbanizacionId;
     if (!id) return;
-    
     this.cargandoReservados.set(true);
     try {
-      await this.reportesService.exportarLotesReservadosPdf(
-        id,
-        this.manzanoSeleccionado(),
-      );
+      await this.reportesService.exportarLotesReservadosPdf(id, this.manzanoSeleccionadoId() ?? undefined);
     } finally {
       this.cargandoReservados.set(false);
     }
@@ -120,13 +105,9 @@ export class ReportesLotesComponent implements OnInit {
   async descargarDetalle() {
     const id = this.urbanizacionId;
     if (!id) return;
-    
     this.cargandoDetalle.set(true);
     try {
-      await this.reportesService.exportarDetalleLotesPdf(
-        id,
-        this.manzanoSeleccionado(),
-      );
+      await this.reportesService.exportarDetalleLotesPdf(id, this.manzanoSeleccionadoId() ?? undefined);
     } finally {
       this.cargandoDetalle.set(false);
     }
@@ -135,7 +116,6 @@ export class ReportesLotesComponent implements OnInit {
   async descargarGeneralDetallado() {
     const id = this.urbanizacionId;
     if (!id) return;
-    
     this.cargandoGeneral.set(true);
     try {
       await this.reportesService.exportarGeneralDetalladoPdf(id);

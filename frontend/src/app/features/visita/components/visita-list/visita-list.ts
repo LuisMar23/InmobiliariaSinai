@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { VisitaDto } from '../../../../core/interfaces/visita.interface';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { VisitaService } from '../../service/visita.service';
+import { UrbanizacionContextService } from '../../../../core/services/urbanizacion-context.service';
 
 interface ColumnConfig {
   key: keyof VisitaDto | 'inmuebleInfo';
@@ -46,10 +47,19 @@ export class VisitaList implements OnInit {
 
   private visitaSvc = inject(VisitaService);
   private notificationService = inject(NotificationService);
+  private urbanizacionContext = inject(UrbanizacionContextService);
 
   filteredVisitas = computed(() => {
     const term = this.searchTerm().toLowerCase();
+    const urbanizacionActiva = this.urbanizacionContext.urbanizacion();
     let visitas = this.allVisitas();
+
+    if (urbanizacionActiva) {
+      visitas = visitas.filter((visita) => {
+        const urbanizacionNombre = this.getUrbanizacionNombre(visita);
+        return urbanizacionNombre === urbanizacionActiva.nombre;
+      });
+    }
 
     if (term) {
       visitas = visitas.filter(
@@ -145,6 +155,15 @@ export class VisitaList implements OnInit {
       return `${propiedad.nombre || ''} - ${propiedad.tipo || ''} - ${propiedad.ciudad || ''}`;
     }
     return 'No especificado';
+  }
+
+  private getUrbanizacionNombre(visita: VisitaDto): string {
+    if (visita.inmuebleTipo === 'LOTE' && visita.inmueble && 'urbanizacion' in visita.inmueble) {
+      return visita.inmueble.urbanizacion?.nombre || '';
+    } else if (visita.inmuebleTipo === 'PROPIEDAD' && visita.inmueble && 'urbanizacion' in visita.inmueble) {
+      return visita.inmueble.urbanizacion?.nombre || '';
+    }
+    return '';
   }
 
   cambiarOrden(columna: keyof VisitaDto | 'inmuebleInfo') {

@@ -1,53 +1,58 @@
 import { Injectable } from '@nestjs/common';
-
 import { EstadoInmueble, Prisma } from '../../generated/prisma';
 import { PrismaService } from 'src/config/prisma.service';
-import { LoteReporteDto, ReporteLotesResponseDto, ReporteLotesDetalleResponseDto, LoteDetalleDto } from './dto/create-reporteslote.dto';
+import {
+  LoteReporteDto,
+  ReporteLotesResponseDto,
+  ReporteLotesDetalleResponseDto,
+  LoteDetalleDto,
+  ManzanoDto,
+} from './dto/create-reporteslote.dto';
 
 @Injectable()
 export class ReportesLotesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  // Manzanos disponibles por urbanización (para el dropdown)
-  async getManzanos(urbanizacionId?: number): Promise<string[]> {
-    const lotes = await this.prisma.lote.findMany({
+  // ─── Manzanos disponibles por urbanización ────────────────────────────────
+  async getManzanos(urbanizacionId?: number): Promise<ManzanoDto[]> {
+    const manzanos = await this.prisma.manzano.findMany({
       where: {
         ...(urbanizacionId ? { urbanizacionId } : {}),
-        manzano: { not: null },
       },
-      select: { manzano: true },
-      distinct: ['manzano'],
-      orderBy: { manzano: 'asc' },
+      select: { id: true, uuid: true, nombre: true },
+      orderBy: { nombre: 'asc' },
     });
-    return lotes.map((l) => l.manzano!).filter(Boolean);
+    return manzanos;
   }
 
-  // Builder de where reutilizable
+  // ─── Builder de where reutilizable ───────────────────────────────────────
   private buildWhere(
     urbanizacionId?: number,
-    manzano?: string,
+    manzanoId?: number,
     estado?: EstadoInmueble,
   ): Prisma.LoteWhereInput {
     return {
       ...(urbanizacionId ? { urbanizacionId } : {}),
-      ...(manzano && manzano !== 'todas' ? { manzano } : {}),
+      ...(manzanoId ? { manzanoId } : {}),
       ...(estado ? { estado } : {}),
     };
   }
 
-  // Select base reutilizable
+  // ─── Select base reutilizable ─────────────────────────────────────────────
   private get selectBase() {
     return {
       id: true,
       uuid: true,
       numeroLote: true,
-      manzano: true,
       superficieM2: true,
       precioBase: true,
       ubicacion: true,
       ciudad: true,
       estado: true,
       esIndependiente: true,
+      manzano: {
+        select: { id: true, uuid: true, nombre: true },
+      },
       urbanizacion: {
         select: { id: true, nombre: true, ubicacion: true },
       },
@@ -59,7 +64,7 @@ export class ReportesLotesService {
       id: l.id,
       uuid: l.uuid,
       numeroLote: l.numeroLote,
-      manzano: l.manzano,
+      manzano: l.manzano ?? null,
       superficieM2: Number(l.superficieM2),
       precioBase: Number(l.precioBase),
       ubicacion: l.ubicacion,
@@ -73,12 +78,12 @@ export class ReportesLotesService {
   // ─── Total de lotes ───────────────────────────────────────────────────────
   async getTotalLotes(
     urbanizacionId?: number,
-    manzano?: string,
+    manzanoId?: number,
   ): Promise<ReporteLotesResponseDto> {
-    const where = this.buildWhere(urbanizacionId, manzano);
+    const where = this.buildWhere(urbanizacionId, manzanoId);
     const lotes = await this.prisma.lote.findMany({
       where,
-      orderBy: [{ manzano: 'asc' }, { numeroLote: 'asc' }],
+      orderBy: [{ manzano: { nombre: 'asc' } }, { numeroLote: 'asc' }],
       select: this.selectBase,
     });
 
@@ -92,12 +97,12 @@ export class ReportesLotesService {
   // ─── Lotes disponibles ────────────────────────────────────────────────────
   async getLotesDisponibles(
     urbanizacionId?: number,
-    manzano?: string,
+    manzanoId?: number,
   ): Promise<ReporteLotesResponseDto> {
-    const where = this.buildWhere(urbanizacionId, manzano, EstadoInmueble.DISPONIBLE);
+    const where = this.buildWhere(urbanizacionId, manzanoId, EstadoInmueble.DISPONIBLE);
     const lotes = await this.prisma.lote.findMany({
       where,
-      orderBy: [{ manzano: 'asc' }, { numeroLote: 'asc' }],
+      orderBy: [{ manzano: { nombre: 'asc' } }, { numeroLote: 'asc' }],
       select: this.selectBase,
     });
 
@@ -111,12 +116,12 @@ export class ReportesLotesService {
   // ─── Lotes vendidos ───────────────────────────────────────────────────────
   async getLotesVendidos(
     urbanizacionId?: number,
-    manzano?: string,
+    manzanoId?: number,
   ): Promise<ReporteLotesResponseDto> {
-    const where = this.buildWhere(urbanizacionId, manzano, EstadoInmueble.VENDIDO);
+    const where = this.buildWhere(urbanizacionId, manzanoId, EstadoInmueble.VENDIDO);
     const lotes = await this.prisma.lote.findMany({
       where,
-      orderBy: [{ manzano: 'asc' }, { numeroLote: 'asc' }],
+      orderBy: [{ manzano: { nombre: 'asc' } }, { numeroLote: 'asc' }],
       select: this.selectBase,
     });
 
@@ -130,12 +135,12 @@ export class ReportesLotesService {
   // ─── Lotes reservados ─────────────────────────────────────────────────────
   async getLotesReservados(
     urbanizacionId?: number,
-    manzano?: string,
+    manzanoId?: number,
   ): Promise<ReporteLotesResponseDto> {
-    const where = this.buildWhere(urbanizacionId, manzano, EstadoInmueble.RESERVADO);
+    const where = this.buildWhere(urbanizacionId, manzanoId, EstadoInmueble.RESERVADO);
     const lotes = await this.prisma.lote.findMany({
       where,
-      orderBy: [{ manzano: 'asc' }, { numeroLote: 'asc' }],
+      orderBy: [{ manzano: { nombre: 'asc' } }, { numeroLote: 'asc' }],
       select: this.selectBase,
     });
 
@@ -146,24 +151,20 @@ export class ReportesLotesService {
     };
   }
 
-  // ─── Detalle de lotes (con ventas, reservas, cotizaciones) ───────────────
+  // ─── Detalle de lotes ─────────────────────────────────────────────────────
   async getDetalleLotes(
     urbanizacionId?: number,
-    manzano?: string,
+    manzanoId?: number,
   ): Promise<ReporteLotesDetalleResponseDto> {
-    const where = this.buildWhere(urbanizacionId, manzano);
+    const where = this.buildWhere(urbanizacionId, manzanoId);
     const lotes = await this.prisma.lote.findMany({
       where,
-      orderBy: [{ manzano: 'asc' }, { numeroLote: 'asc' }],
+      orderBy: [{ manzano: { nombre: 'asc' } }, { numeroLote: 'asc' }],
       select: {
         ...this.selectBase,
         encargado: { select: { fullName: true } },
         _count: {
-          select: {
-            ventas: true,
-            reservas: true,
-            cotizaciones: true,
-          },
+          select: { ventas: true, reservas: true, cotizaciones: true },
         },
       },
     });
@@ -185,23 +186,8 @@ export class ReportesLotesService {
     };
   }
 
-  // ─── Reporte general detallado (todos los estados agrupados) ─────────────
-  async getGeneralDetallado(urbanizacionId?: number): Promise<{
-    disponibles: ReporteLotesResponseDto;
-    vendidos: ReporteLotesResponseDto;
-    reservados: ReporteLotesResponseDto;
-    conOferta: ReporteLotesResponseDto;
-    resumen: {
-      totalDisponibles: number;
-      totalVendidos: number;
-      totalReservados: number;
-      totalConOferta: number;
-      totalLotes: number;
-      totalSuperficieM2: number;
-      totalPrecioBase: number;
-    };
-    generadoEn: Date;
-  }> {
+  // ─── Reporte general detallado ────────────────────────────────────────────
+  async getGeneralDetallado(urbanizacionId?: number) {
     const [disponibles, vendidos, reservados, conOferta] = await Promise.all([
       this.getLotesDisponibles(urbanizacionId),
       this.getLotesVendidos(urbanizacionId),
@@ -241,7 +227,7 @@ export class ReportesLotesService {
     const where = this.buildWhere(urbanizacionId, undefined, estado);
     const lotes = await this.prisma.lote.findMany({
       where,
-      orderBy: [{ manzano: 'asc' }, { numeroLote: 'asc' }],
+      orderBy: [{ manzano: { nombre: 'asc' } }, { numeroLote: 'asc' }],
       select: this.selectBase,
     });
     return {

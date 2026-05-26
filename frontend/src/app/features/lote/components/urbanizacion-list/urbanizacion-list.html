@@ -8,14 +8,14 @@
   >
     <img src="assets/logoSinai.jpg" alt="Logo" class="h-12 object-contain" />
     <div class="text-center">
-      <h1 class="text-lg font-semibold text-gray-800">SINAÍ BIENES RAÍCES</h1>
-      <p class="text-xs text-gray-500">NIT: 5813305010</p>
+      <h1 class="text-3xl font-black text-white tracking-wider drop-shadow-md">SINAÍ BIENES RAÍCES</h1>
+      <p class="text-base text-teal-300 font-medium">NIT: 5813305010</p>
     </div>
     <button
       (click)="cerrarSesion()"
-      class="flex items-center gap-2 px-3 py-2 text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all text-sm"
+      class="flex items-center gap-3 px-5 py-2.5 bg-teal-700 hover:bg-teal-600 text-white rounded-xl transition-all font-semibold shadow-lg"
     >
-      <fa-icon [icon]="faSignOut"></fa-icon>
+      <fa-icon [icon]="faSignOut" class="text-xl"></fa-icon>
       Salir
     </button>
   </div>
@@ -25,14 +25,14 @@
     <div class="relative max-w-sm w-full">
       <fa-icon
         [icon]="faSearch"
-        class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"
+        class="absolute left-5 top-1/2 -translate-y-1/2 text-teal-400 text-lg"
       ></fa-icon>
       <input
         type="text"
         [ngModel]="busqueda()"
         (ngModelChange)="busqueda.set($event)"
         placeholder="Buscar por urbanización, ciudad..."
-        class="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-xl focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 text-sm outline-none"
+        class="w-full pl-14 pr-6 py-3.5 bg-gray-700 border-2 border-teal-700 rounded-2xl focus:border-teal-400 focus:ring-2 focus:ring-teal-500 text-white placeholder-gray-400 outline-none text-lg"
       />
     </div>
 
@@ -62,8 +62,8 @@
         <p class="text-gray-500 mt-4">Cargando urbanizaciones...</p>
       </div>
     } @else if (error()) {
-      <div class="text-center py-16 text-gray-500">
-        <p class="text-lg">{{ error() }}</p>
+      <div class="text-center py-24">
+        <p class="text-2xl text-red-400">{{ error() }}</p>
         <button
           (click)="cargarUrbanizaciones()"
           class="mt-4 px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors text-sm"
@@ -198,6 +198,17 @@
                 </button>
               </div>
             </div>
+
+            <!-- Botón grande -->
+            <!-- <div class="p-5 pt-0 mt-auto">
+              <button
+                (click)="irALotes(group.uuid)"
+                class="w-full py-3 rounded-xl bg-teal-700 hover:bg-teal-600 text-white font-bold text-base transition-all flex items-center justify-center gap-3 shadow-xl"
+              >
+                <fa-icon [icon]="faThLarge" class="text-white text-lg"></fa-icon>
+                Ingresar
+              </button>
+            </div> -->
           </div>
         }
       </div>

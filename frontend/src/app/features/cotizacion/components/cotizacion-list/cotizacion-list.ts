@@ -6,6 +6,7 @@ import { CotizacionDto } from '../../../../core/interfaces/cotizacion.interface'
 import { NotificationService } from '../../../../core/services/notification.service';
 import { CotizacionService } from '../../service/cotizacion.service';
 import { AuthService } from '../../../../components/services/auth.service';
+import { UrbanizacionContextService } from '../../../../core/services/urbanizacion-context.service';
 
 interface ColumnConfig {
   key: keyof CotizacionDto;
@@ -47,10 +48,18 @@ export class CotizacionList implements OnInit {
   private cotizacionSvc = inject(CotizacionService);
   private notificationService = inject(NotificationService);
   private authService = inject(AuthService);
+  private urbanizacionContext = inject(UrbanizacionContextService);
 
   filteredCotizaciones = computed(() => {
     const term = this.searchTerm().toLowerCase();
+    const urbanizacionActiva = this.urbanizacionContext.urbanizacion();
     let cotizaciones = this.allCotizaciones();
+
+    if (urbanizacionActiva) {
+      cotizaciones = cotizaciones.filter(
+        (cotizacion) => cotizacion.lote?.urbanizacion?.id === urbanizacionActiva.id
+      );
+    }
 
     if (term) {
       cotizaciones = cotizaciones.filter(
@@ -101,6 +110,7 @@ export class CotizacionList implements OnInit {
   });
 
   ngOnInit(): void {
+    this.urbanizacionContext.recuperar();
     this.obtenerCotizaciones();
   }
 

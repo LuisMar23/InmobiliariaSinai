@@ -1,9 +1,10 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, inject, signal, OnInit, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CobrosService } from '../../service/cobros.service';
 import { VentaDto } from '../../../../core/interfaces/venta.interface';
+import { UrbanizacionContextService } from '../../../../core/services/urbanizacion-context.service';
 
 @Component({
   selector: 'app-cobros-list',
@@ -14,8 +15,9 @@ import { VentaDto } from '../../../../core/interfaces/venta.interface';
 export class CobrosList implements OnInit {
   private cobrosService = inject(CobrosService);
   private router = inject(Router);
+  private urbanizacionContext = inject(UrbanizacionContextService);
 
-  ventas = signal<VentaDto[]>([]);
+  allVentas = signal<VentaDto[]>([]);
   cargando = signal(true);
 
   filtroCliente = signal('');
@@ -23,7 +25,27 @@ export class CobrosList implements OnInit {
   filtroUrbanizacion = signal('');
   filtroEncargado = signal('');
 
+  ventas = computed(() => {
+    const urbanizacionActiva = this.urbanizacionContext.urbanizacion();
+    let ventas = this.allVentas();
+
+    if (urbanizacionActiva) {
+      ventas = ventas.filter(venta => {
+        if (venta.inmuebleTipo === 'LOTE' && venta.lote?.urbanizacion) {
+          return venta.lote.urbanizacion.id === urbanizacionActiva.id;
+        }
+        if (venta.inmuebleTipo === 'PROPIEDAD' && venta.propiedad?.urbanizacion) {
+          return venta.propiedad.urbanizacion.id === urbanizacionActiva.id;
+        }
+        return false;
+      });
+    }
+
+    return ventas;
+  });
+
   ngOnInit(): void {
+    this.urbanizacionContext.recuperar();
     this.cargarVentas();
   }
 
@@ -38,7 +60,7 @@ export class CobrosList implements OnInit {
       })
       .subscribe({
         next: (data) => {
-          this.ventas.set(data);
+          this.allVentas.set(data);
           this.cargando.set(false);
         },
         error: () => this.cargando.set(false),

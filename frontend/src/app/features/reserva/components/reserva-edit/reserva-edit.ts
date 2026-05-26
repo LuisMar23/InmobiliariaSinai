@@ -10,6 +10,7 @@ import { ReservaService } from '../../service/reserva.service';
 import { AuthService } from '../../../../components/services/auth.service';
 import { ReciboService, Recibo } from '../../../../core/services/recibo.service';
 import { UpdateReservaDto } from '../../../../core/interfaces/reserva.interface';
+import { UrbanizacionContextService } from '../../../../core/services/urbanizacion-context.service';
 
 @Component({
   selector: 'app-reserva-edit',
@@ -48,6 +49,7 @@ export class ReservaEdit implements OnInit {
   private datePipe = inject(DatePipe);
   private authService = inject(AuthService);
   private reciboSvc = inject(ReciboService);
+  private urbanizacionContext = inject(UrbanizacionContextService);
 
   constructor() {
     this.reservaForm = this.crearFormularioReserva();
@@ -119,6 +121,7 @@ export class ReservaEdit implements OnInit {
   cargarLotesDisponibles(loteActualId?: number): void {
     const currentUser = this.authService.getCurrentUser();
     const rolesFullAccess = ['ADMINISTRADOR', 'SECRETARIA'];
+    const urbanizacionActiva = this.urbanizacionContext.urbanizacion();
 
     this.reservaSvc.getLotesDisponibles().subscribe({
       next: (lotes: LoteDto[]) => {
@@ -126,6 +129,11 @@ export class ReservaEdit implements OnInit {
         if (!rolesFullAccess.includes(currentUser?.role)) {
           lotesFiltrados = lotes.filter(
             (lote) => lote.encargadoId?.toString() === currentUser?.id?.toString()
+          );
+        }
+        if (urbanizacionActiva) {
+          lotesFiltrados = lotesFiltrados.filter(
+            (lote) => lote.urbanizacion?.id === urbanizacionActiva.id
           );
         }
         if (loteActualId) {
@@ -185,7 +193,6 @@ export class ReservaEdit implements OnInit {
     const inmuebleId = reserva.lote?.id || reserva.inmuebleId;
 
     const fechaInicio = new Date(reserva.fechaInicio);
-    // La fecha de vencimiento se calculará automáticamente por el listener
     const fechaInicioFormateada = this.formatDateForInput(fechaInicio);
 
     this.reservaForm.patchValue({
@@ -196,7 +203,6 @@ export class ReservaEdit implements OnInit {
       estado: reserva.estado || 'ACTIVA',
     });
 
-    // Calcular la fecha de vencimiento basada en la fecha de inicio
     const fechaVencimiento = new Date(fechaInicio);
     fechaVencimiento.setHours(fechaVencimiento.getHours() + 24);
     this.fechaVencimientoCalculada.set(this.formatDateForInput(fechaVencimiento));
