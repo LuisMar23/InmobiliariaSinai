@@ -157,6 +157,9 @@ export class Sidebar implements OnInit {
         },
         { label: 'Promociones', icon: faTag, route: '/promociones', clave: 'promociones' },
         { label: 'Sedes', icon: faBuilding, route: '/sedes', clave: 'sedes' },
+        { label: 'Caja',          icon: faCashRegister, route: '/caja',          clave: 'caja'          },
+        { label: 'Proyectos',icon: faCity,         route: '/urbanizaciones',clave: 'urbanizaciones'},
+        { label: 'Promociones',   icon: faTag,          route: '/promociones',   clave: 'promociones'   },
       ],
     },
     {

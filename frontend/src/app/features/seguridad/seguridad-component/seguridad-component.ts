@@ -46,7 +46,7 @@ export class SeguridadComponent implements OnInit {
   private userService = inject(UserService);
   private notification = inject(NotificationService);
 
-  tabActivo = signal<'permisos' | 'urbanizaciones' | 'modulos'>('permisos');
+  tabActivo = signal<'permisos' | 'Asignar Proyectos' | 'modulos'>('permisos');
 
   // Permisos
   roles = ['ADMINISTRADOR', 'ASESOR', 'SECRETARIA'];
@@ -74,7 +74,7 @@ export class SeguridadComponent implements OnInit {
     this.cargarTodasUrbanizaciones();
   }
 
-  cambiarTab(tab: 'permisos' | 'urbanizaciones' | 'modulos'): void {
+  cambiarTab(tab: 'permisos' | 'Asignar Proyectos' | 'modulos'): void {
     this.tabActivo.set(tab);
     // Carga módulos solo cuando entra a esa tab
     if (tab === 'modulos' && this.modulos().length === 0) {
