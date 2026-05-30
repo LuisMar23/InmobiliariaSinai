@@ -137,7 +137,13 @@ export class VentaCreate implements OnInit {
     const fechaInicioStr = this.planPagoForm.get('fecha_inicio')?.value;
     const estado = this.ventaForm.get('estado')?.value;
 
-    if (estado === 'PAGADO' || !plazo || !periodicidad || !fechaInicioStr || montoInicial >= precioFinal) {
+    if (
+      estado === 'PAGADO' ||
+      !plazo ||
+      !periodicidad ||
+      !fechaInicioStr ||
+      montoInicial >= precioFinal
+    ) {
       this.cronogramaEstimado.set([]);
       return;
     }
@@ -232,6 +238,7 @@ export class VentaCreate implements OnInit {
     const currentUser = this.authService.getCurrentUser();
     const rolesFullAccess = ['ADMINISTRADOR', 'SECRETARIA'];
     const urbanizacionActiva = this.urbanizacionContext.urbanizacion();
+    const esModoIndependientes = urbanizacionActiva?.id === -1;
 
     this.loteSvc.getAll().subscribe({
       next: (lotes: LoteDto[]) => {
@@ -239,11 +246,15 @@ export class VentaCreate implements OnInit {
           (lote) => lote.estado === 'DISPONIBLE' || lote.estado === 'CON_OFERTA',
         );
         if (!rolesFullAccess.includes(currentUser?.role)) {
-          lotesDisponibles = lotesDisponibles.filter((lote) => lote.encargadoId?.toString() === currentUser?.id?.toString());
-        }
-        if (urbanizacionActiva) {
           lotesDisponibles = lotesDisponibles.filter(
-            (lote) => lote.urbanizacion?.id === urbanizacionActiva.id
+            (lote) => lote.encargadoId?.toString() === currentUser?.id?.toString(),
+          );
+        }
+        if (esModoIndependientes) {
+          lotesDisponibles = lotesDisponibles.filter((lote) => !lote.urbanizacion);
+        } else if (urbanizacionActiva) {
+          lotesDisponibles = lotesDisponibles.filter(
+            (lote) => lote.urbanizacion?.id === urbanizacionActiva.id,
           );
         }
         this.lotes.set(lotesDisponibles);
@@ -257,6 +268,7 @@ export class VentaCreate implements OnInit {
   cargarPropiedades(): void {
     const currentUser = this.authService.getCurrentUser();
     const urbanizacionActiva = this.urbanizacionContext.urbanizacion();
+    const esModoIndependientes = urbanizacionActiva?.id === -1;
 
     this.propiedadSvc.getAll().subscribe({
       next: (propiedades: PropiedadDto[]) => {
@@ -267,9 +279,13 @@ export class VentaCreate implements OnInit {
             (propiedad.estado === 'DISPONIBLE' || propiedad.estado === 'CON_OFERTA') &&
             propiedad.encargadoId === currentUser?.id,
         );
-        if (urbanizacionActiva) {
+        if (esModoIndependientes) {
           propiedadesParaVenta = propiedadesParaVenta.filter(
-            (propiedad) => propiedad.urbanizacion?.id === urbanizacionActiva.id
+            (propiedad) => !propiedad.urbanizacion,
+          );
+        } else if (urbanizacionActiva) {
+          propiedadesParaVenta = propiedadesParaVenta.filter(
+            (propiedad) => propiedad.urbanizacion?.id === urbanizacionActiva.id,
           );
         }
         this.propiedades.set(propiedadesParaVenta);
@@ -367,7 +383,8 @@ export class VentaCreate implements OnInit {
   }
 
   getLoteDisplayText(lote: LoteDto): string {
-    return `${lote.numeroLote} - ${lote.urbanizacion?.nombre} - $${this.formatNumber(lote.precioBase)}`;
+    const urbanizacionNombre = lote.urbanizacion?.nombre || 'Independiente';
+    return `${lote.numeroLote} - ${urbanizacionNombre} - $${this.formatNumber(lote.precioBase)}`;
   }
 
   getPropiedadDisplayText(propiedad: PropiedadDto): string {
@@ -510,7 +527,9 @@ export class VentaCreate implements OnInit {
     }
     if (this.planPagoForm.invalid) {
       this.planPagoForm.markAllAsTouched();
-      this.notificationService.showError('Complete todos los campos del plan de pago correctamente.');
+      this.notificationService.showError(
+        'Complete todos los campos del plan de pago correctamente.',
+      );
       if (estado === 'PAGADO') {
         this.planPagoForm.get('monto_inicial')?.disable();
         this.planPagoForm.get('plazo')?.disable();
@@ -607,10 +626,14 @@ export class VentaCreate implements OnInit {
   getPeriodicidadTexto(): string {
     const periodicidad = this.planPagoForm.get('periodicidad')?.value;
     switch (periodicidad) {
-      case 'DIAS': return 'días';
-      case 'SEMANAS': return 'semanas';
-      case 'MESES': return 'meses';
-      default: return '';
+      case 'DIAS':
+        return 'días';
+      case 'SEMANAS':
+        return 'semanas';
+      case 'MESES':
+        return 'meses';
+      default:
+        return '';
     }
   }
 
@@ -639,7 +662,11 @@ export class VentaCreate implements OnInit {
     searchPlaceholder: 'Buscar por número, urbanización...',
     searchKeys: ['numeroLote'],
     columns: [
-      { key: 'urbanizacion', label: 'Urbanización', format: (v) => v?.nombre ?? 'Sin urbanización' },
+      {
+        key: 'urbanizacion',
+        label: 'Urbanización',
+        format: (v) => v?.nombre ?? 'Sin urbanización',
+      },
       { key: 'numeroLote', label: 'N° Lote' },
       { key: 'manzano', label: 'Manzano' },
       { key: 'estado', label: 'Estado' },

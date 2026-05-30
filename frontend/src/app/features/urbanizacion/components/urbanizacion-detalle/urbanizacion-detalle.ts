@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, OnInit } from '@angular/core';
 import { UrbanizacionDto } from '../../../../core/interfaces/urbanizacion.interface';
 import { UrbanizacionService } from '../../services/urbanizacion.service';
 import { NotificationService } from '../../../../core/services/notification.service';
@@ -14,7 +14,7 @@ import { CommonModule } from '@angular/common';
   templateUrl: './urbanizacion-detalle.html',
   styleUrl: './urbanizacion-detalle.css',
 })
-export class UrbanizacionDetalle {
+export class UrbanizacionDetalle implements OnInit {
   urbanizacionSeleccionada = signal<UrbanizacionDto | null>(null);
   urlServer = environment.fileServer;
   private urbanizacionSvc = inject(UrbanizacionService);
@@ -45,7 +45,6 @@ export class UrbanizacionDetalle {
 
   eliminarImagen(id: number | undefined) {
     if (!id) return;
-
     this.notificationService
       .confirmDelete(`¿Está seguro de eliminar esta imagen?`)
       .then((result) => {
@@ -80,5 +79,14 @@ export class UrbanizacionDetalle {
     } else {
       this.notificationService.showWarning('Esta urbanización no tiene ubicación en Google Maps');
     }
+  }
+
+  getEstadoLabel(estado: string): string {
+    const estados: Record<string, string> = {
+      VENTA: 'Venta',
+      PRE_VENTA: 'Pre-Venta',
+      POST_VENTA: 'Post-Venta',
+    };
+    return estados[estado] || estado;
   }
 }

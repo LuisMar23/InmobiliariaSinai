@@ -7,7 +7,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
 import { LoteService } from '../../service/lote.service';
 import { ArchivosComponent } from '../../../../components/archivos/archivos/archivos';
 import { AuthService } from '../../../../components/services/auth.service';
-import { UrbanizacionContextService } from '../../../../core/services/urbanizacion-context.service'; // ← AÑADIR
+import { UrbanizacionContextService } from '../../../../core/services/urbanizacion-context.service';
 
 interface ColumnConfig {
   key: keyof LoteDto;
@@ -65,83 +65,79 @@ export class LoteList implements OnInit {
   private loteSvc = inject(LoteService);
   private authService = inject(AuthService);
   private notificationService = inject(NotificationService);
-  private urbCtx = inject(UrbanizacionContextService); // ← AÑADIR
+  private urbCtx = inject(UrbanizacionContextService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
 
   currentUser = this.authService.getCurrentUser();
 
-  // ─── COMPUTED PRINCIPAL ────────────────────────────────────────────────────
-loteGroups = computed(() => {
-  const column = this.sortColumn();
-  const direction = this.sortDirection();
-  const urbActiva = this.urbCtx.urbanizacion();
-  const uuidFiltro = urbActiva?.uuid ?? this.filtroUuid();
-  const soloIndependientes = this.filtroIndependientes();
+  loteGroups = computed(() => {
+    const column = this.sortColumn();
+    const direction = this.sortDirection();
+    const urbActiva = this.urbCtx.urbanizacion();
+    const uuidFiltro = urbActiva?.uuid ?? this.filtroUuid();
+    const soloIndependientes = this.filtroIndependientes() || urbActiva?.id === -1;
 
-  let lotes = this.allLotes().filter((lote: LoteDto) => {
-    if (soloIndependientes) return lote.esIndependiente || !lote.urbanizacion;
-    if (uuidFiltro) return lote.urbanizacion?.uuid === uuidFiltro;
-    return true;
-  });
-
-  if (column) {
-    lotes = [...lotes].sort((a, b) => {
-      let aVal: any = column === 'urbanizacion' ? a.urbanizacion?.nombre : a[column];
-      let bVal: any = column === 'urbanizacion' ? b.urbanizacion?.nombre : b[column];
-      aVal = aVal ?? '';
-      bVal = bVal ?? '';
-      if (typeof aVal === 'number' && typeof bVal === 'number')
-        return direction === 'asc' ? aVal - bVal : bVal - aVal;
-      return direction === 'asc'
-        ? aVal.toString().localeCompare(bVal.toString())
-        : bVal.toString().localeCompare(aVal.toString());
+    let lotes = this.allLotes().filter((lote: LoteDto) => {
+      if (soloIndependientes) return lote.esIndependiente || !lote.urbanizacion;
+      if (uuidFiltro) return lote.urbanizacion?.uuid === uuidFiltro;
+      return true;
     });
-  }
 
-  // ✅ new Map va AQUÍ DENTRO, no fuera
-  const map = new Map<string, LoteGroup>();
-  let colorIdx = 0;
-
-  lotes.forEach((lote) => {
-    if (lote.esIndependiente || !lote.urbanizacion) {
-      if (!map.has('__ind__'))
-        map.set('__ind__', {
-          key: '__ind__',
-          nombre: 'Lotes Independientes',
-          ciudad: '',
-          independiente: true,
-          colorIndex: -1,
-          lotes: [],
-        });
-      map.get('__ind__')!.lotes.push(lote);
-    } else {
-      const key = String(lote.urbanizacion.id ?? lote.urbanizacion.nombre);
-      if (!map.has(key))
-        map.set(key, {
-          key,
-          nombre: lote.urbanizacion.nombre,
-          ciudad: lote.urbanizacion.ciudad ?? lote.ciudad,
-          independiente: false,
-          colorIndex: colorIdx++,
-          lotes: [],
-        });
-      map.get(key)!.lotes.push(lote);
+    if (column) {
+      lotes = [...lotes].sort((a, b) => {
+        let aVal: any = column === 'urbanizacion' ? a.urbanizacion?.nombre : a[column];
+        let bVal: any = column === 'urbanizacion' ? b.urbanizacion?.nombre : b[column];
+        aVal = aVal ?? '';
+        bVal = bVal ?? '';
+        if (typeof aVal === 'number' && typeof bVal === 'number')
+          return direction === 'asc' ? aVal - bVal : bVal - aVal;
+        return direction === 'asc'
+          ? aVal.toString().localeCompare(bVal.toString())
+          : bVal.toString().localeCompare(aVal.toString());
+      });
     }
-  });
 
-  const ind = map.get('__ind__');
-  map.delete('__ind__');
-  const result = Array.from(map.values()).sort((a, b) => a.nombre.localeCompare(b.nombre));
-  if (ind) result.push(ind);
-  return result;
-});
+    const map = new Map<string, LoteGroup>();
+    let colorIdx = 0;
+
+    lotes.forEach((lote) => {
+      if (lote.esIndependiente || !lote.urbanizacion) {
+        if (!map.has('__ind__'))
+          map.set('__ind__', {
+            key: '__ind__',
+            nombre: 'Lotes Independientes',
+            ciudad: '',
+            independiente: true,
+            colorIndex: -1,
+            lotes: [],
+          });
+        map.get('__ind__')!.lotes.push(lote);
+      } else {
+        const key = String(lote.urbanizacion.id ?? lote.urbanizacion.nombre);
+        if (!map.has(key))
+          map.set(key, {
+            key,
+            nombre: lote.urbanizacion.nombre,
+            ciudad: lote.urbanizacion.ciudad ?? lote.ciudad,
+            independiente: false,
+            colorIndex: colorIdx++,
+            lotes: [],
+          });
+        map.get(key)!.lotes.push(lote);
+      }
+    });
+
+    const ind = map.get('__ind__');
+    map.delete('__ind__');
+    const result = Array.from(map.values()).sort((a, b) => a.nombre.localeCompare(b.nombre));
+    if (ind) result.push(ind);
+    return result;
+  });
 
   filteredLotes = computed(() => this.loteGroups().flatMap((g) => g.lotes));
 
-  // ─── INIT ──────────────────────────────────────────────────────────────────
   ngOnInit(): void {
-    // Recuperar contexto persistido si el usuario recargó la página
     this.urbCtx.recuperar();
 
     this.route.queryParams.subscribe((params) => {
@@ -153,8 +149,6 @@ loteGroups = computed(() => {
 
     this.obtenerLotes();
   }
-
-  // ─── El resto de métodos queda exactamente igual ───────────────────────────
 
   obtenerLotes() {
     this.cargando.set(true);

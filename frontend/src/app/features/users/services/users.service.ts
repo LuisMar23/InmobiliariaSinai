@@ -10,9 +10,9 @@ import { HttpClient } from '@angular/common/http';
 export class UserService {
   private authService = inject(AuthService);
   apiUrl = environment.apiUrl;
-  
+
   constructor(private http: HttpClient) {}
-  
+
   getAll(): Observable<any> {
     return this.authService.getAllUsers().pipe(
       tap((response) => console.log('Users response:', response)),
@@ -26,7 +26,7 @@ export class UserService {
             users: Array.isArray(response) ? response : [],
           },
         };
-      })
+      }),
     );
   }
 
@@ -41,7 +41,7 @@ export class UserService {
           success: true,
           data: response || null,
         };
-      })
+      }),
     );
   }
 
@@ -52,10 +52,10 @@ export class UserService {
   delete(id: number): Observable<any> {
     return this.authService.deleteUser(id);
   }
-    
+
   changePassword(
     userId: any,
-    payload: { currentPassword: any; newPassword: any }
+    payload: { currentPassword: any; newPassword: any },
   ): Observable<any> {
     return this.http.post(`${this.apiUrl}/users/${userId}/change-password`, payload);
   }
@@ -63,11 +63,11 @@ export class UserService {
   deleteAvatar(): Observable<any> {
     return this.http.delete(`${this.apiUrl}/users/profile/avatar`);
   }
-  
+
   getProfile(): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/users/profile`);
   }
-  
+
   updateProfile(id: any, data: FormData): Observable<any> {
     return this.http.patch(`${this.apiUrl}/users/${id}`, data);
   }
@@ -76,32 +76,29 @@ export class UserService {
     return this.authService.getAllUsers().pipe(
       map((response: any) => {
         if (response.success && response.data && Array.isArray(response.data.users)) {
-          const usuariosFiltrados = response.data.users.filter((user: any) => 
-            user.role === 'ASESOR' || user.role === 'ADMINISTRADOR'
+          const usuariosFiltrados = response.data.users.filter(
+            (user: any) => user.role === 'ASESOR' || user.role === 'ADMINISTRADOR',
           );
           return {
             success: true,
             data: {
-              users: usuariosFiltrados
-            }
+              users: usuariosFiltrados,
+            },
           };
         }
         return {
           success: true,
           data: {
-            users: []
-          }
+            users: [],
+          },
         };
-      })
+      }),
     );
   }
 
-
-// UserService Angular
-asignarUrbanizaciones(userId: number, urbanizacionIds: number[]): Observable<any> {
-  return this.http.patch(`${this.apiUrl}/auth/${userId}/urbanizaciones`, {
-    urbanizacionIds,
-  });
-}
-
+  asignarUrbanizaciones(userId: number, urbanizacionIds: number[]): Observable<any> {
+    return this.http.patch(`${this.apiUrl}/auth/${userId}/urbanizaciones`, {
+      urbanizacionIds,
+    });
+  }
 }

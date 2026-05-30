@@ -39,15 +39,22 @@ export class UrbanizacionService {
   async create(createUrbanizacionDto: CreateUrbanizacionDto) {
     return this.prisma.$transaction(async (prisma) => {
       const urbanizacionExistente = await prisma.urbanizacion.findFirst({
-        where: {
-          nombre: createUrbanizacionDto.nombre,
-        },
+        where: { nombre: createUrbanizacionDto.nombre },
       });
 
       if (urbanizacionExistente) {
         throw new BadRequestException(
           'Ya existe una urbanización con este nombre',
         );
+      }
+
+      if (createUrbanizacionDto.sedeId) {
+        const sede = await prisma.sede.findUnique({
+          where: { id: createUrbanizacionDto.sedeId },
+        });
+        if (!sede) {
+          throw new BadRequestException('La sede especificada no existe');
+        }
       }
 
       const urbanizacion = await prisma.urbanizacion.create({
@@ -57,6 +64,13 @@ export class UrbanizacionService {
           ciudad: createUrbanizacionDto.ciudad,
           descripcion: createUrbanizacionDto.descripcion,
           maps: createUrbanizacionDto.maps,
+          sedeId: createUrbanizacionDto.sedeId,
+          superficieTotal: createUrbanizacionDto.superficieTotal,
+          estado: createUrbanizacionDto.estado,
+          colindanciaNorte: createUrbanizacionDto.colindanciaNorte,
+          colindanciaEste: createUrbanizacionDto.colindanciaEste,
+          colindanciaSur: createUrbanizacionDto.colindanciaSur,
+          colindanciaOeste: createUrbanizacionDto.colindanciaOeste,
         },
       });
 
@@ -77,64 +91,55 @@ export class UrbanizacionService {
     });
   }
 
-async findAll(page: number = 1, limit: number = 10, userId?: number, userRole?: string) {
-  const skip = (page - 1) * limit;
+  async findAll(
+    page: number = 1,
+    limit: number = 10,
+    userId?: number,
+    userRole?: string,
+  ) {
+    const skip = (page - 1) * limit;
 
-  const where: any = {};
+    const where: any = {};
 
-  // Si no es ADMINISTRADOR, filtrar solo las urbanizaciones asignadas al usuario
-  if (userRole && userRole !== 'ADMINISTRADOR') {
-    where.usuariosAsignados = {
-      some: {
-        usuarioId: userId,
+    if (userRole && userRole !== 'ADMINISTRADOR') {
+      where.usuariosAsignados = {
+        some: { usuarioId: userId },
+      };
+    }
+
+    const [urbanizaciones, total] = await Promise.all([
+      this.prisma.urbanizacion.findMany({
+        where,
+        skip,
+        take: limit,
+        include: {
+          archivos: true,
+          sede: { select: { id: true, nombre: true } },
+          _count: { select: { lotes: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.urbanizacion.count({ where }),
+    ]);
+
+    return {
+      success: true,
+      data: urbanizaciones,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
       },
     };
   }
-
-  const [urbanizaciones, total] = await Promise.all([
-    this.prisma.urbanizacion.findMany({
-      where,
-      skip,
-      take: limit,
-      include: {
-        archivos: true,
-        _count: {
-          select: {
-            lotes: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    }),
-    this.prisma.urbanizacion.count({ where }),
-  ]);
-
-  return {
-    success: true,
-    data: urbanizaciones,
-    pagination: {
-      page,
-      limit,
-      total,
-      totalPages: Math.ceil(total / limit),
-    },
-  };
-}
 
   async findOne(id: number) {
     const urbanizacion = await this.prisma.urbanizacion.findUnique({
       where: { id },
       include: {
-        archivos: {
-          select: {
-            id: true,
-            urlArchivo: true,
-            tipoArchivo: true,
-            nombreArchivo: true,
-          },
-        },
+        archivos: true,
+        sede: true,
         lotes: {
           include: {
             _count: {
@@ -147,11 +152,7 @@ async findAll(page: number = 1, limit: number = 10, userId?: number, userRole?: 
             },
           },
         },
-        _count: {
-          select: {
-            lotes: true,
-          },
-        },
+        _count: { select: { lotes: true } },
       },
     });
 
@@ -169,24 +170,11 @@ async findAll(page: number = 1, limit: number = 10, userId?: number, userRole?: 
     const urbanizacion = await this.prisma.urbanizacion.findUnique({
       where: { uuid },
       include: {
-        archivos: {
-          select: {
-            id: true,
-            urlArchivo: true,
-            tipoArchivo: true,
-            nombreArchivo: true,
-          },
-        },
+        archivos: true,
+        sede: true,
         lotes: {
           include: {
-            archivos: {
-              select: {
-                id: true,
-                urlArchivo: true,
-                tipoArchivo: true,
-                nombreArchivo: true,
-              },
-            },
+            archivos: true,
             _count: {
               select: {
                 cotizaciones: true,
@@ -197,16 +185,14 @@ async findAll(page: number = 1, limit: number = 10, userId?: number, userRole?: 
             },
           },
         },
-        _count: {
-          select: {
-            lotes: true,
-          },
-        },
+        _count: { select: { lotes: true } },
       },
     });
 
     if (!urbanizacion) {
-      throw new NotFoundException(`Urbanización con ID ${uuid} no encontrada`);
+      throw new NotFoundException(
+        `Urbanización con UUID ${uuid} no encontrada`,
+      );
     }
 
     return {
@@ -225,6 +211,15 @@ async findAll(page: number = 1, limit: number = 10, userId?: number, userRole?: 
         throw new NotFoundException(`Urbanización con ID ${id} no encontrada`);
       }
 
+      if (updateUrbanizacionDto.sedeId) {
+        const sede = await prisma.sede.findUnique({
+          where: { id: updateUrbanizacionDto.sedeId },
+        });
+        if (!sede) {
+          throw new BadRequestException('La sede especificada no existe');
+        }
+      }
+
       const datosAntes = { ...urbanizacionExistente };
 
       if (updateUrbanizacionDto.nombre) {
@@ -234,7 +229,6 @@ async findAll(page: number = 1, limit: number = 10, userId?: number, userRole?: 
             id: { not: id },
           },
         });
-
         if (urbanizacionConMismoNombre) {
           throw new BadRequestException(
             'Ya existe una urbanización con este nombre',
@@ -244,25 +238,30 @@ async findAll(page: number = 1, limit: number = 10, userId?: number, userRole?: 
 
       const dataToUpdate: any = {};
 
-      if (updateUrbanizacionDto.nombre !== undefined) {
+      if (updateUrbanizacionDto.nombre !== undefined)
         dataToUpdate.nombre = updateUrbanizacionDto.nombre;
-      }
-
-      if (updateUrbanizacionDto.ubicacion !== undefined) {
+      if (updateUrbanizacionDto.ubicacion !== undefined)
         dataToUpdate.ubicacion = updateUrbanizacionDto.ubicacion;
-      }
-
-      if (updateUrbanizacionDto.ciudad !== undefined) {
+      if (updateUrbanizacionDto.ciudad !== undefined)
         dataToUpdate.ciudad = updateUrbanizacionDto.ciudad;
-      }
-
-      if (updateUrbanizacionDto.descripcion !== undefined) {
+      if (updateUrbanizacionDto.descripcion !== undefined)
         dataToUpdate.descripcion = updateUrbanizacionDto.descripcion;
-      }
-
-      if (updateUrbanizacionDto.maps !== undefined) {
+      if (updateUrbanizacionDto.maps !== undefined)
         dataToUpdate.maps = updateUrbanizacionDto.maps;
-      }
+      if (updateUrbanizacionDto.sedeId !== undefined)
+        dataToUpdate.sedeId = updateUrbanizacionDto.sedeId;
+      if (updateUrbanizacionDto.superficieTotal !== undefined)
+        dataToUpdate.superficieTotal = updateUrbanizacionDto.superficieTotal;
+      if (updateUrbanizacionDto.estado !== undefined)
+        dataToUpdate.estado = updateUrbanizacionDto.estado;
+      if (updateUrbanizacionDto.colindanciaNorte !== undefined)
+        dataToUpdate.colindanciaNorte = updateUrbanizacionDto.colindanciaNorte;
+      if (updateUrbanizacionDto.colindanciaEste !== undefined)
+        dataToUpdate.colindanciaEste = updateUrbanizacionDto.colindanciaEste;
+      if (updateUrbanizacionDto.colindanciaSur !== undefined)
+        dataToUpdate.colindanciaSur = updateUrbanizacionDto.colindanciaSur;
+      if (updateUrbanizacionDto.colindanciaOeste !== undefined)
+        dataToUpdate.colindanciaOeste = updateUrbanizacionDto.colindanciaOeste;
 
       const urbanizacionActualizada = await prisma.urbanizacion.update({
         where: { id },
@@ -310,8 +309,12 @@ async findAll(page: number = 1, limit: number = 10, userId?: number, userRole?: 
       const datosAntes = { ...urbanizacion };
 
       for (const lote of urbanizacion.lotes) {
-        const puedeEliminar = lote.estado === 'DISPONIBLE' || lote.estado === 'CON_OFERTA';
-        const tieneOperaciones = lote.cotizaciones.length > 0 || lote.ventas.length > 0 || lote.reservas.length > 0;
+        const puedeEliminar =
+          lote.estado === 'DISPONIBLE' || lote.estado === 'CON_OFERTA';
+        const tieneOperaciones =
+          lote.cotizaciones.length > 0 ||
+          lote.ventas.length > 0 ||
+          lote.reservas.length > 0;
 
         if (!puedeEliminar || tieneOperaciones) {
           continue;
@@ -321,44 +324,27 @@ async findAll(page: number = 1, limit: number = 10, userId?: number, userRole?: 
           if (archivo.urlArchivo) {
             const filePath = path.join(process.cwd(), archivo.urlArchivo);
             try {
-              if (fs.existsSync(filePath)) {
-                fs.unlinkSync(filePath);
-              }
+              if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
             } catch (err) {}
           }
         }
 
-        await prisma.archivo.deleteMany({
-          where: { loteId: lote.id },
-        });
-
-        await prisma.lotePromocion.deleteMany({
-          where: { loteId: lote.id },
-        });
-
-        await prisma.lote.delete({
-          where: { id: lote.id },
-        });
+        await prisma.archivo.deleteMany({ where: { loteId: lote.id } });
+        await prisma.lotePromocion.deleteMany({ where: { loteId: lote.id } });
+        await prisma.lote.delete({ where: { id: lote.id } });
       }
 
       for (const archivo of urbanizacion.archivos) {
         if (archivo.urlArchivo) {
           const filePath = path.join(process.cwd(), archivo.urlArchivo);
           try {
-            if (fs.existsSync(filePath)) {
-              fs.unlinkSync(filePath);
-            }
+            if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
           } catch (err) {}
         }
       }
 
-      await prisma.archivo.deleteMany({
-        where: { urbanizacionId: id },
-      });
-
-      await prisma.urbanizacion.delete({
-        where: { id },
-      });
+      await prisma.archivo.deleteMany({ where: { urbanizacionId: id } });
+      await prisma.urbanizacion.delete({ where: { id } });
 
       await this.crearAuditoria(
         undefined,
@@ -375,6 +361,4 @@ async findAll(page: number = 1, limit: number = 10, userId?: number, userRole?: 
       };
     });
   }
-
-
 }

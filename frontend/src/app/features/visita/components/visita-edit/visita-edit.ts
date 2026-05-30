@@ -98,6 +98,9 @@ export class VisitaEdit implements OnInit {
   cargarLotes(): void {
     const currentUser = this.authService.getCurrentUser();
     const urbanizacionActiva = this.urbanizacionContext.urbanizacion();
+    const visitaActual = this.visitaData;
+    const loteActualId = visitaActual?.loteId;
+    const esModoIndependientes = urbanizacionActiva?.id === -1;
 
     this.loteSvc.getAll().subscribe({
       next: (lotes: LoteDto[]) => {
@@ -106,12 +109,23 @@ export class VisitaEdit implements OnInit {
             lote.encargadoId === currentUser?.id && 
             (lote.estado === 'DISPONIBLE' || lote.estado === 'CON_OFERTA')
         );
-        if (urbanizacionActiva) {
+        if (esModoIndependientes) {
+          lotesFiltrados = lotesFiltrados.filter((lote) => !lote.urbanizacion);
+        } else if (urbanizacionActiva) {
           lotesFiltrados = lotesFiltrados.filter(
             (lote) => lote.urbanizacion?.id === urbanizacionActiva.id
           );
         }
+        if (loteActualId) {
+          const loteActual = lotes.find(l => l.id === loteActualId);
+          if (loteActual && !lotesFiltrados.some(l => l.id === loteActualId)) {
+            lotesFiltrados = [...lotesFiltrados, loteActual];
+          }
+        }
         this.lotes.set(lotesFiltrados);
+        if (visitaActual) {
+          setTimeout(() => this.cargarDatosFormulario(visitaActual), 500);
+        }
       },
       error: (err: any) => {
         this.notificationService.showError('No se pudieron cargar los lotes');
@@ -122,6 +136,9 @@ export class VisitaEdit implements OnInit {
   cargarPropiedades(): void {
     const currentUser = this.authService.getCurrentUser();
     const urbanizacionActiva = this.urbanizacionContext.urbanizacion();
+    const visitaActual = this.visitaData;
+    const propiedadActualId = visitaActual?.propiedadId;
+    const esModoIndependientes = urbanizacionActiva?.id === -1;
 
     this.propiedadSvc.getAll().subscribe({
       next: (propiedades: PropiedadDto[]) => {
@@ -130,12 +147,23 @@ export class VisitaEdit implements OnInit {
             propiedad.encargadoId === currentUser?.id && 
             (propiedad.estado === 'DISPONIBLE' || propiedad.estado === 'CON_OFERTA')
         );
-        if (urbanizacionActiva) {
+        if (esModoIndependientes) {
+          propiedadesFiltradas = propiedadesFiltradas.filter((propiedad) => !propiedad.urbanizacion);
+        } else if (urbanizacionActiva) {
           propiedadesFiltradas = propiedadesFiltradas.filter(
             (propiedad) => propiedad.urbanizacion?.id === urbanizacionActiva.id
           );
         }
+        if (propiedadActualId) {
+          const propiedadActual = propiedades.find(p => p.id === propiedadActualId);
+          if (propiedadActual && !propiedadesFiltradas.some(p => p.id === propiedadActualId)) {
+            propiedadesFiltradas = [...propiedadesFiltradas, propiedadActual];
+          }
+        }
         this.propiedades.set(propiedadesFiltradas);
+        if (visitaActual) {
+          setTimeout(() => this.cargarDatosFormulario(visitaActual), 500);
+        }
       },
       error: (err: any) => {
         this.notificationService.showError('No se pudieron cargar las propiedades');
@@ -198,8 +226,9 @@ export class VisitaEdit implements OnInit {
     this.visitaForm.patchValue({
       inmuebleId: lote.id,
     });
+    const urbanizacionNombre = lote.urbanizacion?.nombre || 'Independiente';
     this.searchLote.set(
-      `${lote.numeroLote} - ${lote.urbanizacion?.nombre || 'Sin urbanización'} - $${lote.precioBase}`
+      `${lote.numeroLote} - ${urbanizacionNombre} - $${lote.precioBase}`
     );
     this.showLotesDropdown.set(false);
   }
@@ -273,13 +302,12 @@ export class VisitaEdit implements OnInit {
       next: (visita: any) => {
         if (visita) {
           this.visitaData = visita;
-          setTimeout(() => {
-            this.cargarDatosFormulario(visita);
-          }, 500);
+          this.cargarLotes();
+          this.cargarPropiedades();
         } else {
           this.error.set('No se encontró la visita');
+          this.cargando.set(false);
         }
-        this.cargando.set(false);
       },
       error: (err: any) => {
         this.error.set('No se pudo cargar la visita');
@@ -321,8 +349,9 @@ export class VisitaEdit implements OnInit {
       if (inmuebleTipo === 'LOTE') {
         const loteSeleccionado = this.lotes().find((l) => l.id === visita.loteId);
         if (loteSeleccionado) {
+          const urbanizacionNombre = loteSeleccionado.urbanizacion?.nombre || 'Independiente';
           this.searchLote.set(
-            `${loteSeleccionado.numeroLote} - ${loteSeleccionado.urbanizacion?.nombre || 'Sin urbanización'} - $${loteSeleccionado.precioBase}`
+            `${loteSeleccionado.numeroLote} - ${urbanizacionNombre} - $${loteSeleccionado.precioBase}`
           );
         }
       } else if (inmuebleTipo === 'PROPIEDAD') {

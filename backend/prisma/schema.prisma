@@ -124,6 +124,12 @@ enum EstadoPropiedad {
   ANTICREDITO
 }
 
+enum EstadoUrbanizacion {
+  VENTA
+  PRE_VENTA
+  POST_VENTA
+}
+
 model User {
   id            Int       @id @default(autoincrement())
   uuid          String    @unique @default(uuid())
@@ -142,6 +148,10 @@ model User {
   createdAt     DateTime  @default(now()) @map("created_at")
   estado        Boolean   @default(true)
   updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // Nueva relación con Grupo
+  grupoId       Int?      @map("grupo_id")
+  grupo         Grupo?    @relation(fields: [grupoId], references: [id])
 
   urbanizacionesAsignadas UsuarioUrbanizacion[]
   failedAttempts          Int                   @default(0) @map("failed_attempts")
@@ -170,25 +180,31 @@ model User {
 }
 
 model Lote {
-  id              Int            @id @default(autoincrement())
-  uuid            String         @unique @default(uuid())
-  urbanizacionId  Int?
-  numeroLote      String         @map("numero_lote")
-  superficieM2    Decimal        @map("superficie_m2") @db.Decimal(10, 2)
-  precioBase      Decimal        @map("precio_base") @db.Decimal(12, 2)
-  descripcion     String?
-  ubicacion       String?
-  manzanoId     Int?     
-  ciudad          String
-  medidaFrente    Decimal?       @map("medida_frente") @db.Decimal(10, 2)
-  medidaIzquierda Decimal?       @map("medida_izquierda") @db.Decimal(10, 2)
-  medidaDerecha   Decimal?       @map("medida_derecha") @db.Decimal(10, 2)
-  medidaFondo     Decimal?       @map("medida_fondo") @db.Decimal(10, 2)
-  esIndependiente Boolean        @default(false) @map("es_independiente")
-  estado          EstadoInmueble @default(DISPONIBLE)
-  encargadoId     Int?           @map("encargado_id")
-  createdAt       DateTime       @default(now()) @map("created_at")
-  updatedAt       DateTime       @updatedAt @map("updated_at")
+  id               Int            @id @default(autoincrement())
+  uuid             String         @unique @default(uuid())
+  urbanizacionId   Int?
+  numeroLote       String         @map("numero_lote")
+  superficieM2     Decimal        @map("superficie_m2") @db.Decimal(10, 2)
+  precioBase       Decimal        @map("precio_base") @db.Decimal(12, 2)
+  precioM2         Decimal?       @map("precio_m2") @db.Decimal(10, 2)
+  descripcion      String?
+  ubicacion        String?
+  manzanoId        Int?
+  ciudad           String
+  medidaFrente     Decimal?       @map("medida_frente") @db.Decimal(10, 2)
+  medidaIzquierda  Decimal?       @map("medida_izquierda") @db.Decimal(10, 2)
+  medidaDerecha    Decimal?       @map("medida_derecha") @db.Decimal(10, 2)
+  medidaFondo      Decimal?       @map("medida_fondo") @db.Decimal(10, 2)
+  partida          String?        @map("partida")
+  colindaFrontal   String?        @map("colinda_frontal")
+  colindaDerecho   String?        @map("colinda_derecho")
+  colindaIzquierdo String?        @map("colinda_izquierdo")
+  colindaFondo     String?        @map("colinda_fondo")
+  esIndependiente  Boolean        @default(false) @map("es_independiente")
+  estado           EstadoInmueble @default(DISPONIBLE)
+  encargadoId      Int?           @map("encargado_id")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
 
   urbanizacion  Urbanizacion?   @relation(fields: [urbanizacionId], references: [id])
   encargado     User?           @relation("LotesEncargado", fields: [encargadoId], references: [id])
@@ -197,7 +213,7 @@ model Lote {
   ventas        Venta[]         @relation("VentasLote")
   reservas      Reserva[]       @relation("ReservasLote")
   visitas       Visita[]        @relation("VisitasLote")
-  manzano Manzano? @relation(fields: [manzanoId], references: [id])
+  manzano       Manzano?        @relation(fields: [manzanoId], references: [id])
   LotePromocion LotePromocion[]
 }
 
@@ -212,13 +228,24 @@ model Urbanizacion {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
+  // Nuevos campos
+  sedeId           Int?                @map("sede_id")
+  superficieTotal  Decimal?            @map("superficie_total") @db.Decimal(12, 2)
+  estado           EstadoUrbanizacion? @default(VENTA)
+  colindanciaNorte String?             @map("colindancia_norte")
+  colindanciaEste  String?             @map("colindancia_este")
+  colindanciaSur   String?             @map("colindancia_sur")
+  colindanciaOeste String?             @map("colindancia_oeste")
+
+  // Relaciones
+  sede              Sede?                 @relation(fields: [sedeId], references: [id])
   usuariosAsignados UsuarioUrbanizacion[]
   lotes             Lote[]
   archivos          Archivo[]
   Promocion         Promocion[]
   cajas             Caja[]
   propiedades       Propiedad[]
-  manzanos          Manzano[] 
+  manzanos          Manzano[]
 }
 
 model Cotizacion {
@@ -246,18 +273,18 @@ model Venta {
   asesorId     Int
   inmuebleTipo TipoInmueble @default(LOTE)
 
-  precioFinal   Decimal     @map("precio_final") @db.Decimal(12, 2)
-  estado        EstadoVenta @default(PENDIENTE)
-  createdAt     DateTime    @default(now()) @map("created_at")
-  updatedAt     DateTime    @updatedAt @map("updated_at")
-  observaciones String?
-  loteId        Int?        @map("lote_id")
-  propiedadId   Int?        @map("propiedad_id")
-  cajaId        Int?        @map("caja_id")
-  medidaFrente  Decimal?    @map("medida_frente") @db.Decimal(10, 2)
-  medidaIzquierda Decimal?  @map("medida_izquierda") @db.Decimal(10, 2)
-  medidaDerecha Decimal?    @map("medida_derecha") @db.Decimal(10, 2)
-  medidaFondo   Decimal?    @map("medida_fondo") @db.Decimal(10, 2)
+  precioFinal     Decimal     @map("precio_final") @db.Decimal(12, 2)
+  estado          EstadoVenta @default(PENDIENTE)
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+  observaciones   String?
+  loteId          Int?        @map("lote_id")
+  propiedadId     Int?        @map("propiedad_id")
+  cajaId          Int?        @map("caja_id")
+  medidaFrente    Decimal?    @map("medida_frente") @db.Decimal(10, 2)
+  medidaIzquierda Decimal?    @map("medida_izquierda") @db.Decimal(10, 2)
+  medidaDerecha   Decimal?    @map("medida_derecha") @db.Decimal(10, 2)
+  medidaFondo     Decimal?    @map("medida_fondo") @db.Decimal(10, 2)
 
   cliente         User             @relation("VentasCliente", fields: [clienteId], references: [id])
   asesor          User             @relation("VentasAsesor", fields: [asesorId], references: [id])
@@ -517,10 +544,10 @@ model Caja {
   actualizadoEn     DateTime   @updatedAt
   estado            EstadoCaja @default(ABIERTA)
   usuarioAperturaId Int
-  urbanizacionId    Int?       @map("urbanizacion_id") // ← nuevo
+  urbanizacionId    Int?       @map("urbanizacion_id")
 
   usuarioApertura User          @relation("UsuarioApertura", fields: [usuarioAperturaId], references: [id])
-  urbanizacion    Urbanizacion? @relation(fields: [urbanizacionId], references: [id]) // ← nuevo
+  urbanizacion    Urbanizacion? @relation(fields: [urbanizacionId], references: [id])
 
   movimientos MovimientoCaja[]
   cierreCaja  CierreCaja[]
@@ -546,7 +573,7 @@ model MovimientoCaja {
   usuario     User           @relation(fields: [usuarioId], references: [id])
   egresoId    Int?           @map("egreso_id")
   egreso      Egreso?        @relation(fields: [egresoId], references: [id])
-  venta       Venta?         @relation(fields: [ventaId], references: [id]) // 
+  venta       Venta?         @relation(fields: [ventaId], references: [id])
 
   @@map("movimientos_caja")
 }
@@ -626,7 +653,7 @@ model Propiedad {
   estado          EstadoInmueble  @default(DISPONIBLE)
   estadoPropiedad EstadoPropiedad @default(VENTA)
   encargadoId     Int?            @map("encargado_id")
-  urbanizacionId  Int?            @map("urbanizacion_id") // ← nuevo
+  urbanizacionId  Int?            @map("urbanizacion_id")
   createdAt       DateTime        @default(now()) @map("created_at")
   updatedAt       DateTime        @updatedAt @map("updated_at")
 
@@ -634,7 +661,7 @@ model Propiedad {
   ventas       Venta[]       @relation("VentasPropiedad")
   visitas      Visita[]      @relation("VisitasPropiedad")
   encargado    User?         @relation("PropiedadesEncargado", fields: [encargadoId], references: [id])
-  urbanizacion Urbanizacion? @relation(fields: [urbanizacionId], references: [id]) // ← nuevo
+  urbanizacion Urbanizacion? @relation(fields: [urbanizacionId], references: [id])
 }
 
 model Modulo {
@@ -689,4 +716,54 @@ model Manzano {
   lotes        Lote[]
 
   @@map("manzanos")
+}
+
+model Sede {
+  id        Int      @id @default(autoincrement())
+  uuid      String   @unique @default(uuid())
+  nombre    String
+  direccion String?
+  telefono  String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  grupos        Grupo[]
+  urbanizacions Urbanizacion[]
+
+  @@map("sedes")
+}
+
+model Grupo {
+  id            Int      @id @default(autoincrement())
+  uuid          String   @unique @default(uuid())
+  tipoUsuario   String   @map("tipo_usuario")
+  nombreEmpresa String?  @map("nombre_empresa")
+  descripcion   String?
+  sedeId        Int      @map("sede_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  sede Sede @relation(fields: [sedeId], references: [id])
+  users User[]
+
+  @@map("grupos")
+}
+
+model Contacto {
+  id           Int      @id @default(autoincrement())
+  uuid         String   @unique @default(uuid())
+  firstName    String   @map("first_name")
+  lastName     String   @map("last_name")
+  ci           String   @unique
+  genero       String?
+  telefono     String
+  ocupacion    String?
+  email        String?  @unique
+  pais         String?
+  departamento String?
+  domicilio    String?
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("contactos")
 }

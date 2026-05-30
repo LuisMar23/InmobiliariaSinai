@@ -1,8 +1,5 @@
-<div
-  class="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-emerald-50 py-4 px-2 sm:px-4 lg:px-8"
->
+<div class="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-emerald-50 py-4 px-2 sm:px-4 lg:px-8">
   <div class="max-w-4xl mx-auto">
-    <!-- Header -->
     <div class="bg-emerald-500 rounded-t-2xl shadow-lg p-4 sm:p-6">
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div class="flex items-center gap-3">
@@ -22,20 +19,18 @@
       </div>
     </div>
 
-    <!-- Contenido -->
     <div class="bg-white rounded-b-2xl shadow-xl p-4 sm:p-6 lg:p-8">
       <form [formGroup]="createForm" (ngSubmit)="onSubmit()">
 
-        <!-- Información básica -->
         <div class="mb-8">
-          <h2 class="text-lg sm:text-xl font-semibold text-black mb-4 flex items-center gap-2 border-b-2 border-emerald-200 pb-2">
+          <h2
+            class="text-lg sm:text-xl font-semibold text-black mb-4 flex items-center gap-2 border-b-2 border-emerald-200 pb-2">
             <fa-icon [icon]="faUser" class="text-emerald-500"></fa-icon>
             Información Básica
           </h2>
           <div class="bg-white border-2 border-emerald-200 rounded-xl p-4 sm:p-6">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-              <!-- Nombre completo -->
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">
                   Nombre completo <span class="text-red-500">*</span>
@@ -44,11 +39,10 @@
                   class="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm"
                   placeholder="Ej: Juan Pérez" />
                 @if (isFieldValid('fullName')) {
-                  <p class="mt-1 text-xs text-red-600">{{ getFieldError('fullName') }}</p>
+                <p class="mt-1 text-xs text-red-600">{{ getFieldError('fullName') }}</p>
                 }
               </div>
 
-              <!-- Username -->
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">
                   Nombre de usuario <span class="text-red-500">*</span>
@@ -57,11 +51,10 @@
                   class="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm"
                   placeholder="Nombre de usuario" />
                 @if (isFieldValid('username')) {
-                  <p class="mt-1 text-xs text-red-600">{{ getFieldError('username') }}</p>
+                <p class="mt-1 text-xs text-red-600">{{ getFieldError('username') }}</p>
                 }
               </div>
 
-              <!-- Email -->
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Correo electrónico</label>
                 <input type="email" formControlName="email"
@@ -69,7 +62,6 @@
                   placeholder="correo@ejemplo.com" />
               </div>
 
-              <!-- Teléfono -->
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Teléfono</label>
                 <input type="text" formControlName="telefono"
@@ -77,7 +69,6 @@
                   placeholder="Número de teléfono" />
               </div>
 
-              <!-- CI -->
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">C.I.</label>
                 <input type="text" formControlName="ci"
@@ -85,90 +76,97 @@
                   placeholder="Cédula de identidad" />
               </div>
 
-              <!-- Rol -->
               @if (canAssignRole()) {
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">
-                    Rol del usuario <span class="text-red-500">*</span>
-                  </label>
-                  <select formControlName="role"
-                    class="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm">
-                    @for (role of roles; track role) {
-                      <option [value]="role">{{ role }}</option>
-                    }
-                  </select>
-                </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Rol del usuario <span class="text-red-500">*</span>
+                </label>
+                <select formControlName="role"
+                  class="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm">
+                  @for (role of roles; track role) {
+                  <option [value]="role">{{ role }}</option>
+                  }
+                </select>
+              </div>
               } @else {
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">Rol del usuario</label>
-                  <input type="text" value="USUARIO" readonly
-                    class="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg bg-gray-100 text-gray-500 text-sm" />
-                  <p class="text-gray-400 text-xs mt-1">Solo administradores pueden asignar roles</p>
-                </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Rol del usuario</label>
+                <input type="text" value="USUARIO" readonly
+                  class="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg bg-gray-100 text-gray-500 text-sm" />
+                <p class="text-gray-400 text-xs mt-1">Solo administradores pueden asignar roles</p>
+              </div>
               }
 
             </div>
           </div>
         </div>
 
-        <!-- Urbanizaciones asignadas — solo ASESOR y SECRETARIA -->
-        @if (canAssignRole() && requiresUrbanizacion) {
-          <div class="mb-8">
-            <h2 class="text-lg sm:text-xl font-semibold text-black mb-4 flex items-center gap-2 border-b-2 border-emerald-200 pb-2">
-              <fa-icon [icon]="faBuilding" class="text-emerald-500"></fa-icon>
-              Urbanizaciones Asignadas
-              <span class="text-xs font-normal text-gray-400 ml-2">(opcional)</span>
-            </h2>
-            <div class="bg-white border-2 border-emerald-200 rounded-xl p-4 sm:p-6">
-
-              <!-- Select para agregar -->
-              <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                  Agregar urbanización
-                </label>
-                <select
-                  (change)="agregarUrbanizacion($event)"
-                  class="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm">
-                  <option value="">-- Selecciona una urbanización --</option>
-                  @for (urb of urbanizacionesDisponibles; track urb.id) {
-                    <option [value]="urb.id">{{ urb.nombre }} — {{ urb.ciudad }}</option>
-                  }
-                </select>
-              </div>
-
-              <!-- Tags de seleccionadas -->
-              @if (urbanizacionesSeleccionadas.length > 0) {
-                <div class="flex flex-wrap gap-2">
-                  @for (urb of urbanizacionesSeleccionadas; track urb.id) {
-                    <span class="inline-flex items-center gap-2 bg-emerald-100 text-emerald-800 text-sm font-medium px-3 py-1.5 rounded-full">
-                      {{ urb.nombre }}
-                      <button type="button" (click)="removerUrbanizacion(urb.id)"
-                        class="text-emerald-600 hover:text-red-500 transition-colors">
-                        <fa-icon [icon]="faTimes" class="text-xs"></fa-icon>
-                      </button>
-                    </span>
-                  }
-                </div>
-              } @else {
-                <p class="text-sm text-gray-400 italic">
-                  Sin urbanizaciones asignadas. El usuario verá todos los lotes.
-                </p>
+        @if (canAssignRole() && requiresGrupo) {
+        <div class="mb-8">
+          <h2
+            class="text-lg sm:text-xl font-semibold text-black mb-4 flex items-center gap-2 border-b-2 border-emerald-200 pb-2">
+            <fa-icon [icon]="faUsers" class="text-emerald-500"></fa-icon>
+            Grupo (opcional)
+          </h2>
+          <div class="bg-white border-2 border-emerald-200 rounded-xl p-4 sm:p-6">
+            <select formControlName="grupoId"
+              class="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm">
+              <option [value]="null">-- Sin grupo --</option>
+              @for (grupo of grupos(); track grupo.id) {
+              <option [value]="grupo.id">{{ grupo.tipoUsuario }} - {{ grupo.nombreEmpresa || 'Sin empresa' }}</option>
               }
-
-            </div>
+            </select>
           </div>
+        </div>
         }
 
-        <!-- Credenciales -->
+        @if (canAssignRole() && requiresUrbanizacion) {
         <div class="mb-8">
-          <h2 class="text-lg sm:text-xl font-semibold text-black mb-4 flex items-center gap-2 border-b-2 border-emerald-200 pb-2">
+          <h2
+            class="text-lg sm:text-xl font-semibold text-black mb-4 flex items-center gap-2 border-b-2 border-emerald-200 pb-2">
+            <fa-icon [icon]="faBuilding" class="text-emerald-500"></fa-icon>
+            Urbanizaciones Asignadas
+            <span class="text-xs font-normal text-gray-400 ml-2">(opcional)</span>
+          </h2>
+          <div class="bg-white border-2 border-emerald-200 rounded-xl p-4 sm:p-6">
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Agregar urbanización</label>
+              <select (change)="agregarUrbanizacion($event)"
+                class="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm">
+                <option value="">-- Selecciona una urbanización --</option>
+                @for (urb of urbanizacionesDisponibles; track urb.id) {
+                <option [value]="urb.id">{{ urb.nombre }} — {{ urb.ciudad }}</option>
+                }
+              </select>
+            </div>
+            @if (urbanizacionesSeleccionadas.length > 0) {
+            <div class="flex flex-wrap gap-2">
+              @for (urb of urbanizacionesSeleccionadas; track urb.id) {
+              <span
+                class="inline-flex items-center gap-2 bg-emerald-100 text-emerald-800 text-sm font-medium px-3 py-1.5 rounded-full">
+                {{ urb.nombre }}
+                <button type="button" (click)="removerUrbanizacion(urb.id)"
+                  class="text-emerald-600 hover:text-red-500 transition-colors">
+                  <fa-icon [icon]="faTimes" class="text-xs"></fa-icon>
+                </button>
+              </span>
+              }
+            </div>
+            } @else {
+            <p class="text-sm text-gray-400 italic">Sin urbanizaciones asignadas. El usuario verá todos los lotes.</p>
+            }
+          </div>
+        </div>
+        }
+
+        <div class="mb-8">
+          <h2
+            class="text-lg sm:text-xl font-semibold text-black mb-4 flex items-center gap-2 border-b-2 border-emerald-200 pb-2">
             <fa-icon [icon]="faLock" class="text-emerald-500"></fa-icon>
             Credenciales de Acceso
           </h2>
           <div class="bg-white border-2 border-emerald-200 rounded-xl p-4 sm:p-6">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-              <!-- Contraseña -->
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">
                   Contraseña <span class="text-red-500">*</span>
@@ -183,11 +181,9 @@
                   </button>
                 </div>
                 @if (isFieldValid('password')) {
-                  <p class="mt-1 text-xs text-red-600">{{ getFieldError('password') }}</p>
+                <p class="mt-1 text-xs text-red-600">{{ getFieldError('password') }}</p>
                 }
               </div>
-
-              <!-- Confirmar contraseña -->
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">
                   Confirmar contraseña <span class="text-red-500">*</span>
@@ -202,17 +198,16 @@
                   </button>
                 </div>
                 @if (isFieldValid('confirmPassword')) {
-                  <p class="mt-1 text-xs text-red-600">{{ getFieldError('confirmPassword') }}</p>
+                <p class="mt-1 text-xs text-red-600">{{ getFieldError('confirmPassword') }}</p>
                 }
               </div>
-
             </div>
           </div>
         </div>
 
-        <!-- Información adicional -->
         <div class="mb-8">
-          <h2 class="text-lg sm:text-xl font-semibold text-black mb-4 flex items-center gap-2 border-b-2 border-emerald-200 pb-2">
+          <h2
+            class="text-lg sm:text-xl font-semibold text-black mb-4 flex items-center gap-2 border-b-2 border-emerald-200 pb-2">
             <fa-icon [icon]="faIdCard" class="text-emerald-500"></fa-icon>
             Información Adicional (Opcional)
           </h2>
@@ -234,7 +229,6 @@
           </div>
         </div>
 
-        <!-- Botones -->
         <div class="flex flex-col sm:flex-row gap-3">
           <button type="submit" [disabled]="createForm.invalid || enviando()"
             class="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded-lg font-semibold hover:from-emerald-700 hover:to-emerald-800 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all shadow-lg text-sm flex items-center justify-center gap-2">

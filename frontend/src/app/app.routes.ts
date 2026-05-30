@@ -122,6 +122,21 @@ export const routes: Routes = [
         loadChildren: () =>
           import('./features/cobros/cobros.routes').then((r) => r.CobrosRoutingModule),
       },
+      {
+        path: 'sedes',
+        loadChildren: () =>
+          import('./features/sede/sede.route').then((r) => r.SedeRoutingModule),
+      },
+      {
+        path: 'grupos',
+        loadChildren: () =>
+          import('./features/grupo/grupo.route').then((r) => r.GrupoRoutingModule),
+      },
+      {
+        path: 'contactos',
+        loadChildren: () =>
+          import('./features/contacto/contacto.route').then((r) => r.ContactoRoutingModule),
+      }
       //       {
       //   path: 'reportesclientes',
       //   loadChildren: () =>

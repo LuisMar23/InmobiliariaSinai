@@ -18,6 +18,7 @@ import {
   faUserShield,
   faIdCard,
   faUserPlus,
+  faUsers as faGroupIcon,
 } from '@fortawesome/free-solid-svg-icons';
 import { UserService } from '../../services/users.service';
 import { NotificationService } from '../../../../core/services/notification.service';
@@ -42,9 +43,9 @@ export class UsersComponent implements OnInit {
   faMapMarkerAlt = faMapMarkerAlt;
   faUserShield = faUserShield;
   faIdCard = faIdCard;
+  faUserPlus = faUserPlus;
+  faGroupIcon = faGroupIcon;
 
-
-faUserPlus = faUserPlus; // Agregar esta propiedad
   users = signal<any[]>([]);
   allUsers = signal<any[]>([]);
   searchTerm = signal('');
@@ -53,15 +54,15 @@ faUserPlus = faUserPlus; // Agregar esta propiedad
   filteredUsers = computed(() => {
     const term = this.searchTerm().toLowerCase();
     const users = this.allUsers();
-
     if (!term) return users;
-
     return users.filter(
       (user: any) =>
         user.username?.toLowerCase().includes(term) ||
         user.email?.toLowerCase().includes(term) ||
         user.role?.toLowerCase().includes(term) ||
-        user.fullName?.toLowerCase().includes(term)
+        user.fullName?.toLowerCase().includes(term) ||
+        user.grupo?.tipoUsuario?.toLowerCase().includes(term) ||
+        user.grupo?.nombreEmpresa?.toLowerCase().includes(term),
     );
   });
 
@@ -84,13 +85,11 @@ faUserPlus = faUserPlus; // Agregar esta propiedad
     this.userService.getAll().subscribe({
       next: (response: any) => {
         this.isLoading.set(false);
-
         if (response.success && response.data && Array.isArray(response.data.users)) {
           this.allUsers.set(response.data.users);
         } else {
           this.allUsers.set([]);
         }
-
         this.users.set([...this.allUsers()]);
       },
       error: (err: any) => {
@@ -102,9 +101,6 @@ faUserPlus = faUserPlus; // Agregar esta propiedad
     });
   }
 
-  applyFilter() {
-  }
-
   deleteUser(user: any) {
     this.notificationService
       .confirmDelete(`¿Estás seguro de eliminar al usuario ${user.username}?`)
@@ -113,7 +109,7 @@ faUserPlus = faUserPlus; // Agregar esta propiedad
           this.userService.delete(user.id).subscribe({
             next: (response: any) => {
               this.notificationService.showSuccess(
-                response.message || 'Usuario eliminado correctamente'
+                response.message || 'Usuario eliminado correctamente',
               );
               this.loadUsers();
             },
@@ -144,5 +140,10 @@ faUserPlus = faUserPlus; // Agregar esta propiedad
     return isActive
       ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
       : 'bg-red-100 text-red-800 border border-red-200';
+  }
+
+  getGrupoLabel(grupo: any): string {
+    if (!grupo) return 'Sin grupo';
+    return `${grupo.tipoUsuario}${grupo.nombreEmpresa ? ' - ' + grupo.nombreEmpresa : ''}`;
   }
 }

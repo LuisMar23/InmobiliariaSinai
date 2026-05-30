@@ -52,7 +52,9 @@ export class LoteService {
             throw new BadRequestException('Manzano no encontrado');
           }
           if (manzano.urbanizacionId !== createLoteDto.urbanizacionId) {
-            throw new BadRequestException('El manzano no pertenece a la urbanización seleccionada');
+            throw new BadRequestException(
+              'El manzano no pertenece a la urbanización seleccionada',
+            );
           }
         }
         const loteExistente = await prisma.lote.findFirst({
@@ -62,7 +64,9 @@ export class LoteService {
           },
         });
         if (loteExistente) {
-          throw new BadRequestException('El número de lote ya existe en esta urbanización');
+          throw new BadRequestException(
+            'El número de lote ya existe en esta urbanización',
+          );
         }
       }
 
@@ -75,16 +79,21 @@ export class LoteService {
           },
         });
         if (loteIndependienteExistente) {
-          throw new BadRequestException('Ya existe un lote independiente con este número en la misma ciudad');
+          throw new BadRequestException(
+            'Ya existe un lote independiente con este número en la misma ciudad',
+          );
         }
       }
 
       const lote = await prisma.lote.create({
         data: {
-          urbanizacionId: createLoteDto.esIndependiente ? null : createLoteDto.urbanizacionId,
+          urbanizacionId: createLoteDto.esIndependiente
+            ? null
+            : createLoteDto.urbanizacionId,
           numeroLote: createLoteDto.numeroLote,
           superficieM2: createLoteDto.superficieM2,
           precioBase: createLoteDto.precioBase,
+          precioM2: createLoteDto.precioM2,
           estado: createLoteDto.estado || EstadoInmueble.DISPONIBLE,
           encargadoId: createLoteDto.encargadoId,
           descripcion: createLoteDto.descripcion,
@@ -94,6 +103,11 @@ export class LoteService {
           medidaIzquierda: createLoteDto.medidaIzquierda,
           medidaDerecha: createLoteDto.medidaDerecha,
           medidaFondo: createLoteDto.medidaFondo,
+          partida: createLoteDto.partida,
+          colindaFrontal: createLoteDto.colindaFrontal,
+          colindaDerecho: createLoteDto.colindaDerecho,
+          colindaIzquierdo: createLoteDto.colindaIzquierdo,
+          colindaFondo: createLoteDto.colindaFondo,
           esIndependiente: createLoteDto.esIndependiente,
           manzanoId: createLoteDto.manzanoId,
         },
@@ -122,7 +136,11 @@ export class LoteService {
     });
   }
 
-  async findAll(urbanizacionId?: number, usuarioId?: number, userRole?: string) {
+  async findAll(
+    urbanizacionId?: number,
+    usuarioId?: number,
+    userRole?: string,
+  ) {
     const where: any = {};
     if (urbanizacionId) {
       where.urbanizacionId = urbanizacionId;
@@ -143,10 +161,21 @@ export class LoteService {
       where,
       include: {
         archivos: {
-          select: { id: true, urlArchivo: true, tipoArchivo: true, nombreArchivo: true },
+          select: {
+            id: true,
+            urlArchivo: true,
+            tipoArchivo: true,
+            nombreArchivo: true,
+          },
         },
         urbanizacion: {
-          select: { id: true, nombre: true, ubicacion: true, ciudad: true, uuid: true },
+          select: {
+            id: true,
+            nombre: true,
+            ubicacion: true,
+            ciudad: true,
+            uuid: true,
+          },
         },
         manzano: { select: { id: true, nombre: true } },
         LotePromocion: {
@@ -159,12 +188,24 @@ export class LoteService {
           },
           include: {
             promocion: {
-              select: { id: true, titulo: true, descuento: true, fechaInicio: true, fechaFin: true },
+              select: {
+                id: true,
+                titulo: true,
+                descuento: true,
+                fechaInicio: true,
+                fechaFin: true,
+              },
             },
           },
         },
         _count: {
-          select: { cotizaciones: true, ventas: true, reservas: true, visitas: true, archivos: true },
+          select: {
+            cotizaciones: true,
+            ventas: true,
+            reservas: true,
+            visitas: true,
+            archivos: true,
+          },
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -194,15 +235,31 @@ export class LoteService {
   async getLotesSinUrbanizacion() {
     return this.prisma.lote.findMany({
       where: { urbanizacionId: null },
-      select: { id: true, uuid: true, numeroLote: true, manzanoId: true, ciudad: true, _count: { select: { ventas: true } } },
+      select: {
+        id: true,
+        uuid: true,
+        numeroLote: true,
+        manzanoId: true,
+        ciudad: true,
+        _count: { select: { ventas: true } },
+      },
     });
   }
 
   async findAllPublicos() {
     const lotes = await this.prisma.lote.findMany({
       include: {
-        archivos: { select: { id: true, urlArchivo: true, tipoArchivo: true, nombreArchivo: true } },
-        urbanizacion: { select: { id: true, nombre: true, ubicacion: true, ciudad: true } },
+        archivos: {
+          select: {
+            id: true,
+            urlArchivo: true,
+            tipoArchivo: true,
+            nombreArchivo: true,
+          },
+        },
+        urbanizacion: {
+          select: { id: true, nombre: true, ubicacion: true, ciudad: true },
+        },
         manzano: { select: { id: true, nombre: true } },
         LotePromocion: {
           where: {
@@ -213,7 +270,15 @@ export class LoteService {
             },
           },
           include: {
-            promocion: { select: { id: true, titulo: true, descuento: true, fechaInicio: true, fechaFin: true } },
+            promocion: {
+              select: {
+                id: true,
+                titulo: true,
+                descuento: true,
+                fechaInicio: true,
+                fechaFin: true,
+              },
+            },
           },
         },
       },
@@ -253,9 +318,24 @@ export class LoteService {
     const lote = await this.prisma.lote.findUnique({
       where: { id },
       include: {
-        urbanizacion: { select: { id: true, nombre: true, ubicacion: true, ciudad: true, descripcion: true } },
+        urbanizacion: {
+          select: {
+            id: true,
+            nombre: true,
+            ubicacion: true,
+            ciudad: true,
+            descripcion: true,
+          },
+        },
         manzano: { select: { id: true, nombre: true } },
-        archivos: { select: { id: true, urlArchivo: true, tipoArchivo: true, nombreArchivo: true } },
+        archivos: {
+          select: {
+            id: true,
+            urlArchivo: true,
+            tipoArchivo: true,
+            nombreArchivo: true,
+          },
+        },
         LotePromocion: {
           where: {
             promocion: {
@@ -265,11 +345,33 @@ export class LoteService {
             },
           },
           include: {
-            promocion: { select: { id: true, titulo: true, descuento: true, fechaInicio: true, fechaFin: true } },
+            promocion: {
+              select: {
+                id: true,
+                titulo: true,
+                descuento: true,
+                fechaInicio: true,
+                fechaFin: true,
+              },
+            },
           },
         },
-        cotizaciones: { select: { id: true, uuid: true, nombreCliente: true, contactoCliente: true, precioOfertado: true, estado: true, createdAt: true } },
-        visitas: { include: { cliente: { select: { id: true, fullName: true, email: true } } } },
+        cotizaciones: {
+          select: {
+            id: true,
+            uuid: true,
+            nombreCliente: true,
+            contactoCliente: true,
+            precioOfertado: true,
+            estado: true,
+            createdAt: true,
+          },
+        },
+        visitas: {
+          include: {
+            cliente: { select: { id: true, fullName: true, email: true } },
+          },
+        },
       },
     });
     if (!lote) throw new NotFoundException(`Lote con ID ${id} no encontrado`);
@@ -296,9 +398,24 @@ export class LoteService {
     const lote = await this.prisma.lote.findUnique({
       where: { uuid },
       include: {
-        urbanizacion: { select: { id: true, nombre: true, ubicacion: true, ciudad: true, descripcion: true } },
+        urbanizacion: {
+          select: {
+            id: true,
+            nombre: true,
+            ubicacion: true,
+            ciudad: true,
+            descripcion: true,
+          },
+        },
         manzano: { select: { id: true, nombre: true } },
-        archivos: { select: { id: true, urlArchivo: true, tipoArchivo: true, nombreArchivo: true } },
+        archivos: {
+          select: {
+            id: true,
+            urlArchivo: true,
+            tipoArchivo: true,
+            nombreArchivo: true,
+          },
+        },
         LotePromocion: {
           where: {
             promocion: {
@@ -308,15 +425,48 @@ export class LoteService {
             },
           },
           include: {
-            promocion: { select: { id: true, titulo: true, descuento: true, fechaInicio: true, fechaFin: true } },
+            promocion: {
+              select: {
+                id: true,
+                titulo: true,
+                descuento: true,
+                fechaInicio: true,
+                fechaFin: true,
+              },
+            },
           },
         },
-        cotizaciones: { select: { id: true, uuid: true, nombreCliente: true, contactoCliente: true, precioOfertado: true, estado: true, createdAt: true } },
-        visitas: { include: { cliente: { select: { id: true, fullName: true, email: true } } } },
-        encargado: { select: { id: true, uuid: true, fullName: true, email: true, telefono: true, avatarUrl: true, role: true } },
+        cotizaciones: {
+          select: {
+            id: true,
+            uuid: true,
+            nombreCliente: true,
+            contactoCliente: true,
+            precioOfertado: true,
+            estado: true,
+            createdAt: true,
+          },
+        },
+        visitas: {
+          include: {
+            cliente: { select: { id: true, fullName: true, email: true } },
+          },
+        },
+        encargado: {
+          select: {
+            id: true,
+            uuid: true,
+            fullName: true,
+            email: true,
+            telefono: true,
+            avatarUrl: true,
+            role: true,
+          },
+        },
       },
     });
-    if (!lote) throw new NotFoundException(`Lote con UUID ${uuid} no encontrado`);
+    if (!lote)
+      throw new NotFoundException(`Lote con UUID ${uuid} no encontrado`);
 
     const promocionActiva = lote.LotePromocion[0];
     const precioActual = lote.precioBase;
@@ -339,12 +489,16 @@ export class LoteService {
   async update(id: number, updateLoteDto: UpdateLoteDto) {
     return this.prisma.$transaction(async (prisma) => {
       const loteExistente = await prisma.lote.findUnique({ where: { id } });
-      if (!loteExistente) throw new NotFoundException(`Lote con ID ${id} no encontrado`);
+      if (!loteExistente)
+        throw new NotFoundException(`Lote con ID ${id} no encontrado`);
       const datosAntes = { ...loteExistente };
 
       if (updateLoteDto.urbanizacionId && !updateLoteDto.esIndependiente) {
-        const urbanizacion = await prisma.urbanizacion.findUnique({ where: { id: updateLoteDto.urbanizacionId } });
-        if (!urbanizacion) throw new BadRequestException('Urbanización no encontrada');
+        const urbanizacion = await prisma.urbanizacion.findUnique({
+          where: { id: updateLoteDto.urbanizacionId },
+        });
+        if (!urbanizacion)
+          throw new BadRequestException('Urbanización no encontrada');
       }
 
       if (updateLoteDto.numeroLote) {
@@ -358,23 +512,33 @@ export class LoteService {
           };
         } else {
           whereClause = {
-            urbanizacionId: updateLoteDto.urbanizacionId || loteExistente.urbanizacionId,
+            urbanizacionId:
+              updateLoteDto.urbanizacionId || loteExistente.urbanizacionId,
             numeroLote: updateLoteDto.numeroLote,
             id: { not: id },
           };
         }
-        const loteConMismoNumero = await prisma.lote.findFirst({ where: whereClause });
+        const loteConMismoNumero = await prisma.lote.findFirst({
+          where: whereClause,
+        });
         if (loteConMismoNumero) {
-          throw new BadRequestException('El número de lote ya existe en esta urbanización/ciudad');
+          throw new BadRequestException(
+            'El número de lote ya existe en esta urbanización/ciudad',
+          );
         }
       }
 
       if (updateLoteDto.manzanoId) {
-        const manzano = await prisma.manzano.findUnique({ where: { id: updateLoteDto.manzanoId } });
+        const manzano = await prisma.manzano.findUnique({
+          where: { id: updateLoteDto.manzanoId },
+        });
         if (!manzano) throw new BadRequestException('Manzano no encontrado');
-        const urbanizacionFinal = updateLoteDto.urbanizacionId || loteExistente.urbanizacionId;
+        const urbanizacionFinal =
+          updateLoteDto.urbanizacionId || loteExistente.urbanizacionId;
         if (urbanizacionFinal && manzano.urbanizacionId !== urbanizacionFinal) {
-          throw new BadRequestException('El manzano no pertenece a la urbanización seleccionada');
+          throw new BadRequestException(
+            'El manzano no pertenece a la urbanización seleccionada',
+          );
         }
       }
 
@@ -382,6 +546,7 @@ export class LoteService {
         numeroLote: updateLoteDto.numeroLote,
         superficieM2: updateLoteDto.superficieM2,
         precioBase: updateLoteDto.precioBase,
+        precioM2: updateLoteDto.precioM2,
         estado: updateLoteDto.estado,
         descripcion: updateLoteDto.descripcion,
         ubicacion: updateLoteDto.ubicacion,
@@ -390,24 +555,45 @@ export class LoteService {
         medidaIzquierda: updateLoteDto.medidaIzquierda,
         medidaDerecha: updateLoteDto.medidaDerecha,
         medidaFondo: updateLoteDto.medidaFondo,
+        partida: updateLoteDto.partida,
+        colindaFrontal: updateLoteDto.colindaFrontal,
+        colindaDerecho: updateLoteDto.colindaDerecho,
+        colindaIzquierdo: updateLoteDto.colindaIzquierdo,
+        colindaFondo: updateLoteDto.colindaFondo,
         esIndependiente: updateLoteDto.esIndependiente,
-        urbanizacionId: updateLoteDto.esIndependiente ? null : updateLoteDto.urbanizacionId,
+        urbanizacionId: updateLoteDto.esIndependiente
+          ? null
+          : updateLoteDto.urbanizacionId,
         manzanoId: updateLoteDto.manzanoId,
       };
-      if ('encargadoId' in updateLoteDto) dataToUpdate.encargadoId = updateLoteDto.encargadoId;
+      if ('encargadoId' in updateLoteDto)
+        dataToUpdate.encargadoId = updateLoteDto.encargadoId;
 
       const loteActualizado = await prisma.lote.update({
         where: { id },
         data: dataToUpdate,
         include: {
-          urbanizacion: { select: { id: true, nombre: true, ubicacion: true, ciudad: true } },
+          urbanizacion: {
+            select: { id: true, nombre: true, ubicacion: true, ciudad: true },
+          },
           manzano: { select: { id: true, nombre: true } },
           encargado: true,
         },
       });
 
-      await this.crearAuditoria(updateLoteDto.usuarioId, 'ACTUALIZAR', 'Lote', id, datosAntes, loteActualizado);
-      return { success: true, message: 'Lote actualizado correctamente', data: loteActualizado };
+      await this.crearAuditoria(
+        updateLoteDto.usuarioId,
+        'ACTUALIZAR',
+        'Lote',
+        id,
+        datosAntes,
+        loteActualizado,
+      );
+      return {
+        success: true,
+        message: 'Lote actualizado correctamente',
+        data: loteActualizado,
+      };
     });
   }
 
@@ -417,11 +603,15 @@ export class LoteService {
       if (!lote) throw new NotFoundException(`Lote con ID ${id} no encontrado`);
       const datosAntes = { ...lote };
 
-      const archivos = await prisma.archivo.findMany({ where: { loteId: id } });
+      const archivos = await prisma.archivo.findMany({
+        where: { loteId: id },
+      });
       for (const archivo of archivos) {
         if (archivo.urlArchivo) {
           const filePath = path.join(process.cwd(), archivo.urlArchivo);
-          try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch (err) {}
+          try {
+            if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+          } catch (err) {}
         }
       }
       await prisma.archivo.deleteMany({ where: { loteId: id } });
@@ -432,7 +622,14 @@ export class LoteService {
       await prisma.visita.deleteMany({ where: { lote: { id: id } } });
       await prisma.lote.delete({ where: { id } });
 
-      await this.crearAuditoria(usuarioId, 'ELIMINAR', 'Lote', id, datosAntes, null);
+      await this.crearAuditoria(
+        usuarioId,
+        'ELIMINAR',
+        'Lote',
+        id,
+        datosAntes,
+        null,
+      );
       return { success: true, message: 'Lote eliminado correctamente' };
     });
   }
@@ -441,7 +638,9 @@ export class LoteService {
     const lotes = await this.prisma.lote.findMany({
       where: { estado: { in: ['DISPONIBLE', 'CON_OFERTA'] } },
       include: {
-        urbanizacion: { select: { id: true, nombre: true, ubicacion: true, ciudad: true } },
+        urbanizacion: {
+          select: { id: true, nombre: true, ubicacion: true, ciudad: true },
+        },
         manzano: { select: { id: true, nombre: true } },
         LotePromocion: {
           where: {
@@ -452,10 +651,20 @@ export class LoteService {
             },
           },
           include: {
-            promocion: { select: { id: true, titulo: true, descuento: true, fechaInicio: true, fechaFin: true } },
+            promocion: {
+              select: {
+                id: true,
+                titulo: true,
+                descuento: true,
+                fechaInicio: true,
+                fechaFin: true,
+              },
+            },
           },
         },
-        _count: { select: { cotizaciones: { where: { estado: 'PENDIENTE' } } } },
+        _count: {
+          select: { cotizaciones: { where: { estado: 'PENDIENTE' } } },
+        },
       },
       orderBy: [{ urbanizacionId: 'asc' }, { numeroLote: 'asc' }],
     });
@@ -486,8 +695,12 @@ export class LoteService {
           : null,
         urbanizacion: lote.urbanizacion,
         cotizacionesPendientes: lote._count.cotizaciones,
-        ahorro: promocionActiva ? Number(lote.precioBase) - Number(precioActual) : 0,
-        porcentajeAhorro: promocionActiva ? Number(promocionActiva.promocion.descuento) : 0,
+        ahorro: promocionActiva
+          ? Number(lote.precioBase) - Number(precioActual)
+          : 0,
+        porcentajeAhorro: promocionActiva
+          ? Number(promocionActiva.promocion.descuento)
+          : 0,
       };
     });
     return { success: true, data: lotesParaCotizacion };
@@ -508,7 +721,9 @@ export class LoteService {
         },
       },
       include: {
-        urbanizacion: { select: { id: true, nombre: true, ubicacion: true, ciudad: true } },
+        urbanizacion: {
+          select: { id: true, nombre: true, ubicacion: true, ciudad: true },
+        },
         manzano: { select: { id: true, nombre: true } },
         LotePromocion: {
           where: {
@@ -518,7 +733,17 @@ export class LoteService {
               fechaFin: { gte: new Date() },
             },
           },
-          include: { promocion: { select: { id: true, titulo: true, descuento: true, fechaInicio: true, fechaFin: true } } },
+          include: {
+            promocion: {
+              select: {
+                id: true,
+                titulo: true,
+                descuento: true,
+                fechaInicio: true,
+                fechaFin: true,
+              },
+            },
+          },
         },
       },
     });
@@ -562,30 +787,68 @@ export class LoteService {
     });
   }
 
-  async asignarEncargado(loteId: number, encargadoId: number, usuarioId?: number) {
+  async asignarEncargado(
+    loteId: number,
+    encargadoId: number,
+    usuarioId?: number,
+  ) {
     return this.prisma.$transaction(async (prisma) => {
       const lote = await prisma.lote.findUnique({ where: { id: loteId } });
-      if (!lote) throw new NotFoundException(`Lote con ID ${loteId} no encontrado`);
+      if (!lote)
+        throw new NotFoundException(`Lote con ID ${loteId} no encontrado`);
       const encargado = await prisma.user.findUnique({
-        where: { id: encargadoId, role: { in: ['ASESOR', 'ADMINISTRADOR'] } },
+        where: {
+          id: encargadoId,
+          role: { in: ['ASESOR', 'ADMINISTRADOR'] },
+        },
       });
-      if (!encargado) throw new BadRequestException('Encargado no encontrado o no tiene permisos (solo ASESOR o ADMINISTRADOR)');
+      if (!encargado)
+        throw new BadRequestException(
+          'Encargado no encontrado o no tiene permisos (solo ASESOR o ADMINISTRADOR)',
+        );
       const datosAntes = { ...lote };
       const loteActualizado = await prisma.lote.update({
         where: { id: loteId },
         data: { encargadoId },
         include: {
-          encargado: { select: { id: true, fullName: true, role: true, telefono: true, email: true } },
-          urbanizacion: { select: { id: true, nombre: true, ubicacion: true } },
+          encargado: {
+            select: {
+              id: true,
+              fullName: true,
+              role: true,
+              telefono: true,
+              email: true,
+            },
+          },
+          urbanizacion: {
+            select: { id: true, nombre: true, ubicacion: true },
+          },
           manzano: { select: { id: true, nombre: true } },
         },
       });
-      await this.crearAuditoria(usuarioId, 'ASIGNAR_ENCARGADO', 'Lote', loteId, datosAntes, loteActualizado);
-      return { success: true, message: 'Encargado asignado correctamente al lote', data: loteActualizado };
+      await this.crearAuditoria(
+        usuarioId,
+        'ASIGNAR_ENCARGADO',
+        'Lote',
+        loteId,
+        datosAntes,
+        loteActualizado,
+      );
+      return {
+        success: true,
+        message: 'Encargado asignado correctamente al lote',
+        data: loteActualizado,
+      };
     });
   }
 
-  async findAllUrba(page: number = 1, limit: number = 10, usuarioId: number, userRole?: string, ciudadAsignada?: string | null) {
+  async findAllUrba(
+    page: number = 1,
+    limit: number = 10,
+    usuarioId: number,
+    userRole?: string,
+    ciudadAsignada?: string | null,
+  ) {
     const skip = (page - 1) * limit;
     const where: any = {};
     if (userRole === 'ADMINISTRADOR') {
@@ -615,7 +878,12 @@ export class LoteService {
     return {
       success: true,
       data: urbanizaciones,
-      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
     };
   }
 }

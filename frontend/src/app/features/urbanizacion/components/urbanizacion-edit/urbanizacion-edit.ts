@@ -4,6 +4,8 @@ import { CommonModule, DatePipe } from '@angular/common';
 import { RouterModule, Router, ActivatedRoute } from '@angular/router';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { UrbanizacionService } from '../../services/urbanizacion.service';
+import { SedeService } from '../../../sede/service/sede.service';
+import { SedeDto } from '../../../../core/interfaces/sede.interface';
 
 @Component({
   selector: 'app-urbanizacion-edit',
@@ -19,10 +21,12 @@ export class UrbanizacionEdit implements OnInit {
   error = signal<string | null>(null);
   enviando = signal<boolean>(false);
   urbanizacionData: any = null;
+  sedesList = signal<SedeDto[]>([]);
 
   router = inject(Router);
   private fb = inject(FormBuilder);
   private urbanizacionSvc = inject(UrbanizacionService);
+  private sedeService = inject(SedeService);
   private route = inject(ActivatedRoute);
   private notificationService = inject(NotificationService);
   private datePipe = inject(DatePipe);
@@ -32,7 +36,15 @@ export class UrbanizacionEdit implements OnInit {
   }
 
   ngOnInit(): void {
+    this.loadSedes();
     this.obtenerUrbanizacion();
+  }
+
+  loadSedes() {
+    this.sedeService.getAll().subscribe({
+      next: (sedes) => this.sedesList.set(sedes),
+      error: () => this.notificationService.showError('Error al cargar sedes'),
+    });
   }
 
   crearFormularioUrbanizacion(): FormGroup {
@@ -42,6 +54,13 @@ export class UrbanizacionEdit implements OnInit {
       ciudad: ['', [Validators.required]],
       descripcion: [''],
       maps: [''],
+      sedeId: [null],
+      superficieTotal: [null],
+      estado: ['VENTA'],
+      colindanciaNorte: [''],
+      colindanciaEste: [''],
+      colindanciaSur: [''],
+      colindanciaOeste: [''],
     });
   }
 
@@ -79,6 +98,13 @@ export class UrbanizacionEdit implements OnInit {
       ciudad: urbanizacion.ciudad || '',
       descripcion: urbanizacion.descripcion || '',
       maps: urbanizacion.maps || '',
+      sedeId: urbanizacion.sedeId || null,
+      superficieTotal: urbanizacion.superficieTotal || null,
+      estado: urbanizacion.estado || 'VENTA',
+      colindanciaNorte: urbanizacion.colindanciaNorte || '',
+      colindanciaEste: urbanizacion.colindanciaEste || '',
+      colindanciaSur: urbanizacion.colindanciaSur || '',
+      colindanciaOeste: urbanizacion.colindanciaOeste || '',
     });
   }
 

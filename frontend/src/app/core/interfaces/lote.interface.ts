@@ -5,6 +5,7 @@ export interface LoteDto {
   numeroLote: string;
   superficieM2: number;
   precioBase: number;
+  precioM2?: number;
   precioActual?: number;
   tienePromocionActiva?: boolean;
   promocionActiva?: {
@@ -22,6 +23,11 @@ export interface LoteDto {
   medidaIzquierda?: number;
   medidaDerecha?: number;
   medidaFondo?: number;
+  partida?: string;
+  colindaFrontal?: string;
+  colindaDerecho?: string;
+  colindaIzquierdo?: string;
+  colindaFondo?: string;
   esIndependiente: boolean;
   estado: string;
   createdAt: string;
@@ -64,6 +70,7 @@ export interface CreateLoteDto {
   numeroLote: string;
   superficieM2: number;
   precioBase: number;
+  precioM2?: number;
   descripcion?: string;
   ubicacion?: string;
   ciudad: string;
@@ -71,6 +78,11 @@ export interface CreateLoteDto {
   medidaIzquierda?: number;
   medidaDerecha?: number;
   medidaFondo?: number;
+  partida?: string;
+  colindaFrontal?: string;
+  colindaDerecho?: string;
+  colindaIzquierdo?: string;
+  colindaFondo?: string;
   esIndependiente: boolean;
   estado: string;
   encargadoId?: number;
@@ -82,6 +94,7 @@ export interface UpdateLoteDto {
   numeroLote?: string;
   superficieM2?: number;
   precioBase?: number;
+  precioM2?: number;
   descripcion?: string;
   ubicacion?: string;
   ciudad?: string;
@@ -89,6 +102,11 @@ export interface UpdateLoteDto {
   medidaIzquierda?: number;
   medidaDerecha?: number;
   medidaFondo?: number;
+  partida?: string;
+  colindaFrontal?: string;
+  colindaDerecho?: string;
+  colindaIzquierdo?: string;
+  colindaFondo?: string;
   esIndependiente?: boolean;
   estado?: string;
   encargadoId?: number;

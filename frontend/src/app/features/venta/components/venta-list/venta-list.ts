@@ -57,15 +57,26 @@ export class VentaList implements OnInit {
     const ventas = this.allVentas();
     if (!urbanizacion) return ventas;
 
-    return ventas.filter(venta => {
-      if (venta.inmuebleTipo === 'LOTE' && venta.lote?.urbanizacion) {
-        return venta.lote.urbanizacion.id === urbanizacion.id;
-      }
-      else if (venta.inmuebleTipo === 'PROPIEDAD' && venta.propiedad?.urbanizacion) {
-        return venta.propiedad.urbanizacion.id === urbanizacion.id;
-      }
-      return false;
-    });
+    if (urbanizacion.id === -1) {
+      return ventas.filter((venta) => {
+        if (venta.inmuebleTipo === 'LOTE' && venta.lote) {
+          return !venta.lote.urbanizacion;
+        }
+        if (venta.inmuebleTipo === 'PROPIEDAD' && venta.propiedad) {
+          return !venta.propiedad.urbanizacion;
+        }
+        return false;
+      });
+    } else {
+      return ventas.filter((venta) => {
+        if (venta.inmuebleTipo === 'LOTE' && venta.lote?.urbanizacion) {
+          return venta.lote.urbanizacion.id === urbanizacion.id;
+        } else if (venta.inmuebleTipo === 'PROPIEDAD' && venta.propiedad?.urbanizacion) {
+          return venta.propiedad.urbanizacion.id === urbanizacion.id;
+        }
+        return false;
+      });
+    }
   });
 
   filteredVentas = computed(() => {
@@ -80,7 +91,7 @@ export class VentaList implements OnInit {
           venta.lote?.numeroLote?.toLowerCase().includes(term) ||
           venta.propiedad?.nombre?.toLowerCase().includes(term) ||
           venta.estado?.toLowerCase().includes(term) ||
-          venta.id?.toString().includes(term)
+          venta.id?.toString().includes(term),
       );
     }
 
@@ -136,7 +147,7 @@ export class VentaList implements OnInit {
     if (venta.planPago.pagos && Array.isArray(venta.planPago.pagos)) {
       return venta.planPago.pagos.reduce(
         (sum: number, pago: any) => sum + Number(pago.monto || 0),
-        0
+        0,
       );
     }
 
@@ -257,7 +268,7 @@ export class VentaList implements OnInit {
                       this.notificationService.showSuccess('Venta eliminada correctamente');
                     } else {
                       this.notificationService.showError(
-                        response.message || 'Error al eliminar la venta'
+                        response.message || 'Error al eliminar la venta',
                       );
                     }
                   },
@@ -331,7 +342,8 @@ export class VentaList implements OnInit {
 
   getInmuebleDisplay(venta: VentaDto): string {
     if (venta.inmuebleTipo === 'LOTE' && venta.lote) {
-      return `${venta.lote.numeroLote} - ${venta.lote.urbanizacion?.nombre || ''}`;
+      const urbanizacionNombre = venta.lote.urbanizacion?.nombre || 'Independiente';
+      return `${venta.lote.numeroLote} - ${urbanizacionNombre}`;
     } else if (venta.inmuebleTipo === 'PROPIEDAD' && venta.propiedad) {
       return `${venta.propiedad.nombre} - ${venta.propiedad.tipo}`;
     }

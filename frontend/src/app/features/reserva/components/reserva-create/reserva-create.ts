@@ -67,7 +67,7 @@ export class ReservaCreate implements OnInit {
       clienteId: ['', Validators.required],
       inmuebleTipo: ['LOTE', Validators.required],
       inmuebleId: ['', Validators.required],
-      fechaInicio: ['', Validators.required], 
+      fechaInicio: ['', Validators.required],
       estado: ['ACTIVA'],
     });
   }
@@ -108,18 +108,23 @@ export class ReservaCreate implements OnInit {
     const currentUser = this.authService.getCurrentUser();
     const rolesFullAccess = ['ADMINISTRADOR', 'SECRETARIA'];
     const urbanizacionActiva = this.urbanizacionContext.urbanizacion();
+    const esModoIndependientes = urbanizacionActiva?.id === -1;
 
     this.reservaSvc.getLotesDisponibles().subscribe({
       next: (lotes: LoteDto[]) => {
         let lotesFiltrados = lotes;
         if (!rolesFullAccess.includes(currentUser?.role)) {
           lotesFiltrados = lotes.filter(
-            (lote) => lote.encargadoId?.toString() === currentUser?.id?.toString()
+            (lote) => lote.encargadoId?.toString() === currentUser?.id?.toString(),
           );
         }
-        if (urbanizacionActiva) {
+        if (esModoIndependientes) {
           lotesFiltrados = lotesFiltrados.filter(
-            (lote) => lote.urbanizacion?.id === urbanizacionActiva.id
+            (lote) => !lote.urbanizacion || lote.esIndependiente,
+          );
+        } else if (urbanizacionActiva) {
+          lotesFiltrados = lotesFiltrados.filter(
+            (lote) => lote.urbanizacion?.id === urbanizacionActiva.id,
           );
         }
         this.lotes.set(lotesFiltrados);
@@ -137,7 +142,7 @@ export class ReservaCreate implements OnInit {
       (cliente) =>
         cliente.fullName?.toLowerCase().includes(search) ||
         cliente.ci?.toLowerCase().includes(search) ||
-        cliente.email?.toLowerCase().includes(search)
+        cliente.email?.toLowerCase().includes(search),
     );
   }
 
@@ -147,7 +152,7 @@ export class ReservaCreate implements OnInit {
     return this.lotes().filter(
       (lote) =>
         lote.numeroLote?.toLowerCase().includes(search) ||
-        lote.urbanizacion?.nombre?.toLowerCase().includes(search)
+        lote.urbanizacion?.nombre?.toLowerCase().includes(search),
     );
   }
 
@@ -163,9 +168,7 @@ export class ReservaCreate implements OnInit {
     this.reservaForm.patchValue({
       inmuebleId: lote.id.toString(),
     });
-    this.searchLote.set(
-      `${lote.numeroLote} - ${lote.urbanizacion?.nombre || 'Independiente'}`
-    );
+    this.searchLote.set(`${lote.numeroLote} - ${lote.urbanizacion?.nombre || 'Independiente'}`);
     this.showLotesDropdown.set(false);
   }
 
@@ -206,7 +209,9 @@ export class ReservaCreate implements OnInit {
     const ahoraLaPaz = this.getCurrentTimeLaPaz();
 
     if (fechaInicio < ahoraLaPaz) {
-      this.notificationService.showError('La fecha de inicio no puede ser anterior a la fecha actual');
+      this.notificationService.showError(
+        'La fecha de inicio no puede ser anterior a la fecha actual',
+      );
       return;
     }
 

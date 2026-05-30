@@ -51,14 +51,26 @@ export class VisitaList implements OnInit {
 
   filteredVisitas = computed(() => {
     const term = this.searchTerm().toLowerCase();
-    const urbanizacionActiva = this.urbanizacionContext.urbanizacion();
+    const urbActiva = this.urbanizacionContext.urbanizacion();
     let visitas = this.allVisitas();
 
-    if (urbanizacionActiva) {
-      visitas = visitas.filter((visita) => {
-        const urbanizacionNombre = this.getUrbanizacionNombre(visita);
-        return urbanizacionNombre === urbanizacionActiva.nombre;
-      });
+    if (urbActiva) {
+      if (urbActiva.id === -1) {
+        visitas = visitas.filter((visita) => {
+          if (visita.inmuebleTipo === 'LOTE' && visita.inmueble) {
+            return !visita.inmueble.urbanizacion;
+          }
+          if (visita.inmuebleTipo === 'PROPIEDAD' && visita.inmueble) {
+            return !visita.inmueble.urbanizacion;
+          }
+          return false;
+        });
+      } else {
+        visitas = visitas.filter((visita) => {
+          const urbanizacionNombre = this.getUrbanizacionNombre(visita);
+          return urbanizacionNombre === urbActiva.nombre;
+        });
+      }
     }
 
     if (term) {
@@ -68,7 +80,7 @@ export class VisitaList implements OnInit {
           visita.asesor?.fullName?.toLowerCase().includes(term) ||
           this.getInmuebleNombre(visita).toLowerCase().includes(term) ||
           visita.estado?.toLowerCase().includes(term) ||
-          visita.inmuebleTipo?.toLowerCase().includes(term)
+          visita.inmuebleTipo?.toLowerCase().includes(term),
       );
     }
 
@@ -100,6 +112,7 @@ export class VisitaList implements OnInit {
   });
 
   ngOnInit(): void {
+    this.urbanizacionContext.recuperar();
     this.obtenerVisitas();
   }
 
@@ -139,7 +152,11 @@ export class VisitaList implements OnInit {
     if (visita.inmuebleTipo === 'LOTE' && visita.inmueble && 'numeroLote' in visita.inmueble) {
       const lote = visita.inmueble as any;
       return `Lote ${lote.numeroLote || ''}`;
-    } else if (visita.inmuebleTipo === 'PROPIEDAD' && visita.inmueble && 'nombre' in visita.inmueble) {
+    } else if (
+      visita.inmuebleTipo === 'PROPIEDAD' &&
+      visita.inmueble &&
+      'nombre' in visita.inmueble
+    ) {
       const propiedad = visita.inmueble as any;
       return `${propiedad.nombre || ''} - ${propiedad.tipo || ''}`;
     }
@@ -150,7 +167,11 @@ export class VisitaList implements OnInit {
     if (visita.inmuebleTipo === 'LOTE' && visita.inmueble && 'numeroLote' in visita.inmueble) {
       const lote = visita.inmueble as any;
       return `Lote ${lote.numeroLote || ''} - ${lote.urbanizacion?.nombre || 'Sin urbanización'}`;
-    } else if (visita.inmuebleTipo === 'PROPIEDAD' && visita.inmueble && 'nombre' in visita.inmueble) {
+    } else if (
+      visita.inmuebleTipo === 'PROPIEDAD' &&
+      visita.inmueble &&
+      'nombre' in visita.inmueble
+    ) {
       const propiedad = visita.inmueble as any;
       return `${propiedad.nombre || ''} - ${propiedad.tipo || ''} - ${propiedad.ciudad || ''}`;
     }
@@ -160,7 +181,11 @@ export class VisitaList implements OnInit {
   private getUrbanizacionNombre(visita: VisitaDto): string {
     if (visita.inmuebleTipo === 'LOTE' && visita.inmueble && 'urbanizacion' in visita.inmueble) {
       return visita.inmueble.urbanizacion?.nombre || '';
-    } else if (visita.inmuebleTipo === 'PROPIEDAD' && visita.inmueble && 'urbanizacion' in visita.inmueble) {
+    } else if (
+      visita.inmuebleTipo === 'PROPIEDAD' &&
+      visita.inmueble &&
+      'urbanizacion' in visita.inmueble
+    ) {
       return visita.inmueble.urbanizacion?.nombre || '';
     }
     return '';
@@ -208,11 +233,15 @@ export class VisitaList implements OnInit {
                   this.cerrarModal();
                 }
               } else {
-                this.notificationService.showError(response?.message || 'Error al eliminar la visita');
+                this.notificationService.showError(
+                  response?.message || 'Error al eliminar la visita',
+                );
               }
             },
             error: (err) => {
-              this.notificationService.showError(err.error?.message || 'No se pudo eliminar la visita');
+              this.notificationService.showError(
+                err.error?.message || 'No se pudo eliminar la visita',
+              );
             },
           });
         }

@@ -5,6 +5,6 @@ export interface RegisterDto {
   telefono: string;
   email: string;
   password: string;
-  role?: UserRole; // Agregar rol opcional
+  role?: UserRole;
 }
 export type UserRole = 'ADMINISTRADOR' | 'ASESOR' | 'SECRETARIA' | 'CLIENTE' | 'USUARIO';

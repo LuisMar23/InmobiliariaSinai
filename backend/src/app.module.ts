@@ -25,6 +25,9 @@ import { SeguridadModule } from './seguridad/seguridad.module';
 import { ReportesClientesModule } from './reportes-clientes-service/reportes-clientes-service.module';
 import { ReporteslotesModule } from './reporteslotes/reporteslotes.module';
 import { ManzanoModule } from './manzano/manzano.module';
+import { SedeModule } from './sede/sede.module';
+import { GrupoModule } from './grupo/grupo.module';
+import { ContactoModule } from './contacto/contacto.module';
 
 @Module({
   imports: [
@@ -50,7 +53,10 @@ import { ManzanoModule } from './manzano/manzano.module';
     SeguridadModule,
     ReportesClientesModule,
     ReporteslotesModule,
-    ManzanoModule
+    ManzanoModule,
+    SedeModule,
+    GrupoModule,
+    ContactoModule
   ],
 
 

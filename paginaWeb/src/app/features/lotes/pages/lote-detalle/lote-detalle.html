@@ -274,6 +274,9 @@
               <p class="text-emerald-100 text-sm font-semibold mb-1">Precio Base</p>
               <p class="text-4xl font-black text-white">Bs {{ lote()?.precioBase | number }}</p>
               <p class="text-emerald-200 text-xs mt-1">Precio negociable</p>
+              @if (lote()?.precioM2) {
+              <p class="text-emerald-200 text-xs mt-1">Precio por m²: Bs {{ lote()?.precioM2 | number }}</p>
+              }
             </div>
           </div>
         </div>
@@ -425,6 +428,21 @@
                 </div>
               </div>
 
+              @if (lote()?.partida) {
+              <div class="flex items-center gap-4 p-4 bg-white rounded-2xl shadow-sm border border-gray-100 hover-lift">
+                <div class="p-3 bg-cyan-100 rounded-xl">
+                  <svg class="w-6 h-6 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <p class="text-sm text-gray-500">N° Partida</p>
+                  <p class="font-semibold text-gray-900">{{ lote()?.partida }}</p>
+                </div>
+              </div>
+              }
+
               @if (lote()?.medidaFrente) {
               <div class="flex items-center gap-4 p-4 bg-white rounded-2xl shadow-sm border border-gray-100 hover-lift">
                 <div class="p-3 bg-amber-100 rounded-xl">
@@ -520,6 +538,47 @@
             </div>
           </div>
         </div>
+
+        @if (lote()?.colindaFrontal || lote()?.colindaDerecho || lote()?.colindaIzquierdo || lote()?.colindaFondo) {
+        <div
+          class="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 p-8 animate-card-entrance hover-lift">
+          <h3 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+            <div class="p-2 bg-gradient-to-r from-amber-500 to-yellow-500 rounded-xl">
+              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4h16v16H4z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 8h8v8H8z" />
+              </svg>
+            </div>
+            Colindancias
+          </h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            @if (lote()?.colindaFrontal) {
+            <div class="bg-gradient-to-br from-white to-amber-50 rounded-2xl p-4 border border-amber-100 shadow-sm">
+              <span class="text-xs font-semibold text-amber-700 uppercase">Frontal / Norte / NorEste</span>
+              <p class="text-sm text-gray-800 mt-2 leading-relaxed">{{ lote()?.colindaFrontal }}</p>
+            </div>
+            }
+            @if (lote()?.colindaDerecho) {
+            <div class="bg-gradient-to-br from-white to-amber-50 rounded-2xl p-4 border border-amber-100 shadow-sm">
+              <span class="text-xs font-semibold text-amber-700 uppercase">Derecho / Este / SurEste</span>
+              <p class="text-sm text-gray-800 mt-2 leading-relaxed">{{ lote()?.colindaDerecho }}</p>
+            </div>
+            }
+            @if (lote()?.colindaIzquierdo) {
+            <div class="bg-gradient-to-br from-white to-amber-50 rounded-2xl p-4 border border-amber-100 shadow-sm">
+              <span class="text-xs font-semibold text-amber-700 uppercase">Izquierdo / Oeste / NorOeste</span>
+              <p class="text-sm text-gray-800 mt-2 leading-relaxed">{{ lote()?.colindaIzquierdo }}</p>
+            </div>
+            }
+            @if (lote()?.colindaFondo) {
+            <div class="bg-gradient-to-br from-white to-amber-50 rounded-2xl p-4 border border-amber-100 shadow-sm">
+              <span class="text-xs font-semibold text-amber-700 uppercase">Posterior o Fondo / Sur / SurOeste</span>
+              <p class="text-sm text-gray-800 mt-2 leading-relaxed">{{ lote()?.colindaFondo }}</p>
+            </div>
+            }
+          </div>
+        </div>
+        }
 
         @if (lote()?.LotePromocion?.length) {
         <div

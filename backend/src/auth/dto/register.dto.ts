@@ -7,7 +7,9 @@ import {
   IsEnum,
   IsOptional,
   IsArray,
+  IsInt,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export enum UserRole {
   ADMINISTRADOR = 'ADMINISTRADOR',
@@ -52,6 +54,7 @@ export class RegisterDto {
       'Rol inválido. Valores permitidos: ADMINISTRADOR, ASESOR, SECRETARIA, CLIENTE, USUARIO',
   })
   role: UserRole;
+
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
@@ -64,4 +67,9 @@ export class RegisterDto {
   @IsOptional()
   @IsString()
   observaciones?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  grupoId?: number;
 }

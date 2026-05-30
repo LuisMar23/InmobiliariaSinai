@@ -1,24 +1,41 @@
 import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
-import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  FormBuilder,
+  FormGroup,
+  FormsModule,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import {
-  faMapMarkerAlt, faBuilding, faEdit, faTrash, faThLarge,
-  faSearch, faSpinner, faPlus, faFolderOpen, faSignOutAlt, faCity,
+  faMapMarkerAlt,
+  faBuilding,
+  faEdit,
+  faTrash,
+  faThLarge,
+  faSearch,
+  faSpinner,
+  faPlus,
+  faFolderOpen,
+  faSignOutAlt,
+  faCity,
 } from '@fortawesome/free-solid-svg-icons';
 import { UrbanizacionService } from '../../../urbanizacion/services/urbanizacion.service';
-import { LoteService } from '../../../lote/service/lote.service'; // ajustá el path
+import { LoteService } from '../../../lote/service/lote.service';
 import { AuthService } from '../../../../components/services/auth.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { UrbanizacionContextService } from '../../../../core/services/urbanizacion-context.service';
 import { CiudadGroup, UrbanizacionDto } from '../../../../core/interfaces/urbanizacion.interface';
 import { LoteDto } from '../../../../core/interfaces/lote.interface';
 import { forkJoin } from 'rxjs';
+import { SedeService } from '../../../sede/service/sede.service';
+import { SedeDto } from '../../../../core/interfaces/sede.interface';
 
 @Component({
   selector: 'app-urbanizacion-list',
-  imports: [FontAwesomeModule, FormsModule, RouterModule, CommonModule,ReactiveFormsModule],
+  imports: [FontAwesomeModule, FormsModule, RouterModule, CommonModule, ReactiveFormsModule],
   templateUrl: './urbanizacion-list.html',
   styleUrls: ['./urbanizacion-list.css'],
 })
@@ -34,21 +51,14 @@ export class UrbanizacionList implements OnInit {
   faFolderOpen = faFolderOpen;
   faSignOut = faSignOutAlt;
   faCity = faCity;
-    private fb = inject(FormBuilder);
-  constructor(){
-        this.form = this.fb.group({
-      nombre: ['', Validators.required],
-      ubicacion: ['', Validators.required],
-      ciudad: ['', Validators.required],
-      descripcion: [''],
-      maps: [''],
-    });
-  }
+
+  private fb = inject(FormBuilder);
   cargando = signal(true);
   error = signal<string | null>(null);
   urbanizaciones = signal<UrbanizacionDto[]>([]);
   lotesIndependientes = signal<LoteDto[]>([]);
   busqueda = signal('');
+  sedesList = signal<SedeDto[]>([]);
 
   private authService = inject(AuthService);
   private notificationService = inject(NotificationService);
@@ -56,6 +66,7 @@ export class UrbanizacionList implements OnInit {
   private urbContext = inject(UrbanizacionContextService);
   private urbanizacionService = inject(UrbanizacionService);
   private loteService = inject(LoteService);
+  private sedeService = inject(SedeService);
 
   ciudadGroups = computed<CiudadGroup[]>(() => {
     const q = this.busqueda().toLowerCase().trim();
@@ -85,20 +96,16 @@ export class UrbanizacionList implements OnInit {
       .sort((a, b) => a.ciudad.localeCompare(b.ciudad));
   });
 
-  // Lotes independientes filtrados por búsqueda
   lotesIndependientesFiltrados = computed<LoteDto[]>(() => {
     const q = this.busqueda().toLowerCase().trim();
     const lotes = this.lotesIndependientes();
     if (!q) return lotes;
     return lotes.filter(
-      (l) =>
-        l.numeroLote.toLowerCase().includes(q) ||
-        l.ciudad?.toLowerCase().includes(q) 
+      (l) => l.numeroLote.toLowerCase().includes(q) || l.ciudad?.toLowerCase().includes(q),
     );
   });
 
   hayIndependientes = computed(() => this.lotesIndependientesFiltrados().length > 0);
-
   totalUrbanizaciones = computed(() => this.urbanizaciones().length);
 
   contarEstado(lotes: LoteDto[], estado: string): number {
@@ -107,6 +114,14 @@ export class UrbanizacionList implements OnInit {
 
   ngOnInit(): void {
     this.cargarTodo();
+    this.cargarSedes();
+  }
+
+  cargarSedes() {
+    this.sedeService.getAll().subscribe({
+      next: (sedes) => this.sedesList.set(sedes),
+      error: () => this.notificationService.showError('Error al cargar sedes'),
+    });
   }
 
   cargarTodo(): void {
@@ -119,10 +134,7 @@ export class UrbanizacionList implements OnInit {
     }).subscribe({
       next: ({ urbanizaciones, lotes }) => {
         this.urbanizaciones.set(urbanizaciones.data);
-        // Solo los lotes sin urbanización
-        const independientes = lotes.filter(
-          (l: LoteDto) => !l.urbanizacion || l.esIndependiente,
-        );
+        const independientes = lotes.filter((l: LoteDto) => !l.urbanizacion || l.esIndependiente);
         this.lotesIndependientes.set(independientes);
         this.cargando.set(false);
       },
@@ -133,7 +145,6 @@ export class UrbanizacionList implements OnInit {
     });
   }
 
-  // Alias para el botón reintentar
   cargarUrbanizaciones(): void {
     this.cargarTodo();
   }
@@ -145,6 +156,11 @@ export class UrbanizacionList implements OnInit {
       nombre: urb.nombre,
       ciudad: urb.ciudad,
     });
+    this.router.navigate(['/dashboard']);
+  }
+
+  irAIndependientes(): void {
+    this.urbContext.setIndependientes();
     this.router.navigate(['/dashboard']);
   }
 
@@ -164,12 +180,23 @@ export class UrbanizacionList implements OnInit {
   get isAdmin(): boolean {
     return this.authService.getCurrentUser()?.role === 'ADMINISTRADOR';
   }
-    form: FormGroup;
+
+  form: FormGroup;
   showModal = signal(false);
-    openModal() {
+
+  openModal() {
     this.showModal.set(true);
-    this.form.reset();
+    this.form.reset({
+      estado: 'VENTA',
+      sedeId: null,
+      superficieTotal: null,
+      colindanciaNorte: '',
+      colindanciaEste: '',
+      colindanciaSur: '',
+      colindanciaOeste: '',
+    });
   }
+
   submit() {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -194,9 +221,26 @@ export class UrbanizacionList implements OnInit {
       },
     });
   }
-    cancelEdit() {
+
+  cancelEdit() {
     this.showModal.set(false);
     this.form.reset();
   }
 
+  constructor() {
+    this.form = this.fb.group({
+      nombre: ['', Validators.required],
+      ubicacion: ['', Validators.required],
+      ciudad: ['', Validators.required],
+      descripcion: [''],
+      maps: [''],
+      sedeId: [null],
+      superficieTotal: [null],
+      estado: ['VENTA'],
+      colindanciaNorte: [''],
+      colindanciaEste: [''],
+      colindanciaSur: [''],
+      colindanciaOeste: [''],
+    });
+  }
 }

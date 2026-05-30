@@ -1,7 +1,6 @@
 <div class="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-emerald-50 py-4 px-2 sm:px-4 lg:px-8">
   <div class="max-w-full mx-auto">
-    <!-- Header -->
-  <div class="bg-emerald-500 rounded-t-2xl shadow-lg p-4 sm:p-6">
+    <div class="bg-emerald-500 rounded-t-2xl shadow-lg p-4 sm:p-6">
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div class="flex items-center gap-3">
           <fa-icon [icon]="faUsers" class="w-8 h-8 sm:w-10 sm:h-10 text-white"></fa-icon>
@@ -18,9 +17,7 @@
       </div>
     </div>
 
-    <!-- Contenido -->
     <div class="bg-white rounded-b-2xl shadow-xl p-4 sm:p-6 lg:p-8">
-      <!-- Barra de búsqueda -->
       <div class="mb-6">
         <div class="relative max-w-md">
           <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -32,7 +29,6 @@
         </div>
       </div>
 
-      <!-- Estado de carga -->
       @if (isLoading()) {
       <div class="text-center py-12">
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mx-auto"></div>
@@ -40,33 +36,22 @@
       </div>
       } @else {
 
-      <!-- Vista Desktop/Tablet - Tabla -->
       <div class="hidden lg:block">
         <div class="overflow-x-auto rounded-lg border border-gray-200">
           <table class="w-full">
             <thead class="bg-gradient-to-r from-emerald-500 to-emerald-600">
               <tr>
-                <th class="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
-                  Usuario
-                </th>
-                <th class="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
-                  Información
-                </th>
-                <th class="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
-                  Contacto
-                </th>
-                <th class="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
-                  Rol & Estado
-                </th>
-                <th class="px-4 py-3 text-center text-xs font-bold text-white uppercase tracking-wider">
-                  Acciones
-                </th>
+                <th class="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Usuario</th>
+                <th class="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Información</th>
+                <th class="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Contacto</th>
+                <th class="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Grupo</th>
+                <th class="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Rol & Estado</th>
+                <th class="px-4 py-3 text-center text-xs font-bold text-white uppercase tracking-wider">Acciones</th>
               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
               @for (user of filteredUsers(); track user.id) {
               <tr class="hover:bg-gray-50 transition-colors">
-                <!-- Información del usuario -->
                 <td class="px-4 py-4 whitespace-nowrap">
                   <div class="flex items-center">
                     <div class="flex-shrink-0 h-10 w-10">
@@ -80,8 +65,6 @@
                     </div>
                   </div>
                 </td>
-
-                <!-- Información adicional -->
                 <td class="px-4 py-4 whitespace-nowrap">
                   <div class="text-sm text-gray-900 flex items-center gap-1">
                     <fa-icon [icon]="faIdCard" class="text-gray-400 text-xs"></fa-icon>
@@ -91,8 +74,6 @@
                     {{ user.direccion || 'Sin dirección' }}
                   </div>
                 </td>
-
-                <!-- Contacto -->
                 <td class="px-4 py-4 whitespace-nowrap">
                   <div class="text-sm text-gray-900 flex items-center gap-1">
                     <fa-icon [icon]="faEnvelope" class="text-gray-400 text-xs"></fa-icon>
@@ -103,8 +84,15 @@
                     {{ user.telefono }}
                   </div>
                 </td>
-
-                <!-- Rol y Estado -->
+                <td class="px-4 py-4 whitespace-nowrap">
+                  <div class="text-sm text-gray-700">
+                    <span
+                      class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gray-100 text-gray-700 text-xs">
+                      <fa-icon [icon]="faGroupIcon" class="text-xs"></fa-icon>
+                      {{ getGrupoLabel(user.grupo) }}
+                    </span>
+                  </div>
+                </td>
                 <td class="px-4 py-4 whitespace-nowrap">
                   <div class="flex flex-col gap-2">
                     <span [class]="getRoleClass(user.role)"
@@ -117,18 +105,13 @@
                     </span>
                   </div>
                 </td>
-
-                <!-- Acciones -->
                 <td class="px-4 py-4 whitespace-nowrap text-center">
                   <div class="flex justify-center gap-2">
-                    <!-- Editar -->
                     <a [routerLink]="['/usuarios/editar', user.id]"
                       class="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
                       title="Editar usuario">
                       <fa-icon [icon]="faUserEdit"></fa-icon>
                     </a>
-
-                    <!-- Eliminar -->
                     <button (click)="deleteUser(user)"
                       class="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
                       title="Eliminar usuario">
@@ -138,11 +121,9 @@
                 </td>
               </tr>
               }
-
-              <!-- Estado vacío -->
               @if (filteredUsers().length === 0 && !isLoading()) {
               <tr>
-                <td colspan="5" class="px-4 py-12 text-center">
+                <td colspan="6" class="px-4 py-12 text-center">
                   <div class="flex flex-col items-center gap-3 text-gray-500">
                     <fa-icon [icon]="faUserTimes" class="text-4xl"></fa-icon>
                     <p class="text-lg font-semibold">No se encontraron usuarios</p>
@@ -156,7 +137,6 @@
         </div>
       </div>
 
-      <!-- Vista Mobile - Cards -->
       <div class="lg:hidden space-y-4">
         @for (user of filteredUsers(); track user.id) {
         <div
@@ -175,7 +155,6 @@
             </div>
           </div>
           <div class="p-4 space-y-3">
-            <!-- Información -->
             <div class="grid grid-cols-2 gap-3">
               <div>
                 <span class="font-medium text-gray-700 text-sm">CI:</span>
@@ -186,36 +165,36 @@
                 <p class="text-gray-800 text-sm">{{ user.telefono }}</p>
               </div>
             </div>
-
-            <!-- Contacto -->
             <div>
               <span class="font-medium text-gray-700 text-sm">Email:</span>
               <p class="text-gray-800 text-sm">{{ user.email }}</p>
             </div>
-
-            <!-- Dirección -->
             <div>
               <span class="font-medium text-gray-700 text-sm">Dirección:</span>
               <p class="text-gray-800 text-sm">{{ user.direccion || 'Sin dirección' }}</p>
             </div>
-
-            <!-- Rol y Estado -->
+            <div>
+              <span class="font-medium text-gray-700 text-sm">Grupo:</span>
+              <p class="text-gray-800 text-sm flex items-center gap-1">
+                <fa-icon [icon]="faGroupIcon" class="text-gray-500"></fa-icon>
+                {{ getGrupoLabel(user.grupo) }}
+              </p>
+            </div>
             <div class="grid grid-cols-2 gap-3">
               <div>
                 <span class="font-medium text-gray-700 text-sm">Rol:</span>
-                <span [class]="getRoleClass(user.role)" class="px-2 py-1 text-xs font-medium rounded-full">
+                <span [class]="getRoleClass(user.role)" class="px-2 py-1 text-xs font-medium rounded-full inline-block">
                   {{ user.role }}
                 </span>
               </div>
               <div>
                 <span class="font-medium text-gray-700 text-sm">Estado:</span>
-                <span [class]="getStatusClass(user.isActive)" class="px-2 py-1 text-xs font-medium rounded-full">
+                <span [class]="getStatusClass(user.isActive)"
+                  class="px-2 py-1 text-xs font-medium rounded-full inline-block">
                   {{ user.isActive ? 'Activo' : 'Inactivo' }}
                 </span>
               </div>
             </div>
-
-            <!-- Acciones -->
             <div class="flex justify-end gap-2 mt-3 pt-3 border-t">
               <a [routerLink]="['/usuarios/editar', user.id]"
                 class="flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-medium shadow-sm transition transform hover:scale-105">
@@ -229,7 +208,6 @@
           </div>
         </div>
         }
-
         @if (filteredUsers().length === 0 && !isLoading()) {
         <div class="bg-white rounded-xl p-8 text-center">
           <fa-icon [icon]="faUserTimes" class="text-5xl text-gray-300 mb-4"></fa-icon>

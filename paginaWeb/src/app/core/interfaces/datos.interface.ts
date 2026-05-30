@@ -73,6 +73,12 @@ export interface Lote {
   numeroLote: string;
   superficieM2: number;
   precioBase: number;
+  precioM2?: number;
+  partida?: string;
+  colindaFrontal?: string;
+  colindaDerecho?: string;
+  colindaIzquierdo?: string;
+  colindaFondo?: string;
   descripcion?: string;
   ubicacion?: string;
   ciudad: string;

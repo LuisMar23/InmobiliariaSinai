@@ -1,3 +1,4 @@
+/* sidebar.css (sin cambios, se mantiene igual) */
 /* Estilos personalizados para el sidebar si los necesitas */
 .sidebar-transition {
   transition: all 0.3s ease-in-out;
@@ -68,11 +69,15 @@
 
 /* Estilos para el botón móvil */
 .mobile-menu-btn {
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
 .mobile-menu-btn:hover {
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
 }
 
 /* Mejoras de accesibilidad */
@@ -100,12 +105,16 @@ a.bg-emerald-500.text-white.shadow-lg:hover,
 a.bg-emerald-500.shadow-md:hover {
   background-color: #10b981 !important; /* emerald-500 */
   color: white !important;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
 }
 
 /* Para móvil si usa shadow-md */
 @media (max-width: 768px) {
   a.bg-emerald-500.shadow-md:hover {
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+    box-shadow:
+      0 4px 6px -1px rgba(0, 0, 0, 0.1),
+      0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
   }
 }

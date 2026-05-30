@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal, OnInit } from '@angular/core';
 import {
   FormBuilder,
   FormGroup,
@@ -10,13 +10,12 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { UrbanizacionService } from '../../services/urbanizacion.service';
-
+import { SedeService } from '../../../sede/service/sede.service';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
-
 import { ArchivosComponent } from '../../../../components/archivos/archivos/archivos';
-
 import { UrbanizacionDto } from '../../../../core/interfaces/urbanizacion.interface';
 import { AuthService } from '../../../../components/services/auth.service';
+import { SedeDto } from '../../../../core/interfaces/sede.interface';
 
 @Component({
   selector: 'app-urbanizacion-list',
@@ -31,7 +30,7 @@ import { AuthService } from '../../../../components/services/auth.service';
   ],
   templateUrl: './urbanizacion-list.html',
 })
-export class UrbanizacionList {
+export class UrbanizacionList implements OnInit {
   urbanizaciones = signal<UrbanizacionDto[]>([]);
   allUrbanizaciones = signal<UrbanizacionDto[]>([]);
   searchTerm = signal('');
@@ -39,6 +38,7 @@ export class UrbanizacionList {
   showDetailModal = signal(false);
   cargando = signal(true);
   urbanizacionSeleccionada = signal<UrbanizacionDto | null>(null);
+  sedesList = signal<SedeDto[]>([]);
 
   columns = [
     { key: 'id', label: 'N°', sortable: true },
@@ -58,7 +58,11 @@ export class UrbanizacionList {
 
   private notificationService = inject(NotificationService);
   private urbanizacionService = inject(UrbanizacionService);
+  private sedeService = inject(SedeService);
   private fb = inject(FormBuilder);
+  private authService = inject(AuthService);
+
+  currentUser = this.authService.getCurrentUser();
 
   constructor() {
     this.form = this.fb.group({
@@ -67,12 +71,27 @@ export class UrbanizacionList {
       ciudad: ['', Validators.required],
       descripcion: [''],
       maps: [''],
+      sedeId: [null],
+      superficieTotal: [null],
+      estado: ['VENTA'],
+      colindanciaNorte: [''],
+      colindanciaEste: [''],
+      colindanciaSur: [''],
+      colindanciaOeste: [''],
     });
-    this.loadUrbanizaciones();
   }
-  private authService = inject(AuthService);
-  currentUser = this.authService.getCurrentUser();
 
+  ngOnInit(): void {
+    this.loadUrbanizaciones();
+    this.loadSedes();
+  }
+
+  loadSedes() {
+    this.sedeService.getAll().subscribe({
+      next: (sedes) => this.sedesList.set(sedes),
+      error: () => this.notificationService.showError('Error al cargar sedes'),
+    });
+  }
 
   loadUrbanizaciones() {
     this.cargando.set(true);
@@ -159,7 +178,15 @@ export class UrbanizacionList {
 
   openModal() {
     this.showModal.set(true);
-    this.form.reset();
+    this.form.reset({
+      estado: 'VENTA',
+      sedeId: null,
+      superficieTotal: null,
+      colindanciaNorte: '',
+      colindanciaEste: '',
+      colindanciaSur: '',
+      colindanciaOeste: '',
+    });
   }
 
   cancelEdit() {
@@ -281,9 +308,17 @@ export class UrbanizacionList {
       this.notificationService.showWarning('Esta urbanización no tiene ubicación en Google Maps');
     }
   }
-  get isAdmin(): boolean {
 
-    return this.currentUser.role === 'ADMINISTRADOR';
+  get isAdmin(): boolean {
+    return this.currentUser?.role === 'ADMINISTRADOR';
   }
 
+  getEstadoLabel(estado: string): string {
+    const estados: Record<string, string> = {
+      VENTA: 'Venta',
+      PRE_VENTA: 'Pre-Venta',
+      POST_VENTA: 'Post-Venta',
+    };
+    return estados[estado] || estado;
+  }
 }

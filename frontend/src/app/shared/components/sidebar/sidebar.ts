@@ -1,3 +1,4 @@
+// sidebar.component.ts
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Output, OnInit, inject } from '@angular/core';
 import { RouterModule } from '@angular/router';
@@ -46,6 +47,7 @@ import {
   faChartColumn,
   faScrewdriverWrench,
   faTree,
+  faAddressCard,
 } from '@fortawesome/free-solid-svg-icons';
 import { AuthService } from '../../../components/services/auth.service';
 import { PermisosStateService } from '../../../core/services/permisosState.service';
@@ -58,55 +60,52 @@ import { PermisosStateService } from '../../../core/services/permisosState.servi
   styleUrls: ['./sidebar.css'],
 })
 export class Sidebar implements OnInit {
-  // ─── Iconos generales ────────────────────────────────────────────────────────
-  faTimes            = faTimes;
-  faBars             = faBars;
-  faChevronLeft      = faChevronLeft;
-  faChevronDown      = faChevronDown;
-  faChevronUp        = faChevronUp;
-  faUsers            = faUsers;
-  faTachometerAlt    = faTachometerAlt;
-  faCity             = faCity;
-  faMapMarkedAlt     = faMapMarkedAlt;
+  faTimes = faTimes;
+  faBars = faBars;
+  faChevronLeft = faChevronLeft;
+  faChevronDown = faChevronDown;
+  faChevronUp = faChevronUp;
+  faUsers = faUsers;
+  faTachometerAlt = faTachometerAlt;
+  faCity = faCity;
+  faMapMarkedAlt = faMapMarkedAlt;
   faFileInvoiceDollar = faFileInvoiceDollar;
-  faReceipt          = faReceipt;
-  faCalendarCheck    = faCalendarCheck;
-  faEye              = faEye;
-  faDollarSign       = faDollarSign;
-  faHandHoldingUsd   = faHandHoldingUsd;
-  faBuilding         = faBuilding;
-  faHomeUser         = faHomeUser;
-  faCog              = faCog;
-  faTag              = faTag;
-  faHouse            = faHouse;
-  faChartBar         = faChartBar;
-  faShieldAlt        = faShieldAlt;
-  faMoneyBillWave    = faMoneyBillWave;
-  faUsersCog         = faUsersCog;
-faTree=faTree
-  // ─── Iconos de grupo ─────────────────────────────────────────────────────────
+  faReceipt = faReceipt;
+  faCalendarCheck = faCalendarCheck;
+  faEye = faEye;
+  faDollarSign = faDollarSign;
+  faHandHoldingUsd = faHandHoldingUsd;
+  faBuilding = faBuilding;
+  faHomeUser = faHomeUser;
+  faCog = faCog;
+  faTag = faTag;
+  faHouse = faHouse;
+  faChartBar = faChartBar;
+  faShieldAlt = faShieldAlt;
+  faMoneyBillWave = faMoneyBillWave;
+  faUsersCog = faUsersCog;
+  faTree = faTree;
+  faAddressCard = faAddressCard;
+
   private readonly groupIcons: Record<string, IconDefinition> = {
-    'Seguridad':  faLock,
-    'Comercial':  faStore,
-    'Tesorería':  faPiggyBank,
-    'Reportes':   faChartColumn,
-    'Ajustes':    faScrewdriverWrench,
+    Seguridad: faLock,
+    Comercial: faStore,
+    Tesorería: faPiggyBank,
+    Reportes: faChartColumn,
+    Ajustes: faScrewdriverWrench,
   };
 
-  /** Devuelve el icono asociado al grupo, o un fallback genérico */
   getGroupIcon(label: string): IconDefinition {
     return this.groupIcons[label] ?? faCog;
   }
 
-  // ─── Estado ──────────────────────────────────────────────────────────────────
   @Output() sidebarToggled = new EventEmitter<boolean>();
   private permisosState = inject(PermisosStateService);
   imagen: string = 'assets/logoSinai.jpg';
   currentUser: any;
-  isCollapsed   = false;
-  isMobileOpen  = false;
+  isCollapsed = false;
+  isMobileOpen = false;
 
-  // ─── Menú ─────────────────────────────────────────────────────────────────────
   menuGroups = [
     {
       label: '',
@@ -117,45 +116,65 @@ faTree=faTree
     {
       label: 'Seguridad',
       items: [
-        { label: 'Grupos',   icon: faShieldAlt, route: '/seguridad', clave: 'grupos'   },
-        { label: 'Usuarios', icon: faUsersCog,  route: '/usuarios',  clave: 'usuarios' },
-        { label: 'Clientes', icon: faUsers,     route: '/clientes',  clave: 'clientes' },
+        { label: 'Grupos', icon: faUsersCog, route: '/grupos', clave: 'grupos' },
+        { label: 'Usuarios', icon: faUsersCog, route: '/usuarios', clave: 'usuarios' },
+        { label: 'Clientes', icon: faUsers, route: '/clientes', clave: 'clientes' },
       ],
     },
     {
       label: 'Comercial',
       items: [
-        { label: 'Ventas',       icon: faReceipt,          route: '/ventas',       clave: 'ventas'       },
-        { label: 'Créditos',     icon: faHandHoldingUsd,   route: '/creditos',     clave: 'creditos'     },
-        { label: 'Cobros',       icon: faMoneyBillWave,    route: '/cobros',       clave: 'cobros'       },
-        { label: 'Cotizaciones', icon: faFileInvoiceDollar,route: '/cotizaciones', clave: 'cotizaciones' },
-        { label: 'Reservas',     icon: faCalendarCheck,    route: '/reservas',     clave: 'reservas'     },
-        { label: 'Visitas',      icon: faEye,              route: '/visitas',      clave: 'visitas'      },
-        { label: 'Lotes',        icon: faMapMarkedAlt,     route: '/lotes',        clave: 'lotes'        },
-        { label: 'Propiedades',  icon: faHouse,            route: '/propiedades',  clave: 'propiedades'  },
-             { label: 'Manzanos', icon: faTree, route: '/manzanos', clave: 'manzanos' },
+        { label: 'Ventas', icon: faReceipt, route: '/ventas', clave: 'ventas' },
+        { label: 'Créditos', icon: faHandHoldingUsd, route: '/creditos', clave: 'creditos' },
+        { label: 'Cobros', icon: faMoneyBillWave, route: '/cobros', clave: 'cobros' },
+        {
+          label: 'Cotizaciones',
+          icon: faFileInvoiceDollar,
+          route: '/cotizaciones',
+          clave: 'cotizaciones',
+        },
+        { label: 'Reservas', icon: faCalendarCheck, route: '/reservas', clave: 'reservas' },
+        { label: 'Visitas', icon: faEye, route: '/visitas', clave: 'visitas' },
+        { label: 'Lotes', icon: faMapMarkedAlt, route: '/lotes', clave: 'lotes' },
+        { label: 'Propiedades', icon: faHouse, route: '/propiedades', clave: 'propiedades' },
+        { label: 'Manzanos', icon: faTree, route: '/manzanos', clave: 'manzanos' },
+        { label: 'Contactos', icon: faAddressCard, route: '/contactos', clave: 'contactos' },
       ],
     },
     {
       label: 'Tesorería',
-      items: [
-        { label: 'Gastos', icon: faMoneyBillWave, route: '/egresos', clave: 'gastos' },
-      ],
+      items: [{ label: 'Gastos', icon: faMoneyBillWave, route: '/egresos', clave: 'gastos' }],
     },
     {
       label: 'Ajustes',
       items: [
-        { label: 'Caja',          icon: faCashRegister, route: '/caja',          clave: 'caja'          },
-        { label: 'Urbanizaciones',icon: faCity,         route: '/urbanizaciones',clave: 'urbanizaciones'},
-        { label: 'Promociones',   icon: faTag,          route: '/promociones',   clave: 'promociones'   },
+        { label: 'Caja', icon: faCashRegister, route: '/caja', clave: 'caja' },
+        {
+          label: 'Urbanizaciones',
+          icon: faCity,
+          route: '/urbanizaciones',
+          clave: 'urbanizaciones',
+        },
+        { label: 'Promociones', icon: faTag, route: '/promociones', clave: 'promociones' },
+        { label: 'Sedes', icon: faBuilding, route: '/sedes', clave: 'sedes' },
       ],
     },
     {
       label: 'Reportes',
       items: [
-        { label: 'Reportes',         icon: faChartBar,    route: '/reportes',          clave: 'reportes_view' },
-        { label: 'Reporte Clientes', icon: faUsers,       route: '/reportes/clientes', clave: 'reportescliente' },
-        { label: 'Reporte Lotes',    icon: faMapMarkedAlt,route: '/reportes/lotes',    clave: 'reporteslote' },
+        { label: 'Reportes', icon: faChartBar, route: '/reportes', clave: 'reportes_view' },
+        {
+          label: 'Reporte Clientes',
+          icon: faUsers,
+          route: '/reportes/clientes',
+          clave: 'reportescliente',
+        },
+        {
+          label: 'Reporte Lotes',
+          icon: faMapMarkedAlt,
+          route: '/reportes/lotes',
+          clave: 'reporteslote',
+        },
       ],
     },
   ];
@@ -175,7 +194,8 @@ faTree=faTree
       .filter((group) => group.items.length > 0);
   }
 
-  private openGroups = new Set<string>(['Comercial', 'Finanzas', 'Reportes', 'Gestión']);
+  // 🔥 CORRECCIÓN: Inicializar con Set vacío para que todos los grupos comiencen contraídos
+  private openGroups = new Set<string>();
 
   toggleSidebar() {
     this.isCollapsed = !this.isCollapsed;
@@ -190,6 +210,7 @@ faTree=faTree
     if (this.openGroups.has(label)) {
       this.openGroups.delete(label);
     } else {
+      this.openGroups.clear();
       this.openGroups.add(label);
     }
   }

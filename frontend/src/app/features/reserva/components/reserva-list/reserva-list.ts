@@ -61,14 +61,17 @@ export class ReservaList implements OnInit {
 
   filteredReservas = computed(() => {
     const term = this.searchTerm().toLowerCase();
-    const urbanizacionActiva = this.urbanizacionContext.urbanizacion();
+    const urbActiva = this.urbanizacionContext.urbanizacion();
     let reservas = this.allReservas();
 
-    if (urbanizacionActiva) {
-      reservas = reservas.filter((reserva) => {
-        const urbanizacionNombre = this.getUrbanizacionNombre(reserva);
-        return urbanizacionNombre === urbanizacionActiva.nombre;
-      });
+    if (urbActiva) {
+      if (urbActiva.id === -1) {
+        reservas = reservas.filter((reserva) => !reserva.lote?.urbanizacion);
+      } else {
+        reservas = reservas.filter(
+          (reserva) => reserva.lote?.urbanizacion?.nombre === urbActiva.nombre,
+        );
+      }
     }
 
     if (term) {
@@ -77,7 +80,7 @@ export class ReservaList implements OnInit {
           reserva.cliente?.fullName?.toLowerCase().includes(term) ||
           reserva.asesor?.fullName?.toLowerCase().includes(term) ||
           reserva.lote?.numeroLote?.toLowerCase().includes(term) ||
-          reserva.estado?.toLowerCase().includes(term)
+          reserva.estado?.toLowerCase().includes(term),
       );
     }
 
@@ -120,17 +123,13 @@ export class ReservaList implements OnInit {
   });
 
   ngOnInit(): void {
+    this.urbanizacionContext.recuperar();
     this.obtenerReservas();
-  }
-
-  private getUrbanizacionNombre(reserva: ReservaDto): string {
-    return reserva.lote?.urbanizacion?.nombre || '';
   }
 
   obtenerReservas() {
     this.cargando.set(true);
     this.error.set(null);
-
     this.reservaSvc.getAll().subscribe({
       next: (reservas) => {
         this.reservas.set(reservas);
@@ -192,24 +191,26 @@ export class ReservaList implements OnInit {
   }
 
   eliminarReserva(id: number) {
-    this.notificationService.confirmDelete('¿Está seguro que desea eliminar esta reserva?').then((result) => {
-      if (result.isConfirmed) {
-        this.reservaSvc.delete(id).subscribe({
-          next: () => {
-            this.reservas.update((list) => list.filter((r) => r.id !== id));
-            this.allReservas.update((list) => list.filter((r) => r.id !== id));
-            this.total.update((total) => total - 1);
-            this.notificationService.showSuccess('Reserva eliminada correctamente');
-            if (this.reservaSeleccionada()?.id === id) {
-              this.cerrarModal();
-            }
-          },
-          error: () => {
-            this.notificationService.showError('No se pudo eliminar la reserva');
-          },
-        });
-      }
-    });
+    this.notificationService
+      .confirmDelete('¿Está seguro que desea eliminar esta reserva?')
+      .then((result) => {
+        if (result.isConfirmed) {
+          this.reservaSvc.delete(id).subscribe({
+            next: () => {
+              this.reservas.update((list) => list.filter((r) => r.id !== id));
+              this.allReservas.update((list) => list.filter((r) => r.id !== id));
+              this.total.update((total) => total - 1);
+              this.notificationService.showSuccess('Reserva eliminada correctamente');
+              if (this.reservaSeleccionada()?.id === id) {
+                this.cerrarModal();
+              }
+            },
+            error: () => {
+              this.notificationService.showError('No se pudo eliminar la reserva');
+            },
+          });
+        }
+      });
   }
 
   generarPdfReservas() {
@@ -297,7 +298,9 @@ export class ReservaList implements OnInit {
       const archivosFinales = [...archivosActuales, ...nuevosArchivos];
 
       if (archivosFinales.length > this.maxArchivos) {
-        this.notificationService.showError(`Solo puedes subir un máximo de ${this.maxArchivos} archivos.`);
+        this.notificationService.showError(
+          `Solo puedes subir un máximo de ${this.maxArchivos} archivos.`,
+        );
         return;
       }
 
@@ -324,28 +327,34 @@ export class ReservaList implements OnInit {
 
     const reservaId = this.reservaIdParaArchivos();
     if (!reservaId) {
-      this.notificationService.showError('No se puede subir archivos: ID de reserva no disponible.');
+      this.notificationService.showError(
+        'No se puede subir archivos: ID de reserva no disponible.',
+      );
       return;
     }
 
     this.archivosCargando.set(true);
 
-    this.reciboSvc.subirRecibosGenerales(this.archivosSeleccionados(), {
-      tipoOperacion: 'RESERVA',
-      reservaId: reservaId,
-      observaciones: 'Subido desde listado de reservas',
-    }).subscribe({
-      next: () => {
-        this.archivosCargando.set(false);
-        this.notificationService.showSuccess('Archivos subidos exitosamente.');
-        this.archivosSeleccionados.set([]);
-        this.cargarRecibosReserva(reservaId);
-      },
-      error: (error) => {
-        this.archivosCargando.set(false);
-        this.notificationService.showError('Error al subir los archivos: ' + (error?.error?.message || 'Error desconocido'));
-      },
-    });
+    this.reciboSvc
+      .subirRecibosGenerales(this.archivosSeleccionados(), {
+        tipoOperacion: 'RESERVA',
+        reservaId: reservaId,
+        observaciones: 'Subido desde listado de reservas',
+      })
+      .subscribe({
+        next: () => {
+          this.archivosCargando.set(false);
+          this.notificationService.showSuccess('Archivos subidos exitosamente.');
+          this.archivosSeleccionados.set([]);
+          this.cargarRecibosReserva(reservaId);
+        },
+        error: (error) => {
+          this.archivosCargando.set(false);
+          this.notificationService.showError(
+            'Error al subir los archivos: ' + (error?.error?.message || 'Error desconocido'),
+          );
+        },
+      });
   }
 
   descargarRecibo(recibo: Recibo) {
@@ -353,19 +362,21 @@ export class ReservaList implements OnInit {
   }
 
   eliminarRecibo(recibo: Recibo) {
-    this.notificationService.confirmDelete('¿Está seguro que desea eliminar este archivo?').then((result) => {
-      if (result.isConfirmed) {
-        this.reciboSvc.eliminarRecibo(recibo.id).subscribe({
-          next: () => {
-            this.notificationService.showSuccess('Archivo eliminado exitosamente.');
-            this.cargarRecibosReserva(this.reservaSeleccionada()!.id);
-          },
-          error: () => {
-            this.notificationService.showError('No se pudo eliminar el archivo.');
-          },
-        });
-      }
-    });
+    this.notificationService
+      .confirmDelete('¿Está seguro que desea eliminar este archivo?')
+      .then((result) => {
+        if (result.isConfirmed) {
+          this.reciboSvc.eliminarRecibo(recibo.id).subscribe({
+            next: () => {
+              this.notificationService.showSuccess('Archivo eliminado exitosamente.');
+              this.cargarRecibosReserva(this.reservaSeleccionada()!.id);
+            },
+            error: () => {
+              this.notificationService.showError('No se pudo eliminar el archivo.');
+            },
+          });
+        }
+      });
   }
 
   formatFileSize(bytes: number): string {

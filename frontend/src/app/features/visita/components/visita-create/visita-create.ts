@@ -92,17 +92,20 @@ export class VisitaCreate implements OnInit {
   cargarLotes(): void {
     const currentUser = this.authService.getCurrentUser();
     const urbanizacionActiva = this.urbanizacionContext.urbanizacion();
+    const esModoIndependientes = urbanizacionActiva?.id === -1;
 
     this.loteSvc.getAll().subscribe({
       next: (lotes: LoteDto[]) => {
         let lotesFiltrados = lotes.filter(
-          (lote) => 
-            lote.encargadoId === currentUser?.id && 
-            (lote.estado === 'DISPONIBLE' || lote.estado === 'CON_OFERTA')
+          (lote) =>
+            lote.encargadoId === currentUser?.id &&
+            (lote.estado === 'DISPONIBLE' || lote.estado === 'CON_OFERTA'),
         );
-        if (urbanizacionActiva) {
+        if (esModoIndependientes) {
+          lotesFiltrados = lotesFiltrados.filter((lote) => !lote.urbanizacion);
+        } else if (urbanizacionActiva) {
           lotesFiltrados = lotesFiltrados.filter(
-            (lote) => lote.urbanizacion?.id === urbanizacionActiva.id
+            (lote) => lote.urbanizacion?.id === urbanizacionActiva.id,
           );
         }
         this.lotes.set(lotesFiltrados);
@@ -116,17 +119,22 @@ export class VisitaCreate implements OnInit {
   cargarPropiedades(): void {
     const currentUser = this.authService.getCurrentUser();
     const urbanizacionActiva = this.urbanizacionContext.urbanizacion();
+    const esModoIndependientes = urbanizacionActiva?.id === -1;
 
     this.propiedadSvc.getAll().subscribe({
       next: (propiedades: PropiedadDto[]) => {
         let propiedadesFiltradas = propiedades.filter(
-          (propiedad) => 
-            propiedad.encargadoId === currentUser?.id && 
-            (propiedad.estado === 'DISPONIBLE' || propiedad.estado === 'CON_OFERTA')
+          (propiedad) =>
+            propiedad.encargadoId === currentUser?.id &&
+            (propiedad.estado === 'DISPONIBLE' || propiedad.estado === 'CON_OFERTA'),
         );
-        if (urbanizacionActiva) {
+        if (esModoIndependientes) {
           propiedadesFiltradas = propiedadesFiltradas.filter(
-            (propiedad) => propiedad.urbanizacion?.id === urbanizacionActiva.id
+            (propiedad) => !propiedad.urbanizacion,
+          );
+        } else if (urbanizacionActiva) {
+          propiedadesFiltradas = propiedadesFiltradas.filter(
+            (propiedad) => propiedad.urbanizacion?.id === urbanizacionActiva.id,
           );
         }
         this.propiedades.set(propiedadesFiltradas);
@@ -163,7 +171,7 @@ export class VisitaCreate implements OnInit {
         lote.numeroLote?.toLowerCase().includes(search) ||
         lote.estado?.toLowerCase().includes(search) ||
         lote.precioBase?.toString().includes(search) ||
-        lote.urbanizacion?.nombre?.toLowerCase().includes(search)
+        lote.urbanizacion?.nombre?.toLowerCase().includes(search),
     );
   }
 
@@ -176,7 +184,7 @@ export class VisitaCreate implements OnInit {
         propiedad.tipo?.toLowerCase().includes(search) ||
         propiedad.ubicacion?.toLowerCase().includes(search) ||
         propiedad.ciudad?.toLowerCase().includes(search) ||
-        propiedad.precio?.toString().includes(search)
+        propiedad.precio?.toString().includes(search),
     );
   }
 
@@ -192,9 +200,8 @@ export class VisitaCreate implements OnInit {
     this.visitaForm.patchValue({
       inmuebleId: lote.id,
     });
-    this.searchLote.set(
-      `${lote.numeroLote} - ${lote.urbanizacion?.nombre || 'Sin urbanización'} - $${lote.precioBase}`
-    );
+    const urbanizacionNombre = lote.urbanizacion?.nombre || 'Independiente';
+    this.searchLote.set(`${lote.numeroLote} - ${urbanizacionNombre} - $${lote.precioBase}`);
     this.showLotesDropdown.set(false);
   }
 
@@ -203,7 +210,7 @@ export class VisitaCreate implements OnInit {
       inmuebleId: propiedad.id,
     });
     this.searchPropiedad.set(
-      `${propiedad.nombre} - ${propiedad.tipo} - ${propiedad.ciudad} - $${propiedad.precio}`
+      `${propiedad.nombre} - ${propiedad.tipo} - ${propiedad.ciudad} - $${propiedad.precio}`,
     );
     this.showPropiedadesDropdown.set(false);
   }
@@ -292,7 +299,8 @@ export class VisitaCreate implements OnInit {
         } else if (err.status === 400) {
           errorMessage = 'Datos inválidos. Verifique la información ingresada.';
         } else if (err.status === 403) {
-          errorMessage = 'No tienes permisos para crear visitas o no eres el encargado del inmueble';
+          errorMessage =
+            'No tienes permisos para crear visitas o no eres el encargado del inmueble';
         } else if (err.status === 404) {
           errorMessage = 'Cliente o inmueble no encontrado';
         }

@@ -18,11 +18,14 @@ import {
   faLock,
   faBuilding,
   faTimes,
+  faUsers,
 } from '@fortawesome/free-solid-svg-icons';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { UserService } from '../../services/users.service';
 import { AuthService } from '../../../../components/services/auth.service';
 import { UrbanizacionService } from '../../../urbanizacion/services/urbanizacion.service';
+import { GrupoDto } from '../../../../core/interfaces/grupo.interface';
+import { GrupoService } from '../../../grupo/service/grupo.service';
 
 @Component({
   selector: 'app-users-edit',
@@ -31,7 +34,6 @@ import { UrbanizacionService } from '../../../urbanizacion/services/urbanizacion
   templateUrl: './users-edit.html',
 })
 export class UsersEditComponent implements OnInit {
-  // Icons
   faSave = faSave;
   faUserEdit = faUserEdit;
   faUser = faUser;
@@ -46,8 +48,8 @@ export class UsersEditComponent implements OnInit {
   faEyeSlash = faEyeSlash;
   faBuilding = faBuilding;
   faTimes = faTimes;
+  faUsers = faUsers;
 
-  // Services
   private urbanizacionService = inject(UrbanizacionService);
   private userService = inject(UserService);
   private authService = inject(AuthService);
@@ -55,11 +57,9 @@ export class UsersEditComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private fb = inject(FormBuilder);
+  private grupoService = inject(GrupoService);
 
-  // Form
   editForm: FormGroup;
-
-  // Signals
   userId = signal<number | null>(null);
   userData = signal<any>(null);
   cargando = signal<boolean>(true);
@@ -68,65 +68,71 @@ export class UsersEditComponent implements OnInit {
   canEditRole = signal<boolean>(false);
   showPassword = signal<boolean>(false);
   showConfirmPassword = signal<boolean>(false);
-
-  // Data
   roles = ['ADMINISTRADOR', 'ASESOR', 'SECRETARIA', 'USUARIO'];
   urbanizaciones: any[] = [];
   urbanizacionesSeleccionadas: any[] = [];
+  grupos = signal<GrupoDto[]>([]);
 
   constructor() {
     this.editForm = this.crearFormularioUsuario();
   }
-ngOnInit(): void {
-  const currentUser = this.authService.getCurrentUser();
-  this.canEditRole.set(currentUser?.role === 'ADMINISTRADOR');
 
-  // Primero cargar urbanizaciones, luego el usuario
-  this.cargarUrbanizaciones(() => this.obtenerUsuario());
-}
+  ngOnInit(): void {
+    const currentUser = this.authService.getCurrentUser();
+    this.canEditRole.set(currentUser?.role === 'ADMINISTRADOR');
+
+    this.cargarUrbanizaciones(() => this.obtenerUsuario());
+    this.cargarGrupos();
+  }
 
   crearFormularioUsuario(): FormGroup {
     return this.fb.group(
       {
-        fullName:      ['', [Validators.required, Validators.minLength(3)]],
-        username:      ['', [Validators.required, Validators.minLength(3)]],
-        email:         ['', [Validators.email]],
-        telefono:      ['', [Validators.required]],
-        direccion:     [''],
+        fullName: ['', [Validators.required, Validators.minLength(3)]],
+        username: ['', [Validators.required, Validators.minLength(3)]],
+        email: ['', [Validators.email]],
+        telefono: ['', [Validators.required]],
+        direccion: [''],
         observaciones: [''],
-        role:          ['', [Validators.required]],
-        password:      ['', [Validators.minLength(6)]],
+        role: ['', [Validators.required]],
+        password: ['', [Validators.minLength(6)]],
         confirmPassword: [''],
+        grupoId: [null],
       },
       { validators: this.passwordMatchValidator },
     );
   }
 
-  // ============================================================
-  // URBANIZACIONES
-  // ============================================================
+  cargarUrbanizaciones(callback?: () => void): void {
+    this.urbanizacionService.getAll().subscribe({
+      next: (response: any) => {
+        this.urbanizaciones = Array.isArray(response)
+          ? response
+          : (response?.data?.urbanizaciones ?? response?.data ?? []);
+        callback?.();
+      },
+      error: () => {
+        this.urbanizaciones = [];
+        callback?.();
+      },
+    });
+  }
 
-cargarUrbanizaciones(callback?: () => void): void {
-  this.urbanizacionService.getAll().subscribe({
-    next: (response: any) => {
-      console.log('Urbanizaciones response:', response); // ← ver estructura
-      this.urbanizaciones = Array.isArray(response)
-        ? response
-        : response?.data?.urbanizaciones
-        ?? response?.data
-        ?? [];
-      callback?.();
-    },
-    error: () => {
-      this.urbanizaciones = [];
-      callback?.();
-    },
-  });
-}
+  cargarGrupos(): void {
+    this.grupoService.getAll().subscribe({
+      next: (grupos) => this.grupos.set(grupos),
+      error: () => this.grupos.set([]),
+    });
+  }
 
   get requiresUrbanizacion(): boolean {
     const role = this.editForm.get('role')?.value;
     return role === 'ASESOR' || role === 'SECRETARIA';
+  }
+
+  get requiresGrupo(): boolean {
+    const role = this.editForm.get('role')?.value;
+    return role === 'ADMINISTRADOR' || role === 'ASESOR' || role === 'SECRETARIA';
   }
 
   get urbanizacionesDisponibles(): any[] {
@@ -138,7 +144,6 @@ cargarUrbanizaciones(callback?: () => void): void {
     const select = event.target as HTMLSelectElement;
     const id = Number(select.value);
     if (!id) return;
-
     const urb = this.urbanizaciones.find((u) => u.id === id);
     if (urb && !this.urbanizacionesSeleccionadas.find((u) => u.id === id)) {
       this.urbanizacionesSeleccionadas = [...this.urbanizacionesSeleccionadas, urb];
@@ -150,10 +155,6 @@ cargarUrbanizaciones(callback?: () => void): void {
     this.urbanizacionesSeleccionadas = this.urbanizacionesSeleccionadas.filter((u) => u.id !== id);
   }
 
-  // ============================================================
-  // CARGAR USUARIO
-  // ============================================================
-
   obtenerUsuario(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
     if (!id) {
@@ -161,31 +162,18 @@ cargarUrbanizaciones(callback?: () => void): void {
       this.cargando.set(false);
       return;
     }
-
     this.userId.set(id);
-
     this.userService.getById(id).subscribe({
       next: (response: any) => {
-
-  console.log('Response completo:', response);
-  const user = response.data?.user || response.data;
-  console.log('User:', user);
-  console.log('urbanizacionesAsignadas:', user?.urbanizacionesAsignadas);
-  console.log('role:', user?.role);
-
         if (response.success && response.data) {
           const user = response.data.user || response.data;
-
           if (user?.role === 'CLIENTE') {
             this.notificationService.showError('No se puede editar clientes desde esta sección');
             this.router.navigate(['/usuarios']);
             return;
           }
-
           this.userData.set(user);
           this.cargarDatosFormulario(user);
-
-          // Cargar urbanizaciones ya asignadas al usuario
           if (user.urbanizacionesAsignadas?.length > 0) {
             this.urbanizacionesSeleccionadas = user.urbanizacionesAsignadas.map(
               (u: any) => u.urbanizacion ?? u,
@@ -206,76 +194,19 @@ cargarUrbanizaciones(callback?: () => void): void {
 
   cargarDatosFormulario(user: any): void {
     this.editForm.patchValue({
-      fullName:      user.fullName || '',
-      username:      user.username || '',
-      email:         user.email || '',
-      telefono:      user.telefono || '',
-      direccion:     user.direccion || '',
+      fullName: user.fullName || '',
+      username: user.username || '',
+      email: user.email || '',
+      telefono: user.telefono || '',
+      direccion: user.direccion || '',
       observaciones: user.observaciones || '',
-      role:          user.role || 'USUARIO',
+      role: user.role || 'USUARIO',
+      grupoId: user.grupoId || null,
     });
-
     if (!this.canEditRole()) {
       this.editForm.get('role')?.disable();
     }
   }
-
-  // ============================================================
-  // SUBMIT
-  // ============================================================
-
-  onSubmit(): void {
-    if (this.editForm.invalid) {
-      this.markFormGroupTouched();
-      this.notificationService.showError('Complete todos los campos requeridos correctamente');
-      return;
-    }
-
-    if (!this.userId()) {
-      this.notificationService.showError('ID de usuario no válido');
-      return;
-    }
-
-    this.enviando.set(true);
-
-    const updateData: any = {
-      fullName:      this.editForm.value.fullName,
-      username:      this.editForm.value.username,
-      email:         this.editForm.value.email,
-      telefono:      this.editForm.value.telefono,
-      direccion:     this.editForm.value.direccion,
-      observaciones: this.editForm.value.observaciones,
-      ...(this.canEditRole() && { role: this.editForm.value.role }),
-      ...(this.editForm.value.password && { password: this.editForm.value.password }),
-    };
-
-    this.userService.update(this.userId()!, updateData).subscribe({
-      next: () => {
-        // Actualizar urbanizaciones
-        const urbanizacionIds = this.urbanizacionesSeleccionadas.map((u) => u.id);
-        this.userService.asignarUrbanizaciones(this.userId()!, urbanizacionIds).subscribe({
-          next: () => {
-            this.enviando.set(false);
-            this.notificationService.showSuccess('Usuario actualizado correctamente');
-            setTimeout(() => this.router.navigate(['/usuarios']), 1500);
-          },
-          error: () => {
-            this.enviando.set(false);
-            this.notificationService.showSuccess('Usuario actualizado. Las urbanizaciones no se pudieron guardar.');
-            setTimeout(() => this.router.navigate(['/usuarios']), 1500);
-          },
-        });
-      },
-      error: (error: any) => {
-        this.enviando.set(false);
-        this.notificationService.showError(error.message || 'Error al actualizar el usuario');
-      },
-    });
-  }
-
-  // ============================================================
-  // FORM HELPERS
-  // ============================================================
 
   passwordMatchValidator(group: FormGroup): { [key: string]: boolean } | null {
     const password = group.get('password')?.value;
@@ -292,6 +223,53 @@ cargarUrbanizaciones(callback?: () => void): void {
 
   toggleConfirmPasswordVisibility(): void {
     this.showConfirmPassword.update((v) => !v);
+  }
+
+  onSubmit(): void {
+    if (this.editForm.invalid) {
+      this.markFormGroupTouched();
+      this.notificationService.showError('Complete todos los campos requeridos correctamente');
+      return;
+    }
+    if (!this.userId()) {
+      this.notificationService.showError('ID de usuario no válido');
+      return;
+    }
+    this.enviando.set(true);
+    const updateData: any = {
+      fullName: this.editForm.value.fullName,
+      username: this.editForm.value.username,
+      email: this.editForm.value.email,
+      telefono: this.editForm.value.telefono,
+      direccion: this.editForm.value.direccion,
+      observaciones: this.editForm.value.observaciones,
+      ...(this.canEditRole() && { role: this.editForm.value.role }),
+      ...(this.editForm.value.password && { password: this.editForm.value.password }),
+      grupoId: this.editForm.value.grupoId || null,
+    };
+    this.userService.update(this.userId()!, updateData).subscribe({
+      next: () => {
+        const urbanizacionIds = this.urbanizacionesSeleccionadas.map((u) => u.id);
+        this.userService.asignarUrbanizaciones(this.userId()!, urbanizacionIds).subscribe({
+          next: () => {
+            this.enviando.set(false);
+            this.notificationService.showSuccess('Usuario actualizado correctamente');
+            setTimeout(() => this.router.navigate(['/usuarios']), 1500);
+          },
+          error: () => {
+            this.enviando.set(false);
+            this.notificationService.showSuccess(
+              'Usuario actualizado. Las urbanizaciones no se pudieron guardar.',
+            );
+            setTimeout(() => this.router.navigate(['/usuarios']), 1500);
+          },
+        });
+      },
+      error: (error: any) => {
+        this.enviando.set(false);
+        this.notificationService.showError(error.message || 'Error al actualizar el usuario');
+      },
+    });
   }
 
   private markFormGroupTouched(): void {

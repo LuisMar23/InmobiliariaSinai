@@ -242,18 +242,21 @@ export class VentaEdit implements OnInit {
     const urbanizacionActiva = this.urbanizacionContext.urbanizacion();
     const ventaActual = this.ventaData();
     const loteActualId = ventaActual?.inmuebleId;
+    const esModoIndependientes = urbanizacionActiva?.id === -1;
 
     this.loteSvc.getAll().subscribe({
       next: (lotes: LoteDto[]) => {
         let lotesFiltrados = lotes.filter((lote) => lote.encargadoId === currentUser?.id);
-        if (urbanizacionActiva) {
+        if (esModoIndependientes) {
+          lotesFiltrados = lotesFiltrados.filter((lote) => !lote.urbanizacion);
+        } else if (urbanizacionActiva) {
           lotesFiltrados = lotesFiltrados.filter(
-            (lote) => lote.urbanizacion?.id === urbanizacionActiva.id
+            (lote) => lote.urbanizacion?.id === urbanizacionActiva.id,
           );
         }
         if (loteActualId) {
-          const loteActual = lotes.find(l => l.id === loteActualId);
-          if (loteActual && !lotesFiltrados.some(l => l.id === loteActualId)) {
+          const loteActual = lotes.find((l) => l.id === loteActualId);
+          if (loteActual && !lotesFiltrados.some((l) => l.id === loteActualId)) {
             lotesFiltrados = [...lotesFiltrados, loteActual];
           }
         }
@@ -274,6 +277,7 @@ export class VentaEdit implements OnInit {
     const urbanizacionActiva = this.urbanizacionContext.urbanizacion();
     const ventaActual = this.ventaData();
     const propiedadActualId = ventaActual?.inmuebleId;
+    const esModoIndependientes = urbanizacionActiva?.id === -1;
 
     this.propiedadSvc.getAll().subscribe({
       next: (propiedades: PropiedadDto[]) => {
@@ -283,14 +287,18 @@ export class VentaEdit implements OnInit {
             (propiedad.tipo === 'CASA' || propiedad.tipo === 'DEPARTAMENTO') &&
             propiedad.encargadoId === currentUser?.id,
         );
-        if (urbanizacionActiva) {
+        if (esModoIndependientes) {
           propiedadesParaVenta = propiedadesParaVenta.filter(
-            (propiedad) => propiedad.urbanizacion?.id === urbanizacionActiva.id
+            (propiedad) => !propiedad.urbanizacion,
+          );
+        } else if (urbanizacionActiva) {
+          propiedadesParaVenta = propiedadesParaVenta.filter(
+            (propiedad) => propiedad.urbanizacion?.id === urbanizacionActiva.id,
           );
         }
         if (propiedadActualId) {
-          const propiedadActual = propiedades.find(p => p.id === propiedadActualId);
-          if (propiedadActual && !propiedadesParaVenta.some(p => p.id === propiedadActualId)) {
+          const propiedadActual = propiedades.find((p) => p.id === propiedadActualId);
+          if (propiedadActual && !propiedadesParaVenta.some((p) => p.id === propiedadActualId)) {
             propiedadesParaVenta = [...propiedadesParaVenta, propiedadActual];
           }
         }
@@ -331,15 +339,12 @@ export class VentaEdit implements OnInit {
   }
 
   getLoteDisplayText(lote: LoteDto): string {
-    return `${lote.numeroLote} - ${lote.urbanizacion?.nombre} - $${this.formatNumber(
-      lote.precioBase,
-    )}`;
+    const urbanizacionNombre = lote.urbanizacion?.nombre || 'Independiente';
+    return `${lote.numeroLote} - ${urbanizacionNombre} - $${this.formatNumber(lote.precioBase)}`;
   }
 
   getPropiedadDisplayText(propiedad: PropiedadDto): string {
-    return `${propiedad.nombre} - ${propiedad.tipo} - ${propiedad.ubicacion} - $${this.formatNumber(
-      propiedad.precio,
-    )}`;
+    return `${propiedad.nombre} - ${propiedad.tipo} - ${propiedad.ubicacion} - $${this.formatNumber(propiedad.precio)}`;
   }
 
   formatNumber(value: number): string {

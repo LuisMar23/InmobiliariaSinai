@@ -36,6 +36,12 @@ export class CreateLoteDto {
   precioBase: number;
 
   @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @Type(() => Number)
+  precioM2?: number;
+
+  @IsOptional()
   @IsEnum(EstadoInmueble)
   estado?: EstadoInmueble;
 
@@ -69,6 +75,26 @@ export class CreateLoteDto {
   @IsNumber({ maxDecimalPlaces: 2 })
   @Type(() => Number)
   medidaFondo?: number;
+
+  @IsOptional()
+  @IsString()
+  partida?: string;
+
+  @IsOptional()
+  @IsString()
+  colindaFrontal?: string;
+
+  @IsOptional()
+  @IsString()
+  colindaDerecho?: string;
+
+  @IsOptional()
+  @IsString()
+  colindaIzquierdo?: string;
+
+  @IsOptional()
+  @IsString()
+  colindaFondo?: string;
 
   @IsBoolean()
   @Type(() => Boolean)

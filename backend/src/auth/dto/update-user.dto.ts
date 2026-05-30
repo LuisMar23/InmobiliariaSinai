@@ -5,7 +5,9 @@ import {
   IsOptional,
   IsBoolean,
   IsArray,
+  IsInt,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { UserRole } from './register.dto';
 
 export class UpdateUserDto {
@@ -48,8 +50,13 @@ export class UpdateUserDto {
   @IsOptional()
   password?: string;
 
-@IsOptional()
-@IsArray()
-@IsString({ each: true })
-ciudadesAsignadas?: string[];
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  ciudadesAsignadas?: string[];
+
+  @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  grupoId?: number;
 }

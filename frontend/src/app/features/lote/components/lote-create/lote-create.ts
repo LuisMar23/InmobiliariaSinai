@@ -55,16 +55,22 @@ export class LoteCreate implements OnInit {
       numeroLote: ['', [Validators.required, Validators.minLength(2)]],
       superficieM2: [0, [Validators.required, Validators.min(0.01)]],
       precioBase: [0, [Validators.required, Validators.min(0.01)]],
+      precioM2: ['', Validators.min(0)],
       ciudad: [''],
       descripcion: [''],
       ubicacion: [''],
       manzanoId: [''],
       estado: ['DISPONIBLE'],
       encargadoId: [''],
+      partida: [''],
       medidaFrente: ['', Validators.min(0.01)],
       medidaIzquierda: ['', Validators.min(0.01)],
       medidaDerecha: ['', Validators.min(0.01)],
       medidaFondo: ['', Validators.min(0.01)],
+      colindaFrontal: [''],
+      colindaDerecho: [''],
+      colindaIzquierdo: [''],
+      colindaFondo: [''],
     });
   }
 
@@ -217,6 +223,7 @@ export class LoteCreate implements OnInit {
       numeroLote: formValue.numeroLote,
       superficieM2: Number(formValue.superficieM2),
       precioBase: Number(formValue.precioBase),
+      precioM2: formValue.precioM2 !== '' ? Number(formValue.precioM2) : undefined,
       esIndependiente: Boolean(formValue.esIndependiente),
       estado: formValue.estado,
       descripcion: formValue.descripcion,
@@ -225,10 +232,15 @@ export class LoteCreate implements OnInit {
       urbanizacionId: formValue.esIndependiente ? undefined : Number(formValue.urbanizacionId),
       encargadoId: formValue.encargadoId ? Number(formValue.encargadoId) : undefined,
       manzanoId: formValue.manzanoId ? Number(formValue.manzanoId) : undefined,
+      partida: formValue.partida,
       medidaFrente: formValue.medidaFrente ? Number(formValue.medidaFrente) : undefined,
       medidaIzquierda: formValue.medidaIzquierda ? Number(formValue.medidaIzquierda) : undefined,
       medidaDerecha: formValue.medidaDerecha ? Number(formValue.medidaDerecha) : undefined,
       medidaFondo: formValue.medidaFondo ? Number(formValue.medidaFondo) : undefined,
+      colindaFrontal: formValue.colindaFrontal,
+      colindaDerecho: formValue.colindaDerecho,
+      colindaIzquierdo: formValue.colindaIzquierdo,
+      colindaFondo: formValue.colindaFondo,
     };
     this.loteSvc.create(loteData).subscribe({
       next: (response: any) => {

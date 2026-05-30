@@ -2,21 +2,22 @@ export interface UserDto {
   id: number;
   uuid: string;
   fullName: string;
-  username?: string; // Hacer opcional para clientes
+  username?: string;
   ci: string;
-  email?: string; // Hacer opcional para clientes
-  passwordHash?: string; // Hacer opcional
-  avatarUrl?: string;
+  email?: string;
   telefono: string;
-  role: UserRole;
-  isActive: boolean;
-  lastLogin?: Date;
-  createdAt: Date;
-  updatedAt: Date;
-  failedAttempts: number;
-  lockUntil?: Date;
   direccion?: string;
   observaciones?: string;
+  role: string;
+  isActive: boolean;
+  avatarUrl?: string;
+  createdAt: string;
+  updatedAt?: string;
+  grupoId?: number;
+  grupo?: {
+    id: number;
+    tipoUsuario: string;
+    nombreEmpresa?: string;
+  };
+  urbanizacionesAsignadas?: any[];
 }
-
-export type UserRole = 'ADMINISTRADOR' | 'ASESOR' | 'SECRETARIA' | 'CLIENTE' | 'USUARIO';

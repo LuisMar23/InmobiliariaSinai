@@ -1,4 +1,18 @@
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsNumber,
+  IsEnum,
+  IsInt,
+} from 'class-validator';
+import { Type } from 'class-transformer';
+
+export enum EstadoUrbanizacion {
+  VENTA = 'VENTA',
+  PRE_VENTA = 'PRE_VENTA',
+  POST_VENTA = 'POST_VENTA',
+}
 
 export class CreateUrbanizacionDto {
   @IsString()
@@ -19,5 +33,35 @@ export class CreateUrbanizacionDto {
 
   @IsString()
   @IsOptional()
-  maps?: string; 
+  maps?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  sedeId?: number;
+
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Type(() => Number)
+  superficieTotal?: number;
+
+  @IsOptional()
+  @IsEnum(EstadoUrbanizacion)
+  estado?: EstadoUrbanizacion;
+
+  @IsOptional()
+  @IsString()
+  colindanciaNorte?: string;
+
+  @IsOptional()
+  @IsString()
+  colindanciaEste?: string;
+
+  @IsOptional()
+  @IsString()
+  colindanciaSur?: string;
+
+  @IsOptional()
+  @IsString()
+  colindanciaOeste?: string;
 }

@@ -16,11 +16,14 @@ import {
   faEyeSlash,
   faBuilding,
   faTimes,
+  faUsers,
 } from '@fortawesome/free-solid-svg-icons';
 import { AuthService } from '../../../../components/services/auth.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { UserService } from '../../services/users.service';
 import { UrbanizacionService } from '../../../urbanizacion/services/urbanizacion.service';
+import { GrupoDto } from '../../../../core/interfaces/grupo.interface';
+import { GrupoService } from '../../../grupo/service/grupo.service';
 
 @Component({
   selector: 'app-users-create',
@@ -29,7 +32,6 @@ import { UrbanizacionService } from '../../../urbanizacion/services/urbanizacion
   templateUrl: './ussers-create.html',
 })
 export class UsersCreateComponent implements OnInit {
-  // Icons
   faSave = faSave;
   faUserPlus = faUserPlus;
   faUser = faUser;
@@ -42,28 +44,25 @@ export class UsersCreateComponent implements OnInit {
   faEyeSlash = faEyeSlash;
   faBuilding = faBuilding;
   faTimes = faTimes;
+  faUsers = faUsers;
 
-  // Services
   private urbanizacionService = inject(UrbanizacionService);
   private userService = inject(UserService);
   private authService = inject(AuthService);
   private notificationService = inject(NotificationService);
   private router = inject(Router);
   private fb = inject(FormBuilder);
+  private grupoService = inject(GrupoService);
 
-  // Form
   createForm: FormGroup;
-
-  // Signals
   enviando = signal<boolean>(false);
   canAssignRole = signal<boolean>(false);
   showPassword = signal<boolean>(false);
   showConfirmPassword = signal<boolean>(false);
-
-  // Data
   roles = ['ADMINISTRADOR', 'ASESOR', 'SECRETARIA', 'USUARIO'];
   urbanizaciones: any[] = [];
-  urbanizacionesSeleccionadas: any[] = []; // las que el usuario fue eligiendo
+  urbanizacionesSeleccionadas: any[] = [];
+  grupos = signal<GrupoDto[]>([]);
 
   constructor() {
     this.createForm = this.crearFormularioUsuario();
@@ -79,6 +78,7 @@ export class UsersCreateComponent implements OnInit {
     }
 
     this.cargarUrbanizaciones();
+    this.cargarGrupos();
   }
 
   crearFormularioUsuario(): FormGroup {
@@ -94,31 +94,38 @@ export class UsersCreateComponent implements OnInit {
         direccion: [''],
         observaciones: [''],
         role: ['USUARIO', [Validators.required]],
+        grupoId: [null],
       },
       { validators: this.passwordMatchValidator },
     );
   }
 
-  // ============================================================
-  // URBANIZACIONES
-  // ============================================================
+  cargarUrbanizaciones(): void {
+    this.urbanizacionService.getAll().subscribe({
+      next: (response: any) => {
+        this.urbanizaciones = response?.data?.urbanizaciones ?? response?.data ?? response ?? [];
+      },
+      error: () => (this.urbanizaciones = []),
+    });
+  }
 
-cargarUrbanizaciones(): void {
-  this.urbanizacionService.getAll().subscribe({
-    next: (response: any) => {
-      console.log('Respuesta urbanizaciones:', response);
-      this.urbanizaciones = response?.data?.urbanizaciones ?? response?.data ?? response ?? [];
-      console.log('urbanizaciones seteadas:', this.urbanizaciones);
-    },
-    error: () => (this.urbanizaciones = []),
-  });
-}
+  cargarGrupos(): void {
+    this.grupoService.getAll().subscribe({
+      next: (grupos) => this.grupos.set(grupos),
+      error: () => this.grupos.set([]),
+    });
+  }
+
   get requiresUrbanizacion(): boolean {
     const role = this.createForm.get('role')?.value;
     return role === 'ASESOR' || role === 'SECRETARIA';
   }
 
-  // Urbanizaciones disponibles (las que aún no fueron seleccionadas)
+  get requiresGrupo(): boolean {
+    const role = this.createForm.get('role')?.value;
+    return role === 'ADMINISTRADOR' || role === 'ASESOR' || role === 'SECRETARIA';
+  }
+
   get urbanizacionesDisponibles(): any[] {
     const selectedIds = this.urbanizacionesSeleccionadas.map((u) => u.id);
     return this.urbanizaciones.filter((u) => !selectedIds.includes(u.id));
@@ -128,23 +135,16 @@ cargarUrbanizaciones(): void {
     const select = event.target as HTMLSelectElement;
     const id = Number(select.value);
     if (!id) return;
-
     const urb = this.urbanizaciones.find((u) => u.id === id);
     if (urb && !this.urbanizacionesSeleccionadas.find((u) => u.id === id)) {
       this.urbanizacionesSeleccionadas = [...this.urbanizacionesSeleccionadas, urb];
     }
-
-    // Reset el select
     select.value = '';
   }
 
   removerUrbanizacion(id: number): void {
     this.urbanizacionesSeleccionadas = this.urbanizacionesSeleccionadas.filter((u) => u.id !== id);
   }
-
-  // ============================================================
-  // FORM HELPERS
-  // ============================================================
 
   passwordMatchValidator(group: FormGroup): { [key: string]: boolean } | null {
     const password = group.get('password')?.value;
@@ -163,17 +163,12 @@ cargarUrbanizaciones(): void {
     this.showConfirmPassword.update((v) => !v);
   }
 
-  // ============================================================
-  // SUBMIT
-  // ============================================================
-
   onSubmit(): void {
     if (this.createForm.invalid) {
       this.markFormGroupTouched();
       this.notificationService.showError('Complete todos los campos requeridos correctamente');
       return;
     }
-
     if (this.createForm.errors?.['passwordMismatch']) {
       this.notificationService.showError('Las contraseñas no coinciden');
       return;
@@ -182,22 +177,21 @@ cargarUrbanizaciones(): void {
     this.enviando.set(true);
 
     const newUser = {
-      fullName:     this.createForm.value.fullName,
-      username:     this.createForm.value.username,
-      email:        this.createForm.value.email || undefined,
-      password:     this.createForm.value.password,
-      telefono:     this.createForm.value.telefono,
-      ci:           this.createForm.value.ci || undefined,
-      direccion:    this.createForm.value.direccion || undefined,
+      fullName: this.createForm.value.fullName,
+      username: this.createForm.value.username,
+      email: this.createForm.value.email || undefined,
+      password: this.createForm.value.password,
+      telefono: this.createForm.value.telefono,
+      ci: this.createForm.value.ci || undefined,
+      direccion: this.createForm.value.direccion || undefined,
       observaciones: this.createForm.value.observaciones || undefined,
-      role:         this.canAssignRole() ? this.createForm.value.role : 'USUARIO',
+      role: this.canAssignRole() ? this.createForm.value.role : 'USUARIO',
+      grupoId: this.createForm.value.grupoId || undefined,
     };
 
     this.authService.register(newUser).subscribe({
       next: (response: any) => {
         const userId = response?.data?.user?.id;
-
-        // Si hay urbanizaciones seleccionadas y se creó bien el usuario
         if (userId && this.urbanizacionesSeleccionadas.length > 0) {
           const urbanizacionIds = this.urbanizacionesSeleccionadas.map((u) => u.id);
           this.userService.asignarUrbanizaciones(userId, urbanizacionIds).subscribe({
@@ -206,13 +200,11 @@ cargarUrbanizaciones(): void {
               this.notificationService.showSuccess('Usuario creado correctamente');
               setTimeout(() => this.router.navigate(['/usuarios']), 1500);
             },
-            error: (err) => {
-                console.log('Error asignando urbanizaciones:', err);
-  console.log('Status:', err.status);
-  console.log('Error body:', err.error)
-              // El usuario se creó pero las urbanizaciones fallaron
+            error: () => {
               this.enviando.set(false);
-              this.notificationService.showSuccess('Usuario creado. Las urbanizaciones no se pudieron asignar.');
+              this.notificationService.showSuccess(
+                'Usuario creado. Las urbanizaciones no se pudieron asignar.',
+              );
               setTimeout(() => this.router.navigate(['/usuarios']), 1500);
             },
           });

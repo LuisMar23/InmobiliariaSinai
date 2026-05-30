@@ -1,9 +1,7 @@
 // src/auth/auth.service.ts
-// CAMBIOS RESPECTO A LA VERSIÓN ANTERIOR:
-// - Eliminado ciudadesAsignadas de JWT y todos los métodos
-// - generateTokens solo lleva sub, email, role
-// - register y updateUser ya no manejan ciudadesAsignadas
-// - Las urbanizaciones se gestionan desde SeguridadService
+// CAMBIOS: Se agregó soporte para grupoId en creación y actualización de usuarios (ADMINISTRADOR, ASESOR, SECRETARIA)
+// Se incluye la relación grupo en los selects donde corresponde.
+// No se modificaron otros métodos.
 
 import {
   Injectable,
@@ -37,9 +35,6 @@ export class AuthService {
     return localTime;
   }
 
-  // ============================================================
-  // JWT - sin ciudadesAsignadas
-  // ============================================================
   private async generateTokens(userId: number, email: string, role: string) {
     const payload = {
       sub: userId,
@@ -61,9 +56,6 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
-  // ============================================================
-  // REGISTER
-  // ============================================================
   async register(registerDto: RegisterDto) {
     const {
       username,
@@ -74,6 +66,8 @@ export class AuthService {
       telefono,
       direccion,
       observaciones,
+      role,
+      grupoId,
     } = registerDto;
 
     try {
@@ -104,6 +98,14 @@ export class AuthService {
           throw new ConflictException('El teléfono ya está registrado');
       }
 
+      // Validar grupo si se proporciona
+      if (grupoId) {
+        const grupo = await this.prisma.grupo.findUnique({
+          where: { id: grupoId },
+        });
+        if (!grupo) throw new BadRequestException('El grupo especificado no existe');
+      }
+
       const hashedPassword = await bcrypt.hash(password, 12);
 
       const user = await this.prisma.user.create({
@@ -115,9 +117,10 @@ export class AuthService {
           ci: normalizedCi ?? '',
           telefono: normalizedTelefono ?? '',
           isActive: true,
-          role: registerDto.role ?? UserRole.USUARIO,
+          role: role ?? UserRole.USUARIO,
           direccion: direccion?.trim() ?? null,
           observaciones: observaciones?.trim() ?? null,
+          grupoId: grupoId ?? null,
         },
         select: {
           id: true,
@@ -130,6 +133,9 @@ export class AuthService {
           direccion: true,
           observaciones: true,
           createdAt: true,
+          grupo: {
+            select: { id: true, tipoUsuario: true, nombreEmpresa: true },
+          },
         },
       });
 
@@ -147,6 +153,7 @@ export class AuthService {
             email: user.email,
             fullName: user.fullName,
             role: user.role,
+            grupoId: user.grupo,
           }),
           ip: '127.0.0.1',
           dispositivo: 'API',
@@ -159,14 +166,11 @@ export class AuthService {
         data: { user, ...tokens },
       };
     } catch (error) {
-      if (error instanceof ConflictException) throw error;
+      if (error instanceof ConflictException || error instanceof BadRequestException) throw error;
       throw new InternalServerErrorException('Error interno del servidor');
     }
   }
 
-  // ============================================================
-  // LOGIN
-  // ============================================================
   async login(loginDto: LoginDto) {
     const { identifier, password } = loginDto;
 
@@ -227,18 +231,15 @@ export class AuthService {
         });
       }
 
-      // Obtener todos los módulos activos
       const todosLosModulos = await this.prisma.modulo.findMany({
         where: { activo: true },
       });
 
-      // Obtener permisos del role
       const permisos = await this.prisma.permisoRole.findMany({
         where: { role: user.role },
         include: { modulo: true },
       });
 
-      // Construir map con todos los módulos, true o false
       const permisosConAcceso = new Set(
         permisos.filter((p) => p.tieneAcceso).map((p) => p.modulo.clave),
       );
@@ -288,9 +289,6 @@ export class AuthService {
     }
   }
 
-  // ============================================================
-  // REFRESH TOKEN
-  // ============================================================
   async refreshToken(refreshToken: string) {
     try {
       const payload = await this.jwtService.verifyAsync(refreshToken, {
@@ -321,9 +319,6 @@ export class AuthService {
     }
   }
 
-  // ============================================================
-  // VALIDATE USER (usado por JwtStrategy)
-  // ============================================================
   async validateUser(userId: number) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId, isActive: true, role: { not: UserRole.CLIENTE } },
@@ -336,6 +331,9 @@ export class AuthService {
         avatarUrl: true,
         role: true,
         isActive: true,
+        grupo: {
+          select: { id: true, tipoUsuario: true, nombreEmpresa: true },
+        },
       },
     });
 
@@ -343,9 +341,6 @@ export class AuthService {
     return user;
   }
 
-  // ============================================================
-  // CHANGE PASSWORD
-  // ============================================================
   async changePassword(changePasswordDto: ChangePasswordDto) {
     const { identifier, newPassword, confirmPassword } = changePasswordDto;
 
@@ -418,9 +413,6 @@ export class AuthService {
     }
   }
 
-  // ============================================================
-  // USERS CRUD
-  // ============================================================
   async getAllUsers() {
     try {
       const users = await this.prisma.user.findMany({
@@ -439,6 +431,10 @@ export class AuthService {
           isActive: true,
           avatarUrl: true,
           createdAt: true,
+          grupoId: true,
+          grupo: {
+            select: { id: true, tipoUsuario: true, nombreEmpresa: true },
+          },
           urbanizacionesAsignadas: {
             include: { urbanizacion: true },
           },
@@ -471,6 +467,10 @@ export class AuthService {
           avatarUrl: true,
           createdAt: true,
           updatedAt: true,
+          grupoId: true,
+          grupo: {
+            select: { id: true, tipoUsuario: true, nombreEmpresa: true },
+          },
           urbanizacionesAsignadas: {
             include: { urbanizacion: true },
           },
@@ -512,6 +512,15 @@ export class AuthService {
         updateData.role = updateUserDto.role;
       if (updateUserDto.isActive !== undefined)
         updateData.isActive = updateUserDto.isActive;
+      if (updateUserDto.grupoId !== undefined) {
+        if (updateUserDto.grupoId !== null) {
+          const grupo = await this.prisma.grupo.findUnique({
+            where: { id: updateUserDto.grupoId },
+          });
+          if (!grupo) throw new BadRequestException('El grupo especificado no existe');
+        }
+        updateData.grupoId = updateUserDto.grupoId;
+      }
 
       if (updateUserDto.password?.trim()) {
         updateData.passwordHash = await bcrypt.hash(
@@ -538,6 +547,10 @@ export class AuthService {
           avatarUrl: true,
           createdAt: true,
           updatedAt: true,
+          grupoId: true,
+          grupo: {
+            select: { id: true, tipoUsuario: true, nombreEmpresa: true },
+          },
         },
       });
 
@@ -560,7 +573,7 @@ export class AuthService {
         data: { user: updatedUser },
       };
     } catch (error) {
-      if (error instanceof NotFoundException) throw error;
+      if (error instanceof NotFoundException || error instanceof BadRequestException) throw error;
       throw new InternalServerErrorException('Error interno del servidor');
     }
   }
@@ -597,9 +610,7 @@ export class AuthService {
     }
   }
 
-  // ============================================================
-  // CLIENTES CRUD
-  // ============================================================
+  // Métodos de clientes (sin cambios, solo por completitud)
   async createCliente(createClienteDto: CreateClienteDto) {
     const { fullName, ci, telefono, direccion, observaciones } =
       createClienteDto;
@@ -1058,7 +1069,7 @@ export class AuthService {
       throw new InternalServerErrorException('Error interno del servidor');
     }
   }
-  // Asignar urbanizaciones a un usuario
+
   async asignarUrbanizaciones(usuarioId: number, urbanizacionIds: number[]) {
     try {
       const user = await this.prisma.user.findUnique({
@@ -1066,7 +1077,6 @@ export class AuthService {
       });
       if (!user) throw new NotFoundException('Usuario no encontrado');
 
-      // Eliminar asignaciones anteriores y crear las nuevas
       await this.prisma.$transaction([
         this.prisma.usuarioUrbanizacion.deleteMany({
           where: { usuarioId },

@@ -122,23 +122,28 @@ export class ReservaEdit implements OnInit {
     const currentUser = this.authService.getCurrentUser();
     const rolesFullAccess = ['ADMINISTRADOR', 'SECRETARIA'];
     const urbanizacionActiva = this.urbanizacionContext.urbanizacion();
+    const esModoIndependientes = urbanizacionActiva?.id === -1;
 
     this.reservaSvc.getLotesDisponibles().subscribe({
       next: (lotes: LoteDto[]) => {
         let lotesFiltrados = lotes;
         if (!rolesFullAccess.includes(currentUser?.role)) {
           lotesFiltrados = lotes.filter(
-            (lote) => lote.encargadoId?.toString() === currentUser?.id?.toString()
+            (lote) => lote.encargadoId?.toString() === currentUser?.id?.toString(),
           );
         }
-        if (urbanizacionActiva) {
+        if (esModoIndependientes) {
           lotesFiltrados = lotesFiltrados.filter(
-            (lote) => lote.urbanizacion?.id === urbanizacionActiva.id
+            (lote) => !lote.urbanizacion || lote.esIndependiente,
+          );
+        } else if (urbanizacionActiva) {
+          lotesFiltrados = lotesFiltrados.filter(
+            (lote) => lote.urbanizacion?.id === urbanizacionActiva.id,
           );
         }
         if (loteActualId) {
-          const loteActual = lotes.find(l => l.id === loteActualId);
-          if (loteActual && !lotesFiltrados.some(l => l.id === loteActualId)) {
+          const loteActual = lotes.find((l) => l.id === loteActualId);
+          if (loteActual && !lotesFiltrados.some((l) => l.id === loteActualId)) {
             lotesFiltrados = [...lotesFiltrados, loteActual];
           }
         }
@@ -215,7 +220,7 @@ export class ReservaEdit implements OnInit {
     }
     if (loteSeleccionado) {
       this.searchLote.set(
-        `${loteSeleccionado.numeroLote} - ${loteSeleccionado.urbanizacion?.nombre || 'Independiente'}`
+        `${loteSeleccionado.numeroLote} - ${loteSeleccionado.urbanizacion?.nombre || 'Independiente'}`,
       );
     }
   }
@@ -242,7 +247,7 @@ export class ReservaEdit implements OnInit {
       (cliente) =>
         cliente.fullName?.toLowerCase().includes(search) ||
         cliente.ci?.toLowerCase().includes(search) ||
-        cliente.email?.toLowerCase().includes(search)
+        cliente.email?.toLowerCase().includes(search),
     );
   }
 
@@ -252,7 +257,7 @@ export class ReservaEdit implements OnInit {
     return this.lotes().filter(
       (lote) =>
         lote.numeroLote?.toLowerCase().includes(search) ||
-        lote.urbanizacion?.nombre?.toLowerCase().includes(search)
+        lote.urbanizacion?.nombre?.toLowerCase().includes(search),
     );
   }
 
@@ -268,9 +273,7 @@ export class ReservaEdit implements OnInit {
     this.reservaForm.patchValue({
       inmuebleId: lote.id.toString(),
     });
-    this.searchLote.set(
-      `${lote.numeroLote} - ${lote.urbanizacion?.nombre || 'Independiente'}`
-    );
+    this.searchLote.set(`${lote.numeroLote} - ${lote.urbanizacion?.nombre || 'Independiente'}`);
     this.showLotesDropdown.set(false);
   }
 
@@ -335,12 +338,15 @@ export class ReservaEdit implements OnInit {
     fechaVencimiento.setHours(fechaVencimiento.getHours() + 24);
 
     const fechaInicioOriginal = new Date(this.reservaData.fechaInicio);
-    const fechaInicioCambio = Math.abs(fechaInicio.getTime() - fechaInicioOriginal.getTime()) > 60000;
+    const fechaInicioCambio =
+      Math.abs(fechaInicio.getTime() - fechaInicioOriginal.getTime()) > 60000;
 
     if (fechaInicioCambio) {
       const ahoraLaPaz = this.getCurrentTimeLaPaz();
       if (fechaInicio < ahoraLaPaz) {
-        this.notificationService.showError('La fecha de inicio no puede ser anterior a la fecha actual');
+        this.notificationService.showError(
+          'La fecha de inicio no puede ser anterior a la fecha actual',
+        );
         return;
       }
     }
@@ -450,7 +456,9 @@ export class ReservaEdit implements OnInit {
       const archivosFinales = [...archivosActuales, ...nuevosArchivos];
 
       if (archivosFinales.length > this.maxArchivos) {
-        this.notificationService.showError(`Solo puedes subir un máximo de ${this.maxArchivos} archivos.`);
+        this.notificationService.showError(
+          `Solo puedes subir un máximo de ${this.maxArchivos} archivos.`,
+        );
         return;
       }
 
@@ -471,7 +479,9 @@ export class ReservaEdit implements OnInit {
     }
 
     if (!this.reservaId) {
-      this.notificationService.showError('No se puede subir archivos: ID de reserva no disponible.');
+      this.notificationService.showError(
+        'No se puede subir archivos: ID de reserva no disponible.',
+      );
       return;
     }
 
@@ -484,22 +494,26 @@ export class ReservaEdit implements OnInit {
       return;
     }
 
-    this.reciboSvc.subirRecibosGenerales(this.archivosSeleccionados(), {
-      tipoOperacion: 'RESERVA',
-      reservaId: this.reservaId,
-      observaciones: 'Subido desde edición de reserva',
-    }).subscribe({
-      next: () => {
-        this.archivosCargando.set(false);
-        this.notificationService.showSuccess('Archivos subidos exitosamente.');
-        this.archivosSeleccionados.set([]);
-        this.cargarRecibosReserva();
-      },
-      error: (error) => {
-        this.archivosCargando.set(false);
-        this.notificationService.showError('Error al subir los archivos: ' + (error?.error?.message || 'Error desconocido'));
-      },
-    });
+    this.reciboSvc
+      .subirRecibosGenerales(this.archivosSeleccionados(), {
+        tipoOperacion: 'RESERVA',
+        reservaId: this.reservaId,
+        observaciones: 'Subido desde edición de reserva',
+      })
+      .subscribe({
+        next: () => {
+          this.archivosCargando.set(false);
+          this.notificationService.showSuccess('Archivos subidos exitosamente.');
+          this.archivosSeleccionados.set([]);
+          this.cargarRecibosReserva();
+        },
+        error: (error) => {
+          this.archivosCargando.set(false);
+          this.notificationService.showError(
+            'Error al subir los archivos: ' + (error?.error?.message || 'Error desconocido'),
+          );
+        },
+      });
   }
 
   descargarRecibo(recibo: Recibo) {
@@ -507,19 +521,21 @@ export class ReservaEdit implements OnInit {
   }
 
   eliminarRecibo(recibo: Recibo) {
-    this.notificationService.confirmDelete('¿Está seguro que desea eliminar este archivo?').then((result) => {
-      if (result.isConfirmed) {
-        this.reciboSvc.eliminarRecibo(recibo.id).subscribe({
-          next: () => {
-            this.notificationService.showSuccess('Archivo eliminado exitosamente.');
-            this.cargarRecibosReserva();
-          },
-          error: () => {
-            this.notificationService.showError('No se pudo eliminar el archivo.');
-          },
-        });
-      }
-    });
+    this.notificationService
+      .confirmDelete('¿Está seguro que desea eliminar este archivo?')
+      .then((result) => {
+        if (result.isConfirmed) {
+          this.reciboSvc.eliminarRecibo(recibo.id).subscribe({
+            next: () => {
+              this.notificationService.showSuccess('Archivo eliminado exitosamente.');
+              this.cargarRecibosReserva();
+            },
+            error: () => {
+              this.notificationService.showError('No se pudo eliminar el archivo.');
+            },
+          });
+        }
+      });
   }
 
   formatFileSize(bytes: number): string {
